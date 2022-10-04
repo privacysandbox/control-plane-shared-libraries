@@ -1,0 +1,30 @@
+package(default_visibility = ["//visibility:public"])
+
+java_test(
+    name = "DynamoMetadataDbTest",
+    srcs = ["DynamoMetadataDbTest.java"],
+    deps = [
+        "//java/com/google/scp/operator/shared/dao/metadatadb/aws",
+        "//java/com/google/scp/operator/shared/dao/metadatadb/common",
+        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
+        "//java/com/google/scp/operator/shared/model",
+        "//java/com/google/scp/operator/shared/testing",
+        "//java/com/google/scp/shared/proto",
+        "//java/external:acai",
+        "//java/external:autoservice",
+        "//java/external:autoservice_annotations",
+        "//java/external:aws_auth",
+        "//java/external:aws_dynamodb",
+        "//java/external:aws_dynamodb_enhanced",
+        "//java/external:aws_regions",
+        "//java/external:aws_url_connection_client",
+        "//java/external:commons_logging",
+        "//java/external:google_truth",
+        "//java/external:google_truth8",
+        "//java/external:guice",
+        "//java/external:testcontainers",
+        "//javatests/com/google/scp/shared/testutils/aws",
+        "//operator/protos/shared/backend:java_proto",
+        "//operator/protos/shared/backend/metadatadb:java_proto",
+    ],
+)
