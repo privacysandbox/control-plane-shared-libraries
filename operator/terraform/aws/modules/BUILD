@@ -13,6 +13,7 @@ pkg_filegroup(
         "//operator/terraform/aws/modules/jobqueue",
         "//operator/terraform/aws/modules/metadatadb",
         "//operator/terraform/aws/modules/parameters",
+        "//operator/terraform/aws/modules/vpc",
         "//operator/terraform/aws/modules/worker",
         "//operator/terraform/aws/modules/workerdashboard",
     ],

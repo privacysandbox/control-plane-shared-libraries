@@ -4,36 +4,9 @@ load("@rules_python//python:defs.bzl", "py_test")
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
-    name = "server_test",
-    size = "small",
-    srcs = ["server_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    flaky = True,  # Remove this flag once fixed. (see b/200961920 for details)
-    deps = [
-        "//cc/aws/proxy/src:proxy_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "socks5_state_test",
     size = "small",
     srcs = ["socks5_state_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc/aws/proxy/src:proxy_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "synchronization_test",
-    size = "small",
-    srcs = ["synchronization_test.cc"],
     copts = [
         "-std=c++17",
     ],
@@ -133,9 +106,19 @@ cc_test(
 )
 
 cc_test(
-    name = "socket_test",
+    name = "proxy_bridge_test",
     size = "small",
-    srcs = ["socket_test.cc"],
+    srcs = ["proxy_bridge_test.cc"],
+    deps = [
+        "//cc/aws/proxy/src:proxy_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "client_session_pool_test",
+    size = "small",
+    srcs = ["client_session_pool_test.cc"],
     deps = [
         "//cc/aws/proxy/src:proxy_lib",
         "@com_google_googletest//:gtest_main",

@@ -5,7 +5,6 @@ java_test(
     srcs = ["AttributeValueMapToJobMetadataConverterTest.java"],
     deps = [
         "//java/com/google/scp/operator/shared/dao/metadatadb/aws/model/converter",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/proto",
         "//java/external:acai",

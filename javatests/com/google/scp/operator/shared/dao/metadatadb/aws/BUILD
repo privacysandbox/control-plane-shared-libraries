@@ -6,7 +6,6 @@ java_test(
     deps = [
         "//java/com/google/scp/operator/shared/dao/metadatadb/aws",
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/operator/shared/testing",
         "//java/com/google/scp/shared/proto",

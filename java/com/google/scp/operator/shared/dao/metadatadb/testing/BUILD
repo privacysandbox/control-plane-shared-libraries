@@ -5,8 +5,16 @@ java_library(
     srcs = ["FakeMetadataDb.java"],
     deps = [
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//operator/protos/shared/backend/metadatadb:java_proto",
+    ],
+)
+
+java_library(
+    name = "fake_asg_instances_dao",
+    srcs = ["FakeAsgInstancesDao.java"],
+    deps = [
+        "//java/com/google/scp/operator/shared/dao/metadatadb/common",
+        "//operator/protos/shared/backend/asginstance:java_proto",
     ],
 )
 
@@ -14,7 +22,6 @@ java_library(
     name = "job_generator",
     srcs = ["JobGenerator.java"],
     deps = [
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/proto",
         "//java/external:aws_lambda_java_core",

@@ -26,6 +26,8 @@ import javax.annotation.Nullable;
 /** Utilities for backend models. */
 public class BackendModelUtil {
 
+  private BackendModelUtil() {}
+
   /** String representation of the key. */
   public static String toJobKeyString(JobKeyProto.JobKey jobKey) {
     return jobKey.getJobRequestId();

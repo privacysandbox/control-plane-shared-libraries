@@ -21,6 +21,7 @@
 #include <resolv.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <linux/vm_sockets.h>
@@ -29,7 +30,10 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "proxy/src/protocol.h"
+#include "protocol.h"
+#include "socket_vendor_protocol.h"
+
+namespace socket_vendor = google::scp::proxy::socket_vendor;
 
 // Define possible interfaces with C linkage so that all the signatures and
 // interfaces are consistent with libc.
@@ -49,6 +53,13 @@ static int (*libc_getsockopt)(int sockfd, int level, int optname,
                               void* __restrict optval,
                               socklen_t* __restrict optlen);
 static int (*libc_ioctl)(int fd, unsigned long request, ...);
+static int (*libc_bind)(int sockfd, const struct sockaddr* addr,
+                        socklen_t addrlen);
+static int (*libc_listen)(int sockfd, int backlog);
+static int (*libc_accept)(int sockfd, struct sockaddr* addr,
+                          socklen_t* addrlen);
+static int (*libc_accept4)(int sockfd, struct sockaddr* addr,
+                           socklen_t* addrlen, int flags);
 // The ioctl() syscall signature contains variadic arguments for historical
 // reasons (i.e. allowing different types without forced casting). However, a
 // real syscall cannot have variadic arguments at all. The real internal
@@ -56,11 +67,6 @@ static int (*libc_ioctl)(int fd, unsigned long request, ...);
 // ref: https://static.lwn.net/images/pdf/LDD3/ch06.pdf
 int ioctl(int fd, unsigned long request, void* argp);
 }
-
-static const char kParentCidEnv[] = "PROXY_PARENT_CID";
-static const char kParentPortEnv[] = "PROXY_PARENT_PORT";
-static const unsigned int kDefaultParentCid = 3;
-static const unsigned int kDefaultParentPort = 8888;
 
 static int socks5_client_connect(int sockfd, const struct sockaddr* addr);
 
@@ -104,6 +110,14 @@ void preload_init(void) {
       dlsym(RTLD_NEXT, STR(getsockopt)));
   libc_ioctl =
       reinterpret_cast<decltype(libc_ioctl)>(dlsym(RTLD_NEXT, STR(ioctl)));
+  libc_bind =
+      reinterpret_cast<decltype(libc_bind)>(dlsym(RTLD_NEXT, STR(bind)));
+  libc_listen =
+      reinterpret_cast<decltype(libc_listen)>(dlsym(RTLD_NEXT, STR(listen)));
+  libc_accept =
+      reinterpret_cast<decltype(libc_accept)>(dlsym(RTLD_NEXT, STR(accept)));
+  libc_accept4 =
+      reinterpret_cast<decltype(libc_accept4)>(dlsym(RTLD_NEXT, STR(accept4)));
 #undef _STR
 #undef STR
 }
@@ -125,40 +139,6 @@ EXPORT int res_ninit(res_state statep) {
   int r = libc_res_ninit(statep);
   statep->options |= RES_USEVC;
   return r;
-}
-
-// Get value from environment and convert to unsigned int. val is overwritten if
-// everything succeeds, otherwise untouched.
-static void EnvGetUint(const char* env_name, unsigned int& val) {
-  if (env_name == nullptr) {
-    return;
-  }
-  char* val_str = getenv(env_name);
-  if (val_str == nullptr) {
-    return;
-  }
-  errno = 0;
-  char* end;
-  unsigned int v = strtoul(val_str, &end, 10);
-  if (errno == 0 && v < UINT_MAX) {
-    val = static_cast<unsigned int>(v);
-  }
-}
-
-// Construct a sockaddr of the parent instance by looking and env variables, or
-// default if env not set.
-static sockaddr_vm get_vsock_addr() {
-  unsigned int cid = kDefaultParentCid;
-  unsigned int port = kDefaultParentPort;
-  EnvGetUint(kParentCidEnv, cid);
-  EnvGetUint(kParentPortEnv, port);
-
-  sockaddr_vm addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.svm_family = AF_VSOCK;
-  addr.svm_port = port;
-  addr.svm_cid = cid;
-  return addr;
 }
 
 EXPORT int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
@@ -203,7 +183,7 @@ EXPORT int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
   if (dup2(vsock_fd, sockfd) < 0) {
     return -1;
   }
-  sockaddr_vm vsock_addr = get_vsock_addr();
+  sockaddr_vm vsock_addr = GetProxyVsockAddr();
   if (libc_connect(sockfd, reinterpret_cast<sockaddr*>(&vsock_addr),
                    sizeof(vsock_addr)) < 0) {
     fcntl(sockfd, F_SETFL, fl);
@@ -412,4 +392,231 @@ int socks5_client_connect(int sockfd, const struct sockaddr* addr) {
     return -1;
   }
   return 0;
+}
+
+EXPORT int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
+  if (addr->sa_family != AF_INET && addr->sa_family != AF_INET6) {
+    return libc_bind(sockfd, addr, addrlen);
+  }
+  // Check if it is STREAM socket, namely, TCP.
+  int sock_type = 0;
+  socklen_t sock_type_len = sizeof(sock_type);
+  int ret = libc_getsockopt(sockfd, SOL_SOCKET, SO_TYPE,
+                            static_cast<void*>(&sock_type), &sock_type_len);
+  if (ret != 0 || sock_type != SOCK_STREAM) {
+    return libc_bind(sockfd, addr, addrlen);
+  }
+  int sock_domain = 0;
+  socklen_t sock_domain_len = sizeof(sock_domain);
+  ret = libc_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN,
+                       static_cast<void*>(&sock_domain), &sock_domain_len);
+  if (ret != 0 || (sock_domain != AF_INET && sock_domain != AF_INET6)) {
+    return libc_bind(sockfd, addr, addrlen);
+  }
+  uint16_t port = 0;
+  if (addr->sa_family == AF_INET) {
+    // If the socket family does not match the address to bind, return EINVAL.
+    if (sock_domain != AF_INET) {
+      errno = EINVAL;
+      return -1;
+    }
+    const sockaddr_in* v4addr = reinterpret_cast<const sockaddr_in*>(addr);
+    port = ntohs(v4addr->sin_port);
+  } else if (addr->sa_family == AF_INET6) {
+    // If the socket family does not match the address to bind, return EINVAL.
+    if (sock_domain != AF_INET6) {
+      errno = EINVAL;
+      return -1;
+    }
+    const sockaddr_in6* v6addr = reinterpret_cast<const sockaddr_in6*>(addr);
+    port = ntohs(v6addr->sin6_port);
+  }
+  // In the next few steps, replace sockfd with a UNIX domain socket.
+  int uds_sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (uds_sock < 0) {
+    return -1;
+  }
+  AutoCloseFd autoclose(uds_sock);
+  // Preserve the file modes (esp. blocking/non-blocking) so that we can apply
+  // the same modes later.
+  int fl = fcntl(sockfd, F_GETFL);
+  // "Atomically" close sockfd and duplicate the uds_sock into sockfd. So that
+  // the application can use the same fd value. This essentially changes the
+  // sockfd family from AF_INET(6) to AF_UNIX
+  if (dup2(uds_sock, sockfd) < 0) {
+    return -1;
+  }
+  sockaddr_un uds_addr;
+  memset(&uds_addr, 0, sizeof(uds_addr));
+  uds_addr.sun_family = AF_UNIX;
+  memcpy(uds_addr.sun_path, kSocketVendorUdsPath, sizeof(kSocketVendorUdsPath));
+  if (libc_connect(sockfd, reinterpret_cast<sockaddr*>(&uds_addr),
+                   sizeof(uds_addr)) < 0) {
+    return -1;
+  }
+  // In the next few steps, perform socket vendor requests.
+  socket_vendor::BindRequest bind_req;
+  bind_req.port = port;
+  ssize_t num_bytes = send(sockfd, &bind_req, sizeof(bind_req), 0);
+  if (num_bytes != static_cast<ssize_t>(sizeof(bind_req))) {
+    return -1;
+  }
+  socket_vendor::BindResponse bind_resp;
+  num_bytes = recv(sockfd, &bind_resp, sizeof(bind_resp), 0);
+  if (num_bytes != static_cast<ssize_t>(sizeof(bind_resp))) {
+    return -1;
+  }
+  if (bind_resp.type != socket_vendor::MessageType::kBindResponse) {
+    return -1;
+  }
+  // Apply file modes again.
+  fcntl(sockfd, F_SETFL, fl);
+  return 0;
+}
+
+EXPORT int listen(int sockfd, int backlog) {
+  int sock_domain = 0;
+  socklen_t sock_domain_len = sizeof(sock_domain);
+  if (libc_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN,
+                      static_cast<void*>(&sock_domain), &sock_domain_len)) {
+    return libc_listen(sockfd, backlog);
+  }
+  if (sock_domain != AF_UNIX) {
+    return libc_listen(sockfd, backlog);
+  }
+  sockaddr_un uds_addr;
+  socklen_t addr_len = sizeof(uds_addr);
+  int ret =
+      getpeername(sockfd, reinterpret_cast<sockaddr*>(&uds_addr), &addr_len);
+  if (ret < 0) {
+    return libc_listen(sockfd, backlog);
+  }
+  // TODO: we may add more strict check here
+
+  socket_vendor::ListenRequest listen_req;
+  listen_req.backlog = backlog;
+  ssize_t num_bytes = send(sockfd, &listen_req, sizeof(listen_req), 0);
+  if (num_bytes != sizeof(listen_req)) {
+    return -1;
+  }
+  int fl = fcntl(sockfd, F_GETFL);
+  fcntl(sockfd, F_SETFL, fl & ~O_NONBLOCK);
+  socket_vendor::ListenResponse listen_resp;
+  num_bytes = recv(sockfd, &listen_resp, sizeof(listen_resp), MSG_WAITALL);
+  if (num_bytes != sizeof(listen_resp)) {
+    return -1;
+  }
+  if (listen_resp.type != socket_vendor::MessageType::kListenResponse) {
+    return -1;
+  }
+  fcntl(sockfd, F_SETFL, fl);
+  return 0;
+}
+
+EXPORT int accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen,
+                   int flags) {
+  int sock_domain = 0;
+  socklen_t sock_domain_len = sizeof(sock_domain);
+  if (libc_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN,
+                      static_cast<void*>(&sock_domain), &sock_domain_len)) {
+    return libc_accept(sockfd, addr, addrlen);
+  }
+  if (sock_domain != AF_UNIX) {
+    return libc_accept(sockfd, addr, addrlen);
+  }
+  // There might be use cases that the application uses unix domain socket for
+  // communication. Here we check if sockfd is in a connected state by calling
+  // getpeername(), if so, then it is a socket under our manipulation.
+  // TODO: we can use a global bitmap to identify the socket, if the following
+  // logic turns out to be hurting performance.
+  sockaddr_un uds_addr;
+  socklen_t uds_addr_len = sizeof(uds_addr);
+  int ret = getpeername(sockfd, reinterpret_cast<sockaddr*>(&uds_addr),
+                        &uds_addr_len);
+  if (ret < 0) {
+    return libc_accept(sockfd, addr, addrlen);
+  }
+
+  // Now prepare for accepting a file descriptor
+  socket_vendor::NewConnectionResponse resp;
+  struct msghdr msg = {};
+  struct iovec iov = {&resp, sizeof(resp)};
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+
+  union {
+    struct cmsghdr align;
+    char buf[CMSG_SPACE(sizeof(int))];
+  } cmsgu;
+
+  msg.msg_control = cmsgu.buf;
+  msg.msg_controllen = sizeof(cmsgu.buf);
+
+  ssize_t num_bytes = recvmsg(sockfd, &msg, 0);
+  if (num_bytes < 0) {
+    // Note that this might be a benign failure when sockfd is made
+    // non-blocking. recv() might return with EAGAIN/EWOULDBLOCK, which is also
+    // expected errno for accept() calls.
+    return -1;
+  }
+  struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+  if (cmsg == nullptr) {
+    errno = EBADF;
+    return -1;
+  }
+  if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
+    errno = EBADF;
+    return -1;
+  }
+  int fd = -1;
+  memcpy(&fd, CMSG_DATA(cmsg), sizeof(fd));
+  if (fd < 0) {
+    errno = EBADF;
+    return -1;
+  }
+  int fl = fcntl(fd, F_GETFL);
+  if (flags | SOCK_CLOEXEC) {
+    fl |= FD_CLOEXEC;
+  }
+  if (flags | SOCK_NONBLOCK) {
+    fl |= O_NONBLOCK;
+  }
+  fcntl(fd, F_SETFL, fl);
+  if (addr == nullptr) {
+    return fd;
+  }
+  // From this point, we don't know if the original listener socket was created
+  // as IPv6 or IPv4 socket. So we identify it by looking at socklen.
+  if (*addrlen >= sizeof(sockaddr_in6)) {
+    sockaddr_in6 v6addr;
+    v6addr.sin6_family = AF_INET6;
+    memcpy(&v6addr.sin6_addr, resp.addr, sizeof(resp.addr));
+    v6addr.sin6_port = resp.port;
+    *addrlen = sizeof(v6addr);
+    memcpy(addr, &v6addr, *addrlen);
+  } else {
+    sockaddr_in v4addr;
+    memset(&v4addr, 0, sizeof(v4addr));
+    v4addr.sin_family = AF_INET;
+    // Determine if the address is convertible to IPv4. If so, convert it.
+    uint32_t uint_addr[4];
+    memcpy(uint_addr, resp.addr, sizeof(uint_addr));
+    if (uint_addr[0] == 0 && uint_addr[1] == 0 && uint_addr[2] == 0 &&
+        uint_addr[3] != 1) {
+      // IPv4 compatible address
+      memcpy(&v4addr.sin_addr, &uint_addr[3], sizeof(v4addr.sin_addr));
+    } else if (uint_addr[0] == 0 && uint_addr[1] == 0 &&
+               ntohl(uint_addr[2]) == 0xFFFF) {
+      // IPv4-mapped address
+      memcpy(&v4addr.sin_addr, &uint_addr[3], sizeof(v4addr.sin_addr));
+    }
+    v4addr.sin_port = resp.port;
+    *addrlen = *addrlen >= sizeof(v4addr) ? sizeof(v4addr) : *addrlen;
+    memcpy(addr, &v4addr, *addrlen);
+  }
+  return fd;
+}
+
+EXPORT int accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen) {
+  return accept4(sockfd, addr, addrlen, 0);
 }

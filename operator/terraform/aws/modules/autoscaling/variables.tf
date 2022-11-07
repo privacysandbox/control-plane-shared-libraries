@@ -232,21 +232,3 @@ variable "autoscaling_alarm_eval_period_sec" {
   type        = string
   default     = "60"
 }
-
-variable "enable_customized_vpc" {
-  description = "Allow providing existing vpc details as input."
-  type        = bool
-  default     = false
-}
-
-variable "customized_vpc_subnet_ids" {
-  description = "Customized VPC subnet ids for worker autoscaling group"
-  type        = list(string)
-  default     = []
-}
-
-variable "customized_vpc_security_group_ids" {
-  description = "Customized VPC security group ids for worker autoscaling group"
-  type        = list(string)
-  default     = []
-}

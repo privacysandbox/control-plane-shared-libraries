@@ -129,7 +129,7 @@ build {
       "sudo rm -rf /tmp/rpms",
       "sudo rm -f /tmp/{container_filename}",
       "sudo rm -f /tmp/allocator.yaml",
-      "sudo rm -f /tmp/licenses_tar.tar",
+      "sudo rm -f /tmp/licenses.tar",
     ]
   }
 

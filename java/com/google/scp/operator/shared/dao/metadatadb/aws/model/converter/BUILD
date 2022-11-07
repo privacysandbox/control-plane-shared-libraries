@@ -5,7 +5,6 @@ java_library(
     srcs = glob(["*.java"]),
     deps = [
         "//java/com/google/scp/operator/shared/dao/metadatadb/aws/model",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/external:aws_dynamodb",
         "//java/external:aws_dynamodb_enhanced",
         "//java/external:aws_lambda_java_core",

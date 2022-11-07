@@ -12,7 +12,6 @@ java_test(
     deps = [
         "//java/com/google/scp/operator/shared/dao/jobqueue/aws",
         "//java/com/google/scp/operator/shared/dao/jobqueue/common",
-        "//java/com/google/scp/operator/shared/dao/jobqueue/model",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/proto",
         "//java/external:acai",

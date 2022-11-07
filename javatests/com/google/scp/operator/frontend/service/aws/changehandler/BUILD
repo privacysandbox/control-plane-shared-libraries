@@ -5,7 +5,6 @@ java_test(
         "//java/com/google/scp/operator/frontend/service/aws/changehandler",
         "//java/com/google/scp/operator/shared/dao/jobqueue/common",
         "//java/com/google/scp/operator/shared/dao/jobqueue/testing",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/dao/metadatadb/testing:job_generator",
         "//java/com/google/scp/operator/shared/model",
         "//java/external:acai",
@@ -22,7 +21,6 @@ java_test(
     deps = [
         "//java/com/google/scp/operator/frontend/service/aws/changehandler",
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/dao/metadatadb/testing:fake_metadata_db",
         "//java/com/google/scp/operator/shared/dao/metadatadb/testing:job_generator",
         "//java/com/google/scp/operator/shared/model",

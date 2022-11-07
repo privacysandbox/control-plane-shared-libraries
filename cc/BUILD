@@ -8,3 +8,10 @@ cc_library(
     includes = ["."],
     visibility = [":__subpackages__"],
 )
+
+package_group(
+    name = "scp_internal_pkg",
+    packages = [
+        "//cc/...",
+    ],
+)

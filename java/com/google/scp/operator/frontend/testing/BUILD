@@ -17,7 +17,6 @@ java_library(
     ],
     deps = [
         "//java/com/google/scp/operator/frontend/service/aws/changehandler",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/external:guava",
         "//operator/protos/shared/backend/metadatadb:java_proto",
     ],
@@ -27,7 +26,6 @@ java_library(
     name = "testing",
     srcs = [
         "ResponseEventAssertions.java",
-        "ResponseEventDeserializer.java",
         "TestCreateRequest.java",
         "TestCreateResponse.java",
         "TestSerializedObject.java",

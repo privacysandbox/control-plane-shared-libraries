@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gtest/gtest.h>
+
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -21,11 +23,8 @@
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <unistd.h>
-// clang-format off
-#include <linux/vm_sockets.h>
-// clang-format on
 
-#include <gtest/gtest.h>
+#include <linux/vm_sockets.h>
 
 class PreloadSyscallTest : public ::testing::Test {
  protected:

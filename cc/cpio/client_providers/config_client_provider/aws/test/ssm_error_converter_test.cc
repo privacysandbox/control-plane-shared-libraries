@@ -1,0 +1,73 @@
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "cpio/client_providers/config_client_provider/aws/src/ssm_error_converter.h"
+
+#include <gtest/gtest.h>
+
+#include "cpio/client_providers/config_client_provider/aws/src/error_codes.h"
+#include "cpio/common/aws/src/error_codes.h"
+
+using Aws::SSM::SSMErrors;
+using google::scp::core::FailureExecutionResult;
+
+using google::scp::core::errors::
+    SC_AWS_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
+using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
+using google::scp::core::errors::SC_AWS_INVALID_CREDENTIALS;
+using google::scp::core::errors::SC_AWS_INVALID_REQUEST;
+using google::scp::core::errors::SC_AWS_REQUEST_LIMIT_REACHED;
+using google::scp::core::errors::SC_AWS_SERVICE_UNAVAILABLE;
+using google::scp::core::errors::SC_AWS_VALIDATION_FAILED;
+
+namespace google::scp::cpio::client_providers::test {
+TEST(SSMErrorConverter, SucceededToConvertHandledSSMErrors) {
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::VALIDATION),
+            FailureExecutionResult(SC_AWS_VALIDATION_FAILED));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::ACCESS_DENIED),
+            FailureExecutionResult(SC_AWS_INVALID_CREDENTIALS));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
+                SSMErrors::INVALID_PARAMETER_COMBINATION),
+            FailureExecutionResult(SC_AWS_INVALID_REQUEST));
+  EXPECT_EQ(
+      SSMErrorConverter::ConvertSSMError(SSMErrors::INVALID_QUERY_PARAMETER),
+      FailureExecutionResult(SC_AWS_INVALID_REQUEST));
+  EXPECT_EQ(
+      SSMErrorConverter::ConvertSSMError(SSMErrors::INVALID_PARAMETER_VALUE),
+      FailureExecutionResult(SC_AWS_INVALID_REQUEST));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::PARAMETER_NOT_FOUND),
+            FailureExecutionResult(
+                SC_AWS_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::INTERNAL_FAILURE),
+            FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::SERVICE_UNAVAILABLE),
+            FailureExecutionResult(SC_AWS_SERVICE_UNAVAILABLE));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::NETWORK_CONNECTION),
+            FailureExecutionResult(SC_AWS_SERVICE_UNAVAILABLE));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::THROTTLING),
+            FailureExecutionResult(SC_AWS_REQUEST_LIMIT_REACHED));
+}
+
+TEST(SSMErrorConverter, SucceededToConvertNonHandledSSMErrors) {
+  EXPECT_EQ(
+      SSMErrorConverter::ConvertSSMError(SSMErrors::MALFORMED_QUERY_STRING),
+      FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
+                SSMErrors::UNSUPPORTED_INVENTORY_SCHEMA_VERSION),
+            FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
+                SSMErrors::AUTOMATION_DEFINITION_VERSION_NOT_FOUND),
+            FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+}
+}  // namespace google::scp::cpio::client_providers::test

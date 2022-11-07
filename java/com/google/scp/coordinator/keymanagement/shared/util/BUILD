@@ -9,5 +9,6 @@ java_library(
         "//java/external:guava",
         "//java/external:protobuf_java",
         "//java/external:tink",
+    ] + [
     ],
 )

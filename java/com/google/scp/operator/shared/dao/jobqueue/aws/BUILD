@@ -5,7 +5,6 @@ java_library(
     srcs = glob(["*.java"]),
     deps = [
         "//java/com/google/scp/operator/shared/dao/jobqueue/common",
-        "//java/com/google/scp/operator/shared/dao/jobqueue/model",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/mapper",
         "//java/com/google/scp/shared/proto",

@@ -25,6 +25,7 @@
 #include <string>
 
 static constexpr char lib[] = "libproxy_preload.so";
+static constexpr char socket_vendor[] = "socket_vendor";
 static const char resolv_conf_path[] = "/etc/resolv.conf";
 
 static const char resolv_conf_content[] =
@@ -57,6 +58,11 @@ int main(int argc, char* argv[]) {
   if (access(lib_path.c_str(), F_OK) != 0) {
     std::cerr << "ERROR: Cannot access " << lib_path << ": " << strerror(errno)
               << std::endl;
+  }
+  std::string socket_vendor_path = dir_name + "/" + socket_vendor;
+  if (fork() == 0) {
+    execl(socket_vendor_path.c_str(), socket_vendor_path.c_str(), nullptr);
+    exit(1);
   }
   if (setenv("LD_PRELOAD", lib_path.c_str(), 1)) {
     std::cerr << "ERROR: cannot set LD_PRELOAD: " << strerror(errno)

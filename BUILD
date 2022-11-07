@@ -21,6 +21,7 @@ pkg_tar(
     name = "source_code_tar",
     srcs = [
         ".bazelrc",
+        ".bazelversion",
         "BUILD",
         "WORKSPACE",
         "build_defs",

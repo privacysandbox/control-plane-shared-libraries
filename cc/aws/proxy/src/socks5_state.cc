@@ -22,16 +22,17 @@
 
 #include <memory>
 #include <thread>
+#include <vector>
 
 #include "proxy/src/logging.h"
 #include "proxy/src/protocol.h"
-#include "proxy/src/receive_worker.h"
-#include "proxy/src/send.h"
+
+using std::vector;
 
 namespace google::scp::proxy {
 static const size_t kBufferSize = 65536;
 
-std::vector<uint8_t> Socks5State::CreateResp() {
+vector<uint8_t> Socks5State::CreateResp(bool is_bind) {
   struct sockaddr_storage addr_storage;
   size_t addr_len = sizeof(addr_storage);
   // Per rfc1928 the response is in this format:
@@ -47,11 +48,11 @@ std::vector<uint8_t> Socks5State::CreateResp() {
   size_t resp_size = 3;  // First 3 bytes are fixed as defined above.
   sockaddr* addr = reinterpret_cast<sockaddr*>(&addr_storage);
   if (dest_address_callback_ &&
-      dest_address_callback_(addr, &addr_len) == kStatusOK) {
+      dest_address_callback_(addr, &addr_len, is_bind) == kStatusOK) {
     // Successful. Return response.
     size_t addr_sz = FillAddrPort(&resp_storage[resp_size], addr);
     resp_size += addr_sz;
-    std::vector<uint8_t> resp(resp_storage, resp_storage + resp_size);
+    vector<uint8_t> resp(resp_storage, resp_storage + resp_size);
     return resp;
   }
   // Otherwise, we have an error.
@@ -60,8 +61,8 @@ std::vector<uint8_t> Socks5State::CreateResp() {
   // bytes set to 0x00.
   static const uint8_t err_resp_template[] = {0x05, 0x01, 0x00, 0x01, 0x00,
                                               0x00, 0x00, 0x00, 0x00, 0x00};
-  return std::vector<uint8_t>(err_resp_template,
-                              err_resp_template + sizeof(err_resp_template));
+  return vector<uint8_t>(err_resp_template,
+                         err_resp_template + sizeof(err_resp_template));
 }
 
 Socks5State::~Socks5State() {}
@@ -133,27 +134,49 @@ bool Socks5State::Proceed(Buffer& buffer) {
       //   +----+-----+-------+------+----------+----------+
       uint8_t header[4];
       buffer.CopyOut(header, sizeof(header));
-      // only support CONNECT (0x01) at this time.
-      // TODO: extend the CMD type support here.
-      if (header[0] != 0x05 || header[1] != 0x01 || header[2] != 0x00) {
+      if (header[0] != 0x05 || header[2] != 0x00) {
         LogError("Malformed client request.");
         // TODO: return meaningful response to client.
         state_ = Socks5State::kFail;
         break;
       }
-      uint8_t atyp = header[3];
-      if (atyp == 0x01) {
-        state_ = Socks5State::kRequestAddrV4;
-        required_size_ = 6;  // 4-byte IPv4 address, 2-byte port
-      } else if (atyp == 0x03) {
-        LogError("Unsupported ATYP: 0x03(fqdn)");
-        state_ = Socks5State::kFail;
+      if (header[1] == 0x01) {  // CMD == CONNECT
+        uint8_t atyp = header[3];
+        if (atyp == 0x01) {
+          state_ = Socks5State::kRequestAddrV4;
+          required_size_ = 6;  // 4-byte IPv4 address, 2-byte port
+        } else if (atyp == 0x03) {
+          LogError("Unsupported ATYP: 0x03(fqdn)");
+          state_ = Socks5State::kFail;
+          break;
+        } else if (atyp == 0x04) {
+          state_ = Socks5State::kRequestAddrV6;
+          required_size_ = 16 + 2;  // 16-byte IPv6 address, 2-byte port
+        } else {
+          LogError("Malformed client request. ATYP = ", atyp);
+          state_ = Socks5State::kFail;
+          break;
+        }
+      } else if (header[1] == 0x02) {  // CMD == BIND
+        uint8_t atyp = header[3];
+        if (atyp == 0x01) {
+          required_size_ = 6;  // 4-byte IPv4 address, 2-byte port
+        } else if (atyp == 0x03) {
+          LogError("Unsupported ATYP: 0x03(fqdn)");
+          state_ = Socks5State::kFail;
+          break;
+        } else if (atyp == 0x04) {
+          required_size_ = 16 + 2;  // 16-byte IPv6 address, 2-byte port
+        } else {
+          LogError("Malformed client request. ATYP = ", atyp);
+          state_ = Socks5State::kFail;
+          break;
+        }
+        state_ = Socks5State::kRequestBind;
         break;
-      } else if (atyp == 0x04) {
-        state_ = Socks5State::kRequestAddrV6;
-        required_size_ = 16 + 2;  // 16-byte IPv6 address, 2-byte port
       } else {
-        LogError("Malformed client request. ATYP = ", atyp);
+        LogError("Malformed client request.");
+        // TODO: return meaningful response to client.
         state_ = Socks5State::kFail;
         break;
       }
@@ -198,7 +221,6 @@ bool Socks5State::Proceed(Buffer& buffer) {
       // No matter what, we require no more data from client.
       required_size_ = 0;
       if (!connect_callback_) {
-        required_size_ = 0;
         state_ = Socks5State::kWaitConnect;
         break;
       }
@@ -216,14 +238,51 @@ bool Socks5State::Proceed(Buffer& buffer) {
       state_ = Socks5State::kFail;
       break;
     }
+    case Socks5State::kRequestBind: {
+      uint16_t port = 0;
+      // We don't care what address to bind, we'll bind to default [::] anyway.
+      // So just discard the address field.
+      buffer.CopyOut(nullptr, required_size_ - sizeof(port));
+      buffer.CopyOut(&port, sizeof(port));
+      port = ntohs(port);
+      required_size_ = 0;
+      auto ret = bind_callback_(port);
+      if (ret == kStatusFail) {
+        state_ = Socks5State::kFail;
+        break;
+      }
+      // We are using IPv4 ATYP for both IPv4 and IPv6 bind requests. This seems
+      // to be OK, as we are going to send all zeros in address anyway.
+      // NOTE: if you change this, you'll also need to change the client side
+      // (ClientSessionPool).
+      uint8_t bind_resp[] = {0x05, 0x00, 0x00, 0x01, 0x00,
+                             0x00, 0x00, 0x00, 0x00, 0x00};
+      // Fill in the port field
+      port = htons(port);
+      memcpy(bind_resp + sizeof(bind_resp) - sizeof(port), &port, sizeof(port));
+      ret = response_callback_(bind_resp, sizeof(bind_resp));
+      if (ret == kStatusFail) {
+        state_ = Socks5State::kFail;
+        break;
+      }
+      state_ = Socks5State::kWaitAccept;
+      return false;
+      break;
+    }
     case Socks5State::kWaitConnect: {
       // Always return false. The application is expected to call
       // ConnectionSucceed() upon successful connection establishment.
       return false;
       break;
     }
+    case Socks5State::kWaitAccept: {
+      // Always return false. The application is expected to call
+      // ConnectionSucceed() upon successful connection establishment.
+      return false;
+      break;
+    }
     case Socks5State::kResponse: {
-      auto resp = CreateResp();
+      auto resp = CreateResp(false);
       // Again, like kGreetingMethods, our response is tiny. There's no chance
       // for the send to block and require us to poll. So for simplicity, we
       // just check if return is kStatusOK.
@@ -251,13 +310,24 @@ bool Socks5State::Proceed(Buffer& buffer) {
   return state_ != Socks5State::kFail;
 }
 
-bool Socks5State::ConnectionSucceed(Buffer& buffer) {
-  if (state_ != kWaitConnect) {
+bool Socks5State::ConnectionSucceed() {
+  vector<uint8_t> resp;
+  if (state_ == kWaitConnect) {
+    resp = CreateResp(false /* is_bind */);
+  } else if (state_ == kWaitAccept) {
+    resp = CreateResp(true /* is_bind */);
+  } else {
     state_ = kFail;
     return false;
   }
-  state_ = kResponse;
-  while (state_ != Socks5State::kSuccess && Proceed(buffer)) {}
+  // Again, like kGreetingMethods, our response is tiny. There's no chance
+  // for the send to block and require us to poll. So for simplicity, we
+  // just check if return is kStatusOK.
+  auto ret = response_callback_(resp.data(), resp.size());
+  if (ret != kStatusOK) {
+    state_ = Socks5State::kFail;
+  }
+  state_ = Socks5State::kSuccess;
   return state_ == Socks5State::kSuccess;
 }
 

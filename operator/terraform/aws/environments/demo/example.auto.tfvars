@@ -28,9 +28,11 @@ instance_type      = "m5.2xlarge" # 8 cores, 32GiB
 enclave_cpu_count  = 6            # Leave 2 vCPUs to host OS (minimum required).
 enclave_memory_mib = 28672        # 28 GiB. ~30GiB are available on m5.2xlarge, leave 2GiB for host OS.
 
-max_job_num_attempts_parameter    = "5"
-max_job_processing_time_parameter = "3600"
-assume_role_parameter             = "arn:aws:iam::example:role/example"
+max_job_num_attempts_parameter      = "5"
+max_job_processing_time_parameter   = "3600"
+coordinator_a_assume_role_parameter = "arn:aws:iam::<CoordinatorAAccount>:role/<CoordinatorARole>"
+# Remove coordinator_b_assume_role_parameter if using single coordinator
+coordinator_b_assume_role_parameter = "arn:aws:iam::<CoordinatorBAccount>:role/<CoordinatorBRole>"
 
 initial_capacity_ec2_instances = 2
 min_capacity_ec2_instances     = "1"

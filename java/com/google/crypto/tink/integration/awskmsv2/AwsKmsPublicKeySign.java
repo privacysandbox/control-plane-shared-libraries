@@ -28,12 +28,12 @@ public final class AwsKmsPublicKeySign implements PublicKeySign {
 
   private final KmsClient kmsClient;
   private final String signatureAlgorithm;
-  private final String signatureKeyUri;
+  private final String signatureKeyId;
 
   public AwsKmsPublicKeySign(
-      KmsClient kmsClient, String signatureKeyUri, String signatureAlgorithm) {
+      KmsClient kmsClient, String signatureKeyId, String signatureAlgorithm) {
     this.kmsClient = kmsClient;
-    this.signatureKeyUri = signatureKeyUri;
+    this.signatureKeyId = signatureKeyId;
     this.signatureAlgorithm = signatureAlgorithm;
   }
 
@@ -41,7 +41,7 @@ public final class AwsKmsPublicKeySign implements PublicKeySign {
   public byte[] sign(final byte[] data) throws GeneralSecurityException {
     var signRequest =
         SignRequest.builder()
-            .keyId(signatureKeyUri)
+            .keyId(signatureKeyId)
             .message(SdkBytes.fromByteArray(data))
             .signingAlgorithm(signatureAlgorithm)
             .build();

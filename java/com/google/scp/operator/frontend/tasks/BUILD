@@ -6,7 +6,6 @@ java_library(
     deps = [
         "//java/com/google/scp/operator/frontend/tasks/validation",
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/api/exception",
         "//java/com/google/scp/shared/api/model",

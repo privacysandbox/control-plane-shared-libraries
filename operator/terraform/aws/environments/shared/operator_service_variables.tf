@@ -44,18 +44,19 @@ variable "worker_ssh_public_key" {
 variable "instance_type" {
   type        = string
   description = "EC2 instance type to use for aggregation workers."
+  default     = "m5.xlarge" # 4 cores, 16GiB
 }
 
 variable "enclave_cpu_count" {
   description = "Number of CPUs to allocate to the enclave."
   type        = number
-  default     = 2
+  default     = 2 # Leave 2 vCPUs to host OS (minimum required).  Depends on instance_type selected.
 }
 
 variable "enclave_memory_mib" {
   description = "Memory (in mebibytes) to allocate to the enclave."
   type        = number
-  default     = 7000
+  default     = 13312 # 13 GiB. ~15GiB are available on m5.xlarge, leave 2GiB for host OS.  Depends on instance_type selected.
 }
 
 variable "ami_name" {
@@ -67,6 +68,7 @@ variable "ami_owners" {
   type = list(string)
   # See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami#owners
   description = "Owners used to search for $ami_name."
+  default     = ["self"]
 }
 
 variable "change_handler_lambda" {
@@ -139,6 +141,7 @@ variable "min_capacity_ec2_instances" {
 variable "max_capacity_ec2_instances" {
   type        = number
   description = "configuration for the aggregation worker autoscaling process."
+  default     = 20
 }
 
 variable "max_job_num_attempts_parameter" {
@@ -357,20 +360,39 @@ variable "job_queue_alarm_eval_period_sec" {
 # VPC, subnets and security group variables
 ################################################################################
 
-variable "enable_customized_vpc" {
+variable "enable_user_provided_vpc" {
   description = "Allow providing existing vpc details as input."
   type        = bool
   default     = false
 }
 
-variable "customized_vpc_subnet_ids" {
+variable "user_provided_vpc_subnet_ids" {
   description = "Customized VPC subnet ids for worker autoscaling group"
   type        = list(string)
   default     = []
 }
 
-variable "customized_vpc_security_group_ids" {
+variable "user_provided_vpc_security_group_ids" {
   description = "Customized VPC security group ids for worker autoscaling group"
   type        = list(string)
   default     = []
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR range for coordinator VPC."
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "vpc_availability_zones" {
+  description = "Specify the letter identifiers of which availability zones to deploy resources, such as a, b or c."
+  type        = set(string)
+  default = [
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+  ]
 }

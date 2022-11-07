@@ -43,6 +43,7 @@ module "operator_service" {
   enclave_cpu_count  = var.enclave_cpu_count
   enclave_memory_mib = var.enclave_memory_mib
 
+  kms_key_parameter                   = var.kms_key_parameter
   coordinator_a_assume_role_parameter = local.coordinator_a_assume_role_parameter
   coordinator_b_assume_role_parameter = local.coordinator_b_assume_role_parameter
   worker_ssh_public_key               = var.worker_ssh_public_key
@@ -95,6 +96,13 @@ module "operator_service" {
   # Job Queue Alarms
   job_queue_old_message_threshold_sec = var.job_queue_old_message_threshold_sec
   job_queue_alarm_eval_period_sec     = var.job_queue_alarm_eval_period_sec
+
+  # VPC
+  enable_user_provided_vpc             = var.enable_user_provided_vpc
+  user_provided_vpc_security_group_ids = var.user_provided_vpc_security_group_ids
+  user_provided_vpc_subnet_ids         = var.user_provided_vpc_subnet_ids
+  vpc_cidr                             = var.vpc_cidr
+  vpc_availability_zones               = var.vpc_availability_zones
 }
 
 # Used by Terraform to treat any existing resources belonging to formerly known

@@ -25,21 +25,21 @@ variable "worker_ssh_public_key" {
 }
 
 variable "ami_name" {
+  description = "AMI should contain an enclave image file (EIF)."
   type        = string
   default     = "sample-enclaves-linux-aws"
-  description = "AMI should contain an enclave image file (EIF)"
 }
 
 variable "ami_owners" {
+  description = "AWS accounts to check for worker AMIs."
   type        = list(string)
   default     = ["self"]
-  description = "AWS accounts to check for worker AMIs."
 }
 
 variable "worker_template_name" {
+  description = "The name of worker aws launch template."
   type        = string
   default     = "aggregation-service-template"
-  description = "The name of worker aws launch template."
 }
 
 variable "ec2_iam_role_name" {
@@ -66,26 +66,8 @@ variable "environment" {
 }
 
 variable "region" {
-  description = "AWS region to deploy components"
+  description = "AWS region to deploy components."
   type        = string
-}
-
-variable "vpc_cidr" {
-  description = "VPC CIDR range for worker VPC."
-  type        = string
-  default     = "172.31.0.0/16"
-}
-
-variable "az_map" {
-  description = "Availability zone to number mapping for dynamic subnet creation."
-  default = {
-    a = 1
-    b = 2
-    c = 3
-    d = 4
-    e = 5
-    f = 6
-  }
 }
 
 variable "coordinator_a_assume_role_arn" {
@@ -112,7 +94,7 @@ variable "job_client_error_reasons" {
 
 variable "worker_alarms_enabled" {
   type        = string
-  description = "Enable alarms for worker"
+  description = "Enable alarms for worker."
   default     = true
 }
 
@@ -142,37 +124,34 @@ variable "worker_job_error_threshold" {
 
 variable "operator_sns_topic_arn" {
   type        = string
-  description = "ARN for SNS topic to send alarm notifications"
+  description = "ARN for SNS topic to send alarm notifications."
 }
 
 variable "worker_alarm_eval_period_sec" {
-  description = "Amount of time (in seconds) for alarm evaluation. Default 300s"
+  description = "Amount of time (in seconds) for alarm evaluation. Default 300s."
   type        = string
   default     = "300"
 }
 
 variable "worker_alarm_metric_dimensions" {
-  description = "Metric dimensions for worker alarms"
+  description = "Metric dimensions for worker alarms."
   type        = list(string)
   default     = ["JobHandlingError"]
 }
 
-variable "enable_customized_vpc" {
-  description = "Allow providing existing vpc details as input."
-  type        = bool
-  default     = false
+variable "worker_security_group_ids" {
+  description = "IDs of the security groups used by worker enclave."
+  type        = list(string)
 }
 
-variable "customized_vpc_subnet_ids" {
-  description = "Customized VPC subnet ids for worker autoscaling group"
-  type        = list(string)
-  default     = []
+variable "dynamodb_vpc_endpoint_id" {
+  description = "ID of the VPC endpoint to access DynamoDb."
+  type        = string
 }
 
-variable "customized_vpc_security_group_ids" {
-  description = "Customized VPC security group ids for worker autoscaling group"
-  type        = list(string)
-  default     = []
+variable "s3_vpc_endpoint_id" {
+  description = "ID of the VPC endpoint to access S3."
+  type        = string
 }
 
 variable "enclave_cpu_count" {

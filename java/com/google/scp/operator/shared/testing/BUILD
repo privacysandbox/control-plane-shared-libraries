@@ -51,7 +51,6 @@ java_library(
         "//java/com/google/scp/operator/frontend/service/aws",
         "//java/com/google/scp/operator/frontend/service/aws/changehandler",
         "//java/com/google/scp/operator/shared/dao/metadatadb/aws",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/injection/modules",
         "//java/com/google/scp/operator/shared/model",
         "//java/external:autoservice",

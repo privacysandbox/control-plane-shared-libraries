@@ -11,6 +11,7 @@ cc_library(
             "proxy.cc",
             "preload.cc",
             "proxify.cc",
+            "socket_vendor.cc",
         ],
     ),
     copts = [
@@ -18,6 +19,7 @@ cc_library(
     ],
     deps = [
         "//cc/aws:include_dir",
+        "@boost//:asio",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -30,6 +32,7 @@ cc_library(
         ":preload.cc",
         ":protocol.cc",
         ":protocol.h",
+        ":socket_vendor_protocol.h",
     ],
     copts = [
         "-std=c++17",
@@ -55,6 +58,7 @@ cc_binary(
         ":preload.cc",
         ":protocol.cc",
         ":protocol.h",
+        ":socket_vendor_protocol.h",
     ],
     copts = [
         "-fvisibility=hidden",
@@ -72,4 +76,15 @@ cc_binary(
         "-std=c++17",
     ],
     deps = ["//cc/aws:include_dir"],
+)
+
+cc_binary(
+    name = "socket_vendor",
+    srcs = [":socket_vendor.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        ":proxy_lib",
+    ],
 )

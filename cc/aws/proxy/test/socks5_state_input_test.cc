@@ -104,7 +104,7 @@ TEST_F(Socks5StateInputTest, RequestHeaderBadVer) {
 }
 
 TEST_F(Socks5StateInputTest, RequestHeaderBadCmd) {
-  BufferUnitType buffer[] = {0x05, 0x02, 0x00, 0x04};
+  BufferUnitType buffer[] = {0x05, 0x06, 0x00, 0x04};
   Socks5State state;
   SetState(state, Socks5State::kRequestHeader);
   SetRequiredSize(state, sizeof(buffer));

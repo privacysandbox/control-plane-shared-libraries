@@ -106,12 +106,17 @@ resource "aws_launch_template" "worker_template" {
     }
   }
 
-  vpc_security_group_ids = var.enable_customized_vpc ? var.customized_vpc_security_group_ids : [aws_security_group.worker_sg[0].id]
+  vpc_security_group_ids = var.worker_security_group_ids
 }
 
 ################################################################################
 # IAM Role
 ################################################################################
+
+# This policy is a pre-requisite to enable SSM connection to the instance
+data "aws_iam_policy" "SSMManagedInstanceCore" {
+  arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
 
 resource "aws_iam_role" "enclave_role" {
   name = var.ec2_iam_role_name
@@ -120,9 +125,9 @@ resource "aws_iam_role" "enclave_role" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowEc2AssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
-        Sid    = ""
         Principal = {
           Service = "ec2.amazonaws.com"
         }
@@ -130,74 +135,124 @@ resource "aws_iam_role" "enclave_role" {
     ]
   })
 
-  inline_policy {
-    name = "enclave_role"
+  managed_policy_arns = [data.aws_iam_policy.SSMManagedInstanceCore.arn]
+}
 
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = concat([
-        {
-          Effect = "Allow"
-          Action = [
-            "sts:AssumeRole"
-          ]
-          Resource = var.coordinator_a_assume_role_arn
-        },
-        {
-          Effect = "Allow"
-          Action = [
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:GetItem",
-            "dynamodb:PutItem"
-          ]
-          Resource = var.metadata_db_table_arn
-        },
-        {
-          Effect = "Allow"
-          Action = [
-            "sqs:DeleteMessage",
-            "sqs:ReceiveMessage",
-            "sqs:SendMessage",
-            "sqs:ChangeMessageVisibility"
-          ]
-          Resource = var.job_queue_arn
-        },
-        {
-          Effect = "Allow"
-          Action = [
-            "s3:GetObject",
-            "s3:PutObject",
-            "s3:DeleteObject",
-            "s3:ListBucket",
-            "ec2:DescribeTags",
-            "autoscaling:CompleteLifecycleAction",
-            "autoscaling:DescribeAutoScalingInstances",
-            "ssm:UpdateInstanceInformation",
-            "ssm:ListInstanceAssociations"
-          ]
-          Resource = "*"
-        },
-        {
-          Effect   = "Allow"
-          Action   = "ssm:GetParameters"
-          Resource = "arn:aws:ssm:*:*:parameter/*"
-        },
-        {
-          "Action" : "cloudwatch:PutMetricData",
-          "Effect" : "Allow",
-          "Resource" : "*"
-        },
-        ],
-        // to prevent duplicate statements
-        (var.coordinator_a_assume_role_arn == var.coordinator_b_assume_role_arn)
-        ? []
-        : [{
-          Effect = "Allow"
-          Action = [
-            "sts:AssumeRole"
-          ]
-          Resource = var.coordinator_b_assume_role_arn
-      }, ])
-    })
+data "aws_iam_policy_document" "enclave_policy_doc" {
+  statement {
+    sid       = "AllowAssumeRole"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [var.coordinator_a_assume_role_arn]
   }
+
+  statement {
+    sid    = "AllowSelectActionsOnSqsQueue"
+    effect = "Allow"
+    actions = [
+      "sqs:DeleteMessage",
+      "sqs:ReceiveMessage",
+      "sqs:SendMessage",
+      "sqs:ChangeMessageVisibility",
+    ]
+    resources = [var.job_queue_arn]
+  }
+
+  statement {
+    sid    = "AllowCoreEc2AutoscalingActions"
+    effect = "Allow"
+    actions = [
+      "ec2:DescribeTags",
+      "autoscaling:CompleteLifecycleAction",
+      "autoscaling:DescribeAutoScalingInstances",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "AllowSsmGetParameters"
+    effect    = "Allow"
+    actions   = ["ssm:GetParameters"]
+    resources = ["arn:aws:ssm:*:*:parameter/*"]
+  }
+
+  statement {
+    sid       = "AllowCloudWatchPutMetricData"
+    effect    = "Allow"
+    actions   = ["cloudwatch:PutMetricData"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowDdbAccessFromSpecificVPCe"
+    effect = "Allow"
+    actions = [
+      "dynamodb:ConditionCheckItem",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+    ]
+    resources = [var.metadata_db_table_arn]
+    condition {
+      test     = "StringEquals"
+      values   = [var.dynamodb_vpc_endpoint_id]
+      variable = "aws:sourceVpce"
+    }
+  }
+
+  statement {
+    sid       = "DenyDdbAccessFromAnyOtherEndpoints"
+    effect    = "Deny"
+    actions   = ["dynamodb:*"]
+    resources = [var.metadata_db_table_arn]
+    condition {
+      test     = "StringNotEquals"
+      values   = [var.dynamodb_vpc_endpoint_id]
+      variable = "aws:sourceVpce"
+    }
+  }
+
+  statement {
+    sid    = "AllowS3AccessFromSpecificVPCe"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = [var.s3_vpc_endpoint_id]
+      variable = "aws:sourceVpce"
+    }
+  }
+
+  statement {
+    sid       = "DenyS3AccessFromAnyOtherEndpoints"
+    effect    = "Deny"
+    actions   = ["s3:*"]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      values   = [var.s3_vpc_endpoint_id]
+      variable = "aws:sourceVpce"
+    }
+  }
+
+  dynamic "statement" {
+    # The contents of the list below are arbitrary, but must be of length one.
+    for_each = var.coordinator_b_assume_role_arn != var.coordinator_a_assume_role_arn ? [1] : []
+
+    content {
+      effect    = "Allow"
+      actions   = ["sts:AssumeRole"]
+      resources = [var.coordinator_b_assume_role_arn]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "enclave_role_policy" {
+  policy = data.aws_iam_policy_document.enclave_policy_doc.json
+  role   = aws_iam_role.enclave_role.id
 }

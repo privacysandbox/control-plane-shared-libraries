@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 In this file, we test the socks5 protocol by using a tcp echo server, and a
 client to check the SHA256 of the sent and received bytes.
@@ -110,15 +109,18 @@ def ClientThread(ret, vsock_port, ip, ip_port):
 
 
 if __name__ == "__main__":
-    VSOCK_PORT = 8888
     # Find an arbitrary unused port by specifying 0.
     HOST, PORT = "localhost", 0
     server = ThreadedTCPServer((HOST, PORT), TCPEchoHandler)
     proxy_path = sys.argv[1]
     # Since many machines, including kokoro, do not support VSOCK loopback, we
     # use IP socket to to simulate VSOCK here by setting "-t".
-    proxy_proc = subprocess.Popen([proxy_path, "-tp", str(VSOCK_PORT)])
-    time.sleep(2)
+    proxy_proc = subprocess.Popen(
+        [proxy_path, "-tp", "0"], stdout=subprocess.PIPE)
+    proxy_proc.stdout.readline()  # skip first line
+    line = proxy_proc.stdout.readline().strip()
+    line_prefix = "Running on TCP port "
+    proxy_port = int(line[len(line_prefix):])
 
     ip, port = server.server_address
     # Start server threads
@@ -132,7 +134,7 @@ if __name__ == "__main__":
     # Create 100 threads
     for i in range(num_threads):
         th = threading.Thread(target=ClientThread,
-                              args=(success, VSOCK_PORT, ip, port))
+                              args=(success, proxy_port, ip, port))
         client_threads.append(th)
         th.start()
     # Wait for them to finish

@@ -259,7 +259,7 @@ http_archive(
 
 new_git_repository(
     name = "moodycamel_concurrent_queue",
-    build_file = "//cc/third_party:moodycamel.BUILD",
+    build_file = "//build_defs/cc:moodycamel.BUILD",
     # Commited Mar 20, 2022
     commit = "22c78daf65d2c8cce9399a29171676054aa98807",
     remote = "https://github.com/cameron314/concurrentqueue.git",
@@ -268,7 +268,7 @@ new_git_repository(
 
 new_git_repository(
     name = "nlohmann_json",
-    build_file = "//cc/third_party:nlohmann.BUILD",
+    build_file = "//build_defs/cc:nlohmann.BUILD",
     # Commits on Apr 6, 2022
     commit = "15fa6a342af7b51cb51a22599026e01f1d81957b",
     remote = "https://github.com/nlohmann/json.git",
@@ -282,20 +282,9 @@ git_repository(
     shallow_since = "1648820995 +0300",
 )
 
-http_archive(
-    name = "json_c",
-    build_file = "//cc/third_party:json_c.BUILD",
-    sha256 = "3ecaeedffd99a60b1262819f9e60d7d983844073abc74e495cb822b251904185",
-    strip_prefix = "json-c-json-c-0.16-20220414",
-    url = "https://github.com/json-c/json-c/archive/refs/tags/json-c-0.16-20220414.tar.gz",
-)
+load("//build_defs/cc/aws:aws_sdk_cpp_deps.bzl", "import_aws_sdk_cpp")
 
-# This local repository is pre-built in docker image and only works for builds within the container.
-new_local_repository(
-    name = "aws_sdk_cpp",
-    build_file = "//cc/third_party:aws_sdk_cpp.BUILD",
-    path = "/usr/local",
-)
+import_aws_sdk_cpp()
 
 # Boost
 # latest as of 2022-06-09
@@ -320,9 +309,9 @@ http_archive(
 # nghttp2
 http_archive(
     name = "com_github_nghttp2_nghttp2",
-    build_file = "//cc/third_party:nghttp2.BUILD",
+    build_file = "//build_defs/cc:nghttp2.BUILD",
     patch_args = ["-p1"],
-    patches = ["//cc/third_party:nghttp2.patch"],
+    patches = ["//build_defs/cc:nghttp2.patch"],
     sha256 = "62f50f0e9fc479e48b34e1526df8dd2e94136de4c426b7680048181606832b7c",
     strip_prefix = "nghttp2-1.47.0",
     url = "https://github.com/nghttp2/nghttp2/releases/download/v1.47.0/nghttp2-1.47.0.tar.gz",
@@ -330,7 +319,7 @@ http_archive(
 
 http_archive(
     name = "curl",
-    build_file = "//cc/third_party:curl.BUILD",
+    build_file = "//build_defs/cc:curl.BUILD",
     sha256 = "ff3e80c1ca6a068428726cd7dd19037a47cc538ce58ef61c59587191039b2ca6",
     strip_prefix = "curl-7.49.1",
     urls = [
@@ -350,9 +339,9 @@ http_archive(
 
 git_repository(
     name = "boringssl",
-    # Committed on Spe 15, 2022
-    # https://github.com/google/boringssl/commit/d345d68d5c4b5471290ebe13f090f1fd5b7e8f58
-    commit = "d345d68d5c4b5471290ebe13f090f1fd5b7e8f58",
+    # Committed on Oct 3, 2022
+    # https://github.com/google/boringssl/commit/c2837229f381f5fcd8894f0cca792a94b557ac52
+    commit = "c2837229f381f5fcd8894f0cca792a94b557ac52",
     remote = "https://github.com/google/boringssl.git",
 )
 
@@ -424,11 +413,14 @@ maven_install(
         "com.google.auto.value:auto-value-annotations:" + AUTO_VALUE_VERSION,
         "com.google.auto.value:auto-value:" + AUTO_VALUE_VERSION,
         "com.google.code.findbugs:jsr305:3.0.2",
+        "com.google.code.gson:gson:2.8.9",
         "com.google.cloud:google-cloud-kms:2.1.2",
         "com.google.cloud:google-cloud-pubsub:1.114.4",
         "com.google.cloud:google-cloud-storage:1.118.0",
         "com.google.cloud:google-cloud-spanner:6.12.2",
         "com.google.cloud:google-cloud-secretmanager:2.2.0",
+        "com.google.cloud:google-cloud-compute:1.12.1",
+        "com.google.api.grpc:proto-google-cloud-compute-v1:1.12.1",
         "com.google.cloud.functions.invoker:java-function-invoker:1.1.0",
         "com.google.auth:google-auth-library-oauth2-http:1.11.0",
         "com.google.cloud.functions:functions-framework-api:1.0.4",
@@ -466,7 +458,7 @@ maven_install(
         "org.apache.httpcomponents:httpclient:4.5.13",
         "org.apache.httpcomponents.client5:httpclient5:5.1.3",
         "org.apache.httpcomponents.core5:httpcore5:5.1.4",
-        "org.apache.httpcomponents.core5:httpcore5-h2:5.1.4",
+        "org.apache.httpcomponents.core5:httpcore5-h2:5.1.4",  # Explicit transitive dependency to avoid https://issues.apache.org/jira/browse/HTTPCLIENT-2222
         "org.apache.logging.log4j:log4j-1.2-api:2.17.0",
         "org.apache.logging.log4j:log4j-core:2.17.0",
         "org.awaitility:awaitility:3.0.0",

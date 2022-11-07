@@ -9,7 +9,6 @@ java_test(
         "//java/com/google/scp/operator/frontend/tasks/validation",
         "//java/com/google/scp/operator/frontend/testing:fake_request_info_validator",
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/dao/metadatadb/testing:fake_metadata_db",
         "//java/com/google/scp/operator/shared/dao/metadatadb/testing:job_generator",
         "//java/com/google/scp/operator/shared/injection/modules:aws_clients_module",

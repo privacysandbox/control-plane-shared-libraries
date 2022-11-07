@@ -53,6 +53,11 @@ alias(
 )
 
 alias(
+    name = "gson",
+    actual = "@maven//:com_google_code_gson_gson",
+)
+
+alias(
     name = "hamcrest",
     actual = "@maven//:org_hamcrest_hamcrest_library",
 )
@@ -549,6 +554,16 @@ alias(
 alias(
     name = "gcp_secretmanager_proto",
     actual = "@maven//:com_google_api_grpc_proto_google_cloud_secretmanager_v1",
+)
+
+alias(
+    name = "gcp_compute",
+    actual = "@maven//:com_google_cloud_google_cloud_compute",
+)
+
+alias(
+    name = "gcp_compute_proto",
+    actual = "@maven//:com_google_api_grpc_proto_google_cloud_compute_v1",
 )
 
 alias(

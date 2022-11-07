@@ -42,7 +42,6 @@ java_library(
     deps = [
         "//java/com/google/scp/operator/frontend/service/aws/model",
         "//java/com/google/scp/operator/shared/dao/metadatadb/aws/model/converter",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/model",
         "//java/external:aws_dynamodb",
         "//java/external:aws_lambda_java_events",

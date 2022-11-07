@@ -5,7 +5,6 @@ java_test(
     srcs = ["FakeMetadataDbTest.java"],
     deps = [
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/dao/metadatadb/testing:fake_metadata_db",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/proto",

@@ -22,7 +22,7 @@
 #include <unistd.h>
 
 #include "proxy/src/buffer.h"
-#include "proxy/src/receive_worker.h"
+#include "proxy/src/proxy_bridge.h"
 
 namespace google::scp::proxy::test {
 using BufferUnitType = uint8_t;
@@ -172,7 +172,7 @@ TEST_F(Socks5StateTest, RequestV4) {
   state.SetConnectCallback(
       [](const sockaddr*, size_t len) { return Socks5State::kStatusOK; });
   state.SetDestAddressCallback(
-      [](sockaddr*, size_t* len) { return Socks5State::kStatusOK; });
+      [](sockaddr*, size_t*, bool) { return Socks5State::kStatusOK; });
 
   Buffer buffer;
   buffer.CopyIn(data, sizeof(data));
@@ -204,7 +204,7 @@ TEST_F(Socks5StateTest, RequestV6) {
   state.SetConnectCallback(
       [](const sockaddr*, size_t len) { return Socks5State::kStatusOK; });
   state.SetDestAddressCallback(
-      [](sockaddr*, size_t* len) { return Socks5State::kStatusOK; });
+      [](sockaddr*, size_t*, bool) { return Socks5State::kStatusOK; });
 
   Buffer buffer;
   buffer.CopyIn(data, sizeof(data));
@@ -239,7 +239,7 @@ TEST_F(Socks5StateTest, SlowClient) {
   state.SetConnectCallback(
       [](const sockaddr*, size_t len) { return Socks5State::kStatusOK; });
   state.SetDestAddressCallback(
-      [](sockaddr*, size_t* len) { return Socks5State::kStatusOK; });
+      [](sockaddr*, size_t*, bool) { return Socks5State::kStatusOK; });
 
   int idx = 0;
   Buffer buffer;
@@ -334,19 +334,35 @@ TEST_F(Socks5StateTest, ConnectInProgress) {
   EXPECT_EQ(state.state(), Socks5State::kRequestAddrV4);
   state.Proceed(buffer);
   EXPECT_EQ(state.state(), Socks5State::kWaitConnect);
-  EXPECT_TRUE(state.ConnectionSucceed(buffer));
+  EXPECT_TRUE(state.ConnectionSucceed());
 }
 
-TEST_F(Socks5StateTest, SocketClosure) {
+TEST_F(Socks5StateTest, Bind) {
+  BufferUnitType data[] = {0x05, 0x01, 0x00,        // <- Greeting
+                           0x05, 0x02, 0x00, 0x01,  // <- request header
+                           0x7f, 0x00, 0x00, 0x01,  // <- addr = 127.0.0.1
+                           0x10, 0x01};             // <- port = 4097
   AutoCloseSocketPair sockfd;
-  {
-    ReceiveWorker worker(sockfd[0]);
-    // These fds should be open
-    EXPECT_NE(fcntl(sockfd[0], F_GETFD), -1);
-    EXPECT_NE(fcntl(sockfd[1], F_GETFD), -1);
-  }
-  // Now state is out of scope, expect the fds are closed.
-  EXPECT_EQ(fcntl(sockfd[0], F_GETFD), -1);
+  Socks5State state;
+  state.SetResponseCallback([sock = sockfd[0]](const void* data, size_t len) {
+    if (send(sock, data, len, 0) != static_cast<ssize_t>(len)) {
+      return Socks5State::kStatusFail;
+    }
+    return Socks5State::kStatusOK;
+  });
+
+  state.SetBindCallback(
+      [](uint16_t port) { return Socks5State::kStatusInProgress; });
+
+  Buffer buffer;
+  buffer.CopyIn(data, sizeof(data));
+  state.Proceed(buffer);
+  state.Proceed(buffer);
+  state.Proceed(buffer);
+  EXPECT_EQ(state.state(), Socks5State::kRequestBind);
+  state.Proceed(buffer);
+  EXPECT_EQ(state.state(), Socks5State::kWaitAccept);
+  EXPECT_TRUE(state.ConnectionSucceed());
 }
 
 }  // namespace google::scp::proxy::test

@@ -27,8 +27,6 @@ import static java.util.Collections.emptyMap;
 import static java.util.UUID.randomUUID;
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.Any;
@@ -39,7 +37,6 @@ import com.google.scp.coordinator.protos.keymanagement.keyhosting.api.v1.Encoded
 import com.google.scp.coordinator.protos.keymanagement.keyhosting.api.v1.GetActivePublicKeysResponseProto.GetActivePublicKeysResponse;
 import com.google.scp.protos.shared.api.v1.ErrorResponseProto.ErrorResponse;
 import com.google.scp.shared.api.exception.ServiceException;
-import com.google.scp.shared.mapper.TimeObjectMapper;
 import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,11 +45,9 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class LambdaHandlerUtilTest {
 
-  private final ObjectMapper mapper = new TimeObjectMapper();
-
   @Test
   public void createApiGatewayResponse_getActivePublicKeysResponseWithHeaders()
-      throws JsonProcessingException, InvalidProtocolBufferException {
+      throws InvalidProtocolBufferException {
     String keyId = randomUUID().toString();
     String publicKey = randomUUID().toString();
     Map<String, String> testHeaders =
@@ -75,7 +70,7 @@ public final class LambdaHandlerUtilTest {
 
   @Test
   public void createApiGatewayResponse_getActivePublicKeysResponseWithoutHeaders()
-      throws JsonProcessingException, InvalidProtocolBufferException {
+      throws InvalidProtocolBufferException {
     String keyId = randomUUID().toString();
     String publicKey = randomUUID().toString();
     GetActivePublicKeysResponse response = getRandomActiveKeysResponse(keyId, publicKey);

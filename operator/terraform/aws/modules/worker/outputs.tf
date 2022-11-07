@@ -22,6 +22,6 @@ output "worker_template_version" {
   value = aws_launch_template.worker_template.latest_version
 }
 
-output "worker_subnet_ids" {
-  value = var.enable_customized_vpc ? var.customized_vpc_subnet_ids : [for s in aws_subnet.worker_subnet : s.id]
+output "worker_enclave_role_arn" {
+  value = aws_iam_role.enclave_role.arn
 }

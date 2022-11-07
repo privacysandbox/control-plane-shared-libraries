@@ -168,11 +168,6 @@ module "worker_service" {
   coordinator_a_assume_role_arn = var.coordinator_a_assume_role_parameter
   coordinator_b_assume_role_arn = var.coordinator_b_assume_role_parameter
 
-  #Vpc and subnets customization
-  enable_customized_vpc             = var.enable_customized_vpc
-  customized_vpc_security_group_ids = var.customized_vpc_security_group_ids
-  customized_vpc_subnet_ids         = var.customized_vpc_subnet_ids
-
   #Alarms
   worker_alarms_enabled            = var.worker_alarms_enabled
   operator_sns_topic_arn           = local.operator_alarm_sns_topic_enabled ? module.operator_alarm_sns_topic[0].operator_alarm_sns_topic_arn : ""
@@ -181,6 +176,11 @@ module "worker_service" {
   worker_job_error_threshold       = var.worker_job_error_threshold
   worker_alarm_eval_period_sec     = var.worker_alarm_eval_period_sec
   worker_alarm_metric_dimensions   = var.worker_alarm_metric_dimensions
+  worker_security_group_ids        = var.enable_user_provided_vpc ? var.user_provided_vpc_security_group_ids : [module.vpc[0].allow_internal_ingress_sg_id, module.vpc[0].allow_egress_sg_id]
+
+  # VPC
+  dynamodb_vpc_endpoint_id = module.vpc[0].dynamodb_vpc_endpoint_id
+  s3_vpc_endpoint_id       = module.vpc[0].s3_vpc_endpoint_id
 }
 
 module "operator_alarm_sns_topic" {
@@ -200,7 +200,7 @@ module "worker_autoscaling" {
   asg_name                = "${var.environment}-aggregation-service-workers"
   worker_template_id      = module.worker_service.worker_template_id
   worker_template_version = module.worker_service.worker_template_version
-  worker_subnet_ids       = module.worker_service.worker_subnet_ids
+  worker_subnet_ids       = var.enable_user_provided_vpc ? var.user_provided_vpc_subnet_ids : module.vpc[0].private_subnet_ids
 
   enable_autoscaling             = true
   initial_capacity_ec2_instances = var.initial_capacity_ec2_instances
@@ -246,4 +246,20 @@ module "worker_dashboard" {
 
   environment = var.environment
   region      = var.region
+}
+
+module "vpc" {
+  count  = var.enable_user_provided_vpc ? 0 : 1
+  source = "../../modules/vpc"
+
+  environment            = var.environment
+  vpc_cidr               = var.vpc_cidr
+  vpc_availability_zones = var.vpc_availability_zones
+
+  lambda_execution_role_ids = []
+
+  dynamodb_allowed_principal_arns = [module.worker_service.worker_enclave_role_arn]
+  dynamodb_arns                   = [module.metadata_db.metadata_db_arn]
+
+  s3_allowed_principal_arns = [module.worker_service.worker_enclave_role_arn]
 }

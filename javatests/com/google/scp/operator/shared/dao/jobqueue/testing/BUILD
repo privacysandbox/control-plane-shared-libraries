@@ -5,7 +5,6 @@ java_test(
     srcs = ["FakeJobQueueTest.java"],
     deps = [
         "//java/com/google/scp/operator/shared/dao/jobqueue/common",
-        "//java/com/google/scp/operator/shared/dao/jobqueue/model",
         "//java/com/google/scp/operator/shared/dao/jobqueue/testing",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/proto",

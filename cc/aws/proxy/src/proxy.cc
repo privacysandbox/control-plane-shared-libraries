@@ -14,20 +14,21 @@
 
 #include <signal.h>
 
-#include <thread>
+#include <string>
 
 #include "proxy/src/config.h"
 #include "proxy/src/logging.h"
-#include "proxy/src/server.h"
+#include "proxy/src/proxy_server.h"
 
 using google::scp::proxy::Config;
 using google::scp::proxy::LogError;
 using google::scp::proxy::LogInfo;
-using google::scp::proxy::Server;
+using google::scp::proxy::ProxyServer;
+using std::string;
 
 // Main loop - it all starts here...
 int main(int argc, char* argv[]) {
-  LogInfo("Nitro Enclave Proxy (c) Google 2022\n");
+  LogInfo("Nitro Enclave Proxy (c) Google 2022.");
 
   {
     // Ignore SIGPIPE.
@@ -42,23 +43,13 @@ int main(int argc, char* argv[]) {
   if (config.bad_) {
     return 1;
   }
+  // Server server(config.socks5_port_, config.buffer_size_, config.vsock_);
+  ProxyServer server(config);
+  server.BindListen();
+  LogInfo(string("Running on ") + (config.vsock_ ? "VSOCK" : "TCP"), " port ",
+          server.Port());
 
-  Server server(config.socks5_port_, config.buffer_size_, config.vsock_);
-
-  // NOLINTNEXTLINE(readability/todo)
-  // TODO: get rid of these magic numbers and make them configurable
-  int retries = 5;
-  int delay = 500;
-  while (!server.Start() && retries-- > 0) {
-    delay *= 2;
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-  }
-  if (retries < 0) {
-    LogError("ERROR: cannot start SOCKS5 server at port ", config.socks5_port_);
-    return 1;
-  }
-
-  server.Serve();
+  server.Run();
 
   LogError("ERROR: A fatal error has occurred, terminating proxy instance");
   return 1;

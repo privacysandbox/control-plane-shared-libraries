@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <iostream>
 
 #include "config.h"
-
-#pragma once
 
 namespace google::scp::proxy {
 
@@ -32,7 +32,6 @@ void LogToStream(Stream& stream, const Arg0& arg0, const Args&... args) {
   stream << arg0;
   LogToStream(stream, args...);
 }
-
 
 template <typename... Args>
 void LogError(const Args&... args) {

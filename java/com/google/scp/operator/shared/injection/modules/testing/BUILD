@@ -5,7 +5,6 @@ java_library(
     srcs = glob(["*.java"]),
     deps = [
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
-        "//java/com/google/scp/operator/shared/dao/metadatadb/model",
         "//java/com/google/scp/operator/shared/dao/metadatadb/testing:fake_metadata_db",
         "//java/com/google/scp/operator/shared/injection/modules",
         "//java/com/google/scp/operator/shared/testing",

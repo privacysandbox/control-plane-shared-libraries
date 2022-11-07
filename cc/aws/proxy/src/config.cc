@@ -53,7 +53,7 @@ Config Config::Parse(int argc, char* argv[]) {
         char* endptr;
         std::string port_str(optarg);
         auto port = strtoul(port_str.c_str(), &endptr, 10);
-        if (port == 0 || port > UINT16_MAX) {
+        if (port > UINT16_MAX) {
           LogError("ERROR: Invalid port number: ", port_str);
           exit(1);
         }

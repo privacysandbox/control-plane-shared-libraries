@@ -18,6 +18,7 @@ pkg_tar(
         ":libproxy_preload.so",
         ":proxify",
         ":proxy",
+        ":socket_vendor",
     ],
     mode = "0755",
     ownername = "root.root",
@@ -65,6 +66,7 @@ genrule(
         "libproxy_preload.so",
         "proxify",
         "proxy",
+        "socket_vendor",
     ],
     cmd = """
     export OUTPUT_DIR=`mktemp -d -t PROXY_BUILD_OUTPUTS_XXXXX`
@@ -76,15 +78,20 @@ genrule(
       bazel/cc/aws/proxy:build_container \
       bash -c '
         set -eux
-        yum install gcc gcc-c++ tar git -y > /dev/null
+        yum install glibc-devel-2.26-60.amzn2 glibc-headers-2.26-60.amzn2 gcc-7.3.1-15.amzn2 gcc-c++-7.3.1-15.amzn2 tar git -y > /dev/null
         tar xf /source_code.tar -C /
         cd /scp
-        bazel build //cc/aws/proxy/src:proxify //cc/aws/proxy/src:proxy //cc/aws/proxy/src:proxy_preload
-        cp $$(bazel info bazel-bin)/cc/aws/proxy/src/{libproxy_preload.so,proxify,proxy} /output
+        bazel build \
+          //cc/aws/proxy/src:proxify \
+          //cc/aws/proxy/src:proxy \
+          //cc/aws/proxy/src:proxy_preload \
+          //cc/aws/proxy/src:socket_vendor
+        cp $$(bazel info bazel-bin)/cc/aws/proxy/src/{libproxy_preload.so,proxify,proxy,socket_vendor} /output
       '
     cp "$${OUTPUT_DIR}/libproxy_preload.so" $(location libproxy_preload.so)
     cp "$${OUTPUT_DIR}/proxify" $(location proxify)
     cp "$${OUTPUT_DIR}/proxy" $(location proxy)
+    cp "$${OUTPUT_DIR}/socket_vendor" $(location socket_vendor)
     rm -r "$${OUTPUT_DIR}"
     """,
     tags = ["manual"],

@@ -36,7 +36,9 @@ namespace google::scp::proxy {
 // A template to convert buffer pointer with length to OS-provided
 // scatter-gather buffer type.
 template <class SysBufType>
-constexpr SysBufType MakeSysBuf(void* buf, size_t len);
+constexpr SysBufType MakeSysBuf(void* buf, size_t len) {
+  return SysBufType(buf, len);
+}
 
 #ifdef __linux__
 using SysBuf = iovec;
@@ -279,6 +281,7 @@ class BasicBuffer {
   }
 
   // Copy data out to a single chunk of buffer. Returns number of bytes copied.
+  // If 'to' is nullptr, the data is discarded.
   size_t CopyOut(void* to, size_t size) {
     auto buffers = Peek<SysBuf>();
     uint8_t* ptr = static_cast<uint8_t*>(to);
@@ -287,8 +290,10 @@ class BasicBuffer {
       auto& buf = buffers[i];
       size_t remaining = size - size_copied;
       size_t to_copy = remaining > buf.iov_len ? buf.iov_len : remaining;
-      memcpy(ptr, buf.iov_base, to_copy);
-      ptr += to_copy;
+      if (ptr != nullptr) {
+        memcpy(ptr, buf.iov_base, to_copy);
+        ptr += to_copy;
+      }
       size_copied += to_copy;
     }
     Drain(size_copied);

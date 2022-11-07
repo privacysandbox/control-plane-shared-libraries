@@ -14,7 +14,11 @@
 
 #include "proxy/src/protocol.h"
 
-#include <cstring>
+#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+
 // For both request and response the ATYP is byte 3, followed by the address and
 // port.
 // Request:
@@ -54,5 +58,37 @@ size_t FillAddrPort(void* msg, const sockaddr* addr) {
     return 1LU + sizeof(v6addr->sin6_addr) + sizeof(v6addr->sin6_port);  // ==19
   } else {
     return 0;
+  }
+}
+
+// Construct a sockaddr of the parent instance by looking and env variables, or
+// default if env not set.
+sockaddr_vm GetProxyVsockAddr() {
+  unsigned int cid = kDefaultParentCid;
+  unsigned int port = kDefaultParentPort;
+  EnvGetVal(kParentCidEnv, cid);
+  EnvGetVal(kParentPortEnv, port);
+
+  sockaddr_vm addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.svm_family = AF_VSOCK;
+  addr.svm_port = port;
+  addr.svm_cid = cid;
+  return addr;
+}
+
+void EnvGetVal(const char* env_name, unsigned int& val) {
+  if (env_name == nullptr) {
+    return;
+  }
+  char* val_str = getenv(env_name);
+  if (val_str == nullptr) {
+    return;
+  }
+  errno = 0;
+  char* end;
+  unsigned int v = strtoul(val_str, &end, 10);
+  if (errno == 0 && v < UINT_MAX) {
+    val = static_cast<unsigned int>(v);
   }
 }

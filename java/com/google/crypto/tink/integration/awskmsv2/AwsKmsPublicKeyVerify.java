@@ -28,12 +28,12 @@ public final class AwsKmsPublicKeyVerify implements PublicKeyVerify {
 
   private final KmsClient kmsClient;
   private final String signatureAlgorithm;
-  private final String signatureKeyUri;
+  private final String signatureKeyId;
 
   public AwsKmsPublicKeyVerify(
-      KmsClient kmsClient, String signatureKeyUri, String signatureAlgorithm) {
+      KmsClient kmsClient, String signatureKeyId, String signatureAlgorithm) {
     this.kmsClient = kmsClient;
-    this.signatureKeyUri = signatureKeyUri;
+    this.signatureKeyId = signatureKeyId;
     this.signatureAlgorithm = signatureAlgorithm;
   }
 
@@ -44,7 +44,7 @@ public final class AwsKmsPublicKeyVerify implements PublicKeyVerify {
             .message(SdkBytes.fromByteArray(data))
             .signature(SdkBytes.fromByteArray(signature))
             .signingAlgorithm(signatureAlgorithm)
-            .keyId(signatureKeyUri)
+            .keyId(signatureKeyId)
             .build();
     try {
       var response = kmsClient.verify(verifyRequest);

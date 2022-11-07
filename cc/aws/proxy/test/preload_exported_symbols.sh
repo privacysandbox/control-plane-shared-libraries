@@ -26,9 +26,13 @@ symbols_sha=$(echo $symbols | sha1sum | awk '{print $1}')
 expected_symbols='
 __res_init
 __res_ninit
+accept
+accept4
+bind
 connect
 getsockopt
 ioctl
+listen
 setsockopt'
 
 
