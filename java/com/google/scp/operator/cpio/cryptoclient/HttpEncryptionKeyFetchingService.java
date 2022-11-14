@@ -83,7 +83,11 @@ public final class HttpEncryptionKeyFetchingService implements EncryptionKeyFetc
         logger.error(message, exception);
         throw new EncryptionKeyFetchingServiceException(message, exception);
       } else {
-        logger.info("Successfully fetched keyId: " + keyId + " using Uri: " + fetchUri);
+        logger.info(
+            "Successfully fetched encrypted key-split for keyId: "
+                + keyId
+                + " using Uri: "
+                + fetchUri);
       }
 
       return parseSuccessResponse(responseBody);

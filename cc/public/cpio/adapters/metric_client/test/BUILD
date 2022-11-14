@@ -26,7 +26,7 @@ cc_test(
         "//cc/public/cpio/adapters/metric_client/mock:metric_client_mock",
         "//cc/public/cpio/core/mock:lib_cpio_mock",
         "//cc/public/cpio/interface:cpio_errors",
-        "//cc/public/cpio/interface:type_def_lib",
+        "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/interface/metric_client",
         "//cc/public/cpio/interface/metric_client:type_def",
         "@com_google_googletest//:gtest_main",

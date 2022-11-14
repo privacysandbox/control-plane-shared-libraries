@@ -25,6 +25,7 @@
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/type_def.h"
 
 namespace google::scp::cpio::client_providers {
 /**
@@ -72,6 +73,7 @@ class CpioProviderFactory {
    *
    * @return std::unique_ptr<CpioProviderInterface> CpioProvider.
    */
-  static std::unique_ptr<CpioProviderInterface> Create();
+  static std::unique_ptr<CpioProviderInterface> Create(
+      const std::shared_ptr<CpioOptions>& options);
 };
 }  // namespace google::scp::cpio::client_providers

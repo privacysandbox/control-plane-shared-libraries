@@ -27,6 +27,7 @@
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/type_def.h"
 
 using google::scp::cpio::CpioOptions;
 using google::scp::cpio::LogOption;
@@ -43,11 +44,9 @@ using google::scp::core::logger::log_providers::SyslogLogProvider;
 using google::scp::cpio::client_providers::CpioProviderFactory;
 using google::scp::cpio::client_providers::CpioProviderInterface;
 using google::scp::cpio::client_providers::GlobalCpio;
+using std::make_shared;
 
 namespace google::scp::cpio {
-static unique_ptr<LoggerInterface> logger_ptr;
-static unique_ptr<CpioProviderInterface> cpio_ptr;
-
 static ExecutionResult SetLogger(const CpioOptions& options) {
   switch (options.log_option) {
     case LogOption::kNoLog:
@@ -74,8 +73,8 @@ static ExecutionResult SetLogger(const CpioOptions& options) {
   return SuccessExecutionResult();
 }
 
-static ExecutionResult SetGlobalCpio() {
-  cpio_ptr = CpioProviderFactory::Create();
+static ExecutionResult SetGlobalCpio(const CpioOptions& options) {
+  cpio_ptr = CpioProviderFactory::Create(make_shared<CpioOptions>(options));
   auto execution_result = cpio_ptr->Init();
   if (!execution_result.Successful()) {
     return execution_result;
@@ -94,8 +93,11 @@ ExecutionResult Cpio::InitCpio(CpioOptions options) {
   if (!execution_result.Successful()) {
     return execution_result;
   }
-
-  return SetGlobalCpio();
+#ifdef LOCAL_CPIO
+  return SuccessExecutionResult();
+#else
+  return SetGlobalCpio(options);
+#endif
 }
 
 ExecutionResult Cpio::ShutdownCpio(CpioOptions options) {

@@ -23,8 +23,8 @@
 #include "public/core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/config_client/config_client_interface.h"
-#include "public/cpio/interface/cpio.h"
 #include "public/cpio/interface/type_def.h"
+#include "public/cpio/local/local_lib_cpio.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -37,14 +37,12 @@ using google::scp::core::test::WaitUntil;
 using google::scp::cpio::ConfigClientFactory;
 using google::scp::cpio::ConfigClientInterface;
 using google::scp::cpio::ConfigClientOptions;
-using google::scp::cpio::Cpio;
-using google::scp::cpio::CpioOptions;
 using google::scp::cpio::GetEnvironmentRequest;
 using google::scp::cpio::GetEnvironmentResponse;
 using google::scp::cpio::GetInstanceIdRequest;
 using google::scp::cpio::GetInstanceIdResponse;
-using google::scp::cpio::GetParameterRequest;
-using google::scp::cpio::GetParameterResponse;
+using google::scp::cpio::LocalCpioOptions;
+using google::scp::cpio::LocalLibCpio;
 using google::scp::cpio::LogOption;
 using std::atomic;
 using std::make_shared;
@@ -57,15 +55,20 @@ using std::string;
 using std::to_string;
 using std::unique_ptr;
 
-static constexpr char kTestParameterName[] = "test_parameter";
+static constexpr char kRegion[] = "us-east-1";
 static constexpr char kEnvTag[] = "environment";
+static constexpr char kEnvName[] = "local";
+static constexpr char kInstanceId[] = "i-1234";
 
 int main(int argc, char* argv[]) {
   SDKOptions options;
   InitAPI(options);
-  CpioOptions cpio_options;
+  LocalCpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
-  auto result = Cpio::InitCpio(cpio_options);
+  cpio_options.region = kRegion;
+  cpio_options.environment_name = kEnvName;
+  cpio_options.instance_id = kInstanceId;
+  auto result = LocalLibCpio::InitCpio(cpio_options);
   if (!result.Successful()) {
     std::cout << "Failed to initialize CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;
@@ -73,7 +76,6 @@ int main(int argc, char* argv[]) {
 
   ConfigClientOptions config_client_options;
   config_client_options.environment_tag = kEnvTag;
-  config_client_options.parameter_names.emplace_back(kTestParameterName);
   auto config_client = ConfigClientFactory::Create(move(config_client_options));
   result = config_client->Init();
   if (!result.Successful()) {
@@ -128,35 +130,13 @@ int main(int argc, char* argv[]) {
   WaitUntil([&finished]() { return finished.load(); },
             std::chrono::milliseconds(10000));
 
-  finished = false;
-  GetParameterRequest get_parameter_request;
-  get_parameter_request.parameter_name = kTestParameterName;
-  result = config_client->GetParameter(
-      move(get_parameter_request),
-      [&](const ExecutionResult result, GetParameterResponse response) {
-        if (!result.Successful()) {
-          std::cout << "GetParameter failed: "
-                    << GetErrorMessage(result.status_code) << std::endl;
-        } else {
-          std::cout << "GetParameter succeeded, and parameter is: "
-                    << response.parameter_value << std::endl;
-        }
-        finished = true;
-      });
-  if (!result.Successful()) {
-    std::cout << "GetParameter failed immediately: "
-              << GetErrorMessage(result.status_code) << std::endl;
-  }
-  WaitUntil([&finished]() { return finished.load(); },
-            std::chrono::milliseconds(10000));
-
   result = config_client->Stop();
   if (!result.Successful()) {
     std::cout << "Cannot stop config client!"
               << GetErrorMessage(result.status_code) << std::endl;
   }
 
-  result = Cpio::ShutdownCpio(cpio_options);
+  result = LocalLibCpio::ShutdownCpio(cpio_options);
   if (!result.Successful()) {
     std::cout << "Failed to shutdown CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;

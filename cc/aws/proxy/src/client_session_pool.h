@@ -29,6 +29,8 @@
 
 namespace google::scp::proxy {
 
+// ClientSessionPool is used by socket_vendor to manage a pool of connections to
+// the proxy, for inbound traffic support.
 class ClientSessionPool
     : public std::enable_shared_from_this<ClientSessionPool> {
  public:
@@ -48,10 +50,15 @@ class ClientSessionPool
   // The size of the 2nd response of a BIND request in socks5 protocol, when the
   // response contains IPv6 address.
   static constexpr size_t k2ndBindResponseSize = 22u;
-  // The size of the micro buffers, should be >= k2ndBindResponseSize
+  // The size of the micro buffers, should be >= k2ndBindResponseSize and sizes
+  // of any message in socket_vendor_protocol.h
   static constexpr size_t kMicroBufferSize = 24u;
   // The total size of a greeting (3 bytes), and bind request (10 bytes).
   static constexpr size_t kBindRequestSize = 13u;
+
+  // The max number of standby connections in a pool, regardless of the backlog
+  // size from listen() call.
+  static constexpr int kMaxConnections = 128;
 
   struct MicroBuffer {
     uint8_t data[kMicroBufferSize];
@@ -82,6 +89,7 @@ class ClientSessionPool
   std::vector<MicroBuffer> buffers_;
   uint8_t proxy_bind_request_[kBindRequestSize];
   std::atomic<size_t> number_of_errors_{0u};
+  size_t pool_size_;
   uint16_t port_ = 0u;
   std::atomic<bool> stop_{false};
 };

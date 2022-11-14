@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "test_instance_client_provider.h"
+#include "local_instance_client_provider.h"
 
 #include <string>
 
@@ -24,52 +24,47 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using std::string;
 
-static constexpr char kTestInstanceId[] = "TestInstanceId";
-static constexpr char kTestRegion[] = "TestRegion";
-static constexpr char kTestPrivateIp[] = "1.1.1.1";
-static constexpr char kTestPublicIp[] = "2.2.2.2";
-static constexpr char kTestEnvName[] = "TestEnv";
-
 namespace google::scp::cpio::client_providers {
-ExecutionResult TestInstanceClientProvider::Init() noexcept {
+ExecutionResult LocalInstanceClientProvider::Init() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::Run() noexcept {
+ExecutionResult LocalInstanceClientProvider::Run() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::Stop() noexcept {
+ExecutionResult LocalInstanceClientProvider::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetInstanceId(
+ExecutionResult LocalInstanceClientProvider::GetInstanceId(
     string& instance_id) noexcept {
-  instance_id = kTestInstanceId;
+  instance_id = local_cpio_options_->instance_id;
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetRegion(string& region) noexcept {
-  region = kTestRegion;
+ExecutionResult LocalInstanceClientProvider::GetRegion(
+    string& region) noexcept {
+  region = local_cpio_options_->region;
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetInstancePublicIpv4Address(
+ExecutionResult LocalInstanceClientProvider::GetInstancePublicIpv4Address(
     string& instance_public_ipv4_address) noexcept {
-  instance_public_ipv4_address = kTestPublicIp;
+  instance_public_ipv4_address = local_cpio_options_->public_ipv4_address;
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetInstancePrivateIpv4Address(
+ExecutionResult LocalInstanceClientProvider::GetInstancePrivateIpv4Address(
     string& instance_private_ipv4_address) noexcept {
-  instance_private_ipv4_address = kTestPrivateIp;
+  instance_private_ipv4_address = local_cpio_options_->private_ipv4_address;
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetEnvironmentName(
+ExecutionResult LocalInstanceClientProvider::GetEnvironmentName(
     string& env_name, const string& env_tag,
     const string& instance_id) noexcept {
-  env_name = kTestEnvName;
+  env_name = local_cpio_options_->environment_name;
   return SuccessExecutionResult();
 }
 }  // namespace google::scp::cpio::client_providers

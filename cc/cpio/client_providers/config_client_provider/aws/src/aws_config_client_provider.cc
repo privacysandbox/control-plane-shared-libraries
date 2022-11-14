@@ -174,7 +174,7 @@ ExecutionResult AwsConfigClientProvider::GetParameters(
   return SuccessExecutionResult();
 }
 
-#ifndef CPIO_TESTING
+#ifndef TEST_CPIO
 std::shared_ptr<ConfigClientProviderInterface>
 ConfigClientProviderFactory::Create(
     const std::shared_ptr<ConfigClientOptions>& options) {

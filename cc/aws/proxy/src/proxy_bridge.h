@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <sys/socket.h>
-
 #include <memory>
 #include <utility>
 
@@ -31,8 +29,10 @@
 #include "socks5_state.h"
 
 namespace google::scp::proxy {
-// A proxy implementation that simply forwards any traffic. Socks5 protocol is
-// to be added.
+// ProxyBridge is the implementation of traffic forwarding between client and
+// destination sockets. Each ProxyBridge object manages one proxy session. This
+// class is normally thread safe, as we added asio::strand to ensure
+// thread-safety with asio handlers in multi-thread environments.
 class ProxyBridge : public std::enable_shared_from_this<ProxyBridge> {
  public:
   static constexpr size_t kMaxBufferSize = 1024 * 1024;

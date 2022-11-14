@@ -6,6 +6,7 @@ exports_files([
     "config_client_provider_interface.h",
     "metric_client_provider_interface.h",
     "private_key_client_provider_interface.h",
+    "kms_client_provider_interface.h",
 ])
 
 cc_library(

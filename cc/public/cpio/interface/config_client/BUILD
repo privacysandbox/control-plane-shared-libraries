@@ -26,6 +26,6 @@ cc_library(
         "//cc/core/utils/src:core_utils",
         "//cc/cpio/client_providers/config_client_provider/src:config_client_provider_lib",
         "//cc/cpio/proto:cc_proto",
-        "//cc/public/cpio/interface:type_def_lib",
+        "//cc/public/cpio/interface:type_def",
     ],
 )

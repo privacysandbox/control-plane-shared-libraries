@@ -38,25 +38,28 @@ DEFINE_ERROR_CODE(SC_CPIO_CLOUD_SERVICE_UNAVAILABLE, SC_CPIO, 0x0005,
                   "Cloud service unavailable",
                   HttpStatusCode::SERVICE_UNAVAILABLE)
 
-DEFINE_ERROR_CODE(SC_CPIO_COMPONENT_NOT_RUNNING, SC_CPIO, 0x0006,
+DEFINE_ERROR_CODE(SC_CPIO_COMPONENT_FAILED_INITIALIZED, SC_CPIO, 0x0006,
+                  "The component is failed to initialized",
+                  HttpStatusCode::INTERNAL_SERVER_ERROR)
+DEFINE_ERROR_CODE(SC_CPIO_COMPONENT_NOT_RUNNING, SC_CPIO, 0x0007,
                   "The component is not running in CPIO",
                   HttpStatusCode::INTERNAL_SERVER_ERROR)
-DEFINE_ERROR_CODE(SC_CPIO_COMPONENT_ALREADY_RUNNING, SC_CPIO, 0x0007,
+DEFINE_ERROR_CODE(SC_CPIO_COMPONENT_ALREADY_RUNNING, SC_CPIO, 0x0008,
                   "The component is already running in CPIO",
                   HttpStatusCode::INTERNAL_SERVER_ERROR)
 
-DEFINE_ERROR_CODE(SC_CPIO_INVALID_REQUEST, SC_CPIO, 0x0008, "Invalid Request",
+DEFINE_ERROR_CODE(SC_CPIO_INVALID_REQUEST, SC_CPIO, 0x0009, "Invalid Request",
                   HttpStatusCode::BAD_REQUEST)
-DEFINE_ERROR_CODE(SC_CPIO_REQUEST_TOO_LARGE, SC_CPIO, 0x0009,
+DEFINE_ERROR_CODE(SC_CPIO_REQUEST_TOO_LARGE, SC_CPIO, 0x000A,
                   "Parameters in request exceeded limit",
                   HttpStatusCode::BAD_REQUEST)
-DEFINE_ERROR_CODE(SC_CPIO_INVALID_RESOURCE, SC_CPIO, 0x000A,
+DEFINE_ERROR_CODE(SC_CPIO_INVALID_RESOURCE, SC_CPIO, 0x000B,
                   "Resources validation failed", HttpStatusCode::BAD_REQUEST)
-DEFINE_ERROR_CODE(SC_CPIO_RESOURCE_NOT_FOUND, SC_CPIO, 0x000B,
+DEFINE_ERROR_CODE(SC_CPIO_RESOURCE_NOT_FOUND, SC_CPIO, 0x000C,
                   "Resources not found", HttpStatusCode::NOT_FOUND)
-DEFINE_ERROR_CODE(SC_CPIO_ENTITY_NOT_FOUND, SC_CPIO, 0x000C, "Entity not found",
+DEFINE_ERROR_CODE(SC_CPIO_ENTITY_NOT_FOUND, SC_CPIO, 0x000D, "Entity not found",
                   HttpStatusCode::NOT_FOUND)
-DEFINE_ERROR_CODE(SC_CPIO_MULTIPLE_ENTITIES_FOUND, SC_CPIO, 0x000D,
+DEFINE_ERROR_CODE(SC_CPIO_MULTIPLE_ENTITIES_FOUND, SC_CPIO, 0x000E,
                   "Multiple Entities found",
                   HttpStatusCode::INTERNAL_SERVER_ERROR)
 

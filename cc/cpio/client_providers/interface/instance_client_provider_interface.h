@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "core/interface/async_context.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 

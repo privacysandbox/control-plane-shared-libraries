@@ -228,7 +228,7 @@ void AwsMetricClientProvider::OnPutMetricDataAsyncCallback(
   return;
 }
 
-#ifndef CPIO_TESTING
+#ifndef TEST_CPIO
 std::shared_ptr<MetricClientProviderInterface>
 MetricClientProviderFactory::Create(
     const std::shared_ptr<MetricClientOptions>& options) {

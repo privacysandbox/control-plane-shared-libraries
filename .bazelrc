@@ -1,7 +1,7 @@
 build --java_language_version=11
 build --java_toolchain=@bazel_tools//tools/jdk:toolchain_java11
 
-build --client_env=CXXOPT=-std=c++17
+build --client_env=BAZEL_CXXOPT=-std=c++17
 build --cxxopt=-std=c++17
 build --color=yes
 

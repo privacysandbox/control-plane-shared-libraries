@@ -22,13 +22,18 @@
 #include "core/interface/service_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/local/local_cpio_options.h"
 
 namespace google::scp::cpio::client_providers {
 /**
  * @copydoc InstanceClientProviderInterface.
  */
-class TestInstanceClientProvider : public InstanceClientProviderInterface {
+class LocalInstanceClientProvider : public InstanceClientProviderInterface {
  public:
+  LocalInstanceClientProvider(
+      const std::shared_ptr<LocalCpioOptions>& local_cpio_options)
+      : local_cpio_options_(local_cpio_options) {}
+
   core::ExecutionResult Init() noexcept override;
 
   core::ExecutionResult Run() noexcept override;
@@ -49,5 +54,8 @@ class TestInstanceClientProvider : public InstanceClientProviderInterface {
 
   core::ExecutionResult GetInstancePrivateIpv4Address(
       std::string& instance_private_ipv4_address) noexcept override;
+
+ private:
+  std::shared_ptr<LocalCpioOptions> local_cpio_options_;
 };
 }  // namespace google::scp::cpio::client_providers

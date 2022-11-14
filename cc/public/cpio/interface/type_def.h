@@ -18,11 +18,32 @@
 #define SCP_CPIO_INTERFACE_TYPE_DEFS_H_
 
 #include <functional>
+#include <string>
 
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio {
+using PublicKeyValue = std::string;
+using PublicPrivateKeyPairId = std::string;
 using Timestamp = int64_t;
+
+/// Option for logging.
+enum class LogOption {
+  /// Doesn't produce logs in CPIO.
+  kNoLog = 1,
+  /// Produces logs to console.
+  kConsoleLog = 2,
+  /// Produces logs to SysLog.
+  kSysLog = 3,
+};
+
+/// Global options for CPIO.
+struct CpioOptions {
+  virtual ~CpioOptions() = default;
+
+  /// Default is kNoLog.
+  LogOption log_option = LogOption::kNoLog;
+};
 
 template <typename TResponse>
 using Callback =

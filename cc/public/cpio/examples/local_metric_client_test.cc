@@ -22,10 +22,10 @@
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
-#include "public/cpio/interface/cpio.h"
 #include "public/cpio/interface/metric_client/metric_client_interface.h"
 #include "public/cpio/interface/metric_client/type_def.h"
 #include "public/cpio/interface/type_def.h"
+#include "public/cpio/local/local_lib_cpio.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -35,8 +35,8 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::GetErrorMessage;
 using google::scp::core::test::WaitUntil;
-using google::scp::cpio::Cpio;
-using google::scp::cpio::CpioOptions;
+using google::scp::cpio::LocalCpioOptions;
+using google::scp::cpio::LocalLibCpio;
 using google::scp::cpio::LogOption;
 using google::scp::cpio::Metric;
 using google::scp::cpio::MetricClientFactory;
@@ -48,7 +48,6 @@ using google::scp::cpio::RecordMetricsResponse;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
-using std::map;
 using std::move;
 using std::shared_ptr;
 using std::stod;
@@ -57,12 +56,15 @@ using std::to_string;
 using std::unique_ptr;
 using std::chrono::milliseconds;
 
+static constexpr char kRegion[] = "us-east-1";
+
 int main(int argc, char* argv[]) {
   SDKOptions options;
   InitAPI(options);
-  CpioOptions cpio_options;
+  LocalCpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
-  auto result = Cpio::InitCpio(cpio_options);
+  cpio_options.region = kRegion;
+  auto result = LocalLibCpio::InitCpio(cpio_options);
   if (!result.Successful()) {
     std::cout << "Failed to initialize CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;
@@ -110,8 +112,7 @@ int main(int argc, char* argv[]) {
     std::cout << "RecordMetrics failed immediately: "
               << GetErrorMessage(result.status_code) << std::endl;
   }
-  WaitUntil([&finished]() { return finished.load(); },
-            std::chrono::milliseconds(100000));
+  WaitUntil([&finished]() { return finished.load(); }, milliseconds(100000));
 
   result = metric_client->Stop();
   if (!result.Successful()) {
@@ -119,7 +120,7 @@ int main(int argc, char* argv[]) {
               << GetErrorMessage(result.status_code) << std::endl;
   }
 
-  result = Cpio::ShutdownCpio(cpio_options);
+  result = LocalLibCpio::ShutdownCpio(cpio_options);
   if (!result.Successful()) {
     std::cout << "Failed to shutdown CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;

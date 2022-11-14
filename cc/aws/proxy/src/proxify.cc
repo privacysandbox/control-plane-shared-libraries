@@ -26,7 +26,8 @@
 
 static constexpr char lib[] = "libproxy_preload.so";
 static constexpr char socket_vendor[] = "socket_vendor";
-static const char resolv_conf_path[] = "/etc/resolv.conf";
+static constexpr char resolv_conf_path[] = "/etc/resolv.conf";
+static constexpr char use_vc_option[] = "use-vc";
 
 static const char resolv_conf_content[] =
     "nameserver 8.8.8.8\n"
@@ -60,12 +61,20 @@ int main(int argc, char* argv[]) {
               << std::endl;
   }
   std::string socket_vendor_path = dir_name + "/" + socket_vendor;
+  // Run the socket_vendor. If there's already a running socket_vendor, this
+  // will end with a benign failure.
   if (fork() == 0) {
+    daemon(1, 1);
     execl(socket_vendor_path.c_str(), socket_vendor_path.c_str(), nullptr);
     exit(1);
   }
   if (setenv("LD_PRELOAD", lib_path.c_str(), 1)) {
     std::cerr << "ERROR: cannot set LD_PRELOAD: " << strerror(errno)
+              << std::endl;
+    return -1;
+  }
+  if (setenv("RES_OPTIONS", use_vc_option, 1)) {
+    std::cerr << "ERROR: cannot set RES_OPTIONS: " << strerror(errno)
               << std::endl;
     return -1;
   }

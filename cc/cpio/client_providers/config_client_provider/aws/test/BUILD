@@ -12,7 +12,7 @@ cc_library(
         "test_aws_config_client_provider.cc",
     ],
     copts = [
-        "-DCPIO_TESTING=1",
+        "-DTEST_CPIO=1",
         "-std=c++17",
     ],
     deps = [

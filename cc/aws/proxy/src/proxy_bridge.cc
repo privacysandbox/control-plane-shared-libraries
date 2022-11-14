@@ -268,7 +268,6 @@ void ProxyBridge::SetSocks5StateCallbacks() {
         bind_cancellation_slot(
             cancel_signal_.slot(),
             [self = shared_from_this()](const error_code& ec, Socket sock) {
-              LogInfo("Accept handler, ", ec.message());
               if (ec.failed()) {
                 self->StopWaitingInbound(false /* client error */);
                 return;

@@ -27,6 +27,7 @@
 #include <aws/ec2/model/Filter.h>
 
 #include "cc/core/common/uuid/src/uuid.h"
+#include "core/common/global_logger/src/global_logger.h"
 #include "cpio/common/aws/src/aws_utils.h"
 #include "public/core/interface/execution_result.h"
 

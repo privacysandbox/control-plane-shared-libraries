@@ -38,6 +38,7 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using std::make_shared;
 using std::make_unique;
+using std::shared_ptr;
 using std::unique_ptr;
 
 static constexpr char kLibCpioProvider[] = "LibCpioProvider";
@@ -108,8 +109,11 @@ LibCpioProvider::GetInstanceClientProvider() noexcept {
   return instance_client_provider_;
 }
 
-#ifndef CPIO_TESTING
-unique_ptr<CpioProviderInterface> CpioProviderFactory::Create() {
+#ifdef TEST_CPIO
+#elif LOCAL_CPIO
+#else
+unique_ptr<CpioProviderInterface> CpioProviderFactory::Create(
+    const shared_ptr<CpioOptions>& options) {
   return make_unique<LibCpioProvider>();
 }
 #endif

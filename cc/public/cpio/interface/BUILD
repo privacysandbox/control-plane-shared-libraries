@@ -36,7 +36,7 @@ config_setting(
 )
 
 cc_library(
-    name = "type_def_lib",
+    name = "type_def",
     hdrs =
         [
             "type_def.h",
@@ -54,6 +54,7 @@ cc_library(
         "cpio.h",
     ],
     deps = [
+        ":type_def",
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
         "//cc/core/logger/src:logger_lib",

@@ -30,5 +30,6 @@ cc_library(
         "//cc/core/logger/src/log_providers/syslog:syslog_lib",
         "//cc/core/message_router/src:message_router_lib",
         "//cc/cpio/client_providers/instance_client_provider:instance_client_provider_lib",
+        "//cc/public/cpio/interface:type_def",
     ],
 )

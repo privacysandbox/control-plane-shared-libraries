@@ -52,14 +52,16 @@ bool ClientSessionPool::Start() {
   asio::read(client_sock_, mutable_buffer(&bind_req, sizeof(bind_req)), ec);
   if (ec.failed() ||
       bind_req.type != socket_vendor::MessageType::kBindRequest) {
-    // TODO: log something here?
+    LogError("socket_vendor: bad BindRequest, ", ec.message());
     return false;
   }
+  LogInfo("socket_vendor: bindRequest on port ", bind_req.port);
   // On the bind call, we initiate the first connection to proxy to see if
   // binding on port can be successfully made.
   Socket first_socket(client_sock_.get_executor());
   first_socket.connect(proxy_endpoint_, ec);
   if (ec.failed()) {
+    LogError("socket_vendor: cannot connect to proxy, ", ec.message());
     return false;
   }
 
@@ -76,6 +78,7 @@ bool ClientSessionPool::Start() {
               mutable_buffer(proxy_bind_request_, sizeof(proxy_bind_request_)),
               ec);
   if (ec.failed()) {
+    LogError("socket_vendor: cannot write to proxy, ", ec.message());
     return false;
   }
 
@@ -99,6 +102,7 @@ bool ClientSessionPool::Start() {
   asio::read(first_socket,
              mutable_buffer(proxy_resp_buf, sizeof(proxy_resp_buf)), ec);
   if (ec.failed() || proxy_resp_buf[3] != 0x00) {
+    LogError("socket_vendor: cannot read response from proxy, ", ec.message());
     return false;
   }
   // Get the port bound returned by the proxy server.
@@ -113,6 +117,7 @@ bool ClientSessionPool::Start() {
   bind_resp.port = port;
   asio::write(client_sock_, const_buffer(&bind_resp, sizeof(bind_resp)), ec);
   if (ec.failed()) {
+    LogError("socket_vendor: cannot send response to client, ", ec.message());
     return false;
   }
 
@@ -136,11 +141,14 @@ bool ClientSessionPool::Start() {
   if (backlog < 0) {
     return false;
   }
-  size_t number_of_socks = static_cast<size_t>(backlog);
-
-  pool_.reserve(number_of_socks);
-  buffers_.resize(number_of_socks);
   LogInfo("socket_vendor: application bind-listen port ", port);
+  LogInfo("socket_vendor: ListenRequest of backlog = ", backlog);
+  backlog = backlog > kMaxConnections ? kMaxConnections : backlog;
+  pool_size_ = static_cast<size_t>(backlog);
+  LogInfo("socket_vendor: hydrating pool of size ", pool_size_);
+
+  pool_.reserve(pool_size_);
+  buffers_.resize(pool_size_);
 
   // Now we are done! Monitor the client sock for errors:
   client_sock_.async_wait(Socket::wait_error,
@@ -154,13 +162,11 @@ bool ClientSessionPool::Start() {
       bind(&ClientSessionPool::Handle2ndResp, shared_from_this(), 0u,
            placeholders::bytes_transferred, placeholders::error));
 
-  // Hydrate the rest of the pool.
-  for (size_t i = 1u; i < number_of_socks; ++i) {
-    pool_.emplace_back(client_sock_.get_executor());
-    pool_[i].async_connect(proxy_endpoint_,
-                           bind(&ClientSessionPool::HandleConnect,
-                                shared_from_this(), i, placeholders::error));
-  }
+  // Hydrate the rest of the pool, serially, to avoid overloading the proxy.
+  pool_.emplace_back(client_sock_.get_executor());
+  pool_[1].async_connect(proxy_endpoint_,
+                         bind(&ClientSessionPool::HandleConnect,
+                              shared_from_this(), 1, placeholders::error));
   return true;
 }
 
@@ -222,6 +228,16 @@ void ClientSessionPool::Handle1stResp(size_t index, size_t bytes_read,
       mutable_buffer(buf, sizeof(buf)),
       bind(&ClientSessionPool::Handle2ndResp, shared_from_this(), index,
            placeholders::bytes_transferred, placeholders::error));
+  // If this is the last socket in the pool, and the pool is not hydrated yet,
+  // continue to hydrate.
+  if (index == pool_.size() - 1 && pool_.size() < pool_size_) {
+    pool_.emplace_back(client_sock_.get_executor());
+    auto& next_sock = pool_[index + 1];
+    next_sock.async_connect(
+        proxy_endpoint_,
+        bind(&ClientSessionPool::HandleConnect, shared_from_this(), index + 1,
+             placeholders::error));
+  }
 }
 
 void ClientSessionPool::Handle2ndResp(size_t index, size_t bytes_read,

@@ -29,7 +29,7 @@ cc_library(
         "//cc/public/cpio/interface:cpio.h",
     ],
     copts = [
-        "-DCPIO_TESTING=1",
+        "-DTEST_CPIO=1",
     ],
     deps = [
         "//cc:cc_base_include_dir",
@@ -60,7 +60,7 @@ cc_library(
         "//cc/core/utils/src:core_utils",
         "//cc/cpio/client_providers/metric_client_provider/aws/test:test_aws_metric_client_provider_lib",
         "//cc/cpio/proto:cc_proto",
-        "//cc/public/cpio/interface:type_def_lib",
+        "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/interface/metric_client:type_def",
     ],
 )
@@ -83,7 +83,7 @@ cc_library(
         "//cc/core/utils/src:core_utils",
         "//cc/cpio/client_providers/config_client_provider/aws/test:test_aws_config_client_provider_lib",
         "//cc/cpio/proto:cc_proto",
-        "//cc/public/cpio/interface:type_def_lib",
+        "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/interface/config_client:type_def",
     ],
 )

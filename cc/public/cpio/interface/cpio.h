@@ -16,24 +16,16 @@
 #ifndef SCP_CPIO_INTERFACE_CPIO_H_
 #define SCP_CPIO_INTERFACE_CPIO_H_
 
+#include <memory>
+
+#include "core/interface/logger_interface.h"
+#include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/type_def.h"
 
 namespace google::scp::cpio {
-/// Option for logging.
-enum class LogOption {
-  /// Doesn't produce logs in CPIO.
-  kNoLog = 1,
-  /// Produces logs to console.
-  kConsoleLog = 2,
-  /// Produces logs to SysLog.
-  kSysLog = 3,
-};
-
-/// Global options for CPIO.
-struct CpioOptions {
-  /// Default is kNoLog.
-  LogOption log_option = LogOption::kNoLog;
-};
+static std::unique_ptr<core::LoggerInterface> logger_ptr;
+static std::unique_ptr<client_providers::CpioProviderInterface> cpio_ptr;
 
 /**
  * @brief To initialize and shutdown global CPIO objects.
