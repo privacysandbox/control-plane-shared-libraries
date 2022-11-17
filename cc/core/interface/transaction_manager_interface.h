@@ -180,6 +180,20 @@ struct GetTransactionStatusResponse {
 };
 
 /**
+ * @brief Represents the Request object of GetStatus API to get details of
+ * Transaction Manager (TM) current state
+ */
+struct GetTransactionManagerStatusRequest {};
+
+/**
+ * @brief Represents the Response object of GetStatus API to get details of
+ * Transaction Manager (TM) current state
+ */
+struct GetTransactionManagerStatusResponse {
+  size_t pending_transactions_count;
+};
+
+/**
  * @brief Transaction manager is responsible for running 2-phase commit
  * transactions in a form of transaction commands. To execute a transaction
  * one must create a transaction request, provide the transaction commands,
@@ -229,5 +243,17 @@ class TransactionManagerInterface : public ServiceInterface {
   virtual ExecutionResult GetTransactionStatus(
       AsyncContext<GetTransactionStatusRequest, GetTransactionStatusResponse>&
           get_transaction_status_context) noexcept = 0;
+
+  /**
+   * @brief Get the current status of Transaction Manager (TM)
+   *
+   * @param request Request object to query status
+   * @param response Response object which contains details of current state of
+   * the TM
+   * @return ExecutionResult
+   */
+  virtual ExecutionResult GetStatus(
+      const GetTransactionManagerStatusRequest& request,
+      GetTransactionManagerStatusResponse& response) noexcept = 0;
 };
 }  // namespace google::scp::core

@@ -253,6 +253,13 @@ class AutoExpiryConcurrentMap : public ServiceInterface {
   }
 
   /**
+   * @brief Returns the count of elements present in the map
+   *
+   * @return size_t count of elements
+   */
+  size_t Size() noexcept { return concurrent_map_.Size(); }
+
+  /**
    * @brief Prevents evicting an element in the map provided by the key.
    *
    * @param key The key to be used to find the element to disable eviction.

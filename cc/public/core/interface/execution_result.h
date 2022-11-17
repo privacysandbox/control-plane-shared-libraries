@@ -20,6 +20,12 @@
 #include "core/common/proto/common.pb.h"
 
 namespace google::scp::core {
+
+#define RETURN_IF_FAILURE(__execution_result)                            \
+  if (ExecutionResult __res = __execution_result; !__res.Successful()) { \
+    return __res;                                                        \
+  }
+
 /// Operation's execution status.
 enum class ExecutionStatus {
   /// Executed successfully.

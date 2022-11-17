@@ -41,8 +41,8 @@ def _generic_enclave_ami_pkr_script_impl(ctx):
             "{enable_enclave_debug_mode}": "true" if ctx.attr.enable_enclave_debug_mode else "false",
             "{licenses}": ctx.file.licenses.short_path,
             "{docker_repo}": ctx.attr.enclave_container_image.label.package,
-            # Remove the .tar extension for the docker tag
-            "{docker_tag}": ctx.attr.enclave_container_image.label.name.replace(".tar", ""),
+            # Use the input container tag if specified or remove the .tar extension from the container_image name
+            "{docker_tag}": ctx.attr.enclave_container_tag if ctx.attr.enclave_container_tag else ctx.attr.enclave_container_image.label.name.replace(".tar", ""),
         },
     )
 
@@ -64,6 +64,10 @@ generic_enclave_ami_pkr_script = rule(
         "enclave_container_image": attr.label(
             mandatory = True,
             allow_single_file = True,
+        ),
+        # Optional. Input the container tag when it is different from the container image name.
+        "enclave_container_tag": attr.string(
+            default = "",
         ),
         "enclave_allocator": attr.label(
             mandatory = True,

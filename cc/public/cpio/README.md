@@ -11,10 +11,13 @@ This project needs to be built using [Bazel](https://bazel.build/install).
 To get reproducible build, this project needs to be built inside container.
 
 ## Building the project
-
 A flag is defined to choose cloud platform at building time:
     `//cc/public/cpio/interface:platform`. Supported value is "aws" currently.  
-Specify the flag when build the project. For example:
+Choose to import AWS SDK source code dependency by running:
+
+        ln -rsf build_defs/cc/aws/aws_sdk_cpp_source_code_deps.bzl build_defs/cc/aws/aws_sdk_cpp_deps.bzl
+
+Then build the project by running:
 
         bazel build --//cc/public/cpio/interface:platform=aws cc/public/cpio/...
 
@@ -28,8 +31,9 @@ Specify the flag when build the project. For example:
 2. [cc/public/cpio/test](test): public visible targets to help hermetic testing.
 3. [cc/public/cpio/local](local): public visible targets to help bringing up local CPIO.
 4. [cc/public/cpio/examples](examples): example codes for different clients.
-5. [cc/public/cpio/adapters](adapters), [cc/public/cpio/core](core/), [cc/cpio](/cc/cpio) and [cc/core](/cc/core): implementations. The targets there are not public visible.
-6. [build_defs/cc](/build_defs/cc), [WORKSPACE](/WORKSPACE): external dependencies.
+5. [cc/public/cpio/examples/deploy](examples/deploy): example script to deploy binary to Nitro Enclave.
+6. [cc/public/cpio/adapters](adapters), [cc/public/cpio/core](core/), [cc/cpio](/cc/cpio) and [cc/core](/cc/core): implementations. The targets there are not public visible.
+7. [build_defs/cc](/build_defs/cc), [WORKSPACE](/WORKSPACE): external dependencies.
 # Clients
 1. [ConfigClient](interface/config_client)
 2. [MetricClient](interface/metric_client)

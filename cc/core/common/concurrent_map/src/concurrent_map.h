@@ -135,6 +135,13 @@ class ConcurrentMap {
     return SuccessExecutionResult();
   }
 
+  /**
+   * @brief Returns the current size of the concurrent map in a thread-safe way.
+   *
+   * @return size_t
+   */
+  size_t Size() const { return concurrent_map_.size(); }
+
  private:
   /// Concurrent map implementation.
   ConcurrentMapImpl concurrent_map_;
