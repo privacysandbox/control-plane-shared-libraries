@@ -19,6 +19,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <aws/core/internal/AWSHttpResourceClient.h>
 #include <aws/ec2/EC2Client.h>
@@ -47,8 +48,9 @@ class AwsInstanceClientProvider : public InstanceClientProviderInterface {
 
   core::ExecutionResult GetRegion(std::string& region) noexcept override;
 
-  core::ExecutionResult GetEnvironmentName(
-      std::string& env_name, const std::string& env_tag,
+  core::ExecutionResult GetTags(
+      std::map<std::string, std::string>& tag_values_map,
+      const std::vector<std::string>& tag_names,
       const std::string& instance_id) noexcept override;
 
   core::ExecutionResult GetInstancePublicIpv4Address(
@@ -58,19 +60,6 @@ class AwsInstanceClientProvider : public InstanceClientProviderInterface {
       std::string& instance_private_ipv4_address) noexcept override;
 
  protected:
-  /**
-   * @brief Fetches tag value for a given tag name from EC2 instance.
-   * Expect to fetch it at initialization time, so it is a blocking call.
-   *
-   * @param tag_value returned tag value.
-   * @param tag_name the given tag name.
-   * @param instance_id ID for the EC2 instance.
-   * @return ExecutionResult execution result.
-   */
-  core::ExecutionResult DescribeTag(std::string& tag_value,
-                                    const std::string& tag_name,
-                                    const std::string& instance_id) noexcept;
-
   /**
    * @brief Get the Resource value for the given resource name.
    *

@@ -14,8 +14,10 @@
 
 #include <gtest/gtest.h>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <aws/core/Aws.h>
 #include <aws/core/utils/Outcome.h>
@@ -23,6 +25,7 @@
 #include <aws/ec2/EC2Errors.h>
 #include <aws/ec2/model/DescribeInstancesRequest.h>
 #include <aws/ec2/model/DescribeTagsRequest.h>
+#include <gmock/gmock.h>
 
 #include "cpio/client_providers/instance_client_provider/aws/mock/mock_aws_instance_client_provider_with_overrides.h"
 #include "cpio/client_providers/instance_client_provider/aws/mock/mock_ec2_client.h"
@@ -46,26 +49,30 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_INSTANCE_ID;
 using google::scp::core::errors::
-    SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_TAG_NAME;
-using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_MULTIPLE_TAG_VALUES_FOUND;
 using google::scp::core::errors::
-    SC_AWS_INSTANCE_CLIENT_PROVIDER_RESOURCE_NOT_FOUND;
+    SC_AWS_INSTANCE_CLIENT_PROVIDER_NOT_ALL_TAG_VALUES_FOUND;
 using google::scp::core::errors::
-    SC_AWS_INSTANCE_CLIENT_PROVIDER_TAG_VALUE_NOT_FOUND;
+    SC_AWS_INSTANCE_CLIENT_PROVIDER_RESOURCE_NOT_FOUND;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
 using google::scp::cpio::client_providers::mock::
     MockAwsInstanceClientProviderWithOverrides;
 using std::make_unique;
+using std::map;
 using std::string;
 using std::unique_ptr;
+using std::vector;
 
 static constexpr char kInstanceId[] = "instance_id";
 static constexpr char kRegion[] = "us-west-1";
 static constexpr char kPublicIp[] = "public_ip";
 static constexpr char kPrivateIp[] = "private_ip";
-static constexpr char kEnvTag[] = "environment";
-static constexpr char kEnvName[] = "env_name";
+
+static constexpr char kTagName1[] = "/service/tag_name_1";
+static constexpr char kTagName2[] = "/service/tag_name_2";
+static const vector<string> kTagNames({string(kTagName1), string(kTagName2)});
+static constexpr char kTagValue1[] = "tag_value1";
+static constexpr char kTagValue2[] = "tag_value2";
 
 namespace google::scp::cpio::cloud_providers::test {
 class AwsInstanceClientProviderTest : public ::testing::Test {
@@ -90,10 +97,25 @@ class AwsInstanceClientProviderTest : public ::testing::Test {
     describe_tags_request.AddFilters(resource_id_filter);
     Filter key_filter;
     key_filter.SetName("key");
-    key_filter.AddValues(kEnvTag);
+    key_filter.AddValues(kTagName1);
+    key_filter.AddValues(kTagName2);
     describe_tags_request.AddFilters(key_filter);
     aws_instance_client_provider_mock_->GetEC2Client()
         ->describe_tags_request_mock = describe_tags_request;
+
+    // Mocks successs DescribeTagsOutcome
+    DescribeTagsResponse response;
+    TagDescription tag_1;
+    tag_1.SetKey(kTagName1);
+    tag_1.SetValue(kTagValue1);
+    response.AddTags(tag_1);
+    TagDescription tag_2;
+    tag_2.SetKey(kTagName2);
+    tag_2.SetValue(kTagValue2);
+    response.AddTags(tag_2);
+    DescribeTagsOutcome describe_tags_outcome(response);
+    aws_instance_client_provider_mock_->GetEC2Client()
+        ->describe_tags_outcome_mock = describe_tags_outcome;
   }
 
   void TearDown() override {
@@ -211,80 +233,64 @@ TEST_F(AwsInstanceClientProviderTest, PrivateIpNotFound) {
                 SC_AWS_INSTANCE_CLIENT_PROVIDER_RESOURCE_NOT_FOUND));
 }
 
-TEST_F(AwsInstanceClientProviderTest, SucceededToFetchEnvName) {
-  DescribeTagsResponse response;
-  TagDescription tag;
-  tag.SetValue(kEnvName);
-  response.AddTags(tag);
-  DescribeTagsOutcome describe_tags_outcome(response);
-  aws_instance_client_provider_mock_->GetEC2Client()
-      ->describe_tags_outcome_mock = describe_tags_outcome;
-
-  string name;
-  EXPECT_EQ(aws_instance_client_provider_mock_->GetEnvironmentName(
-                name, kEnvTag, kInstanceId),
+TEST_F(AwsInstanceClientProviderTest, SucceededToFetchTags) {
+  map<string, string> tag_values;
+  EXPECT_EQ(aws_instance_client_provider_mock_->GetTags(tag_values, kTagNames,
+                                                        kInstanceId),
             SuccessExecutionResult());
-  EXPECT_EQ(name, string(kEnvName));
+  EXPECT_THAT(tag_values, testing::UnorderedElementsAre(
+                              testing::Pair(kTagName1, kTagValue1),
+                              testing::Pair(kTagName2, kTagValue2)));
 }
 
-TEST_F(AwsInstanceClientProviderTest, EnvTagNotSpecified) {
-  string name;
+TEST_F(AwsInstanceClientProviderTest, EmptyTagNames) {
+  map<string, string> tag_values;
   EXPECT_EQ(
-      aws_instance_client_provider_mock_->GetEnvironmentName(name, "",
-                                                             kInstanceId),
-      FailureExecutionResult(SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_TAG_NAME));
+      aws_instance_client_provider_mock_->GetTags(tag_values, {}, kInstanceId),
+      SuccessExecutionResult());
+  EXPECT_THAT(tag_values, testing::IsEmpty());
 }
 
 TEST_F(AwsInstanceClientProviderTest, InstanceIdNotSpecified) {
-  string name;
+  map<string, string> tag_values;
   EXPECT_EQ(
-      aws_instance_client_provider_mock_->GetEnvironmentName(name, kEnvTag, ""),
+      aws_instance_client_provider_mock_->GetTags(tag_values, kTagNames, ""),
       FailureExecutionResult(
           SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_INSTANCE_ID));
 }
 
-TEST_F(AwsInstanceClientProviderTest, FailedToFetchEnvName) {
+TEST_F(AwsInstanceClientProviderTest, FailedToFetchTags) {
   AWSError<EC2Errors> error(EC2Errors::INTERNAL_FAILURE, false);
   DescribeTagsOutcome outcome(error);
   aws_instance_client_provider_mock_->GetEC2Client()
       ->describe_tags_outcome_mock = outcome;
 
-  string name;
-  EXPECT_EQ(aws_instance_client_provider_mock_->GetEnvironmentName(
-                name, kEnvTag, kInstanceId),
+  map<string, string> tag_values;
+  EXPECT_EQ(aws_instance_client_provider_mock_->GetTags(tag_values, kTagNames,
+                                                        kInstanceId),
             FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
 }
 
-TEST_F(AwsInstanceClientProviderTest, NoEnvNameFound) {
-  DescribeTagsResponse response;
-  DescribeTagsOutcome outcome(response);
-  aws_instance_client_provider_mock_->GetEC2Client()
-      ->describe_tags_outcome_mock = outcome;
-
-  string name;
-  EXPECT_EQ(aws_instance_client_provider_mock_->GetEnvironmentName(
-                name, kEnvTag, kInstanceId),
-            FailureExecutionResult(
-                SC_AWS_INSTANCE_CLIENT_PROVIDER_TAG_VALUE_NOT_FOUND));
-}
-
-TEST_F(AwsInstanceClientProviderTest, MultipleEnvNamesFound) {
+TEST_F(AwsInstanceClientProviderTest, MultipleTagsFound) {
   DescribeTagsResponse response;
   TagDescription tag_1;
-  const char value_1[] = "env_name_1";
-  tag_1.SetValue(value_1);
+  tag_1.SetKey(kTagName1);
+  tag_1.SetValue(kTagValue1);
   response.AddTags(tag_1);
   TagDescription tag_2;
-  const char value_2[] = "env_name_2";
-  tag_2.SetValue(value_2);
+  tag_2.SetKey(kTagName2);
+  tag_2.SetValue(kTagValue2);
   response.AddTags(tag_2);
+  TagDescription tag_3;
+  tag_3.SetValue("value_3");
+  response.AddTags(tag_3);
   DescribeTagsOutcome outcome(response);
   aws_instance_client_provider_mock_->GetEC2Client()
       ->describe_tags_outcome_mock = outcome;
 
-  string name;
-  EXPECT_EQ(aws_instance_client_provider_mock_->GetEnvironmentName(
-                name, kEnvTag, kInstanceId),
+  map<string, string> tag_values;
+  EXPECT_EQ(aws_instance_client_provider_mock_->GetTags(tag_values, kTagNames,
+                                                        kInstanceId),
             FailureExecutionResult(
                 SC_AWS_INSTANCE_CLIENT_PROVIDER_MULTIPLE_TAG_VALUES_FOUND));
 }

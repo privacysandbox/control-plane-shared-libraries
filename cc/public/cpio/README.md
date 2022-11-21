@@ -25,6 +25,16 @@ Then build the project by running:
 
         bazel test cc/public/cpio/... && bazel test cc/cpio/...
 
+# Using CPIO
+Before using any CPIO clients, CPIO needs to be initialized by calling Cpio::InitCpio. After all the usage, CPIO needs to be cleaned up by calling Cpio::ShutdownCpio. In between, any clients can be created and used following this pattern:
+
+        client = ClientFactory::Create(options);
+        client->Init();
+        client->Run();
+        # Use the client
+        ...
+        client->Stop();
+
 # Layout
 
 1. [cc/public/cpio/interface](interface) and [cc/public/core/interface](/cc/public/core/interface): interfaces and all other public visible targets provided to users of this project.

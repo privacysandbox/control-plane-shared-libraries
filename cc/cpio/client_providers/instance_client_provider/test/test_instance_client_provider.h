@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "core/interface/service_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
@@ -35,8 +37,9 @@ class TestInstanceClientProvider : public InstanceClientProviderInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
-  core::ExecutionResult GetEnvironmentName(
-      std::string& env_name, const std::string& env_tag,
+  core::ExecutionResult GetTags(
+      std::map<std::string, std::string>& tag_values_map,
+      const std::vector<std::string>& tag_names,
       const std::string& instance_id) noexcept override;
 
   core::ExecutionResult GetInstanceId(

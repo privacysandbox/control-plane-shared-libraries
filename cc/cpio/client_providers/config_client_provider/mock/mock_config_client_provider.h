@@ -39,23 +39,19 @@ class MockConfigClientProvider : public ConfigClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  config_client::GetEnvironmentNameProtoRequest
-      get_environment_name_request_mock;
-  config_client::GetEnvironmentNameProtoResponse
-      get_environment_name_response_mock;
-  core::ExecutionResult get_environment_name_result_mock =
-      core::SuccessExecutionResult();
+  config_client::GetTagProtoRequest get_tag_request_mock;
+  config_client::GetTagProtoResponse get_tag_response_mock;
+  core::ExecutionResult get_tag_result_mock = core::SuccessExecutionResult();
 
-  core::ExecutionResult GetEnvironmentName(
-      core::AsyncContext<config_client::GetEnvironmentNameProtoRequest,
-                         config_client::GetEnvironmentNameProtoResponse>&
-          context) noexcept override {
-    context.result = get_environment_name_result_mock;
-    if (google::protobuf::util::MessageDifferencer::Equals(
-            get_environment_name_request_mock, *context.request)) {
-      context.response =
-          std::make_shared<config_client::GetEnvironmentNameProtoResponse>(
-              get_environment_name_response_mock);
+  core::ExecutionResult GetTag(
+      core::AsyncContext<config_client::GetTagProtoRequest,
+                         config_client::GetTagProtoResponse>& context) noexcept
+      override {
+    context.result = get_tag_result_mock;
+    if (google::protobuf::util::MessageDifferencer::Equals(get_tag_request_mock,
+                                                           *context.request)) {
+      context.response = std::make_shared<config_client::GetTagProtoResponse>(
+          get_tag_response_mock);
     }
     context.Finish();
     return core::SuccessExecutionResult();

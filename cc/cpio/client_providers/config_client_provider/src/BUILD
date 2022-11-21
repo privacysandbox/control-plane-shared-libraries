@@ -20,8 +20,7 @@ cc_library(
         "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/config_client_provider/aws/src:aws_config_client_provider_srcs"],
         "//conditions:default": ["//cc/cpio/client_providers/config_client_provider/aws/src:aws_config_client_provider_srcs"],
     }) + [
-        "config_client_provider.cc",
-        "config_client_provider.h",
+        ":config_client_provider_srcs",
         "//cc/cpio/client_providers/interface:config_client_provider_interface.h",
     ],
     copts = [
@@ -53,6 +52,7 @@ cc_library(
 exports_files([
     "config_client_provider.h",
     "config_client_provider.cc",
+    "error_codes.h",
 ])
 
 filegroup(
@@ -60,5 +60,6 @@ filegroup(
     srcs = [
         ":config_client_provider.cc",
         ":config_client_provider.h",
+        ":error_codes.h",
     ],
 )

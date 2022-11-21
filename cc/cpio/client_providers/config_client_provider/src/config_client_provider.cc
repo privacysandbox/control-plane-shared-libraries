@@ -30,17 +30,21 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/config_client/type_def.h"
 
+#include "error_codes.h"
+
 using google::protobuf::Any;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
+using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoRequest;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoResponse;
+using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
 using google::scp::cpio::config_client::GetInstanceIdProtoResponse;
 using google::scp::cpio::config_client::GetParameterProtoRequest;
 using google::scp::cpio::config_client::GetParameterProtoResponse;
+using google::scp::cpio::config_client::GetTagProtoRequest;
+using google::scp::cpio::config_client::GetTagProtoResponse;
 using std::bind;
 using std::make_shared;
 using std::move;
@@ -58,12 +62,12 @@ ExecutionResult ConfigClientProvider::Init() noexcept {
   }
 
   if (message_router_) {
-    GetEnvironmentNameProtoRequest get_env_name_request;
+    GetTagProtoRequest get_env_name_request;
     Any any_request_1;
     any_request_1.PackFrom(get_env_name_request);
     auto subscribe_result = message_router_->Subscribe(
         any_request_1.type_url(),
-        bind(&ConfigClientProvider::OnGetEnvironmentName, this, _1));
+        bind(&ConfigClientProvider::OnGetTag, this, _1));
     if (!subscribe_result.Successful()) {
       return subscribe_result;
     }
@@ -107,14 +111,12 @@ ExecutionResult ConfigClientProvider::Run() noexcept {
           "Failed getting AWS instance ID during initialization.");
   }
 
-  fetch_environment_name_result_ =
-      instance_client_provider_->GetEnvironmentName(
-          environment_name_, config_client_options_->environment_tag,
-          instance_id_);
-  if (!fetch_environment_name_result_.Successful()) {
-    ERROR(kConfigClientProvider, kZeroUuid, kZeroUuid,
-          fetch_environment_name_result_,
-          "Failed getting the AWS environment name during initialization.");
+  execution_result = instance_client_provider_->GetTags(
+      tag_values_map_, config_client_options_->tag_names, instance_id_);
+  if (!execution_result.Successful()) {
+    ERROR(kConfigClientProvider, kZeroUuid, kZeroUuid, execution_result,
+          "Failed getting the tag values during initialization.");
+    return execution_result;
   }
 
   return SuccessExecutionResult();
@@ -142,15 +144,16 @@ ExecutionResult ConfigClientProvider::GetInstanceId(
   return SuccessExecutionResult();
 }
 
-ExecutionResult ConfigClientProvider::GetEnvironmentName(
-    AsyncContext<GetEnvironmentNameProtoRequest,
-                 GetEnvironmentNameProtoResponse>& context) noexcept {
-  auto response = make_shared<GetEnvironmentNameProtoResponse>();
+ExecutionResult ConfigClientProvider::GetTag(
+    AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) noexcept {
+  auto response = make_shared<GetTagProtoResponse>();
   auto result = SuccessExecutionResult();
-  if (environment_name_.empty()) {
-    result = fetch_environment_name_result_;
+
+  auto it = tag_values_map_.find(context.request->tag_name());
+  if (it == tag_values_map_.end()) {
+    result = FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND);
   } else {
-    response->set_environment_name(environment_name_);
+    response->set_value(it->second);
   }
 
   context.response = move(response);
@@ -160,16 +163,15 @@ ExecutionResult ConfigClientProvider::GetEnvironmentName(
   return SuccessExecutionResult();
 }
 
-void ConfigClientProvider::OnGetEnvironmentName(
+void ConfigClientProvider::OnGetTag(
     AsyncContext<Any, Any> any_context) noexcept {
-  auto request = make_shared<GetEnvironmentNameProtoRequest>();
+  auto request = make_shared<GetTagProtoRequest>();
   any_context.request->UnpackTo(request.get());
-  AsyncContext<GetEnvironmentNameProtoRequest, GetEnvironmentNameProtoResponse>
-      context(move(request),
-              bind(CallbackToPackAnyResponse<GetEnvironmentNameProtoRequest,
-                                             GetEnvironmentNameProtoResponse>,
-                   any_context, _1));
-  context.result = GetEnvironmentName(context);
+  AsyncContext<GetTagProtoRequest, GetTagProtoResponse> context(
+      move(request),
+      bind(CallbackToPackAnyResponse<GetTagProtoRequest, GetTagProtoResponse>,
+           any_context, _1));
+  context.result = GetTag(context);
 }
 
 void ConfigClientProvider::OnGetInstanceId(

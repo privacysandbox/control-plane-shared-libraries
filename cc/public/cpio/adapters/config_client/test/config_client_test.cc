@@ -39,29 +39,31 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_CONFIG_CLIENT_INVALID_PARAMETER_NAME;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::ConfigClient;
-using google::scp::cpio::GetEnvironmentRequest;
-using google::scp::cpio::GetEnvironmentResponse;
 using google::scp::cpio::GetInstanceIdRequest;
 using google::scp::cpio::GetInstanceIdResponse;
 using google::scp::cpio::GetParameterRequest;
 using google::scp::cpio::GetParameterResponse;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoRequest;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoResponse;
+using google::scp::cpio::GetTagRequest;
+using google::scp::cpio::GetTagResponse;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
 using google::scp::cpio::config_client::GetInstanceIdProtoResponse;
 using google::scp::cpio::config_client::GetParameterProtoRequest;
 using google::scp::cpio::config_client::GetParameterProtoResponse;
+using google::scp::cpio::config_client::GetTagProtoRequest;
+using google::scp::cpio::config_client::GetTagProtoResponse;
 using google::scp::cpio::mock::MockConfigClientWithOverrides;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
+using std::move;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
 
 static constexpr char kParameterName[] = "parameter_name";
 static constexpr char kParameterValue[] = "parameter_value";
-static constexpr char kEnvName[] = "env_name";
+static constexpr char kTagName[] = "tag_name";
+static constexpr char kTagValue[] = "tag_value";
 static constexpr char kInstanceId[] = "instance_id";
 
 namespace google::scp::cpio::test {
@@ -155,18 +157,17 @@ TEST_F(GetParameterTest, GetParameterSuccessfully) {
   WaitUntil([&]() { return condition.load(); });
 }
 
-// Tests for GetEnvironmentName.
-class GetEnvironmentNameTest : public ConfigClientTest {
+// Tests for GetTag.
+class GetTagTest : public ConfigClientTest {
  protected:
   void SetUp() override {
     ConfigClientTest::SetUp();
 
-    client_->GetConfigClientProvider()->get_environment_name_request_mock =
-        request_;
+    request_.set_tag_name(kTagName);
+    client_->GetConfigClientProvider()->get_tag_request_mock = request_;
 
-    response_.set_environment_name(kEnvName);
-    client_->GetConfigClientProvider()->get_environment_name_response_mock =
-        response_;
+    response_.set_value(kTagValue);
+    client_->GetConfigClientProvider()->get_tag_response_mock = response_;
   }
 
   void TearDown() override {
@@ -174,38 +175,40 @@ class GetEnvironmentNameTest : public ConfigClientTest {
     response_.Clear();
   }
 
-  GetEnvironmentNameProtoRequest request_;
-  GetEnvironmentNameProtoResponse response_;
-  GetEnvironmentResponse actual_output_;
+  GetTagProtoRequest request_;
+  GetTagProtoResponse response_;
+  GetTagResponse actual_output_;
 };
 
-TEST_F(GetEnvironmentNameTest, GetEnvironmentNameFailure) {
+TEST_F(GetTagTest, GetTagFailure) {
   auto failure = FailureExecutionResult(SC_UNKNOWN);
-  client_->GetConfigClientProvider()->get_environment_name_result_mock =
-      failure;
+  client_->GetConfigClientProvider()->get_tag_result_mock = failure;
 
   atomic<bool> condition = false;
-  EXPECT_EQ(client_->GetEnvironment(GetEnvironmentRequest(),
-                                    [&](const ExecutionResult result,
-                                        GetEnvironmentResponse response) {
-                                      EXPECT_EQ(result, failure);
-                                      condition = true;
-                                    }),
+  GetTagRequest get_tag_request;
+  get_tag_request.tag_name = kTagName;
+  EXPECT_EQ(client_->GetTag(
+                move(get_tag_request),
+                [&](const ExecutionResult result, GetTagResponse response) {
+                  EXPECT_EQ(result, failure);
+                  condition = true;
+                }),
             SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
 }
 
-TEST_F(GetEnvironmentNameTest, GetEnvironmentNameSuccessfully) {
+TEST_F(GetTagTest, GetTagSuccessfully) {
   atomic<bool> condition = false;
-  EXPECT_EQ(
-      client_->GetEnvironment(
-          GetEnvironmentRequest(),
-          [&](const ExecutionResult result, GetEnvironmentResponse response) {
-            EXPECT_EQ(result, SuccessExecutionResult());
-            EXPECT_EQ(response.environment_name, kEnvName);
-            condition = true;
-          }),
-      SuccessExecutionResult());
+  GetTagRequest get_tag_request;
+  get_tag_request.tag_name = kTagName;
+  EXPECT_EQ(client_->GetTag(
+                move(get_tag_request),
+                [&](const ExecutionResult result, GetTagResponse response) {
+                  EXPECT_EQ(result, SuccessExecutionResult());
+                  EXPECT_EQ(response.tag_value, kTagValue);
+                  condition = true;
+                }),
+            SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
 }
 

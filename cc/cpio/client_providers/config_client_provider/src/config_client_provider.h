@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "core/interface/async_context.h"
 #include "core/interface/message_router_interface.h"
@@ -50,10 +52,10 @@ class ConfigClientProvider : public ConfigClientProviderInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
-  core::ExecutionResult GetEnvironmentName(
-      core::AsyncContext<config_client::GetEnvironmentNameProtoRequest,
-                         config_client::GetEnvironmentNameProtoResponse>&
-          context) noexcept override;
+  core::ExecutionResult GetTag(
+      core::AsyncContext<config_client::GetTagProtoRequest,
+                         config_client::GetTagProtoResponse>& context) noexcept
+      override;
 
   core::ExecutionResult GetInstanceId(
       core::AsyncContext<config_client::GetInstanceIdProtoRequest,
@@ -62,11 +64,11 @@ class ConfigClientProvider : public ConfigClientProviderInterface {
 
  protected:
   /**
-   * @brief Triggered when GetEnvironmentNameProtoRequest arrives.
+   * @brief Triggered when GetTagProtoRequest arrives.
    *
    * @param context async execution context.
    */
-  virtual void OnGetEnvironmentName(
+  virtual void OnGetTag(
       core::AsyncContext<google::protobuf::Any, google::protobuf::Any>
           context) noexcept;
 
@@ -102,11 +104,9 @@ class ConfigClientProvider : public ConfigClientProviderInterface {
   /// The instance ID pre-fetched during initializing.
   std::string instance_id_;
 
-  /// The environment name pre-fetched during initializing.
-  std::string environment_name_;
-
-  /// The result of fetching environment name.
-  core::ExecutionResult fetch_environment_name_result_;
+  /// The tag values prefetched during initializing. The key is tag
+  /// name and the value is tag value.
+  std::map<std::string, std::string> tag_values_map_;
 
   /// The result of fetching instance ID.
   core::ExecutionResult fetch_instance_id_result_;

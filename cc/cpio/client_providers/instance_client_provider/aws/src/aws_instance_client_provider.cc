@@ -16,9 +16,11 @@
 
 #include "aws_instance_client_provider.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <aws/core/internal/AWSHttpResourceClient.h>
 #include <aws/core/utils/Outcome.h>
@@ -49,17 +51,17 @@ using google::scp::core::errors::
 using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_RESOURCE_NAME;
 using google::scp::core::errors::
-    SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_TAG_NAME;
-using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_MULTIPLE_TAG_VALUES_FOUND;
 using google::scp::core::errors::
-    SC_AWS_INSTANCE_CLIENT_PROVIDER_RESOURCE_NOT_FOUND;
+    SC_AWS_INSTANCE_CLIENT_PROVIDER_NOT_ALL_TAG_VALUES_FOUND;
 using google::scp::core::errors::
-    SC_AWS_INSTANCE_CLIENT_PROVIDER_TAG_VALUE_NOT_FOUND;
+    SC_AWS_INSTANCE_CLIENT_PROVIDER_RESOURCE_NOT_FOUND;
 using google::scp::cpio::common::CreateClientConfiguration;
 using std::make_shared;
+using std::map;
 using std::shared_ptr;
 using std::string;
+using std::vector;
 
 /// Filename for logging errors
 static constexpr char kAwsInstanceClientProvider[] =
@@ -128,21 +130,11 @@ ExecutionResult AwsInstanceClientProvider::GetInstancePrivateIpv4Address(
                      kResourcePathForInstancePrivateIpv4Address);
 }
 
-ExecutionResult AwsInstanceClientProvider::GetEnvironmentName(
-    string& env_name, const string& env_tag,
+ExecutionResult AwsInstanceClientProvider::GetTags(
+    map<string, string>& tag_values_map, const vector<string>& tag_names,
     const string& instance_id) noexcept {
-  return DescribeTag(env_name, env_tag, instance_id);
-}
-
-ExecutionResult AwsInstanceClientProvider::DescribeTag(
-    string& tag_value, const string& tag_name,
-    const string& instance_id) noexcept {
-  if (tag_name.empty()) {
-    auto execution_result = FailureExecutionResult(
-        SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_TAG_NAME);
-    ERROR(kAwsInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get tag.");
-    return execution_result;
+  if (tag_names.empty()) {
+    return SuccessExecutionResult();
   }
 
   if (instance_id.empty()) {
@@ -162,7 +154,9 @@ ExecutionResult AwsInstanceClientProvider::DescribeTag(
 
   Filter key_filter;
   key_filter.SetName(kKeyFilterName);
-  key_filter.AddValues(tag_name.c_str());
+  for (auto tag_name : tag_names) {
+    key_filter.AddValues(tag_name.c_str());
+  }
   request.AddFilters(key_filter);
 
   auto outcome = ec2_client_->DescribeTags(request);
@@ -172,15 +166,15 @@ ExecutionResult AwsInstanceClientProvider::DescribeTag(
     return EC2ErrorConverter::ConvertEC2Error(error_type);
   }
 
-  if (outcome.GetResult().GetTags().size() < 1) {
+  if (outcome.GetResult().GetTags().size() < tag_names.size()) {
     auto execution_result = FailureExecutionResult(
-        SC_AWS_INSTANCE_CLIENT_PROVIDER_TAG_VALUE_NOT_FOUND);
+        SC_AWS_INSTANCE_CLIENT_PROVIDER_NOT_ALL_TAG_VALUES_FOUND);
     ERROR(kAwsInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get tag.");
     return execution_result;
   }
 
-  if (outcome.GetResult().GetTags().size() > 1) {
+  if (outcome.GetResult().GetTags().size() > tag_names.size()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_INSTANCE_CLIENT_PROVIDER_MULTIPLE_TAG_VALUES_FOUND);
     ERROR(kAwsInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -188,9 +182,9 @@ ExecutionResult AwsInstanceClientProvider::DescribeTag(
     return execution_result;
   }
 
-  auto value = (outcome.GetResult().GetTags())[0].GetValue();
-  tag_value = string(value.c_str(), value.size());
-
+  for (auto tag : outcome.GetResult().GetTags()) {
+    tag_values_map.emplace(tag.GetKey(), string(tag.GetValue().c_str()));
+  }
   return SuccessExecutionResult();
 }
 

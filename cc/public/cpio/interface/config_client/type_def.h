@@ -21,8 +21,8 @@
 #include <vector>
 
 namespace google::scp::cpio {
-using EnvironmentTag = std::string;
-using EnvironmentName = std::string;
+using TagName = std::string;
+using TagValue = std::string;
 using ParameterName = std::string;
 using ParameterValue = std::string;
 using InstanceId = std::string;
@@ -32,13 +32,13 @@ struct ConfigClientOptions {
   virtual ~ConfigClientOptions() = default;
 
   /**
-   * @brief The environment name for this given environment_tag should be
+   * @brief The tag values for this given tag_names should be
    * written to cloud first. In AWS, it should be a label in EC2 instance, and
    * in GCP, it is stored in Metadata Service. CPIO will fetch the
-   * environment name during initialization time, store it in memory and serve
+   * them during initialization time, store it in memory and serve
    * them through ConfigClient.
    */
-  EnvironmentTag environment_tag;
+  std::vector<TagName> tag_names;
   /**
    * @brief The parameter values for this given parameter_names should be
    * written to cloud first. In AWS, they should be stored in the Parameter

@@ -43,9 +43,9 @@ class ConfigClient : public ConfigClientInterface {
       GetParameterRequest request,
       Callback<GetParameterResponse> callback) noexcept override;
 
-  core::ExecutionResult GetEnvironment(
-      GetEnvironmentRequest request,
-      Callback<GetEnvironmentResponse> callback) noexcept override;
+  core::ExecutionResult GetTag(
+      GetTagRequest request,
+      Callback<GetTagResponse> callback) noexcept override;
 
   core::ExecutionResult GetInstanceId(
       GetInstanceIdRequest request,
@@ -67,18 +67,17 @@ class ConfigClient : public ConfigClientInterface {
           get_parameter_context) noexcept;
 
   /**
-   * @brief Callback when GetEnvironmentName result returned.
+   * @brief Callback when GetTag result returned.
    *
    * @param request caller's request.
    * @param callback caller's callback
-   * @param get_environment_context execution context.
+   * @param get_tag_context execution context.
    */
-  void OnGetEnvironmentCallback(
-      const GetEnvironmentRequest& request,
-      Callback<GetEnvironmentResponse>& callback,
-      core::AsyncContext<config_client::GetEnvironmentNameProtoRequest,
-                         config_client::GetEnvironmentNameProtoResponse>&
-          get_environment_context) noexcept;
+  void OnGetTagCallback(const GetTagRequest& request,
+                        Callback<GetTagResponse>& callback,
+                        core::AsyncContext<config_client::GetTagProtoRequest,
+                                           config_client::GetTagProtoResponse>&
+                            get_tag_context) noexcept;
 
   /**
    * @brief Callback when GetInstanceId result returned.

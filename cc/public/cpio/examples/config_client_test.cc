@@ -31,20 +31,20 @@ using Aws::SDKOptions;
 using Aws::ShutdownAPI;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
-using google::scp::core::SuccessExecutionResult;
 using google::scp::core::GetErrorMessage;
+using google::scp::core::SuccessExecutionResult;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::ConfigClientFactory;
 using google::scp::cpio::ConfigClientInterface;
 using google::scp::cpio::ConfigClientOptions;
 using google::scp::cpio::Cpio;
 using google::scp::cpio::CpioOptions;
-using google::scp::cpio::GetEnvironmentRequest;
-using google::scp::cpio::GetEnvironmentResponse;
 using google::scp::cpio::GetInstanceIdRequest;
 using google::scp::cpio::GetInstanceIdResponse;
 using google::scp::cpio::GetParameterRequest;
 using google::scp::cpio::GetParameterResponse;
+using google::scp::cpio::GetTagRequest;
+using google::scp::cpio::GetTagResponse;
 using google::scp::cpio::LogOption;
 using std::atomic;
 using std::make_shared;
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
   }
 
   ConfigClientOptions config_client_options;
-  config_client_options.environment_tag = kEnvTag;
+  config_client_options.tag_names.emplace_back(kEnvTag);
   config_client_options.parameter_names.emplace_back(kTestParameterName);
   auto config_client = ConfigClientFactory::Create(move(config_client_options));
   result = config_client->Init();
@@ -109,20 +109,20 @@ int main(int argc, char* argv[]) {
             std::chrono::milliseconds(10000));
 
   finished = false;
-  result = config_client->GetEnvironment(
-      GetEnvironmentRequest(),
-      [&](const ExecutionResult result, GetEnvironmentResponse response) {
+  result = config_client->GetTag(
+      GetTagRequest(),
+      [&](const ExecutionResult result, GetTagResponse response) {
         if (!result.Successful()) {
-          std::cout << "GetEnvironment failed: "
-                    << GetErrorMessage(result.status_code) << std::endl;
+          std::cout << "GetTag failed: " << GetErrorMessage(result.status_code)
+                    << std::endl;
         } else {
-          std::cout << "GetEnvironment succeeded, and enrironment is: "
-                    << response.environment_name << std::endl;
+          std::cout << "GetTag succeeded, and the tag is: "
+                    << response.tag_value << std::endl;
         }
         finished = true;
       });
   if (!result.Successful()) {
-    std::cout << "GetEnvironment failed immediately: "
+    std::cout << "GetTag failed immediately: "
               << GetErrorMessage(result.status_code) << std::endl;
   }
   WaitUntil([&finished]() { return finished.load(); },

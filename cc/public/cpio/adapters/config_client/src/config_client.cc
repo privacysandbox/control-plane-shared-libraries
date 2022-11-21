@@ -37,19 +37,19 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::GetPublicErrorCode;
 using google::scp::core::errors::SC_CONFIG_CLIENT_INVALID_PARAMETER_NAME;
-using google::scp::cpio::GetEnvironmentRequest;
-using google::scp::cpio::GetEnvironmentResponse;
 using google::scp::cpio::GetInstanceIdRequest;
 using google::scp::cpio::GetInstanceIdResponse;
 using google::scp::cpio::GetParameterRequest;
 using google::scp::cpio::GetParameterResponse;
+using google::scp::cpio::GetTagRequest;
+using google::scp::cpio::GetTagResponse;
 using google::scp::cpio::client_providers::ConfigClientProviderFactory;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoRequest;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoResponse;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
 using google::scp::cpio::config_client::GetInstanceIdProtoResponse;
 using google::scp::cpio::config_client::GetParameterProtoRequest;
 using google::scp::cpio::config_client::GetParameterProtoResponse;
+using google::scp::cpio::config_client::GetTagProtoRequest;
+using google::scp::cpio::config_client::GetTagProtoResponse;
 using std::bind;
 using std::make_shared;
 using std::make_unique;
@@ -102,9 +102,9 @@ void ConfigClient::OnGetParameterCallback(
     AsyncContext<GetParameterProtoRequest, GetParameterProtoResponse>&
         get_parameter_context) noexcept {
   if (!get_parameter_context.result.Successful()) {
-    ERROR_CONTEXT(kConfigClient, get_parameter_context,
-                  get_parameter_context.result,
-                  "Failed to get parameter callback.");
+    ERROR_CONTEXT(
+        kConfigClient, get_parameter_context, get_parameter_context.result,
+        "Failed to get parameter for %s.", request.parameter_name.c_str());
     uint64_t public_error_code =
         GetPublicErrorCode(get_parameter_context.result.status_code);
     get_parameter_context.result.status_code = public_error_code;
@@ -123,7 +123,7 @@ core::ExecutionResult ConfigClient::GetParameter(
     auto execution_result =
         FailureExecutionResult(SC_CONFIG_CLIENT_INVALID_PARAMETER_NAME);
     ERROR(kConfigClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get parameter.");
+          "Failed to get parameter for %s.", request.parameter_name.c_str());
     callback(execution_result, GetParameterResponse());
     return execution_result;
   }
@@ -140,38 +140,34 @@ core::ExecutionResult ConfigClient::GetParameter(
   return config_client_provider_->GetParameter(get_parameter_context);
 }
 
-void ConfigClient::OnGetEnvironmentCallback(
-    const GetEnvironmentRequest& request,
-    Callback<GetEnvironmentResponse>& callback,
-    AsyncContext<GetEnvironmentNameProtoRequest,
-                 GetEnvironmentNameProtoResponse>&
-        get_environment_context) noexcept {
-  if (!get_environment_context.result.Successful()) {
-    ERROR_CONTEXT(kConfigClient, get_environment_context,
-                  get_environment_context.result,
-                  "Failed get environment name callback.");
+void ConfigClient::OnGetTagCallback(
+    const GetTagRequest& request, Callback<GetTagResponse>& callback,
+    AsyncContext<GetTagProtoRequest, GetTagProtoResponse>&
+        get_tag_context) noexcept {
+  if (!get_tag_context.result.Successful()) {
+    ERROR_CONTEXT(kConfigClient, get_tag_context, get_tag_context.result,
+                  "Failed to get tag for %s", request.tag_name.c_str());
     uint64_t public_error_code =
-        GetPublicErrorCode(get_environment_context.result.status_code);
-    get_environment_context.result.status_code = public_error_code;
-    callback(get_environment_context.result, GetEnvironmentResponse());
+        GetPublicErrorCode(get_tag_context.result.status_code);
+    get_tag_context.result.status_code = public_error_code;
+    callback(get_tag_context.result, GetTagResponse());
     return;
   }
-  GetEnvironmentResponse response;
-  response.environment_name =
-      get_environment_context.response->environment_name();
-  callback(get_environment_context.result, std::move(response));
+  GetTagResponse response;
+  response.tag_value = get_tag_context.response->value();
+  callback(get_tag_context.result, std::move(response));
 }
 
-core::ExecutionResult ConfigClient::GetEnvironment(
-    GetEnvironmentRequest request,
-    Callback<GetEnvironmentResponse> callback) noexcept {
-  AsyncContext<GetEnvironmentNameProtoRequest, GetEnvironmentNameProtoResponse>
-      get_environment_context(make_shared<GetEnvironmentNameProtoRequest>(),
-                              bind(&ConfigClient::OnGetEnvironmentCallback,
-                                   this, request, callback, _1),
-                              kZeroUuid);
+core::ExecutionResult ConfigClient::GetTag(
+    GetTagRequest request, Callback<GetTagResponse> callback) noexcept {
+  auto proto_request = make_shared<GetTagProtoRequest>();
+  proto_request->set_tag_name(request.tag_name);
+  AsyncContext<GetTagProtoRequest, GetTagProtoResponse> get_tag_context(
+      move(proto_request),
+      bind(&ConfigClient::OnGetTagCallback, this, request, callback, _1),
+      kZeroUuid);
 
-  return config_client_provider_->GetEnvironmentName(get_environment_context);
+  return config_client_provider_->GetTag(get_tag_context);
 }
 
 void ConfigClient::OnGetInstanceIdCallback(
@@ -181,8 +177,7 @@ void ConfigClient::OnGetInstanceIdCallback(
         get_instance_id_context) noexcept {
   if (!get_instance_id_context.result.Successful()) {
     ERROR_CONTEXT(kConfigClient, get_instance_id_context,
-                  get_instance_id_context.result,
-                  "Failed to get instance ID callback.");
+                  get_instance_id_context.result, "Failed to get instance ID.");
     uint64_t public_error_code =
         GetPublicErrorCode(get_instance_id_context.result.status_code);
     get_instance_id_context.result.status_code = public_error_code;

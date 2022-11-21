@@ -31,16 +31,16 @@ using Aws::SDKOptions;
 using Aws::ShutdownAPI;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
-using google::scp::core::SuccessExecutionResult;
 using google::scp::core::GetErrorMessage;
+using google::scp::core::SuccessExecutionResult;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::ConfigClientFactory;
 using google::scp::cpio::ConfigClientInterface;
 using google::scp::cpio::ConfigClientOptions;
-using google::scp::cpio::GetEnvironmentRequest;
-using google::scp::cpio::GetEnvironmentResponse;
 using google::scp::cpio::GetInstanceIdRequest;
 using google::scp::cpio::GetInstanceIdResponse;
+using google::scp::cpio::GetTagRequest;
+using google::scp::cpio::GetTagResponse;
 using google::scp::cpio::LocalCpioOptions;
 using google::scp::cpio::LocalLibCpio;
 using google::scp::cpio::LogOption;
@@ -56,8 +56,6 @@ using std::to_string;
 using std::unique_ptr;
 
 static constexpr char kRegion[] = "us-east-1";
-static constexpr char kEnvTag[] = "environment";
-static constexpr char kEnvName[] = "local";
 static constexpr char kInstanceId[] = "i-1234";
 
 int main(int argc, char* argv[]) {
@@ -66,7 +64,6 @@ int main(int argc, char* argv[]) {
   LocalCpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
   cpio_options.region = kRegion;
-  cpio_options.environment_name = kEnvName;
   cpio_options.instance_id = kInstanceId;
   auto result = LocalLibCpio::InitCpio(cpio_options);
   if (!result.Successful()) {
@@ -75,7 +72,6 @@ int main(int argc, char* argv[]) {
   }
 
   ConfigClientOptions config_client_options;
-  config_client_options.environment_tag = kEnvTag;
   auto config_client = ConfigClientFactory::Create(move(config_client_options));
   result = config_client->Init();
   if (!result.Successful()) {
@@ -105,26 +101,6 @@ int main(int argc, char* argv[]) {
       });
   if (!result.Successful()) {
     std::cout << "GetInstanceId failed immediately: "
-              << GetErrorMessage(result.status_code) << std::endl;
-  }
-  WaitUntil([&finished]() { return finished.load(); },
-            std::chrono::milliseconds(10000));
-
-  finished = false;
-  result = config_client->GetEnvironment(
-      GetEnvironmentRequest(),
-      [&](const ExecutionResult result, GetEnvironmentResponse response) {
-        if (!result.Successful()) {
-          std::cout << "GetEnvironment failed: "
-                    << GetErrorMessage(result.status_code) << std::endl;
-        } else {
-          std::cout << "GetEnvironment succeeded, and enrironment is: "
-                    << response.environment_name << std::endl;
-        }
-        finished = true;
-      });
-  if (!result.Successful()) {
-    std::cout << "GetEnvironment failed immediately: "
               << GetErrorMessage(result.status_code) << std::endl;
   }
   WaitUntil([&finished]() { return finished.load(); },

@@ -14,29 +14,22 @@
 
 syntax = "proto3";
 
-package google.scp.cpio.config_client;
+package google.scp.cpio.public_key_client;
 
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
 
-message GetParameterProtoRequest {
-  string parameter_name = 1;
+message ListPublicKeysProtoRequest {}
+
+message ListPublicKeysProtoResponse {
+  repeated PublicKeyProto public_keys = 1;
+  // The expiration time of the public key.
+  int64 expiration_time_in_ms = 4;
 }
 
-message GetParameterProtoResponse {
-  string value = 1;
-}
-
-message GetTagProtoRequest {
-  string tag_name = 1;
-}
-
-message GetTagProtoResponse {
-  string value = 1;
-}
-
-message GetInstanceIdProtoRequest {}
-
-message GetInstanceIdProtoResponse {
-  string instance_id = 1;
-}
+message PublicKeyProto {
+  // The id of the public key.
+  string key_id = 1;
+  // The value of the public key.
+  string public_key = 2;
+};

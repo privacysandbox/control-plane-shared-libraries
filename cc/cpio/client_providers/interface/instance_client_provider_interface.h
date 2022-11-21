@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
@@ -29,16 +31,17 @@ namespace google::scp::cpio::client_providers {
 class InstanceClientProviderInterface : public core::ServiceInterface {
  public:
   /**
-   * @brief Fetches the environment name for the given environment tag and
+   * @brief Fetches the tag values for the given tag names and
    * instance ID.
    *
-   * @param env_name returned environment name.
-   * @param env_tag the given environment tag.
+   * @param tag_values_map returned tag values.
+   * @param tag_names the given tag names.
    * @param instance_id the given instance ID.
    * @return core::ExecutionResult execution result.
    */
-  virtual core::ExecutionResult GetEnvironmentName(
-      std::string& env_name, const std::string& env_tag,
+  virtual core::ExecutionResult GetTags(
+      std::map<std::string, std::string>& tag_values_map,
+      const std::vector<std::string>& tag_names,
       const std::string& instance_id) noexcept = 0;
 
   /**

@@ -43,16 +43,19 @@ struct GetParameterResponse {
   ParameterValue parameter_value;
 };
 
-/// Request for GetEnvironment.
-struct GetEnvironmentRequest {};
-
-/// Response for GetEnvironment.
-struct GetEnvironmentResponse {
+/// Request for GetTag.
+struct GetTagRequest {
   /**
-   * @brief The environment name for the environment tag specicied in
-   * ConfigClientOptions.
+   * @brief It should be one of the list of tag_names passed in the
+   * option, otherwise, not found error will be returned.
    */
-  EnvironmentName environment_name;
+  TagName tag_name;
+};
+
+/// Response for GetTag.
+struct GetTagResponse {
+  /// The value of the tag for the given name.
+  TagValue tag_value;
 };
 
 /// Request for GetInstanceId.
@@ -87,16 +90,15 @@ class ConfigClientInterface : public core::ServiceInterface {
       Callback<GetParameterResponse> callback) noexcept = 0;
 
   /**
-   * @brief Gets environment name.
+   * @brief Gets tag value.
    *
    * @param request request for the call.
    * @param callback callback will be triggered when the call completes
    * including when the call fails.
    * @return core::ExecutionResult scheduling result returned synchronously.
    */
-  virtual core::ExecutionResult GetEnvironment(
-      GetEnvironmentRequest request,
-      Callback<GetEnvironmentResponse> callback) noexcept = 0;
+  virtual core::ExecutionResult GetTag(
+      GetTagRequest request, Callback<GetTagResponse> callback) noexcept = 0;
 
   /**
    * @brief Gets the instance ID the code is running on.

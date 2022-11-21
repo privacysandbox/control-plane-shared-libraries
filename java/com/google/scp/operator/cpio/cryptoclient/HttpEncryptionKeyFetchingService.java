@@ -38,7 +38,7 @@ public final class HttpEncryptionKeyFetchingService implements EncryptionKeyFetc
   private static final int REQUEST_TIMEOUT_DURATION = Duration.ofMinutes(1).toMillisPart();
   private final HttpClient httpClient;
   private final String encryptionKeyServiceBaseUrl;
-  private final Logger logger = LoggerFactory.getLogger(HttpPrivateKeyFetchingService.class);
+  private final Logger logger = LoggerFactory.getLogger(HttpEncryptionKeyFetchingService.class);
 
   /** Creates a new instance of the {@code HttpPrivateKeyFetchingService} class. */
   @Inject

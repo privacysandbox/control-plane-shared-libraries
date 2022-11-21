@@ -16,19 +16,22 @@
 
 #include "test_instance_client_provider.h"
 
+#include <map>
 #include <string>
+#include <vector>
 
 #include "public/core/interface/execution_result.h"
 
 using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using std::map;
 using std::string;
+using std::vector;
 
 static constexpr char kTestInstanceId[] = "TestInstanceId";
 static constexpr char kTestRegion[] = "TestRegion";
 static constexpr char kTestPrivateIp[] = "1.1.1.1";
 static constexpr char kTestPublicIp[] = "2.2.2.2";
-static constexpr char kTestEnvName[] = "TestEnv";
 
 namespace google::scp::cpio::client_providers {
 ExecutionResult TestInstanceClientProvider::Init() noexcept {
@@ -66,10 +69,9 @@ ExecutionResult TestInstanceClientProvider::GetInstancePrivateIpv4Address(
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetEnvironmentName(
-    string& env_name, const string& env_tag,
+ExecutionResult TestInstanceClientProvider::GetTags(
+    map<string, string>& tag_values_map, const vector<string>& tag_names,
     const string& instance_id) noexcept {
-  env_name = kTestEnvName;
   return SuccessExecutionResult();
 }
 }  // namespace google::scp::cpio::client_providers

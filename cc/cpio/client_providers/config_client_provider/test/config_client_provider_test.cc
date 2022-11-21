@@ -30,6 +30,7 @@
 #include "core/test/utils/conditional_wait.h"
 #include "cpio/client_providers/config_client_provider/aws/src/aws_config_client_provider.h"
 #include "cpio/client_providers/config_client_provider/mock/mock_config_client_provider_with_overrides.h"
+#include "cpio/client_providers/config_client_provider/src/error_codes.h"
 #include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
 #include "cpio/common/aws/src/error_codes.h"
 #include "cpio/proto/config_client.pb.h"
@@ -47,16 +48,17 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
     SC_AWS_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
+using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND;
 using google::scp::core::errors::SC_MESSAGE_ROUTER_REQUEST_ALREADY_SUBSCRIBED;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::mock::
     MockConfigClientProviderWithOverrides;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoRequest;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoResponse;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
 using google::scp::cpio::config_client::GetInstanceIdProtoResponse;
 using google::scp::cpio::config_client::GetParameterProtoRequest;
 using google::scp::cpio::config_client::GetParameterProtoResponse;
+using google::scp::cpio::config_client::GetTagProtoRequest;
+using google::scp::cpio::config_client::GetTagProtoResponse;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
@@ -67,7 +69,8 @@ using std::unique_ptr;
 using std::vector;
 
 static constexpr char kInstanceId[] = "instance_id";
-static constexpr char kEnvName[] = "env_name";
+static constexpr char kTagName[] = "tag_name";
+static constexpr char kTagValue[] = "tag_value";
 
 namespace google::scp::cpio::client_providers::test {
 class ConfigClientProviderTest : public ::testing::Test {
@@ -89,7 +92,8 @@ class ConfigClientProviderTest : public ::testing::Test {
         config_client_options_, message_router_);
 
     client_->GetInstanceClientProvider()->instance_id_mock = kInstanceId;
-    client_->GetInstanceClientProvider()->environment_name_mock = kEnvName;
+    client_->GetInstanceClientProvider()->tag_values_mock = {
+        {kTagName, kTagValue}};
     EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   }
 
@@ -105,8 +109,6 @@ class ConfigClientProviderTest : public ::testing::Test {
 TEST_F(ConfigClientProviderTest, EmptyMessageRouter) {
   client_ = make_unique<MockConfigClientProviderWithOverrides>(
       config_client_options_, nullptr);
-  client_->GetInstanceClientProvider()->instance_id_mock = kInstanceId;
-  client_->GetInstanceClientProvider()->environment_name_mock = kEnvName;
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
   EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
@@ -147,44 +149,52 @@ TEST_F(ConfigClientProviderTest, SucceededToFetchInstanceId) {
   WaitUntil([&]() { return condition.load(); });
 }
 
-TEST_F(ConfigClientProviderTest, FailedToFetchEnvName) {
+TEST_F(ConfigClientProviderTest, FailedToFetchTag) {
   FailureExecutionResult result(SC_AWS_INTERNAL_SERVICE_ERROR);
-  client_->GetInstanceClientProvider()->get_environment_name_result_mock =
-      result;
+  client_->GetInstanceClientProvider()->get_tags_result_mock = result;
 
+  EXPECT_EQ(client_->Run(),
+            FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+}
+
+TEST_F(ConfigClientProviderTest, SucceededToFetchTag) {
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
   atomic<bool> condition = false;
-  AsyncContext<GetEnvironmentNameProtoRequest, GetEnvironmentNameProtoResponse>
-      context(make_shared<GetEnvironmentNameProtoRequest>(),
-              [&](AsyncContext<GetEnvironmentNameProtoRequest,
-                               GetEnvironmentNameProtoResponse>& context) {
-                EXPECT_EQ(context.result, result);
-                condition = true;
-              });
-  EXPECT_EQ(client_->GetEnvironmentName(context), SuccessExecutionResult());
+  auto request = make_shared<GetTagProtoRequest>();
+  request->set_tag_name(kTagName);
+  AsyncContext<GetTagProtoRequest, GetTagProtoResponse> context(
+      move(request),
+      [&](AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) {
+        EXPECT_EQ(context.result, SuccessExecutionResult());
+        EXPECT_EQ(context.response->value(), kTagValue);
+        condition = true;
+      });
+
+  EXPECT_EQ(client_->GetTag(context), SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
 }
 
-TEST_F(ConfigClientProviderTest, SucceededToFetchEnvName) {
+TEST_F(ConfigClientProviderTest, TagNotFound) {
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
   atomic<bool> condition = false;
-  AsyncContext<GetEnvironmentNameProtoRequest, GetEnvironmentNameProtoResponse>
-      context(make_shared<GetEnvironmentNameProtoRequest>(),
-              [&](AsyncContext<GetEnvironmentNameProtoRequest,
-                               GetEnvironmentNameProtoResponse>& context) {
-                EXPECT_EQ(context.result, SuccessExecutionResult());
-                EXPECT_EQ(context.response->environment_name(), kEnvName);
-                condition = true;
-              });
+  auto request = make_shared<GetTagProtoRequest>();
+  request->set_tag_name("tag_2");
+  AsyncContext<GetTagProtoRequest, GetTagProtoResponse> context(
+      move(request),
+      [&](AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) {
+        EXPECT_EQ(context.result, FailureExecutionResult(
+                                      SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND));
+        condition = true;
+      });
 
-  EXPECT_EQ(client_->GetEnvironmentName(context), SuccessExecutionResult());
+  EXPECT_EQ(client_->GetTag(context), SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
 }
 
-TEST_F(ConfigClientProviderTest, FailedToSubscribeGetEnvironmentName) {
-  GetEnvironmentNameProtoRequest get_env_name_request;
+TEST_F(ConfigClientProviderTest, FailedToSubscribeGetTag) {
+  GetTagProtoRequest get_env_name_request;
   Any any_request;
   any_request.PackFrom(get_env_name_request);
   message_router_->Subscribe(any_request.type_url(),

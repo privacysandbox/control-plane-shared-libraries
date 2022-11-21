@@ -1,9 +1,9 @@
 # ConfigClient
 
 Responsible for fetching pre-stored application data or cloud metadata.  
-In AWS, the application data should be pre-stored in ParameterStore and surfaced
-through GetParameter function. Environment name should be pre-tagged in EC2 instance and
-surfaced through GetEnvironment function.
+In AWS, the application data could be pre-stored in ParameterStore and surfaced
+through GetParameter function. EC2 istances can also be used to pre-create tags which are
+surfaced through GetTag function.
 
 # Build
 

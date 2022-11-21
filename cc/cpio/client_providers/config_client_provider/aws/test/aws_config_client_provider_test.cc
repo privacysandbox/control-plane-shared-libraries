@@ -55,8 +55,6 @@ using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::mock::
     MockAwsConfigClientProviderWithOverrides;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoRequest;
-using google::scp::cpio::config_client::GetEnvironmentNameProtoResponse;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
 using google::scp::cpio::config_client::GetInstanceIdProtoResponse;
 using google::scp::cpio::config_client::GetParameterProtoRequest;
@@ -156,28 +154,6 @@ TEST_F(AwsConfigClientProviderTest, SucceededToFetchInstanceId) {
       });
 
   EXPECT_EQ(client_->GetInstanceId(context), SuccessExecutionResult());
-  WaitUntil([&]() { return condition.load(); });
-}
-
-TEST_F(AwsConfigClientProviderTest, SucceededToFetchEnvName) {
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  string name = "env_name";
-  client_->GetInstanceClientProvider()->environment_name_mock = name;
-  MockParameters();
-
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
-  atomic<bool> condition = false;
-  AsyncContext<GetEnvironmentNameProtoRequest, GetEnvironmentNameProtoResponse>
-      context(make_shared<GetEnvironmentNameProtoRequest>(),
-              [&](AsyncContext<GetEnvironmentNameProtoRequest,
-                               GetEnvironmentNameProtoResponse>& context) {
-                EXPECT_EQ(context.result, SuccessExecutionResult());
-                EXPECT_EQ(context.response->environment_name(), name);
-                condition = true;
-              });
-
-  EXPECT_EQ(client_->GetEnvironmentName(context), SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
 }
 

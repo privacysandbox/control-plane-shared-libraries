@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 
@@ -60,17 +62,17 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  std::string environment_name_mock;
-  core::ExecutionResult get_environment_name_result_mock =
-      core::SuccessExecutionResult();
+  std::map<std::string, std::string> tag_values_mock;
+  core::ExecutionResult get_tags_result_mock = core::SuccessExecutionResult();
 
-  core::ExecutionResult GetEnvironmentName(
-      std::string& name, const std::string& environment_tag,
+  core::ExecutionResult GetTags(
+      std::map<std::string, std::string>& tag_values_map,
+      const std::vector<std::string>& tag_names,
       const std::string& instance_id) noexcept override {
-    if (get_environment_name_result_mock != core::SuccessExecutionResult()) {
-      return get_environment_name_result_mock;
+    if (get_tags_result_mock != core::SuccessExecutionResult()) {
+      return get_tags_result_mock;
     }
-    name = environment_name_mock;
+    tag_values_map = tag_values_mock;
     return core::SuccessExecutionResult();
   }
 

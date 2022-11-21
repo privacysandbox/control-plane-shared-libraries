@@ -43,14 +43,14 @@ class ConfigClientProviderInterface : public core::ServiceInterface {
           context) noexcept = 0;
 
   /**
-   * @brief Fetches the environment name.
+   * @brief Fetches the tag.
    *
    * @param context context of the operation.
    * @return ExecutionResult result of the operation.
    */
-  virtual core::ExecutionResult GetEnvironmentName(
-      core::AsyncContext<config_client::GetEnvironmentNameProtoRequest,
-                         config_client::GetEnvironmentNameProtoResponse>&
+  virtual core::ExecutionResult GetTag(
+      core::AsyncContext<config_client::GetTagProtoRequest,
+                         config_client::GetTagProtoResponse>&
           context) noexcept = 0;
 
   /**

@@ -16,13 +16,17 @@
 
 #include "local_instance_client_provider.h"
 
+#include <map>
 #include <string>
+#include <vector>
 
 #include "public/core/interface/execution_result.h"
 
 using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using std::map;
 using std::string;
+using std::vector;
 
 namespace google::scp::cpio::client_providers {
 ExecutionResult LocalInstanceClientProvider::Init() noexcept {
@@ -61,10 +65,9 @@ ExecutionResult LocalInstanceClientProvider::GetInstancePrivateIpv4Address(
   return SuccessExecutionResult();
 }
 
-ExecutionResult LocalInstanceClientProvider::GetEnvironmentName(
-    string& env_name, const string& env_tag,
+ExecutionResult LocalInstanceClientProvider::GetTags(
+    map<string, string>& tag_values_map, const vector<string>& tag_names,
     const string& instance_id) noexcept {
-  env_name = local_cpio_options_->environment_name;
   return SuccessExecutionResult();
 }
 }  // namespace google::scp::cpio::client_providers

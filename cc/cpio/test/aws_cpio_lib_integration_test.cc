@@ -212,7 +212,7 @@ TEST_F(CpioIntegrationTest, MetricClientBatchRecordingEnabled) {
   }
 }
 
-// GetInstanceId and GetEnvironment cannot be tested in Localstack.
+// GetInstanceId and GetTag cannot be tested in Localstack.
 TEST_F(CpioIntegrationTest, ConfigClientGetParameterSuccessfully) {
   CreateConfigClient();
 
