@@ -109,8 +109,10 @@ int main(int argc, char* argv[]) {
             std::chrono::milliseconds(10000));
 
   finished = false;
+  GetTagRequest get_tag_request;
+  get_tag_request.tag_name = kEnvTag;
   result = config_client->GetTag(
-      GetTagRequest(),
+      move(get_tag_request),
       [&](const ExecutionResult result, GetTagResponse response) {
         if (!result.Successful()) {
           std::cout << "GetTag failed: " << GetErrorMessage(result.status_code)

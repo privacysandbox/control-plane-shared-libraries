@@ -16,6 +16,10 @@
 
 #include "cloud_watch_error_converter.h"
 
+#include <string>
+
+#include "core/common/global_logger/src/global_logger.h"
+#include "core/common/uuid/src/uuid.h"
 #include "cpio/common/aws/src/error_codes.h"
 
 #include "error_codes.h"
@@ -23,6 +27,7 @@
 using Aws::CloudWatch::CloudWatchErrors;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
+using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
 using google::scp::core::errors::SC_AWS_INVALID_CREDENTIALS;
 using google::scp::core::errors::SC_AWS_INVALID_REQUEST;
@@ -32,30 +37,45 @@ using google::scp::core::errors::SC_AWS_REQUEST_LIMIT_REACHED;
 using google::scp::core::errors::SC_AWS_SERVICE_UNAVAILABLE;
 using google::scp::core::errors::SC_AWS_VALIDATION_FAILED;
 
+/// Filename for logging errors
+static constexpr char kCloudWatchErrorConverter[] = "CloudWatchErrorConverter";
+
 namespace google::scp::cpio::client_providers {
 ExecutionResult CloudWatchErrorConverter::ConvertCloudWatchError(
-    CloudWatchErrors cloud_watch_error) {
+    CloudWatchErrors cloud_watch_error, const std::string& error_message) {
+  auto failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
   switch (cloud_watch_error) {
     case CloudWatchErrors::ACCESS_DENIED:
     // Gets this error when no credential supplied.
     case CloudWatchErrors::MISSING_AUTHENTICATION_TOKEN:
-      return FailureExecutionResult(SC_AWS_INVALID_CREDENTIALS);
+      failure = FailureExecutionResult(SC_AWS_INVALID_CREDENTIALS);
+      break;
     case CloudWatchErrors::MISSING_REQUIRED_PARAMETER:
     case CloudWatchErrors::INVALID_PARAMETER_COMBINATION:
     case CloudWatchErrors::INVALID_PARAMETER_VALUE:
-      return core::FailureExecutionResult(core::errors::SC_AWS_INVALID_REQUEST);
+      failure =
+          core::FailureExecutionResult(core::errors::SC_AWS_INVALID_REQUEST);
+      break;
     case CloudWatchErrors::SERVICE_UNAVAILABLE:
     case CloudWatchErrors::NETWORK_CONNECTION:
-      return FailureExecutionResult(SC_AWS_SERVICE_UNAVAILABLE);
+      failure = FailureExecutionResult(SC_AWS_SERVICE_UNAVAILABLE);
+      break;
     case CloudWatchErrors::LIMIT_EXCEEDED:
-      return core::FailureExecutionResult(
+      failure = core::FailureExecutionResult(
           core::errors::
               SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_LIMIT_REACHED_PER_REQUEST);
+      break;
     case CloudWatchErrors::THROTTLING:
-      return FailureExecutionResult(SC_AWS_REQUEST_LIMIT_REACHED);
+      failure = FailureExecutionResult(SC_AWS_REQUEST_LIMIT_REACHED);
+      break;
     case CloudWatchErrors::INTERNAL_FAILURE:
     default:
-      return FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
+      failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
   }
+
+  ERROR(kCloudWatchErrorConverter, kZeroUuid, kZeroUuid, failure,
+        "AWS cloud service error: code is %d, and error message is %s.",
+        cloud_watch_error, error_message.c_str());
+  return failure;
 }
 }  // namespace google::scp::cpio::client_providers

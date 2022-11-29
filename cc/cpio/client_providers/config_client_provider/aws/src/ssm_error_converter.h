@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <string>
+
 #include <aws/ec2/EC2Client.h>
 #include <aws/ssm/SSMClient.h>
 
@@ -33,6 +35,6 @@ class SSMErrorConverter {
    * @return core::FailureExecutionResult The converted result of the operation.
    */
   static core::FailureExecutionResult ConvertSSMError(
-      const Aws::SSM::SSMErrors& error);
+      const Aws::SSM::SSMErrors& error, const std::string& error_message);
 };
 }  // namespace google::scp::cpio::client_providers

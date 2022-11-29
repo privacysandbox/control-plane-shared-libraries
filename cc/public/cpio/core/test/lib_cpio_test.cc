@@ -87,15 +87,14 @@ TEST_F(LibCpioTest, StopSuccessfully) {
   CpioOptions options;
   options.log_option = LogOption::kSysLog;
   EXPECT_EQ(Cpio::InitCpio(options), SuccessExecutionResult());
-  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
-  EXPECT_EQ(
-      GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor),
-      SuccessExecutionResult());
+  shared_ptr<AsyncExecutorInterface> async_executor;
+  EXPECT_EQ(GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor),
+            SuccessExecutionResult());
   EXPECT_EQ(Cpio::ShutdownCpio(options), SuccessExecutionResult());
 
   // AsyncExecutor already stopped in ShutdownCpio, and the second stop will
   // fail.
-  EXPECT_EQ(cpu_async_executor->Stop(),
+  EXPECT_EQ(async_executor->Stop(),
             FailureExecutionResult(SC_ASYNC_EXECUTOR_NOT_RUNNING));
 }
 }  // namespace google::scp::cpio::test

@@ -27,6 +27,7 @@ using Aws::SDKOptions;
 using Aws::ShutdownAPI;
 using google::scp::core::AsyncExecutor;
 using google::scp::core::AsyncExecutorInterface;
+using google::scp::core::HttpClientInterface;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::cpio::client_providers::mock::
     MockLibCpioProviderWithOverrides;
@@ -65,16 +66,31 @@ TEST_F(LibCpioProviderTest, GetInstanceClientProvider) {
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioProviderTest, CpuAsyncExecutorNotCreatedInInit) {
+TEST_F(LibCpioProviderTest, AsyncExecutorNotCreatedInInit) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
-  EXPECT_THAT(lib_cpio_provider->GetCpuAsyncExecutorMember(), IsNull());
+  EXPECT_THAT(lib_cpio_provider->GetAsyncExecutorMember(), IsNull());
+  EXPECT_THAT(lib_cpio_provider->GetHttpClientMember(), IsNull());
 
-  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
-  EXPECT_EQ(lib_cpio_provider->GetCpuAsyncExecutor(cpu_async_executor),
+  shared_ptr<AsyncExecutorInterface> async_executor;
+  EXPECT_EQ(lib_cpio_provider->GetAsyncExecutor(async_executor),
             SuccessExecutionResult());
-  EXPECT_THAT(cpu_async_executor, NotNull());
+  EXPECT_THAT(async_executor, NotNull());
+
+  EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
+}
+
+TEST_F(LibCpioProviderTest, HttpClientNotCreatedInInit) {
+  auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
+  EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
+  EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
+  EXPECT_THAT(lib_cpio_provider->GetHttpClientMember(), IsNull());
+
+  shared_ptr<HttpClientInterface> http_client;
+  EXPECT_EQ(lib_cpio_provider->GetHttpClient(http_client),
+            SuccessExecutionResult());
+  EXPECT_THAT(http_client, NotNull());
 
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }

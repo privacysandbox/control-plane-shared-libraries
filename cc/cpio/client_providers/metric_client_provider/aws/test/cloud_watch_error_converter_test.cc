@@ -61,8 +61,8 @@ TEST(CloudWatchErrorConverterTest, ConvertCloudWatchError) {
     AWSError<CloudWatchErrors> error(aws_error, false);
 
     auto cpio_error = FailureExecutionResult(error_status_code);
-    auto converted_error =
-        CloudWatchErrorConverter::ConvertCloudWatchError(error.GetErrorType());
+    auto converted_error = CloudWatchErrorConverter::ConvertCloudWatchError(
+        error.GetErrorType(), "error");
     EXPECT_EQ(cpio_error, converted_error);
   }
 }

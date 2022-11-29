@@ -51,6 +51,8 @@ using google::scp::core::errors::
 using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_RESOURCE_NAME;
 using google::scp::core::errors::
+    SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_TAG_NAME;
+using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_MULTIPLE_TAG_VALUES_FOUND;
 using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_NOT_ALL_TAG_VALUES_FOUND;
@@ -137,6 +139,16 @@ ExecutionResult AwsInstanceClientProvider::GetTags(
     return SuccessExecutionResult();
   }
 
+  for (auto tag_name : tag_names) {
+    if (tag_name.empty()) {
+      auto execution_result = FailureExecutionResult(
+          SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_TAG_NAME);
+      ERROR(kAwsInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
+            "Failed to get tag.");
+      return execution_result;
+    }
+  }
+
   if (instance_id.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_INSTANCE_ID);
@@ -163,7 +175,8 @@ ExecutionResult AwsInstanceClientProvider::GetTags(
 
   if (!outcome.IsSuccess()) {
     auto error_type = outcome.GetError().GetErrorType();
-    return EC2ErrorConverter::ConvertEC2Error(error_type);
+    return EC2ErrorConverter::ConvertEC2Error(error_type,
+                                              outcome.GetError().GetMessage());
   }
 
   if (outcome.GetResult().GetTags().size() < tag_names.size()) {

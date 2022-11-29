@@ -20,6 +20,7 @@
 
 #include "core/async_executor/src/async_executor.h"
 #include "core/interface/async_executor_interface.h"
+#include "core/interface/http_client_interface.h"
 #include "core/interface/message_router_interface.h"
 #include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
@@ -45,9 +46,13 @@ class LibCpioProvider : public CpioProviderInterface {
                                                google::protobuf::Any>>
   GetMessageRouter() noexcept override;
 
-  core::ExecutionResult GetCpuAsyncExecutor(
-      std::shared_ptr<core::AsyncExecutorInterface>&
-          cpu_async_executor) noexcept override;
+  core::ExecutionResult GetAsyncExecutor(
+      std::shared_ptr<core::AsyncExecutorInterface>& async_executor) noexcept
+      override;
+
+  core::ExecutionResult GetHttpClient(
+      std::shared_ptr<core::HttpClientInterface>& http_client) noexcept
+      override;
 
   std::shared_ptr<InstanceClientProviderInterface>
   GetInstanceClientProvider() noexcept override;
@@ -58,8 +63,10 @@ class LibCpioProvider : public CpioProviderInterface {
                                                google::protobuf::Any>>
       message_router_;
 
-  /// Global cpu-bound thread pool.
-  std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_;
+  /// Global async executor.
+  std::shared_ptr<core::AsyncExecutorInterface> async_executor_;
+  /// Global http client.
+  std::shared_ptr<core::HttpClientInterface> http_client_;
   /// Global instance client provider to fetch cloud metadata.
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
 };

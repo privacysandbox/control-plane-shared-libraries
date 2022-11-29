@@ -67,7 +67,7 @@ TEST_F(LoggerTests, LogDebug) {
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
                          "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|Info: Message");
+                         "|32: Message");
 }
 
 TEST_F(LoggerTests, LogInfo) {
@@ -77,7 +77,7 @@ TEST_F(LoggerTests, LogInfo) {
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
                          "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|Debug: Message");
+                         "|16: Message");
 }
 
 TEST_F(LoggerTests, LogError) {
@@ -87,7 +87,7 @@ TEST_F(LoggerTests, LogError) {
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
                          "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|Error: Message");
+                         "|4: Message");
 }
 
 TEST_F(LoggerTests, LogWarning) {
@@ -98,7 +98,19 @@ TEST_F(LoggerTests, LogWarning) {
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
                          "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|Warning: Message");
+                         "|8: Message");
+}
+
+TEST_F(LoggerTests, LogWithArgs) {
+  MockLogger logger;
+
+  logger.Warning(component_name, parent_uuid, uuid, location, "Message %d %s",
+                 1, "error");
+
+  auto logs = logger.GetMessages();
+  EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
+                         "|LoggerTest|MACHINE|CLUSTER|" + location +
+                         "|8: Message 1 error");
 }
 
 TEST_F(LoggerTests, LogLevelToAndFromString) {

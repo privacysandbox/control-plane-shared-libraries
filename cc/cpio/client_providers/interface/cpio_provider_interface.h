@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "core/interface/async_executor_interface.h"
+#include "core/interface/http_client_interface.h"
 #include "core/interface/message_router_interface.h"
 #include "core/interface/service_interface.h"
 #include "core/message_router/src/message_router.h"
@@ -45,15 +46,24 @@ class CpioProviderInterface : public core::ServiceInterface {
   GetMessageRouter() noexcept = 0;
 
   /**
-   * @brief Gets the global Cpu Async Executor. Only create it when it is
+   * @brief Gets the global Async Executor. Only create it when it is
    * needed.
    *
-   * @param cpu_async_executor the Async Executor for cpu-bound tasks.
+   * @param async_executor the Async Executor.
    * @return core::ExecutionResult get result.
    */
-  virtual core::ExecutionResult GetCpuAsyncExecutor(
+  virtual core::ExecutionResult GetAsyncExecutor(
       std::shared_ptr<core::AsyncExecutorInterface>&
-          cpu_async_executor) noexcept = 0;
+          async_executor) noexcept = 0;
+
+  /**
+   * @brief Get the Http Client object. Only create it when it is needed.
+   *
+   * @param http_client
+   * @return core::ExecutionResult
+   */
+  virtual core::ExecutionResult GetHttpClient(
+      std::shared_ptr<core::HttpClientInterface>& http_client) noexcept = 0;
 
   /**
    * @brief Gets the InstanceClientProvider.

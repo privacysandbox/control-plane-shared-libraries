@@ -33,41 +33,46 @@ using google::scp::core::errors::SC_AWS_VALIDATION_FAILED;
 
 namespace google::scp::cpio::client_providers::test {
 TEST(SSMErrorConverter, SucceededToConvertHandledSSMErrors) {
-  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::VALIDATION),
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::VALIDATION, "error"),
             FailureExecutionResult(SC_AWS_VALIDATION_FAILED));
-  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::ACCESS_DENIED),
-            FailureExecutionResult(SC_AWS_INVALID_CREDENTIALS));
+  EXPECT_EQ(
+      SSMErrorConverter::ConvertSSMError(SSMErrors::ACCESS_DENIED, "error"),
+      FailureExecutionResult(SC_AWS_INVALID_CREDENTIALS));
   EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
-                SSMErrors::INVALID_PARAMETER_COMBINATION),
+                SSMErrors::INVALID_PARAMETER_COMBINATION, "error"),
             FailureExecutionResult(SC_AWS_INVALID_REQUEST));
-  EXPECT_EQ(
-      SSMErrorConverter::ConvertSSMError(SSMErrors::INVALID_QUERY_PARAMETER),
-      FailureExecutionResult(SC_AWS_INVALID_REQUEST));
-  EXPECT_EQ(
-      SSMErrorConverter::ConvertSSMError(SSMErrors::INVALID_PARAMETER_VALUE),
-      FailureExecutionResult(SC_AWS_INVALID_REQUEST));
-  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::PARAMETER_NOT_FOUND),
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
+                SSMErrors::INVALID_QUERY_PARAMETER, "error"),
+            FailureExecutionResult(SC_AWS_INVALID_REQUEST));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
+                SSMErrors::INVALID_PARAMETER_VALUE, "error"),
+            FailureExecutionResult(SC_AWS_INVALID_REQUEST));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::PARAMETER_NOT_FOUND,
+                                               "error"),
             FailureExecutionResult(
                 SC_AWS_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND));
-  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::INTERNAL_FAILURE),
-            FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
-  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::SERVICE_UNAVAILABLE),
+  EXPECT_EQ(
+      SSMErrorConverter::ConvertSSMError(SSMErrors::INTERNAL_FAILURE, "error"),
+      FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::SERVICE_UNAVAILABLE,
+                                               "error"),
             FailureExecutionResult(SC_AWS_SERVICE_UNAVAILABLE));
-  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::NETWORK_CONNECTION),
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::NETWORK_CONNECTION,
+                                               "error"),
             FailureExecutionResult(SC_AWS_SERVICE_UNAVAILABLE));
-  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::THROTTLING),
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(SSMErrors::THROTTLING, "error"),
             FailureExecutionResult(SC_AWS_REQUEST_LIMIT_REACHED));
 }
 
 TEST(SSMErrorConverter, SucceededToConvertNonHandledSSMErrors) {
-  EXPECT_EQ(
-      SSMErrorConverter::ConvertSSMError(SSMErrors::MALFORMED_QUERY_STRING),
-      FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
   EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
-                SSMErrors::UNSUPPORTED_INVENTORY_SCHEMA_VERSION),
+                SSMErrors::MALFORMED_QUERY_STRING, "error"),
             FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
   EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
-                SSMErrors::AUTOMATION_DEFINITION_VERSION_NOT_FOUND),
+                SSMErrors::UNSUPPORTED_INVENTORY_SCHEMA_VERSION, "error"),
+            FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+  EXPECT_EQ(SSMErrorConverter::ConvertSSMError(
+                SSMErrors::AUTOMATION_DEFINITION_VERSION_NOT_FOUND, "error"),
             FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
 }
 }  // namespace google::scp::cpio::client_providers::test

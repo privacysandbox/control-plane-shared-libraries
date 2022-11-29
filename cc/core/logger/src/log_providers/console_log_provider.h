@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <string>
 #include <string_view>
 
 #include "core/common/uuid/src/uuid.h"
@@ -41,5 +42,8 @@ class ConsoleLogProvider : public LogProviderInterface {
            const std::string_view& cluster_name,
            const std::string_view& location, const std::string_view& message,
            va_list args) noexcept override;
+
+ protected:
+  virtual void Print(const std::string& output) noexcept;
 };
 }  // namespace google::scp::core::logger

@@ -24,10 +24,11 @@
 
 #include "core/common/uuid/src/uuid.h"
 #include "core/logger/interface/log_provider_interface.h"
+#include "core/logger/src/log_providers/console_log_provider.h"
 #include "core/logger/src/log_utils.h"
 
 namespace google::scp::core::logger::mock {
-class MockLogProvider : public LogProviderInterface {
+class MockLogProvider : public ConsoleLogProvider {
  public:
   ExecutionResult Init() noexcept { return SuccessExecutionResult(); }
 
@@ -35,19 +36,8 @@ class MockLogProvider : public LogProviderInterface {
 
   ExecutionResult Stop() noexcept { return SuccessExecutionResult(); }
 
-  void Log(const LogLevel& level, const common::Uuid& parent_activity_id,
-           const common::Uuid& activity_id,
-           const std::string_view& component_name,
-           const std::string_view& machine_name,
-           const std::string_view& cluster_name,
-           const std::string_view& location, const std::string_view& message,
-           va_list args) noexcept override {
-    std::string text = ToString(parent_activity_id) + "|" +
-                       ToString(activity_id) + "|" + component_name.data() +
-                       "|" + machine_name.data() + "|" + cluster_name.data() +
-                       "|" + location.data() + "|" + level + ": " +
-                       message.data();
-    messages_.push_back(text);
+  void Print(const std::string& output) noexcept override {
+    messages_.push_back(output);
   }
 
   std::vector<std::string> messages_;

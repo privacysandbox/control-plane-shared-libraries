@@ -146,7 +146,7 @@ void ConfigClient::OnGetTagCallback(
         get_tag_context) noexcept {
   if (!get_tag_context.result.Successful()) {
     ERROR_CONTEXT(kConfigClient, get_tag_context, get_tag_context.result,
-                  "Failed to get tag for %s", request.tag_name.c_str());
+                  "Failed to get tag for %s.", request.tag_name.c_str());
     uint64_t public_error_code =
         GetPublicErrorCode(get_tag_context.result.status_code);
     get_tag_context.result.status_code = public_error_code;

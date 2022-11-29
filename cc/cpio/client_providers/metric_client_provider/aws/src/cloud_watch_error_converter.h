@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <string>
+
 #include <aws/monitoring/CloudWatchClient.h>
 #include <aws/monitoring/CloudWatchErrors.h>
 
@@ -34,6 +36,7 @@ class CloudWatchErrorConverter {
    * code.
    */
   static core::ExecutionResult ConvertCloudWatchError(
-      Aws::CloudWatch::CloudWatchErrors cloud_watch_error);
+      Aws::CloudWatch::CloudWatchErrors cloud_watch_error,
+      const std::string& error_message);
 };
 }  // namespace google::scp::cpio::client_providers

@@ -47,6 +47,8 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
+    SC_AWS_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME;
+using google::scp::core::errors::
     SC_AWS_CONFIG_CLIENT_PROVIDER_NOT_ALL_PARAMETERS_FOUND;
 using google::scp::core::errors::
     SC_AWS_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
@@ -126,6 +128,17 @@ ExecutionResult AwsConfigClientProvider::Stop() noexcept {
 ExecutionResult AwsConfigClientProvider::GetParameter(
     AsyncContext<GetParameterProtoRequest, GetParameterProtoResponse>&
         context) noexcept {
+  if (context.request->parameter_name().empty()) {
+    auto execution_result = FailureExecutionResult(
+        SC_AWS_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME);
+    ERROR_CONTEXT(kAwsConfigClientProvider, context, execution_result,
+                  "Failed to get the parameter value for %s.",
+                  context.request->parameter_name().c_str());
+    context.result = execution_result;
+    context.Finish();
+    return execution_result;
+  }
+
   auto response = make_shared<GetParameterProtoResponse>();
   auto result = SuccessExecutionResult();
 
@@ -159,7 +172,8 @@ ExecutionResult AwsConfigClientProvider::GetParameters(
   auto outcome = ssm_client_->GetParameters(request);
   if (!outcome.IsSuccess()) {
     auto error_type = outcome.GetError().GetErrorType();
-    return SSMErrorConverter::ConvertSSMError(error_type);
+    return SSMErrorConverter::ConvertSSMError(error_type,
+                                              outcome.GetError().GetMessage());
   }
 
   if (outcome.GetResult().GetParameters().size() != parameter_names.size()) {

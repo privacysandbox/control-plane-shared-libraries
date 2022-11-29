@@ -38,6 +38,7 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
+using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME;
 using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
 using google::scp::cpio::config_client::GetInstanceIdProtoResponse;
@@ -146,18 +147,32 @@ ExecutionResult ConfigClientProvider::GetInstanceId(
 
 ExecutionResult ConfigClientProvider::GetTag(
     AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) noexcept {
+  if (context.request->tag_name().empty()) {
+    auto execution_result =
+        FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME);
+    ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
+                  "Failed to get tag with empty tag name.");
+    context.result = execution_result;
+    context.Finish();
+    return execution_result;
+  }
+
   auto response = make_shared<GetTagProtoResponse>();
-  auto result = SuccessExecutionResult();
+  auto execution_result = SuccessExecutionResult();
 
   auto it = tag_values_map_.find(context.request->tag_name());
   if (it == tag_values_map_.end()) {
-    result = FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND);
+    execution_result =
+        FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND);
+    ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
+                  "Failed to get the tag value for %s.",
+                  context.request->tag_name().c_str());
   } else {
     response->set_value(it->second);
   }
 
   context.response = move(response);
-  context.result = result;
+  context.result = execution_result;
   context.Finish();
 
   return SuccessExecutionResult();

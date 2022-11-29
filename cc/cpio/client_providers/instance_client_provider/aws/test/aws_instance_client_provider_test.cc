@@ -49,6 +49,8 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_INSTANCE_ID;
 using google::scp::core::errors::
+    SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_TAG_NAME;
+using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_MULTIPLE_TAG_VALUES_FOUND;
 using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_PROVIDER_NOT_ALL_TAG_VALUES_FOUND;
@@ -257,6 +259,14 @@ TEST_F(AwsInstanceClientProviderTest, InstanceIdNotSpecified) {
       aws_instance_client_provider_mock_->GetTags(tag_values, kTagNames, ""),
       FailureExecutionResult(
           SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_INSTANCE_ID));
+}
+
+TEST_F(AwsInstanceClientProviderTest, InvalidTagName) {
+  map<string, string> tag_values;
+  EXPECT_EQ(
+      aws_instance_client_provider_mock_->GetTags(tag_values, {kTagName1, ""},
+                                                  kInstanceId),
+      FailureExecutionResult(SC_AWS_INSTANCE_CLIENT_PROVIDER_INVALID_TAG_NAME));
 }
 
 TEST_F(AwsInstanceClientProviderTest, FailedToFetchTags) {

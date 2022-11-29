@@ -48,6 +48,7 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
     SC_AWS_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
+using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME;
 using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND;
 using google::scp::core::errors::SC_MESSAGE_ROUTER_REQUEST_ALREADY_SUBSCRIBED;
 using google::scp::core::test::WaitUntil;
@@ -146,6 +147,25 @@ TEST_F(ConfigClientProviderTest, SucceededToFetchInstanceId) {
       });
 
   EXPECT_EQ(client_->GetInstanceId(context), SuccessExecutionResult());
+  WaitUntil([&]() { return condition.load(); });
+}
+
+TEST_F(ConfigClientProviderTest, InvalidTagName) {
+  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+
+  atomic<bool> condition = false;
+  auto request = make_shared<GetTagProtoRequest>();
+  AsyncContext<GetTagProtoRequest, GetTagProtoResponse> context(
+      move(request),
+      [&](AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) {
+        EXPECT_EQ(
+            context.result,
+            FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME));
+        condition = true;
+      });
+
+  EXPECT_EQ(client_->GetTag(context),
+            FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME));
   WaitUntil([&]() { return condition.load(); });
 }
 

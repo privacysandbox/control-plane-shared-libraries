@@ -29,5 +29,6 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/core/logger/interface:logger_interface_lib",
         "//cc/core/logger/src:logger_lib",
+        "//cc/core/logger/src/log_providers:log_providers_lib",
     ],
 )

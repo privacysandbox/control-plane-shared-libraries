@@ -28,13 +28,15 @@ namespace google::scp::cpio::client_providers {
 
 /// Request for fetching private key.
 struct PrivateKeyFetchingRequest {
+  /// The base URI of private key vending service.
+  std::shared_ptr<core::Uri> private_key_service_base_uri;
   /// The list of identifiers of the public and private key pair.
   std::shared_ptr<std::string> key_id;
 };
 
 /// Response for fetching private key.
 struct PrivateKeyFetchingResponse {
-    /**
+  /**
    * @brief Resource name (see <a href="https://google.aip.dev/122">AIP-122</a>)
    * representing the encryptedPrivateKey. E.g. "privateKeys/{keyid}"
    *
@@ -53,12 +55,12 @@ class PrivateKeyFetchingClientProviderInterface
  public:
   virtual ~PrivateKeyFetchingClientProviderInterface() = default;
   /**
-   * @brief Fetches private keys.
+   * @brief Fetches private key.
    *
    * @param context context of the operation.
    * @return core::ExecutionResult execution result.
    */
-  virtual core::ExecutionResult FetchPrivateKeys(
+  virtual core::ExecutionResult FetchPrivateKey(
       core::AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>&
           context) noexcept = 0;
 };

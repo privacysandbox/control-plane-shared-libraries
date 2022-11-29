@@ -217,7 +217,7 @@ void AwsMetricClientProvider::OnPutMetricDataAsyncCallback(
   // TODO(b/240477800): map HttpErrorCodes to local errors. For cloudwatch,
   // watch out HttpResponseCode::REQUEST_ENTITY_TOO_LARGE.
   auto result = CloudWatchErrorConverter::ConvertCloudWatchError(
-      outcome.GetError().GetErrorType());
+      outcome.GetError().GetErrorType(), outcome.GetError().GetMessage());
   ERROR_CONTEXT(kAwsMetricClientProvider, metric_requests_vector->back(),
                 result, "The error is %s",
                 outcome.GetError().GetMessage().c_str());
@@ -232,13 +232,13 @@ void AwsMetricClientProvider::OnPutMetricDataAsyncCallback(
 std::shared_ptr<MetricClientProviderInterface>
 MetricClientProviderFactory::Create(
     const std::shared_ptr<MetricClientOptions>& options) {
-  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
+  shared_ptr<AsyncExecutorInterface> async_executor;
   if (options->enable_batch_recording) {
-    GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor);
+    GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor);
   }
   return make_shared<AwsMetricClientProvider>(
       options, GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(),
-      cpu_async_executor, GlobalCpio::GetGlobalCpio()->GetMessageRouter());
+      async_executor, GlobalCpio::GetGlobalCpio()->GetMessageRouter());
 }
 #endif
 }  // namespace google::scp::cpio::client_providers

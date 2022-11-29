@@ -5,6 +5,8 @@ build --client_env=BAZEL_CXXOPT=-std=c++17
 build --cxxopt=-std=c++17
 build --color=yes
 
+test --cxxopt=-D_SCP_ROMA_LOG_ERRORS=1
+
 # Force bazel to use specific JDK, otherwise JDK may not be predictable
 run --javabase=@bazel_tools//tools/jdk:remote_jdk11
 test --test_output=all --java_runtime_version=remotejdk_11

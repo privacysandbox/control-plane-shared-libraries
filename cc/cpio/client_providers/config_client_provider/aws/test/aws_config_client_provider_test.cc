@@ -50,6 +50,8 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::MessageRouter;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
+    SC_AWS_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME;
+using google::scp::core::errors::
     SC_AWS_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
 using google::scp::core::test::WaitUntil;
@@ -166,6 +168,28 @@ TEST_F(AwsConfigClientProviderTest, FailedToFetchParameter) {
 
   EXPECT_EQ(client_->Run(),
             FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+}
+
+TEST_F(AwsConfigClientProviderTest, InvalidParameterName) {
+  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
+  MockParameters();
+  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+
+  atomic<bool> condition = false;
+  auto request = make_shared<GetParameterProtoRequest>();
+  request->set_parameter_name("");
+  AsyncContext<GetParameterProtoRequest, GetParameterProtoResponse> context(
+      move(request), [&](AsyncContext<GetParameterProtoRequest,
+                                      GetParameterProtoResponse>& context) {
+        EXPECT_EQ(context.result,
+                  FailureExecutionResult(
+                      SC_AWS_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME));
+        condition = true;
+      });
+  EXPECT_EQ(client_->GetParameter(context),
+            FailureExecutionResult(
+                SC_AWS_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME));
+  WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(AwsConfigClientProviderTest, ParameterNotFound) {
