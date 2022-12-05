@@ -103,22 +103,6 @@ static const map<MetricUnitProto, StandardUnit> kAwsMetricUnitMap = {
 
 namespace google::scp::cpio::client_providers {
 
-size_t AwsMetricClientUtils::CalculateRequestSize(
-    vector<MetricDatum>& datum_list) noexcept {
-  size_t payload_size = 0;
-  for (const auto& datum : datum_list) {
-    payload_size += sizeof(datum.GetMetricName());
-    payload_size += sizeof(datum.GetTimestamp());
-    payload_size += sizeof(datum.GetValue());
-    payload_size += sizeof(datum.GetUnit());
-    for (const auto& dim : datum.GetDimensions()) {
-      payload_size += sizeof(dim.GetValue());
-      payload_size += sizeof(dim.GetName());
-    }
-  }
-  return payload_size;
-}
-
 ExecutionResult AwsMetricClientUtils::ParseRequestToDatum(
     AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>&
         record_metric_context,

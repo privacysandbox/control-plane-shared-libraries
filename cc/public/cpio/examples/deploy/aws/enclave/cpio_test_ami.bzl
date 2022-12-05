@@ -24,6 +24,7 @@ def cpio_test_ami(
         binary_target,
         ami_name = Label("//cc/public/cpio/examples/deploy/aws/enclave:cpio_test_ami_name"),
         aws_region = "us-east-1",
+        subnet_id = "",
         debug_mode = True):
     """
     Creates a runnable target for deploying a CPIO test AMI.
@@ -71,6 +72,7 @@ def cpio_test_ami(
         aws_region = aws_region,
         # EC2 instance type used to build the AMI.
         ec2_instance = "m5.xlarge",
+        subnet_id = subnet_id,
         enable_enclave_debug_mode = debug_mode,
         enclave_allocator = Label("//build_defs/aws/enclave:small.allocator.yaml"),
         enclave_container_image = ":%s.tar" % reproducible_container_name,

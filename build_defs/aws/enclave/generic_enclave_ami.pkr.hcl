@@ -36,6 +36,7 @@ source "amazon-ebs" "amzn2-ami" {
   instance_type = "{ec2_instance}"
   region        = "{aws_region}"
   ami_groups    = {ami_groups}
+  subnet_id     = "{subnet_id}"
 
   // Custom Base AMI
   source_ami_filter {

@@ -43,6 +43,7 @@ def _generic_enclave_ami_pkr_script_impl(ctx):
             "{docker_repo}": ctx.attr.enclave_container_image.label.package,
             # Use the input container tag if specified or remove the .tar extension from the container_image name
             "{docker_tag}": ctx.attr.enclave_container_tag if ctx.attr.enclave_container_tag else ctx.attr.enclave_container_image.label.name.replace(".tar", ""),
+            "{subnet_id}": ctx.attr.subnet_id,
         },
     )
 
@@ -87,6 +88,10 @@ generic_enclave_ami_pkr_script = rule(
         "aws_region": attr.string(
             mandatory = True,
             default = "us-east-1",
+        ),
+        "subnet_id": attr.string(
+            mandatory = True,
+            default = "",
         ),
         "proxy_rpm": attr.label(
             default = Label("//cc/aws/proxy:vsockproxy_rpm"),

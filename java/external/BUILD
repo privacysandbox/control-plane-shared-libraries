@@ -270,6 +270,11 @@ alias(
 )
 
 alias(
+    name = "aws_pricing",
+    actual = "@maven//:software_amazon_awssdk_pricing",
+)
+
+alias(
     name = "aws_s3",
     actual = "@maven//:software_amazon_awssdk_s3",
 )

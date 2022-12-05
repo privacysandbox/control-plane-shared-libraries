@@ -22,6 +22,7 @@
 
 #include "core/interface/async_context.h"
 #include "core/interface/service_interface.h"
+#include "core/interface/type_def.h"
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio::client_providers {
@@ -34,6 +35,39 @@ struct PrivateKeyFetchingRequest {
   std::shared_ptr<std::string> key_id;
 };
 
+/// Type of encryption key and how it is split.
+enum class EncryptionKeyType {
+  /// Single-coordinator managed key using a Tink hybrid key.
+  kSinglePartyHybridKey = 0,
+  /// Multi-coordinator using a Tink hybrid key, split using XOR with random
+  /// data.
+  kMultiPartyHybridEvenKeysplit = 1,
+};
+
+/// Represents key material and metadata associated with the key.
+struct KeyData {
+  /**
+   * @brief Cryptographic signature of the public key material from the
+   * coordinator identified by keyEncryptionKeyUri
+   */
+  std::shared_ptr<std::string> public_key_signature;
+
+  /**
+   * @brief URI of the cloud KMS key used to encrypt the keyMaterial (also used
+   * to identify who owns the key material, and the signer of
+   * publicKeySignature)
+   *
+   * e.g. aws-kms://arn:aws:kms:us-east-1:012345678901:key/abcd
+   */
+  std::shared_ptr<std::string> key_encryption_key_uri;
+
+  /**
+   * @brief The encrypted key material, of type defined by EncryptionKeyType of
+   * the EncryptionKey
+   */
+  std::shared_ptr<std::string> key_material;
+};
+
 /// Response for fetching private key.
 struct PrivateKeyFetchingResponse {
   /**
@@ -43,8 +77,17 @@ struct PrivateKeyFetchingResponse {
    */
   std::shared_ptr<std::string> resource_name;
 
-  /// Tink-provided JSON-encoded KeysetHandle representing this private key.
-  std::shared_ptr<std::string> json_encoded_key_set;
+  /// The type of key, and how it is split.
+  EncryptionKeyType encryption_key_type;
+
+  /// Tink keyset handle containing the public key material.
+  std::shared_ptr<std::string> public_keyset_handle;
+
+  /// Key expiration time in Unix Epoch milliseconds.
+  core::Timestamp expiration_time_ms;
+
+  /// List of key data.
+  std::vector<std::shared_ptr<KeyData>> key_data;
 };
 
 /**

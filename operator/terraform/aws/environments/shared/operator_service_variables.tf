@@ -393,6 +393,5 @@ variable "vpc_availability_zones" {
     "c",
     "d",
     "e",
-    "f",
   ]
 }

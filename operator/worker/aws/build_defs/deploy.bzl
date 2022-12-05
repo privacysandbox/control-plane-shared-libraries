@@ -23,6 +23,7 @@ def worker_aws_deployment(
         ami_groups = "[]",
         packer_ami_config = "//operator/worker/aws:aggregation_worker_ami.pkr.hcl",
         ec2_instance = "m5.xlarge",
+        subnet_id = "",
         enclave_cpus = 2,
         enclave_memory_mib = 7168,
         aws_region = "us-east-1",
@@ -62,6 +63,8 @@ def worker_aws_deployment(
         to make AMI public.
       packer_ami_config: Path to the packer config template.
       ec2_instance: Ec2 instance type for running packer script.
+      subnet_id: The subnet in which to deploy the EC2 instance to execute the
+        packer scripts.
       enclave_cpus: Number of cores assigned to enclave.
       enclave_memory_mib: Amount of memory (in MB) assigned to enclave.
       aws_region: Aws region to run packer script on.
@@ -116,6 +119,7 @@ def worker_aws_deployment(
         ami_name = ami_name,
         ami_groups = ami_groups,
         ec2_instance = ec2_instance,
+        subnet_id = subnet_id,
         enclave_cpus = enclave_cpus,
         enclave_memory_mib = enclave_memory_mib,
         aws_region = aws_region,

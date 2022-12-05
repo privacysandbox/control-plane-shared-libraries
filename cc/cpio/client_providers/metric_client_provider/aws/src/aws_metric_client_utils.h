@@ -31,15 +31,6 @@ namespace google::scp::cpio::client_providers {
 class AwsMetricClientUtils {
  public:
   /**
-   * @brief Calculate data payload size for a list of Datums.
-   *
-   * @param datum_list The datum list to calculate the payload size.
-   * @return size_t The payload size of the datum list.
-   */
-  static size_t CalculateRequestSize(
-      std::vector<Aws::CloudWatch::Model::MetricDatum>& datum_list) noexcept;
-
-  /**
    * @brief Parses MetricRecordRequest async context to Aws Metric Datum. In
    * this function, all bad requests will being filtered, like invalid
    * timestamp, oversize metric labels, invalid metric value.

@@ -73,8 +73,8 @@ using std::placeholders::_4;
 static constexpr size_t kCloudwatchMaxConcurrentConnections = 50;
 // The limit of AWS PutMetricDataRequest metric datum is 1000.
 static constexpr size_t kAwsMetricDatumSizeLimit = 1000;
-// The Aws PutMetricDataRequest payload size limit is about 560000B.
-static constexpr size_t kAwsPayloadSizeLimit = 560000;
+// The Aws PutMetricDataRequest payload size limit is about 1MB.
+static constexpr size_t kAwsPayloadSizeLimit = 1024 * 1024;
 static constexpr char kAwsMetricClientProvider[] = "AwsMetricClientProvider";
 
 namespace google::scp::cpio::client_providers {
@@ -124,8 +124,7 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
   PutMetricDataRequest request_chunk;
   string name_space = metric_client_options_->metric_namespace;
   request_chunk.SetNamespace(name_space.c_str());
-  auto ns_base_payload = sizeof(request_chunk.GetNamespace());
-  size_t chunk_payload = ns_base_payload;
+  size_t chunk_payload = 0;
   size_t chunk_size = 0;
 
   auto context_size = metric_requests_vector->size();
@@ -143,9 +142,11 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
     }
 
     // Single request payload size cannot be greater than kAwsPayloadSizeLimit.
-    auto datums_payload =
-        AwsMetricClientUtils::CalculateRequestSize(datum_list);
-    if (datums_payload + ns_base_payload > kAwsPayloadSizeLimit) {
+    PutMetricDataRequest datums_piece;
+    datums_piece.SetNamespace(name_space.c_str());
+    datums_piece.SetMetricData(datum_list);
+    auto datums_payload = datums_piece.SerializePayload().length();
+    if (datums_payload > kAwsPayloadSizeLimit) {
       context.result = FailureExecutionResult(
           SC_AWS_METRIC_CLIENT_PROVIDER_REQUEST_PAYLOAD_OVERSIZE);
       ERROR_CONTEXT(kAwsMetricClientProvider, context, context.result,
@@ -170,7 +171,7 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
 
       // Resets all chunks.
       chunk_size = 0;
-      chunk_payload = ns_base_payload;
+      chunk_payload = 0;
       request_chunk.SetMetricData({});
       context_chunk.clear();
     }
