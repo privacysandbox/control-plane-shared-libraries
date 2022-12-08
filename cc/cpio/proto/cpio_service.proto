@@ -24,8 +24,16 @@ import "cc/core/common/proto/common.proto";
 
 // The CPIO service definition.
 service CpioService {
-  // Executes a request.
+  // Executes a request to perform client functionality.
   rpc Execute(ExecuteRequest) returns (ExecuteResponse) {}
+  // Executes a request to create client.
+  rpc CreateClient(CreateClientRequest) returns (CreateClientResponse) {}
+  // Executes a request to int client.
+  rpc InitClient(InitClientRequest) returns (InitClientResponse) {}
+  // Executes a request to run client.
+  rpc RunClient(RunClientRequest) returns (RunClientResponse) {}
+  // Executes a request to stop client.
+  rpc StopClient(StopClientRequest) returns (StopClientResponse) {}
 }
 
 // The request message.
@@ -40,3 +48,55 @@ message ExecuteResponse {
   // Only makes sense when the execution result is success.
   google.protobuf.Any response = 2;
 }
+
+// Configrations for MetricClient.
+message MetricClientOptions {
+  string metric_namespace = 1;
+  bool enable_batch_recording = 2;
+  int64 batch_recording_time_duration_in_ms = 3;
+}
+
+// Configrations for any CPIO client.
+message ClientOptions {
+  oneof client_options {
+    MetricClientOptions metric_client_options = 1;
+  }
+}
+
+// Request to create a CPIO client of the type given by the client_options.
+message CreateClientRequest {
+  ClientOptions client_options = 1;
+}
+
+// Response of a CPIO client creation.
+message CreateClientResponse {
+  // An identifier for the created client.
+  string client_id = 1;
+}
+
+// Request to initialize a client of the given client ID.
+message InitClientRequest {
+  // An identifier for the client.
+  string client_id = 1;
+}
+
+// Response of the client initialization.
+message InitClientResponse {}
+
+// Request to run a client of the given client ID.
+message RunClientRequest {
+  // An identifier for the client.
+  string client_id = 1;
+}
+
+// Response of the client run.
+message RunClientResponse {}
+
+// Request to stop a client of the given client ID.
+message StopClientRequest {
+  // An identifier for the client.
+  string client_id = 1;
+}
+
+// Response of the client stop.
+message StopClientResponse {}

@@ -83,10 +83,14 @@ struct PrivateKeyFetchingResponse {
   /// Tink keyset handle containing the public key material.
   std::shared_ptr<std::string> public_keyset_handle;
 
+  /// The raw public key material, base 64 encoded.
+  std::shared_ptr<std::string> public_key_material;
+
   /// Key expiration time in Unix Epoch milliseconds.
   core::Timestamp expiration_time_ms;
 
-  /// List of key data.
+  /// List of key data. The size of key_data is matched with split parts of
+  /// the private key.
   std::vector<std::shared_ptr<KeyData>> key_data;
 };
 

@@ -30,6 +30,7 @@ typedef uint64_t TimeDuration;
 typedef char Byte;
 typedef uint64_t JournalId;
 typedef uint64_t CheckpointId;
+typedef std::string Token;
 
 /// Struct that stores byte array and the metadata associated with it.
 struct BytesBuffer {
