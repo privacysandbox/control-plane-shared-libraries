@@ -22,11 +22,15 @@
 #include "core/interface/async_context.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/type_def.h"
 
 namespace google::scp::cpio::client_providers {
-
 /// Represents a KMS request object.
 struct KmsDecryptRequest {
+  /// AccountIdentity. For AWS, it would be the IAM role.
+  std::shared_ptr<AccountIdentity> account_identity;
+  /// The region where we want to use the KMS.
+  std::shared_ptr<std::string> kms_region;
   /// The key Arn.
   std::shared_ptr<std::string> key_arn;
   /// The ciphertext.

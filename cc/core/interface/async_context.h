@@ -142,8 +142,11 @@ void FinishContext(
     const std::shared_ptr<AsyncExecutorInterface>& async_executor,
     AsyncPriority priority = AsyncPriority::High) {
   context.result = result;
+
+  // Make a copy of context - this way we know async_executor's handle will
+  // never go out of scope.
   if (!async_executor
-           ->Schedule([&context]() mutable { context.Finish(); }, priority)
+           ->Schedule([context]() mutable { context.Finish(); }, priority)
            .Successful()) {
     context.Finish();
   }

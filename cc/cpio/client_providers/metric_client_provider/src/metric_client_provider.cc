@@ -19,6 +19,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -27,13 +28,15 @@
 #include "core/interface/async_context.h"
 #include "core/interface/async_executor_interface.h"
 #include "cpio/client_providers/interface/type_def.h"
-#include "cpio/proto/metric_client.pb.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 #include "error_codes.h"
 #include "metric_client_utils.h"
 
+using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
+using google::cmrt::sdk::metric_service::v1::PutMetricsResponse;
 using google::protobuf::Any;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
@@ -46,8 +49,6 @@ using google::scp::core::errors::
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_IS_ALREADY_RUNNING;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET;
-using google::scp::cpio::metric_client::RecordMetricsProtoRequest;
-using google::scp::cpio::metric_client::RecordMetricsProtoResponse;
 using std::bind;
 using std::make_shared;
 using std::move;
@@ -81,14 +82,6 @@ ExecutionResult MetricClientProvider::Init() noexcept {
         SC_METRIC_CLIENT_PROVIDER_EXECUTOR_NOT_AVAILABLE);
   }
 
-  if (message_router_) {
-    RecordMetricsProtoRequest record_metric_request;
-    Any any_request;
-    any_request.PackFrom(record_metric_request);
-    return message_router_->Subscribe(
-        any_request.type_url(),
-        bind(&MetricClientProvider::OnRecordMetrics, this, _1));
-  }
   return SuccessExecutionResult();
 }
 
@@ -126,8 +119,8 @@ ExecutionResult MetricClientProvider::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult MetricClientProvider::RecordMetrics(
-    AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>&
+ExecutionResult MetricClientProvider::PutMetrics(
+    AsyncContext<PutMetricsRequest, PutMetricsResponse>&
         record_metric_context) noexcept {
   if (!is_running_) {
     auto execution_result =
@@ -170,8 +163,8 @@ ExecutionResult MetricClientProvider::RecordMetrics(
 }
 
 void MetricClientProvider::RunMetricsBatchPush() noexcept {
-  auto requests_vector_copy = make_shared<vector<
-      AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>>>();
+  auto requests_vector_copy = make_shared<
+      vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>();
   sync_mutex_.lock();
   metric_requests_vector_.swap(*requests_vector_copy);
   number_metrics_in_vector_.exchange(0);
@@ -214,15 +207,15 @@ ExecutionResult MetricClientProvider::ScheduleMetricsBatchPush() noexcept {
   return execution_result;
 }
 
-void MetricClientProvider::OnRecordMetrics(
+void MetricClientProvider::OnPutMetrics(
     AsyncContext<Any, Any> any_context) noexcept {
-  auto request = make_shared<RecordMetricsProtoRequest>();
+  auto request = make_shared<PutMetricsRequest>();
   any_context.request->UnpackTo(request.get());
-  AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse> context(
-      move(request), bind(CallbackToPackAnyResponse<RecordMetricsProtoRequest,
-                                                    RecordMetricsProtoResponse>,
-                          any_context, _1));
-  context.result = RecordMetrics(context);
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
+      move(request),
+      bind(CallbackToPackAnyResponse<PutMetricsRequest, PutMetricsResponse>,
+           any_context, _1));
+  context.result = PutMetrics(context);
 }
 
 }  // namespace google::scp::cpio::client_providers

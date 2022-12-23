@@ -97,6 +97,7 @@ java_binary(
     name = "AwsFrontendCleanupLambda",
     runtime_deps = [
         ":aws",
+        "//java/com/google/scp/operator/frontend/injection/modules:aws_failed_job_queue_change_handler_module",
         "//java/com/google/scp/operator/frontend/injection/modules:aws_failed_job_queue_write_cleanup_module",
         "//java/com/google/scp/operator/shared/injection/modules:aws_clients_module",
         "//java/com/google/scp/operator/shared/injection/modules:data_module",

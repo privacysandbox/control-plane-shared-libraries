@@ -17,6 +17,8 @@
 #ifndef SCP_CORE_INTERFACE_EXECUTION_RESULT_H_
 #define SCP_CORE_INTERFACE_EXECUTION_RESULT_H_
 
+#include <variant>
+
 #include "core/common/proto/common.pb.h"
 
 namespace google::scp::core {
@@ -107,6 +109,66 @@ class RetryExecutionResult : public ExecutionResult {
   explicit RetryExecutionResult(StatusCode status_code)
       : ExecutionResult(ExecutionStatus::Retry, status_code) {}
 };
+
+// Wrapper class to allow for returning either an ExecutionResult or a value.
+// Example use with a function:
+//
+// ExecutionResultOr<int> ConvertStringToInt(std::string str) {
+//   if (str is not an int) {
+//     return ExecutionResult(Failure, <some_error_code>);
+//   }
+//   return string_to_int(str);
+// }
+//
+// NOTE: The type T should be copyable and moveable.
+template <typename T>
+class ExecutionResultOr : public std::variant<ExecutionResult, T> {
+ private:
+  using base = std::variant<ExecutionResult, T>;
+
+ public:
+  using base::base;
+  using base::operator=;
+
+  ExecutionResultOr() : base(ExecutionResult()) {}
+
+  ///////////// ExecutionResult methods ///////////////////////////////////////
+
+  // Returns true if this contains a value - i.e. it does not contain a status.
+  bool Successful() const { return result().Successful(); }
+
+  // Returns the ExecutionResult (if contained), Success otherwise.
+  ExecutionResult result() const {
+    if (!HasExecutionResult()) {
+      return SuccessExecutionResult();
+    }
+    return std::get<ExecutionResult>(*this);
+  }
+
+  ///////////// Value methods /////////////////////////////////////////////////
+
+  // Returns true if this contains a value.
+  bool has_value() const { return !HasExecutionResult(); }
+
+  // Returns the value held by this.
+  // Should be guarded by has_value() calls - otherwise the behavior is
+  // undefined.
+  const T& value() const { return std::get<T>(*this); }
+  T& value() { return std::get<T>(*this); }
+  const T& operator*() const { return std::get<T>(*this); }
+  T& operator*() { return std::get<T>(*this); }
+
+  // Returns a pointer to the value held by this.
+  // Returns nullptr if no value is contained.
+  const T* operator->() const { return std::get_if<T>(this); }
+  T* operator->() { return std::get_if<T>(this); }
+
+ private:
+  bool HasExecutionResult() const {
+    return std::holds_alternative<ExecutionResult>(*this);
+  }
+};
+
 }  // namespace google::scp::core
 
 #endif  // SCP_CORE_INTERFACE_EXECUTION_RESULT_H_

@@ -57,11 +57,53 @@ TEST(ProxyBridge, EmptyConnection) {
   dest_sock0.close();
   uint8_t dummy_buff[64];
   error_code ec;
-  size_t sz = client_sock0.read_some(
-      boost::asio::buffer(dummy_buff, sizeof(dummy_buff)), ec);
+  size_t sz = client_sock0.read_some(asio::buffer(dummy_buff), ec);
 
   EXPECT_TRUE(ec.failed());
   EXPECT_EQ(sz, 0);
+  client_sock0.close();
+
+  worker_thread.join();
+
+  int ret = fcntl(client_sock_fd, F_GETFD);
+  EXPECT_EQ(ret, -1) << "fd=" << client_sock_fd << "is still open";
+  ret = fcntl(dest_sock_fd, F_GETFD);
+  EXPECT_EQ(ret, -1) << "fd=" << dest_sock_fd << "is still open";
+}
+
+TEST(ProxyBridge, HalfClosure) {
+  asio::io_context io_context;
+  UdsSocket client_sock0(io_context);
+  UdsSocket client_sock1(io_context);
+  UdsSocket dest_sock0(io_context);
+  UdsSocket dest_sock1(io_context);
+  asio::local::connect_pair(client_sock0, client_sock1);
+  asio::local::connect_pair(dest_sock0, dest_sock1);
+  int client_sock_fd = client_sock1.native_handle();
+  int dest_sock_fd = dest_sock1.native_handle();
+  {
+    auto bridge =
+        make_shared<ProxyBridge>(move(client_sock1), move(dest_sock1));
+    bridge->ForwardTraffic();
+  }
+
+  thread worker_thread([&]() { io_context.run(); });
+  // Send FIN
+  dest_sock0.shutdown(Socket::shutdown_send);
+  uint8_t recv_buff[64];
+  error_code ec;
+  // Verify read failure on the other end;
+  size_t sz = client_sock0.read_some(asio::buffer(recv_buff), ec);
+  EXPECT_TRUE(ec.failed());
+  EXPECT_EQ(sz, 0);
+
+  uint8_t send_buff[] = "foo bar hello world easy peasy lemon squeezy";
+  // Verify we can still send in the other direction on half-closed socket.
+  client_sock0.send(asio::buffer(send_buff), 0, ec);
+  EXPECT_FALSE(ec.failed());
+  client_sock0.close();
+  sz = dest_sock0.receive(asio::buffer(recv_buff), 0, ec);
+  EXPECT_EQ(sz, sizeof(send_buff));
 
   worker_thread.join();
 
@@ -97,8 +139,7 @@ TEST(ProxyBridge, ForwardTraffic) {
   thread writer_thread([&]() {
     constexpr size_t buf_size = 10 * 1024 * 1024;
     error_code ec;
-    asio::write(client_sock0, boost::asio::buffer(send_buf.get(), buf_size),
-                ec);
+    asio::write(client_sock0, asio::buffer(send_buf.get(), buf_size), ec);
     client_sock0.close();
   });
 
@@ -119,6 +160,7 @@ TEST(ProxyBridge, ForwardTraffic) {
   }
   EXPECT_EQ(counter, 10 * 1024 * 1024);
 
+  dest_sock0.close();
   writer_thread.join();
   worker_thread.join();
 
@@ -150,7 +192,7 @@ TEST(ProxyBridge, InboundConnection) {
                     0x05, 0x02, 0x00, 0x01,  // <- request header
                     0x7f, 0x00, 0x00, 0x01,  // <- addr = 127.0.0.1
                     0x00, 0x00};             // <- port = 0 to bind random port
-  asio::write(client_sock0, asio::buffer(data, sizeof(data)));
+  asio::write(client_sock0, asio::buffer(data));
 
   uint8_t buff[64];
   // Read greeting response
@@ -180,8 +222,7 @@ TEST(ProxyBridge, InboundConnection) {
   thread writer_thread([&]() {
     constexpr size_t buf_size = 10 * 1024 * 1024;
     error_code ec;
-    boost::asio::write(client_sock0,
-                       boost::asio::buffer(send_buf.get(), buf_size), ec);
+    asio::write(client_sock0, asio::buffer(send_buf.get(), buf_size), ec);
     client_sock0.close();
   });
 
@@ -190,8 +231,7 @@ TEST(ProxyBridge, InboundConnection) {
   size_t counter = 0UL;
   while (true) {
     error_code ec;
-    auto sz =
-        in_socket.read_some(boost::asio::buffer(recv_buf.get(), buf_size), ec);
+    auto sz = in_socket.read_some(asio::buffer(recv_buf.get(), buf_size), ec);
     for (auto i = 0u; i < sz; ++i) {
       EXPECT_EQ(recv_buf[i], counter++ & 0xff);
     }

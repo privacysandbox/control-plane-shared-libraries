@@ -59,14 +59,27 @@ def cc_enclave_image(
       binary_args: CLI args passed to the binary inside the enclave.
     """
 
+    pkg_tar(
+        name = "binary_tar",
+        srcs = [
+            binary_target,
+        ],
+        # Needs this flag to include generated dynamic libs,
+        # such as nghttp2.so.
+        include_runfiles = True,
+        mode = "0755",
+        ownername = "root.root",
+        tags = ["manual"],
+    )
+
     container_files = [
-        binary_target,
         Label("//cc/process_launcher:scp_process_launcher"),
         "@kmstool_enclave//file",  # This is to support using enclave KMS cli
         "@kmstool_enclave_cli//file",
     ] + additional_files
 
     container_tars = [
+        ":binary_tar",
         Label("//operator/worker/aws:libnsm-tar"),  # This is to support using enclave KMS cli
     ] + additional_tars
 

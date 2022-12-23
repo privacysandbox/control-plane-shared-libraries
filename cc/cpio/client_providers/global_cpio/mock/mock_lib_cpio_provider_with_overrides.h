@@ -21,6 +21,7 @@
 
 #include "cpio/client_providers/global_cpio/src/cpio_provider/lib_cpio_provider.h"
 #include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
+#include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 
 namespace google::scp::cpio::client_providers::mock {
 class MockLibCpioProviderWithOverrides : public LibCpioProvider {
@@ -35,6 +36,11 @@ class MockLibCpioProviderWithOverrides : public LibCpioProvider {
 
   std::shared_ptr<core::HttpClientInterface> GetHttpClientMember() {
     return http_client_;
+  }
+
+  std::shared_ptr<RoleCredentialsProviderInterface>
+  GetRoleCredentialsProviderMember() {
+    return role_credentials_provider_;
   }
 };
 }  // namespace google::scp::cpio::client_providers::mock

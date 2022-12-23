@@ -16,7 +16,7 @@
 
 package com.google.scp.shared.testutils.crypto;
 
-import static com.google.scp.coordinator.keymanagement.shared.util.KeysetHandleSerializerUtil.toJsonCiphertext;
+import static com.google.scp.shared.util.KeysetHandleSerializerUtil.toJsonCiphertext;
 
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.HybridEncrypt;

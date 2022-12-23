@@ -41,6 +41,7 @@ cc_test(
         "//cc/public/cpio/core/mock:lib_cpio_mock",
         "//cc/public/cpio/interface:cpio_errors",
         "//cc/public/cpio/interface/config_client",
+        "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )

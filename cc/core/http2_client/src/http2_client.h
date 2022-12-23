@@ -61,7 +61,7 @@ class HttpClient : public HttpClientInterface {
       AsyncContext<HttpRequest, HttpResponse>& http_context) noexcept override;
 
  private:
-  /// An instance of th connection pool that is used by the http client.
+  /// An instance of the connection pool that is used by the http client.
   std::unique_ptr<HttpConnectionPool> http_connection_pool_;
 
   /// Operation dispatcher

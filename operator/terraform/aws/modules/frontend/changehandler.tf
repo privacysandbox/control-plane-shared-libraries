@@ -205,6 +205,7 @@ resource "aws_lambda_function" "dlq_cleanup_lambda" {
   environment {
     variables = {
       JOB_METADATA_TABLE = var.metadata_db_table_name
+      JOB_METADATA_TTL   = var.job_metadata_ttl
     }
   }
 }

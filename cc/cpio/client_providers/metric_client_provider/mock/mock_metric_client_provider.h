@@ -21,7 +21,6 @@
 #include <google/protobuf/util/message_differencer.h>
 
 #include "core/interface/async_context.h"
-#include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
@@ -42,24 +41,24 @@ class MockMetricClientProvider : public MetricClientProviderInterface {
   core::ExecutionResult Stop() noexcept override { return stop_result_mock; }
 
   std::function<core::ExecutionResult(
-      core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                         metric_client::RecordMetricsProtoResponse>&)>
+      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&)>
       record_metric_mock;
 
   core::ExecutionResult record_metric_result_mock;
-  metric_client::RecordMetricsProtoRequest record_metrics_request_mock;
+  cmrt::sdk::metric_service::v1::PutMetricsRequest record_metrics_request_mock;
 
   core::ExecutionResult MetricsBatchPush(
-      const std::shared_ptr<std::vector<
-          core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                             metric_client::RecordMetricsProtoResponse>>>&
+      const std::shared_ptr<std::vector<core::AsyncContext<
+          cmrt::sdk::metric_service::v1::PutMetricsRequest,
+          cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
           metric_requests_vector) noexcept {
     return core::SuccessExecutionResult();
   }
 
-  core::ExecutionResult RecordMetrics(
-      core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                         metric_client::RecordMetricsProtoResponse>&
+  core::ExecutionResult PutMetrics(
+      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
           context) noexcept override {
     if (record_metric_mock) {
       return record_metric_mock(context);
@@ -67,14 +66,15 @@ class MockMetricClientProvider : public MetricClientProviderInterface {
     google::protobuf::util::MessageDifferencer differencer;
     differencer.set_repeated_field_comparison(
         google::protobuf::util::MessageDifferencer::AS_SET);
-    if (differencer.Equals(record_metrics_request_mock,
-                           metric_client::RecordMetricsProtoRequest()) ||
+    if (differencer.Equals(
+            record_metrics_request_mock,
+            cmrt::sdk::metric_service::v1::PutMetricsRequest()) ||
         differencer.Equals(record_metrics_request_mock,
                            ZeroTimestampe(context.request))) {
       context.result = record_metric_result_mock;
       if (record_metric_result_mock == core::SuccessExecutionResult()) {
-        context.response =
-            std::make_shared<metric_client::RecordMetricsProtoResponse>();
+        context.response = std::make_shared<
+            cmrt::sdk::metric_service::v1::PutMetricsResponse>();
       }
       context.Finish();
     }
@@ -83,9 +83,10 @@ class MockMetricClientProvider : public MetricClientProviderInterface {
 
   // TODO(b/253115895): figure out why IgnoreField doesn't work for
   // MessageDifferencer.
-  metric_client::RecordMetricsProtoRequest ZeroTimestampe(
-      std::shared_ptr<metric_client::RecordMetricsProtoRequest>& request) {
-    metric_client::RecordMetricsProtoRequest output;
+  cmrt::sdk::metric_service::v1::PutMetricsRequest ZeroTimestampe(
+      std::shared_ptr<cmrt::sdk::metric_service::v1::PutMetricsRequest>&
+          request) {
+    cmrt::sdk::metric_service::v1::PutMetricsRequest output;
     output.CopyFrom(*request);
     for (auto metric = output.mutable_metrics()->begin();
          metric < output.mutable_metrics()->end(); metric++) {

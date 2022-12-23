@@ -28,6 +28,7 @@
 #include "public/cpio/adapters/config_client/src/error_codes.h"
 #include "public/cpio/core/mock/mock_lib_cpio.h"
 #include "public/cpio/interface/config_client/config_client_interface.h"
+#include "public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -47,8 +48,6 @@ using google::scp::cpio::GetTagRequest;
 using google::scp::cpio::GetTagResponse;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
 using google::scp::cpio::config_client::GetInstanceIdProtoResponse;
-using google::scp::cpio::config_client::GetParameterProtoRequest;
-using google::scp::cpio::config_client::GetParameterProtoResponse;
 using google::scp::cpio::config_client::GetTagProtoRequest;
 using google::scp::cpio::config_client::GetTagProtoResponse;
 using google::scp::cpio::mock::MockConfigClientWithOverrides;
@@ -100,7 +99,7 @@ class GetParameterTest : public ConfigClientTest {
     request_.set_parameter_name(kParameterName);
     client_->GetConfigClientProvider()->get_parameter_request_mock = request_;
 
-    response_.set_value(kParameterValue);
+    response_.set_parameter_value(kParameterValue);
     client_->GetConfigClientProvider()->get_parameter_response_mock = response_;
   }
 
@@ -109,8 +108,8 @@ class GetParameterTest : public ConfigClientTest {
     response_.Clear();
   }
 
-  GetParameterProtoRequest request_;
-  GetParameterProtoResponse response_;
+  cmrt::sdk::parameter_service::v1::GetParameterRequest request_;
+  cmrt::sdk::parameter_service::v1::GetParameterResponse response_;
   GetParameterResponse actual_output_;
 };
 

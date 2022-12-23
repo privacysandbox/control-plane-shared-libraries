@@ -158,7 +158,7 @@ bool ClientSessionPool::Start() {
   // Now hydrate the pool. pool_[0] is special, as we already ran the connect
   // and first response phases.
   pool_[0].async_read_some(
-      mutable_buffer(buffers_[0].data, kMicroBufferSize),
+      mutable_buffer(buffers_[0].data, k2ndBindResponseSize),
       bind(&ClientSessionPool::Handle2ndResp, shared_from_this(), 0u,
            placeholders::bytes_transferred, placeholders::error));
 
@@ -224,10 +224,9 @@ void ClientSessionPool::Handle1stResp(size_t index, size_t bytes_read,
     InitiateSocket(index);
     return;
   }
-  sock.async_read_some(
-      mutable_buffer(buf, sizeof(buf)),
-      bind(&ClientSessionPool::Handle2ndResp, shared_from_this(), index,
-           placeholders::bytes_transferred, placeholders::error));
+  async_read(sock, mutable_buffer(buf, k2ndBindResponseSize),
+             bind(&ClientSessionPool::Handle2ndResp, shared_from_this(), index,
+                  placeholders::bytes_transferred, placeholders::error));
   // If this is the last socket in the pool, and the pool is not hydrated yet,
   // continue to hydrate.
   if (index == pool_.size() - 1 && pool_.size() < pool_size_) {
@@ -246,9 +245,7 @@ void ClientSessionPool::Handle2ndResp(size_t index, size_t bytes_read,
   if (stop_.load()) {
     return;
   }
-  // We expect a message from the proxy with a single IO. So we simply regard a
-  // partial message as failure. This behavior might be changed in the future.
-  if (ec.failed() || bytes_read != k2ndBindResponseSize || buf[1] != 0x00) {
+  if (ec.failed() || bytes_read < k2ndBindResponseSize || buf[1] != 0x00) {
     number_of_errors_++;
     InitiateSocket(index);
     return;

@@ -20,10 +20,12 @@
 #include <string>
 
 #include "core/interface/async_context.h"
+#include "core/interface/async_executor_interface.h"
 #include "core/interface/service_interface.h"
-#include "cpio/proto/metric_client.pb.h"
+#include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/type_def.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
 /**
@@ -39,9 +41,9 @@ class MetricClientProviderInterface : public core::ServiceInterface {
    * @param record_metric_context the context of custom metric.
    * @return core::ExecutionResult the execution result of the operation.
    */
-  virtual core::ExecutionResult RecordMetrics(
-      core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                         metric_client::RecordMetricsProtoResponse>&
+  virtual core::ExecutionResult PutMetrics(
+      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
           record_metric_context) noexcept = 0;
 };
 
@@ -54,6 +56,9 @@ class MetricClientProviderFactory {
    * MetricClientProvider.
    */
   static std::shared_ptr<MetricClientProviderInterface> Create(
-      const std::shared_ptr<MetricClientOptions>& options);
+      const std::shared_ptr<MetricClientOptions>& options,
+      const std::shared_ptr<InstanceClientProviderInterface>&
+          instance_client_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor);
 };
 }  // namespace google::scp::cpio::client_providers

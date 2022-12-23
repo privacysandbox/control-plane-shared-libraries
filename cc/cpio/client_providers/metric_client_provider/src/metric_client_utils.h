@@ -18,17 +18,17 @@
 
 #include <map>
 
-#include "cpio/proto/metric_client.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/type_def.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
 class MetricClientUtils {
  public:
-  static metric_client::MetricUnitProto ConvertToMetricUnitProto(
+  static cmrt::sdk::metric_service::v1::MetricUnit ConvertToMetricUnitProto(
       MetricUnit metric_unit);
 
   static core::ExecutionResult ValidateRequest(
-      const metric_client::RecordMetricsProtoRequest& request);
+      const cmrt::sdk::metric_service::v1::PutMetricsRequest& request);
 };
 }  // namespace google::scp::cpio::client_providers

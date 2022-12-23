@@ -26,31 +26,30 @@
 #include <aws/ssm/model/GetParametersRequest.h>
 
 #include "core/interface/async_context.h"
-#include "core/message_router/src/message_router.h"
 #include "core/test/utils/conditional_wait.h"
-#include "cpio/client_providers/config_client_provider/aws/src/aws_config_client_provider.h"
 #include "cpio/client_providers/config_client_provider/mock/mock_config_client_provider_with_overrides.h"
 #include "cpio/client_providers/config_client_provider/src/error_codes.h"
 #include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
-#include "cpio/common/aws/src/error_codes.h"
+#include "cpio/common/src/aws/error_codes.h"
 #include "cpio/proto/config_client.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
 using Aws::ShutdownAPI;
-using google::protobuf::Any;
+using google::cmrt::sdk::parameter_service::v1::GetParameterRequest;
+using google::cmrt::sdk::parameter_service::v1::GetParameterResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
-using google::scp::core::MessageRouter;
 using google::scp::core::SuccessExecutionResult;
-using google::scp::core::errors::
-    SC_AWS_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
+using google::scp::core::errors::
+    SC_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME;
 using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME;
+using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
 using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND;
-using google::scp::core::errors::SC_MESSAGE_ROUTER_REQUEST_ALREADY_SUBSCRIBED;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::mock::
     MockConfigClientProviderWithOverrides;
@@ -69,9 +68,12 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
+static constexpr char kRegion[] = "us-east-1";
 static constexpr char kInstanceId[] = "instance_id";
 static constexpr char kTagName[] = "tag_name";
 static constexpr char kTagValue[] = "tag_value";
+static constexpr char kParameterName[] = "parameter_name";
+static constexpr char kParameterValue[] = "parameter_value";
 
 namespace google::scp::cpio::client_providers::test {
 class ConfigClientProviderTest : public ::testing::Test {
@@ -88,13 +90,22 @@ class ConfigClientProviderTest : public ::testing::Test {
 
   void SetUp() override {
     config_client_options_ = make_shared<ConfigClientOptions>();
-    message_router_ = make_shared<MessageRouter>();
+    config_client_options_->parameter_names.emplace_back(kParameterName);
     client_ = make_unique<MockConfigClientProviderWithOverrides>(
-        config_client_options_, message_router_);
+        config_client_options_);
 
+    client_->GetInstanceClientProvider()->region_mock = kRegion;
     client_->GetInstanceClientProvider()->instance_id_mock = kInstanceId;
     client_->GetInstanceClientProvider()->tag_values_mock = {
         {kTagName, kTagValue}};
+    GetParameterRequest get_parameter_request;
+    get_parameter_request.set_parameter_name(kParameterName);
+    client_->GetParameterClientProvider()->get_parameter_request_mock =
+        get_parameter_request;
+    GetParameterResponse get_parameter_response;
+    get_parameter_response.set_parameter_value(kParameterValue);
+    client_->GetParameterClientProvider()->get_parameter_response_mock =
+        get_parameter_response;
     EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   }
 
@@ -102,18 +113,9 @@ class ConfigClientProviderTest : public ::testing::Test {
     EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
   }
 
-  shared_ptr<MessageRouter> message_router_;
   unique_ptr<MockConfigClientProviderWithOverrides> client_;
   shared_ptr<ConfigClientOptions> config_client_options_;
 };
-
-TEST_F(ConfigClientProviderTest, EmptyMessageRouter) {
-  client_ = make_unique<MockConfigClientProviderWithOverrides>(
-      config_client_options_, nullptr);
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
-}
 
 TEST_F(ConfigClientProviderTest, FailedToFetchInstanceId) {
   FailureExecutionResult failure(SC_AWS_INTERNAL_SERVICE_ERROR);
@@ -213,36 +215,68 @@ TEST_F(ConfigClientProviderTest, TagNotFound) {
   WaitUntil([&]() { return condition.load(); });
 }
 
-TEST_F(ConfigClientProviderTest, FailedToSubscribeGetTag) {
-  GetTagProtoRequest get_env_name_request;
-  Any any_request;
-  any_request.PackFrom(get_env_name_request);
-  message_router_->Subscribe(any_request.type_url(),
-                             [](AsyncContext<Any, Any> context) {});
+TEST_F(ConfigClientProviderTest, InvalidParameterName) {
+  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
-  EXPECT_EQ(client_->Init(), FailureExecutionResult(
-                                 SC_MESSAGE_ROUTER_REQUEST_ALREADY_SUBSCRIBED));
+  atomic<bool> condition = false;
+  auto request = make_shared<GetParameterRequest>();
+  AsyncContext<GetParameterRequest, GetParameterResponse> context(
+      move(request),
+      [&](AsyncContext<GetParameterRequest, GetParameterResponse>& context) {
+        EXPECT_EQ(context.result,
+                  FailureExecutionResult(
+                      SC_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME));
+        condition = true;
+      });
+
+  EXPECT_EQ(
+      client_->GetParameter(context),
+      FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME));
+  WaitUntil([&]() { return condition.load(); });
 }
 
-TEST_F(ConfigClientProviderTest, FailedToSubscribeGetInstanceId) {
-  GetInstanceIdProtoRequest get_instance_id_request;
-  Any any_request;
-  any_request.PackFrom(get_instance_id_request);
-  message_router_->Subscribe(any_request.type_url(),
-                             [](AsyncContext<Any, Any> context) {});
+TEST_F(ConfigClientProviderTest, FailedToFetchParameter) {
+  FailureExecutionResult result(SC_AWS_INTERNAL_SERVICE_ERROR);
+  client_->GetParameterClientProvider()->get_parameter_result_mock = result;
 
-  EXPECT_EQ(client_->Init(), FailureExecutionResult(
-                                 SC_MESSAGE_ROUTER_REQUEST_ALREADY_SUBSCRIBED));
+  EXPECT_EQ(client_->Run(),
+            FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
 }
 
-TEST_F(ConfigClientProviderTest, FailedToSubscribeGetParameter) {
-  GetParameterProtoRequest get_parameter_request;
-  Any any_request;
-  any_request.PackFrom(get_parameter_request);
-  message_router_->Subscribe(any_request.type_url(),
-                             [](AsyncContext<Any, Any> context) {});
+TEST_F(ConfigClientProviderTest, SucceededToFetchParameter) {
+  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
-  EXPECT_EQ(client_->Init(), FailureExecutionResult(
-                                 SC_MESSAGE_ROUTER_REQUEST_ALREADY_SUBSCRIBED));
+  atomic<bool> condition = false;
+  auto request = make_shared<GetParameterRequest>();
+  request->set_parameter_name(kParameterName);
+  AsyncContext<GetParameterRequest, GetParameterResponse> context(
+      move(request),
+      [&](AsyncContext<GetParameterRequest, GetParameterResponse>& context) {
+        EXPECT_EQ(context.result, SuccessExecutionResult());
+        EXPECT_EQ(context.response->parameter_value(), kParameterValue);
+        condition = true;
+      });
+
+  EXPECT_EQ(client_->GetParameter(context), SuccessExecutionResult());
+  WaitUntil([&]() { return condition.load(); });
+}
+
+TEST_F(ConfigClientProviderTest, ParameterNotFound) {
+  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+
+  atomic<bool> condition = false;
+  auto request = make_shared<GetParameterRequest>();
+  request->set_parameter_name("tag_2");
+  AsyncContext<GetParameterRequest, GetParameterResponse> context(
+      move(request),
+      [&](AsyncContext<GetParameterRequest, GetParameterResponse>& context) {
+        EXPECT_EQ(context.result,
+                  FailureExecutionResult(
+                      SC_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND));
+        condition = true;
+      });
+
+  EXPECT_EQ(client_->GetParameter(context), SuccessExecutionResult());
+  WaitUntil([&]() { return condition.load(); });
 }
 }  // namespace google::scp::cpio::client_providers::test

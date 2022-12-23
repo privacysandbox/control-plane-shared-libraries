@@ -46,32 +46,45 @@ ExecutionResult TestInstanceClientProvider::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetInstanceId(
+ExecutionResult TestInstanceClientProvider::GetCurrentInstanceId(
     string& instance_id) noexcept {
   instance_id = kTestInstanceId;
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetRegion(string& region) noexcept {
+ExecutionResult TestInstanceClientProvider::GetCurrentInstanceRegion(
+    string& region) noexcept {
   region = kTestRegion;
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetInstancePublicIpv4Address(
+ExecutionResult TestInstanceClientProvider::GetCurrentInstancePublicIpv4Address(
     string& instance_public_ipv4_address) noexcept {
   instance_public_ipv4_address = kTestPublicIp;
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetInstancePrivateIpv4Address(
+ExecutionResult
+TestInstanceClientProvider::GetCurrentInstancePrivateIpv4Address(
     string& instance_private_ipv4_address) noexcept {
   instance_private_ipv4_address = kTestPrivateIp;
   return SuccessExecutionResult();
 }
 
-ExecutionResult TestInstanceClientProvider::GetTags(
-    map<string, string>& tag_values_map, const vector<string>& tag_names,
-    const string& instance_id) noexcept {
+ExecutionResult TestInstanceClientProvider::GetTagsOfInstance(
+    const vector<string>& tag_names, const string& instance_id,
+    map<string, string>& tag_values_map) noexcept {
   return SuccessExecutionResult();
 }
+
+ExecutionResult TestInstanceClientProvider::GetCurrentInstanceProjectId(
+    std::string& project_id) noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult TestInstanceClientProvider::GetCurrentInstanceZone(
+    std::string& instance_zone) noexcept {
+  return SuccessExecutionResult();
+}
+
 }  // namespace google::scp::cpio::client_providers

@@ -24,6 +24,7 @@ string_flag(
     build_setting_default = "aws",
     values = [
         "aws",
+        "gcp",
     ],
 )
 
@@ -46,6 +47,14 @@ config_setting(
     flag_values = {
         ":platform": "aws",
         ":use_cpio_server": "True",
+    },
+)
+
+config_setting(
+    name = "gcp_cpio_lib",
+    flag_values = {
+        ":platform": "gcp",
+        ":use_cpio_server": "False",
     },
 )
 

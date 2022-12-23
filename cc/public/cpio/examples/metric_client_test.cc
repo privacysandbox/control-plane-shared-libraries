@@ -43,8 +43,8 @@ using google::scp::cpio::MetricClientFactory;
 using google::scp::cpio::MetricClientInterface;
 using google::scp::cpio::MetricClientOptions;
 using google::scp::cpio::MetricUnit;
-using google::scp::cpio::RecordMetricsRequest;
-using google::scp::cpio::RecordMetricsResponse;
+using google::scp::cpio::PutMetricsRequest;
+using google::scp::cpio::PutMetricsResponse;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
@@ -91,23 +91,23 @@ int main(int argc, char* argv[]) {
   metric.value = "12";
   metric.unit = MetricUnit::kCount;
   metric.labels = {{"lable_key", "label_value"}};
-  RecordMetricsRequest request;
+  PutMetricsRequest request;
   request.metrics.push_back(metric);
 
   atomic<bool> finished = false;
-  result = metric_client->RecordMetrics(
+  result = metric_client->PutMetrics(
       move(request),
-      [&](const ExecutionResult result, RecordMetricsResponse response) {
+      [&](const ExecutionResult result, PutMetricsResponse response) {
         if (!result.Successful()) {
-          std::cout << "RecordMetrics failed: "
+          std::cout << "PutMetrics failed: "
                     << GetErrorMessage(result.status_code) << std::endl;
         } else {
-          std::cout << "RecordMetrics succeeded." << std::endl;
+          std::cout << "PutMetrics succeeded." << std::endl;
         }
         finished = true;
       });
   if (!result.Successful()) {
-    std::cout << "RecordMetrics failed immediately: "
+    std::cout << "PutMetrics failed immediately: "
               << GetErrorMessage(result.status_code) << std::endl;
   }
   WaitUntil([&finished]() { return finished.load(); },

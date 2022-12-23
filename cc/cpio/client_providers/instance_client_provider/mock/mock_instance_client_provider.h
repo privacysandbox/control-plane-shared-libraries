@@ -42,7 +42,7 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
   core::ExecutionResult get_instance_id_result_mock =
       core::SuccessExecutionResult();
 
-  core::ExecutionResult GetInstanceId(
+  core::ExecutionResult GetCurrentInstanceId(
       std::string& instance_id) noexcept override {
     if (get_instance_id_result_mock != core::SuccessExecutionResult()) {
       return get_instance_id_result_mock;
@@ -54,7 +54,8 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
   std::string region_mock;
   core::ExecutionResult get_region_result_mock = core::SuccessExecutionResult();
 
-  core::ExecutionResult GetRegion(std::string& region) noexcept override {
+  core::ExecutionResult GetCurrentInstanceRegion(
+      std::string& region) noexcept override {
     if (get_region_result_mock != core::SuccessExecutionResult()) {
       return get_region_result_mock;
     }
@@ -65,10 +66,9 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
   std::map<std::string, std::string> tag_values_mock;
   core::ExecutionResult get_tags_result_mock = core::SuccessExecutionResult();
 
-  core::ExecutionResult GetTags(
-      std::map<std::string, std::string>& tag_values_map,
-      const std::vector<std::string>& tag_names,
-      const std::string& instance_id) noexcept override {
+  core::ExecutionResult GetTagsOfInstance(
+      const std::vector<std::string>& tag_names, const std::string& instance_id,
+      std::map<std::string, std::string>& tag_values_map) noexcept override {
     if (get_tags_result_mock != core::SuccessExecutionResult()) {
       return get_tags_result_mock;
     }
@@ -76,13 +76,39 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  core::ExecutionResult GetInstancePublicIpv4Address(
+  core::ExecutionResult GetCurrentInstancePublicIpv4Address(
       std::string& instance_public_ipv4_address) noexcept override {
     return core::SuccessExecutionResult();
   }
 
-  core::ExecutionResult GetInstancePrivateIpv4Address(
+  core::ExecutionResult GetCurrentInstancePrivateIpv4Address(
       std::string& instance_private_ipv4_address) noexcept override {
+    return core::SuccessExecutionResult();
+  }
+
+  std::string project_id_mock;
+  core::ExecutionResult get_project_id_result_mock =
+      core::SuccessExecutionResult();
+
+  core::ExecutionResult GetCurrentInstanceProjectId(
+      std::string& project_id) noexcept override {
+    if (get_project_id_result_mock != core::SuccessExecutionResult()) {
+      return get_project_id_result_mock;
+    }
+    project_id = project_id_mock;
+    return core::SuccessExecutionResult();
+  }
+
+  std::string instance_zone_mock;
+  core::ExecutionResult get_instance_zone_result_mock =
+      core::SuccessExecutionResult();
+
+  core::ExecutionResult GetCurrentInstanceZone(
+      std::string& instance_zone) noexcept override {
+    if (get_instance_zone_result_mock != core::SuccessExecutionResult()) {
+      return get_instance_zone_result_mock;
+    }
+    instance_zone = instance_zone_mock;
     return core::SuccessExecutionResult();
   }
 };

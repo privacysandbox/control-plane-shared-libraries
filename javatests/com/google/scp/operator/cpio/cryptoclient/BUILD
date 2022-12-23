@@ -67,9 +67,9 @@ java_test(
     deps = [
         "//coordinator/protos/keymanagement/keyhosting/api/v1:java_proto",
         "//coordinator/protos/keymanagement/shared/api/v1:java_proto",
-        "//java/com/google/scp/coordinator/keymanagement/shared/util",
         "//java/com/google/scp/operator/cpio/cryptoclient",
         "//java/com/google/scp/shared/crypto/tink",
+        "//java/com/google/scp/shared/util",
         "//java/external:acai",
         "//java/external:google_truth",
         "//java/external:guice",

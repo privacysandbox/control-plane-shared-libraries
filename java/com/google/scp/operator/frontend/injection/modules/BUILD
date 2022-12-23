@@ -78,6 +78,21 @@ java_library(
 )
 
 java_library(
+    name = "aws_failed_job_queue_change_handler_module",
+    srcs = ["AwsFailedJobQueueChangeHandlerModule.java"],
+    deps = [
+        "modules",
+        "//java/com/google/scp/operator/frontend/service/aws/changehandler",
+        "//java/external:autoservice",
+        "//java/external:autoservice_annotations",
+        "//java/external:guava",
+        "//java/external:guice",
+        "//java/external:jackson_core",
+        "//java/external:jackson_databind",
+    ],
+)
+
+java_library(
     name = "aws_failed_job_queue_write_cleanup_module",
     srcs = ["AwsFailedJobQueueWriteCleanupModule.java"],
     deps = [

@@ -39,7 +39,11 @@ def cpio_test_ami(
         binary_target = Label(binary_target),
         pkgs_to_install = [
             "ca-certificates",
+            "curl",
             "rsyslog",
+            "libatomic1",
+            "libxml2-dev",
+            "netbase",
         ],
     )
 

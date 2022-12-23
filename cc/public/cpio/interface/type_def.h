@@ -23,6 +23,8 @@
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio {
+using AccountIdentity = std::string;
+using Region = std::string;
 using PublicKeyValue = std::string;
 using PublicPrivateKeyPairId = std::string;
 using Timestamp = int64_t;

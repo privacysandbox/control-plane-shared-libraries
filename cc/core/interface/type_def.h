@@ -39,6 +39,11 @@ struct BytesBuffer {
   explicit BytesBuffer(size_t size)
       : bytes(std::make_shared<std::vector<Byte>>(size)), capacity(size) {}
 
+  explicit BytesBuffer(const std::string& str) : BytesBuffer(str.size()) {
+    bytes->assign(str.begin(), str.end());
+    length = bytes->size();
+  }
+
   std::shared_ptr<std::vector<Byte>> bytes;
   size_t length = 0;
   size_t capacity = 0;
@@ -47,6 +52,10 @@ struct BytesBuffer {
   inline void AssignBody(const char (&str)[N]) {
     bytes->assign(str, str + N - 1);  // mind the trailing null
     length = N - 1;
+  }
+
+  inline std::string ToString() const {
+    return std::string(bytes->data(), length);
   }
 };
 

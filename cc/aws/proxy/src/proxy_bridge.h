@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <stdint.h>
+
+#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -42,10 +45,10 @@ class ProxyBridge : public std::enable_shared_from_this<ProxyBridge> {
   // any stream socket implementation of boost::asio.
   template <typename SocketType>
   explicit ProxyBridge(
-      SocketType client_sock,
-      AcceptorPool* acceptor_pool = nullptr,
+      SocketType client_sock, AcceptorPool* acceptor_pool = nullptr,
       const std::shared_ptr<Freelist<Buffer::Block>>& freelist = nullptr)
-      : strand_(client_sock.get_executor()),
+      : connection_id_(connection_id_counter.fetch_add(1)),
+        strand_(client_sock.get_executor()),
         client_sock_(std::move(client_sock)),
         dest_sock_(client_sock.get_executor()),
         upstream_buff_(freelist),
@@ -65,7 +68,8 @@ class ProxyBridge : public std::enable_shared_from_this<ProxyBridge> {
       SocketType1 client_sock, SocketType2 dest_sock,
       AcceptorPool* acceptor_pool = nullptr,
       const std::shared_ptr<Freelist<Buffer::Block>>& freelist = nullptr)
-      : strand_(client_sock.get_executor()),
+      : connection_id_(connection_id_counter.fetch_add(1)),
+        strand_(client_sock.get_executor()),
         client_sock_(std::move(client_sock)),
         dest_sock_(std::move(dest_sock)),
         upstream_buff_(freelist),
@@ -114,6 +118,8 @@ class ProxyBridge : public std::enable_shared_from_this<ProxyBridge> {
   // Stop waiting to accept an inbound connection.
   void StopWaitingInbound(bool client_error = true);
  private:
+  static std::atomic<uint64_t> connection_id_counter;
+  const uint64_t connection_id_;
 
   // The "strand" associated to this object. This allows us to reduce locking.
   boost::asio::strand<Socket::executor_type> strand_;
@@ -134,6 +140,9 @@ class ProxyBridge : public std::enable_shared_from_this<ProxyBridge> {
 #endif
   boost::asio::cancellation_signal cancel_signal_;
   AcceptorPool* acceptor_pool_;
+  // Flags indicating the state of the proxy connection. We only have 8 of them,
+  // so we are using discrete bool instead of a bit field uint64_t. If more
+  // flags are needed, we may consider compacting them into a uint32/64_t.
   bool reading_client_ = false;
   bool writing_client_ = false;
   bool client_readable_ = true;

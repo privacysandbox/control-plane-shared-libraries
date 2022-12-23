@@ -28,6 +28,7 @@ cc_test(
         "//cc/cpio/client_providers/config_client_provider/mock:config_client_provider_mock",
         "//cc/cpio/client_providers/config_client_provider/src:config_client_provider_lib",
         "//cc/cpio/proto:cc_proto",
+        "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )

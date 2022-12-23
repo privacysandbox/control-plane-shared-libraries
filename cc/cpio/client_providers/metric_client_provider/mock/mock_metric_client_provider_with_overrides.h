@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "core/interface/async_context.h"
-#include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
 #include "cpio/client_providers/metric_client_provider/src/metric_client_provider.h"
 #include "google/protobuf/any.pb.h"
@@ -30,24 +29,20 @@ class MockMetricClientProviderWithOverrides : public MetricClientProvider {
  public:
   explicit MockMetricClientProviderWithOverrides(
       const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
-      const std::shared_ptr<MetricClientOptions>& metric_client_options,
-      const std::shared_ptr<core::MessageRouterInterface<
-          google::protobuf::Any, google::protobuf::Any>>& message_router =
-          nullptr)
+      const std::shared_ptr<MetricClientOptions>& metric_client_options)
       : MetricClientProvider(async_executor, metric_client_options,
-                             std::make_shared<MockInstanceClientProvider>(),
-                             message_router) {}
+                             std::make_shared<MockInstanceClientProvider>()) {}
 
   std::function<core::ExecutionResult(
-      core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                         metric_client::RecordMetricsProtoResponse>&)>
+      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&)>
       record_metric_mock;
 
   std::function<core::ExecutionResult()> schedule_metric_push_mock;
   std::function<core::ExecutionResult(
-      const std::shared_ptr<std::vector<
-          core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                             metric_client::RecordMetricsProtoResponse>>>&)>
+      const std::shared_ptr<std::vector<core::AsyncContext<
+          cmrt::sdk::metric_service::v1::PutMetricsRequest,
+          cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&)>
       metrics_batch_push_mock;
 
   std::function<void()> schedule_metrics_helper_mock;
@@ -61,9 +56,9 @@ class MockMetricClientProviderWithOverrides : public MetricClientProvider {
     return MetricClientProvider::RunMetricsBatchPush();
   }
 
-  core::ExecutionResult RecordMetrics(
-      core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                         metric_client::RecordMetricsProtoResponse>&
+  core::ExecutionResult PutMetrics(
+      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
           context) noexcept override {
     if (record_metric_mock) {
       return record_metric_mock(context);
@@ -71,14 +66,14 @@ class MockMetricClientProviderWithOverrides : public MetricClientProvider {
     if (record_metric_result_mock) {
       context.result = record_metric_result_mock;
       if (record_metric_result_mock == core::SuccessExecutionResult()) {
-        context.response =
-            std::make_shared<metric_client::RecordMetricsProtoResponse>();
+        context.response = std::make_shared<
+            cmrt::sdk::metric_service::v1::PutMetricsResponse>();
       }
       context.Finish();
       return record_metric_result_mock;
     }
 
-    return MetricClientProvider::RecordMetrics(context);
+    return MetricClientProvider::PutMetrics(context);
   }
 
   int GetSizeMetricRequestsVector() {
@@ -93,9 +88,9 @@ class MockMetricClientProviderWithOverrides : public MetricClientProvider {
   }
 
   core::ExecutionResult MetricsBatchPush(
-      const std::shared_ptr<std::vector<
-          core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                             metric_client::RecordMetricsProtoResponse>>>&
+      const std::shared_ptr<std::vector<core::AsyncContext<
+          cmrt::sdk::metric_service::v1::PutMetricsRequest,
+          cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
           metric_requests_vector) noexcept override {
     if (metrics_batch_push_mock) {
       return metrics_batch_push_mock(metric_requests_vector);

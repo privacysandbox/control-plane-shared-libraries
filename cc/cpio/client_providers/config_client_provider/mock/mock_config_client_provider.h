@@ -23,6 +23,7 @@
 
 #include "cpio/client_providers/interface/config_client_provider_interface.h"
 #include "google/protobuf/any.pb.h"
+#include "public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
 
 namespace google::scp::cpio::client_providers::mock {
 class MockConfigClientProvider : public ConfigClientProviderInterface {
@@ -77,21 +78,24 @@ class MockConfigClientProvider : public ConfigClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  config_client::GetParameterProtoRequest get_parameter_request_mock;
-  config_client::GetParameterProtoResponse get_parameter_response_mock;
+  cmrt::sdk::parameter_service::v1::GetParameterRequest
+      get_parameter_request_mock;
+  cmrt::sdk::parameter_service::v1::GetParameterResponse
+      get_parameter_response_mock;
   core::ExecutionResult get_parameter_result_mock =
       core::SuccessExecutionResult();
 
   core::ExecutionResult GetParameter(
-      core::AsyncContext<config_client::GetParameterProtoRequest,
-                         config_client::GetParameterProtoResponse>&
+      core::AsyncContext<
+          cmrt::sdk::parameter_service::v1::GetParameterRequest,
+          cmrt::sdk::parameter_service::v1::GetParameterResponse>&
           context) noexcept override {
     context.result = get_parameter_result_mock;
     if (google::protobuf::util::MessageDifferencer::Equals(
             get_parameter_request_mock, *context.request)) {
-      context.response =
-          std::make_shared<config_client::GetParameterProtoResponse>(
-              get_parameter_response_mock);
+      context.response = std::make_shared<
+          cmrt::sdk::parameter_service::v1::GetParameterResponse>(
+          get_parameter_response_mock);
     }
     context.Finish();
     return core::SuccessExecutionResult();

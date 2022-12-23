@@ -41,6 +41,7 @@ cc_library(
         "//cc/cpio/client_providers/metric_client_provider/src:metric_client_provider_lib",
         "//cc/cpio/proto:cc_proto",
         "//cc/public/cpio/interface:type_def",
+        "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
     ],
 )
 

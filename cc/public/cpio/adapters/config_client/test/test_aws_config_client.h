@@ -18,7 +18,6 @@
 
 #include <memory>
 
-#include "cpio/client_providers/config_client_provider/aws/test/test_aws_config_client_provider.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/adapters/config_client/src/config_client.h"
 #include "public/cpio/test/test_aws_config_client_options.h"

@@ -18,12 +18,13 @@
 
 #include <map>
 
-#include "cpio/proto/metric_client.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/type_def.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 #include "error_codes.h"
 
+using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
@@ -31,58 +32,85 @@ using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NAME_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_VALUE_NOT_SET;
 using google::scp::cpio::MetricUnit;
-using google::scp::cpio::metric_client::MetricUnitProto;
-using google::scp::cpio::metric_client::RecordMetricsProtoRequest;
 
-static const std::map<MetricUnit, MetricUnitProto> kMetricUnitMap = {
-    {MetricUnit::kSeconds, MetricUnitProto::METRIC_UNIT_SECONDS},
-    {MetricUnit::kMicroseconds, MetricUnitProto::METRIC_UNIT_MICROSECONDS},
-    {MetricUnit::kMilliseconds, MetricUnitProto::METRIC_UNIT_MILLISECONDS},
-    {MetricUnit::kBits, MetricUnitProto::METRIC_UNIT_BITS},
-    {MetricUnit::kKilobits, MetricUnitProto::METRIC_UNIT_KILOBITS},
-    {MetricUnit::kMegabits, MetricUnitProto::METRIC_UNIT_MEGABITS},
-    {MetricUnit::kGigabits, MetricUnitProto::METRIC_UNIT_GIGABITS},
-    {MetricUnit::kTerabits, MetricUnitProto::METRIC_UNIT_TERABITS},
-    {MetricUnit::kBytes, MetricUnitProto::METRIC_UNIT_BYTES},
-    {MetricUnit::kKilobytes, MetricUnitProto::METRIC_UNIT_KILOBYTES},
-    {MetricUnit::kMegabytes, MetricUnitProto::METRIC_UNIT_MEGABYTES},
-    {MetricUnit::kGigabytes, MetricUnitProto::METRIC_UNIT_GIGABYTES},
-    {MetricUnit::kTerabytes, MetricUnitProto::METRIC_UNIT_TERABYTES},
-    {MetricUnit::kCount, MetricUnitProto::METRIC_UNIT_COUNT},
-    {MetricUnit::kPercent, MetricUnitProto::METRIC_UNIT_PERCENT},
-    {MetricUnit::kBitsPerSecond, MetricUnitProto::METRIC_UNIT_BITS_PER_SECOND},
-    {MetricUnit::kKilobitsPerSecond,
-     MetricUnitProto::METRIC_UNIT_KILOBITS_PER_SECOND},
-    {MetricUnit::kMegabitsPerSecond,
-     MetricUnitProto::METRIC_UNIT_MEGABITS_PER_SECOND},
-    {MetricUnit::kGigabitsPerSecond,
-     MetricUnitProto::METRIC_UNIT_GIGABITS_PER_SECOND},
-    {MetricUnit::kTerabitsPerSecond,
-     MetricUnitProto::METRIC_UNIT_TERABITS_PER_SECOND},
-    {MetricUnit::kBytesPerSecond,
-     MetricUnitProto::METRIC_UNIT_BYTES_PER_SECOND},
-    {MetricUnit::kKilobytesPerSecond,
-     MetricUnitProto::METRIC_UNIT_KILOBYTES_PER_SECOND},
-    {MetricUnit::kMegabytesPerSecond,
-     MetricUnitProto::METRIC_UNIT_MEGABYTES_PER_SECOND},
-    {MetricUnit::kGigabytesPerSecond,
-     MetricUnitProto::METRIC_UNIT_GIGABYTES_PER_SECOND},
-    {MetricUnit::kTerabytesPerSecond,
-     MetricUnitProto::METRIC_UNIT_TERABYTES_PER_SECOND},
-    {MetricUnit::kCountPerSecond,
-     MetricUnitProto::METRIC_UNIT_COUNT_PER_SECOND}};
+static const std::map<MetricUnit,
+                      google::cmrt::sdk::metric_service::v1::MetricUnit>
+    kMetricUnitMap = {
+        {MetricUnit::kSeconds, google::cmrt::sdk::metric_service::v1::
+                                   MetricUnit::METRIC_UNIT_SECONDS},
+        {MetricUnit::kMicroseconds, google::cmrt::sdk::metric_service::v1::
+                                        MetricUnit::METRIC_UNIT_MICROSECONDS},
+        {MetricUnit::kMilliseconds, google::cmrt::sdk::metric_service::v1::
+                                        MetricUnit::METRIC_UNIT_MILLISECONDS},
+        {MetricUnit::kBits,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_BITS},
+        {MetricUnit::kKilobits, google::cmrt::sdk::metric_service::v1::
+                                    MetricUnit::METRIC_UNIT_KILOBITS},
+        {MetricUnit::kMegabits, google::cmrt::sdk::metric_service::v1::
+                                    MetricUnit::METRIC_UNIT_MEGABITS},
+        {MetricUnit::kGigabits, google::cmrt::sdk::metric_service::v1::
+                                    MetricUnit::METRIC_UNIT_GIGABITS},
+        {MetricUnit::kTerabits, google::cmrt::sdk::metric_service::v1::
+                                    MetricUnit::METRIC_UNIT_TERABITS},
+        {MetricUnit::kBytes,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_BYTES},
+        {MetricUnit::kKilobytes, google::cmrt::sdk::metric_service::v1::
+                                     MetricUnit::METRIC_UNIT_KILOBYTES},
+        {MetricUnit::kMegabytes, google::cmrt::sdk::metric_service::v1::
+                                     MetricUnit::METRIC_UNIT_MEGABYTES},
+        {MetricUnit::kGigabytes, google::cmrt::sdk::metric_service::v1::
+                                     MetricUnit::METRIC_UNIT_GIGABYTES},
+        {MetricUnit::kTerabytes, google::cmrt::sdk::metric_service::v1::
+                                     MetricUnit::METRIC_UNIT_TERABYTES},
+        {MetricUnit::kCount,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_COUNT},
+        {MetricUnit::kPercent, google::cmrt::sdk::metric_service::v1::
+                                   MetricUnit::METRIC_UNIT_PERCENT},
+        {MetricUnit::kBitsPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_BITS_PER_SECOND},
+        {MetricUnit::kKilobitsPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_KILOBITS_PER_SECOND},
+        {MetricUnit::kMegabitsPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_MEGABITS_PER_SECOND},
+        {MetricUnit::kGigabitsPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_GIGABITS_PER_SECOND},
+        {MetricUnit::kTerabitsPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_TERABITS_PER_SECOND},
+        {MetricUnit::kBytesPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_BYTES_PER_SECOND},
+        {MetricUnit::kKilobytesPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_KILOBYTES_PER_SECOND},
+        {MetricUnit::kMegabytesPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_MEGABYTES_PER_SECOND},
+        {MetricUnit::kGigabytesPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_GIGABYTES_PER_SECOND},
+        {MetricUnit::kTerabytesPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_TERABYTES_PER_SECOND},
+        {MetricUnit::kCountPerSecond,
+         google::cmrt::sdk::metric_service::v1::MetricUnit::
+             METRIC_UNIT_COUNT_PER_SECOND}};
 
 namespace google::scp::cpio::client_providers {
-MetricUnitProto MetricClientUtils::ConvertToMetricUnitProto(
-    MetricUnit metric_unit) {
+cmrt::sdk::metric_service::v1::MetricUnit
+MetricClientUtils::ConvertToMetricUnitProto(MetricUnit metric_unit) {
   if (kMetricUnitMap.find(metric_unit) != kMetricUnitMap.end()) {
     return kMetricUnitMap.at(metric_unit);
   }
-  return MetricUnitProto::METRIC_UNIT_UNKNOWN;
+  return cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_UNKNOWN;
 }
 
 ExecutionResult MetricClientUtils::ValidateRequest(
-    const RecordMetricsProtoRequest& request) {
+    const PutMetricsRequest& request) {
   if (request.metrics().empty()) {
     return FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET);
   }

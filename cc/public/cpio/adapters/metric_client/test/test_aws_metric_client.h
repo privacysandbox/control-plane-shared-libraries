@@ -18,7 +18,7 @@
 
 #include <memory>
 
-#include "cpio/client_providers/metric_client_provider/aws/test/test_aws_metric_client_provider.h"
+#include "cpio/client_providers/metric_client_provider/test/aws/test_aws_metric_client_provider.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/adapters/metric_client/src/metric_client.h"
 #include "public/cpio/test/test_aws_metric_client_options.h"

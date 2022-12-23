@@ -15,7 +15,7 @@
 load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 
 # Note: use reproducible versions of these binaries.
-_PROXY_BINARY_FILES = [Label("//cc/aws/proxy:libproxy_preload.so"), Label("//cc/aws/proxy:proxify")]
+_PROXY_BINARY_FILES = [Label("//cc/aws/proxy:libproxy_preload.so"), Label("//cc/aws/proxy:proxify"), Label("//cc/aws/proxy:socket_vendor")]
 
 def java_enclave_image(
         *,

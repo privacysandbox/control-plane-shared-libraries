@@ -14,16 +14,54 @@
 
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
+cc_library(
+    name = "cpio_client_providers_interface_lib",
+    srcs = [
+        ":cpio_client_provider_interface_srcs",
+    ],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/interface:interface_lib",
+        "//cc/cpio/proto:cc_proto",
+        "//cc/public/core/interface:execution_result",
+        "//cc/public/cpio/interface:type_def",
+        "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
+        "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 exports_files([
     "cpio_provider_interface.h",
     "instance_client_provider_interface.h",
     "config_client_provider_interface.h",
+    "parameter_client_provider_interface.h",
     "metric_client_provider_interface.h",
     "private_key_client_provider_interface.h",
     "private_key_fetching_client_provider_interface.h",
     "public_key_client_provider_interface.h",
     "kms_client_provider_interface.h",
+    "role_credentials_provider_interface.h",
 ])
+
+filegroup(
+    name = "cpio_client_provider_interface_srcs",
+    srcs = [
+        ":config_client_provider_interface.h",
+        ":cpio_provider_interface.h",
+        ":instance_client_provider_interface.h",
+        ":kms_client_provider_interface.h",
+        ":metric_client_provider_interface.h",
+        ":parameter_client_provider_interface.h",
+        ":private_key_client_provider_interface.h",
+        ":private_key_fetching_client_provider_interface.h",
+        ":public_key_client_provider_interface.h",
+        ":role_credentials_provider_interface.h",
+    ],
+)
 
 cc_library(
     name = "type_def",

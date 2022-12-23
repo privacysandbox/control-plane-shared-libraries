@@ -25,6 +25,7 @@
 #include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
+#include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 
@@ -57,6 +58,10 @@ class LibCpioProvider : public CpioProviderInterface {
   std::shared_ptr<InstanceClientProviderInterface>
   GetInstanceClientProvider() noexcept override;
 
+  core::ExecutionResult GetRoleCredentialsProvider(
+      std::shared_ptr<RoleCredentialsProviderInterface>&
+          role_credentials_provider) noexcept override;
+
  protected:
   /// Global message router.
   std::shared_ptr<core::MessageRouterInterface<google::protobuf::Any,
@@ -69,5 +74,7 @@ class LibCpioProvider : public CpioProviderInterface {
   std::shared_ptr<core::HttpClientInterface> http_client_;
   /// Global instance client provider to fetch cloud metadata.
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
+  /// Global role credential provider.
+  std::shared_ptr<RoleCredentialsProviderInterface> role_credentials_provider_;
 };
 }  // namespace google::scp::cpio::client_providers

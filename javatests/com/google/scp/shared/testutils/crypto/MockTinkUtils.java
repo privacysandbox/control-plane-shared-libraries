@@ -16,7 +16,7 @@
 
 package com.google.scp.shared.testutils.crypto;
 
-import static com.google.scp.coordinator.keymanagement.shared.util.KeysetHandleSerializerUtil.fromBinaryCleartext;
+import static com.google.scp.shared.util.KeysetHandleSerializerUtil.fromBinaryCleartext;
 
 import com.google.crypto.tink.HybridEncrypt;
 import com.google.crypto.tink.KeysetHandle;

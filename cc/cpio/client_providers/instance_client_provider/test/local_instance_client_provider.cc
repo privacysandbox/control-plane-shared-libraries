@@ -41,33 +41,46 @@ ExecutionResult LocalInstanceClientProvider::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult LocalInstanceClientProvider::GetInstanceId(
+ExecutionResult LocalInstanceClientProvider::GetCurrentInstanceId(
     string& instance_id) noexcept {
   instance_id = local_cpio_options_->instance_id;
   return SuccessExecutionResult();
 }
 
-ExecutionResult LocalInstanceClientProvider::GetRegion(
+ExecutionResult LocalInstanceClientProvider::GetCurrentInstanceRegion(
     string& region) noexcept {
   region = local_cpio_options_->region;
   return SuccessExecutionResult();
 }
 
-ExecutionResult LocalInstanceClientProvider::GetInstancePublicIpv4Address(
+ExecutionResult
+LocalInstanceClientProvider::GetCurrentInstancePublicIpv4Address(
     string& instance_public_ipv4_address) noexcept {
   instance_public_ipv4_address = local_cpio_options_->public_ipv4_address;
   return SuccessExecutionResult();
 }
 
-ExecutionResult LocalInstanceClientProvider::GetInstancePrivateIpv4Address(
+ExecutionResult
+LocalInstanceClientProvider::GetCurrentInstancePrivateIpv4Address(
     string& instance_private_ipv4_address) noexcept {
   instance_private_ipv4_address = local_cpio_options_->private_ipv4_address;
   return SuccessExecutionResult();
 }
 
-ExecutionResult LocalInstanceClientProvider::GetTags(
-    map<string, string>& tag_values_map, const vector<string>& tag_names,
-    const string& instance_id) noexcept {
+ExecutionResult LocalInstanceClientProvider::GetTagsOfInstance(
+    const vector<string>& tag_names, const string& instance_id,
+    map<string, string>& tag_values_map) noexcept {
   return SuccessExecutionResult();
 }
+
+ExecutionResult LocalInstanceClientProvider::GetCurrentInstanceProjectId(
+    std::string& project_id) noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult LocalInstanceClientProvider::GetCurrentInstanceZone(
+    std::string& instance_zone) noexcept {
+  return SuccessExecutionResult();
+}
+
 }  // namespace google::scp::cpio::client_providers

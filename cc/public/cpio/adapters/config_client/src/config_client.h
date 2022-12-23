@@ -23,6 +23,7 @@
 #include "cpio/proto/config_client.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/config_client/config_client_interface.h"
+#include "public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
 
 #include "error_codes.h"
 
@@ -62,8 +63,9 @@ class ConfigClient : public ConfigClientInterface {
   void OnGetParameterCallback(
       const GetParameterRequest& request,
       Callback<GetParameterResponse>& callback,
-      core::AsyncContext<config_client::GetParameterProtoRequest,
-                         config_client::GetParameterProtoResponse>&
+      core::AsyncContext<
+          cmrt::sdk::parameter_service::v1::GetParameterRequest,
+          cmrt::sdk::parameter_service::v1::GetParameterResponse>&
           get_parameter_context) noexcept;
 
   /**

@@ -24,6 +24,7 @@
 #include "core/interface/service_interface.h"
 #include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
+#include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/type_def.h"
@@ -59,8 +60,8 @@ class CpioProviderInterface : public core::ServiceInterface {
   /**
    * @brief Get the Http Client object. Only create it when it is needed.
    *
-   * @param http_client
-   * @return core::ExecutionResult
+   * @param http_client output Http Client
+   * @return core::ExecutionResult get result.
    */
   virtual core::ExecutionResult GetHttpClient(
       std::shared_ptr<core::HttpClientInterface>& http_client) noexcept = 0;
@@ -73,6 +74,16 @@ class CpioProviderInterface : public core::ServiceInterface {
    */
   virtual std::shared_ptr<InstanceClientProviderInterface>
   GetInstanceClientProvider() noexcept = 0;
+
+  /**
+   * @brief Gets the Role Credentials Provider object when it is needed.
+   *
+   * @param credentials_provider output role credentials provider.
+   * @return core::ExecutionResult get result.
+   */
+  virtual core::ExecutionResult GetRoleCredentialsProvider(
+      std::shared_ptr<RoleCredentialsProviderInterface>&
+          role_credentials_provider) noexcept = 0;
 };
 
 /// Factory to create CpioProvider.

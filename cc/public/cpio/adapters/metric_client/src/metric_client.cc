@@ -24,32 +24,35 @@
 #include "core/common/global_logger/src/global_logger.h"
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
+#include "core/interface/async_executor_interface.h"
 #include "core/interface/errors.h"
 #include "core/utils/src/error_utils.h"
+#include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/metric_client_provider/src/metric_client_utils.h"
-#include "cpio/proto/metric_client.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
+using google::cmrt::sdk::metric_service::v1::Metric;
 using google::protobuf::MapPair;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::GetPublicErrorCode;
 using google::scp::core::utils::ConvertToPublicExecutionResult;
-using google::scp::cpio::RecordMetricsRequest;
-using google::scp::cpio::RecordMetricsResponse;
+using google::scp::cpio::PutMetricsRequest;
+using google::scp::cpio::PutMetricsResponse;
+using google::scp::cpio::client_providers::GlobalCpio;
 using google::scp::cpio::client_providers::MetricClientProviderFactory;
 using google::scp::cpio::client_providers::MetricClientUtils;
-using google::scp::cpio::metric_client::MetricProto;
-using google::scp::cpio::metric_client::RecordMetricsProtoRequest;
-using google::scp::cpio::metric_client::RecordMetricsProtoResponse;
 using std::bind;
 using std::make_shared;
 using std::make_unique;
 using std::map;
 using std::move;
+using std::shared_ptr;
 using std::string;
 using std::placeholders::_1;
 
@@ -58,7 +61,13 @@ static constexpr char kMetricClient[] = "MetricClient";
 namespace google::scp::cpio {
 MetricClient::MetricClient(
     const std::shared_ptr<MetricClientOptions>& options) {
-  metric_client_provider_ = MetricClientProviderFactory::Create(options);
+  shared_ptr<AsyncExecutorInterface> async_executor;
+  if (options->enable_batch_recording) {
+    GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor);
+  }
+  metric_client_provider_ = MetricClientProviderFactory::Create(
+      options, GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(),
+      async_executor);
 }
 
 ExecutionResult MetricClient::Init() noexcept {
@@ -88,10 +97,10 @@ ExecutionResult MetricClient::Stop() noexcept {
   return ConvertToPublicExecutionResult(execution_result);
 }
 
-void MetricClient::OnRecordMetricsCallback(
-    const RecordMetricsRequest& request,
-    Callback<RecordMetricsResponse>& callback,
-    AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>&
+void MetricClient::OnPutMetricsCallback(
+    const PutMetricsRequest& request, Callback<PutMetricsResponse>& callback,
+    AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                 cmrt::sdk::metric_service::v1::PutMetricsResponse>&
         record_metrics_context) noexcept {
   if (!record_metrics_context.result.Successful()) {
     ERROR_CONTEXT(kMetricClient, record_metrics_context,
@@ -99,13 +108,13 @@ void MetricClient::OnRecordMetricsCallback(
                   "Failed to get record metrics request callback.");
   }
   callback(ConvertToPublicExecutionResult(record_metrics_context.result),
-           RecordMetricsResponse());
+           PutMetricsResponse());
 }
 
-core::ExecutionResult MetricClient::RecordMetrics(
-    RecordMetricsRequest request,
-    Callback<RecordMetricsResponse> callback) noexcept {
-  auto record_metric_request = make_shared<RecordMetricsProtoRequest>();
+core::ExecutionResult MetricClient::PutMetrics(
+    PutMetricsRequest request, Callback<PutMetricsResponse> callback) noexcept {
+  auto record_metric_request =
+      make_shared<cmrt::sdk::metric_service::v1::PutMetricsRequest>();
   for (auto metric : request.metrics) {
     auto metric_proto = record_metric_request->add_metrics();
     metric_proto->set_name(metric.name);
@@ -121,14 +130,15 @@ core::ExecutionResult MetricClient::RecordMetrics(
     metric_proto->set_timestamp_in_ms(metric.timestamp_in_ms);
   }
 
-  AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>
+  AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+               cmrt::sdk::metric_service::v1::PutMetricsResponse>
       record_metrics_context(move(record_metric_request),
-                             bind(&MetricClient::OnRecordMetricsCallback, this,
+                             bind(&MetricClient::OnPutMetricsCallback, this,
                                   request, callback, _1),
                              kZeroUuid);
 
   return ConvertToPublicExecutionResult(
-      metric_client_provider_->RecordMetrics(record_metrics_context));
+      metric_client_provider_->PutMetrics(record_metrics_context));
 }
 
 std::unique_ptr<MetricClientInterface> MetricClientFactory::Create(

@@ -42,21 +42,27 @@ class LocalInstanceClientProvider : public InstanceClientProviderInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
-  core::ExecutionResult GetTags(
-      std::map<std::string, std::string>& tag_values_map,
-      const std::vector<std::string>& tag_names,
-      const std::string& instance_id) noexcept override;
+  core::ExecutionResult GetTagsOfInstance(
+      const std::vector<std::string>& tag_names, const std::string& instance_id,
+      std::map<std::string, std::string>& tag_values_map) noexcept override;
 
-  core::ExecutionResult GetInstanceId(
+  core::ExecutionResult GetCurrentInstanceId(
       std::string& instance_id) noexcept override;
 
-  core::ExecutionResult GetRegion(std::string& region) noexcept override;
+  core::ExecutionResult GetCurrentInstanceRegion(
+      std::string& region) noexcept override;
 
-  core::ExecutionResult GetInstancePublicIpv4Address(
+  core::ExecutionResult GetCurrentInstancePublicIpv4Address(
       std::string& instance_public_ipv4_address) noexcept override;
 
-  core::ExecutionResult GetInstancePrivateIpv4Address(
+  core::ExecutionResult GetCurrentInstancePrivateIpv4Address(
       std::string& instance_private_ipv4_address) noexcept override;
+
+  core::ExecutionResult GetCurrentInstanceProjectId(
+      std::string& project_id) noexcept override;
+
+  core::ExecutionResult GetCurrentInstanceZone(
+      std::string& instance_zone) noexcept override;
 
  private:
   std::shared_ptr<LocalCpioOptions> local_cpio_options_;

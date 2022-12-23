@@ -57,3 +57,12 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "type_def_test",
+    srcs = ["type_def_test.cc"],
+    deps = [
+        "//cc/core/interface:type_def_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

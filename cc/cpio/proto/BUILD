@@ -30,6 +30,9 @@ proto_library(
             "cpio_service.proto",
         ],
     ),
+    deps = [
+        "//cc/core/common/proto:core_common_proto",
+    ],
 )
 
 proto_library(

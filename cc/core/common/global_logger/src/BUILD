@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//cc:scp_internal_pkg"])
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "global_logger_lib",

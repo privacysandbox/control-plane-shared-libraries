@@ -18,7 +18,7 @@ cc_library(
     name = "config_client_provider_mock",
     srcs = glob(
         [
-            "**/*.h",
+            "*.h",
         ],
     ),
     copts = [
@@ -29,6 +29,7 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/config_client_provider/src:config_client_provider_lib",
         "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
+        "//cc/cpio/client_providers/parameter_client_provider/mock:parameter_client_provider_mock",
         "@com_google_protobuf//:protobuf",
     ],
 )

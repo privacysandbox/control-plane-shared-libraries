@@ -34,13 +34,21 @@ using boost::asio::const_buffer;
 using boost::asio::mutable_buffer;
 using boost::system::error_code;
 namespace errc = boost::system::errc;
+using boost::asio::error::eof;
 using std::move;
 
 namespace placeholders = boost::asio::placeholders;
 
 namespace google::scp::proxy {
 
+std::atomic<uint64_t> ProxyBridge::connection_id_counter = 0;
+
 ProxyBridge::~ProxyBridge() {
+#ifndef NDEBUG
+  LogInfo("[", connection_id_, "]",
+          "Destructing connection. UP = ", upstream_size_,
+          ", DOWN = ", downstream_size_);
+#endif
   error_code ec;
   client_sock_.close(ec);
   dest_sock_.close(ec);
@@ -82,24 +90,6 @@ void ProxyBridge::Socks5HandshakeHandler(const error_code& ec,
 }
 
 void ProxyBridge::ForwardTraffic() {
-  // If one side is closed, we should initiate the closure of the other side
-  // once we have sent everything.
-  if (!client_readable_ && upstream_buff_.data_size() == 0u && writing_dest_) {
-    dest_sock_.shutdown(Socket::shutdown_send);
-  }
-  if (!dest_readable_ && downstream_buff_.data_size() == 0u &&
-      writing_client_) {
-    client_sock_.shutdown(Socket::shutdown_send);
-  }
-  // If one side is not writable, then there's no point of reading the opposite
-  // side either. So we shutdown reading to make the outstanding async read to
-  // error out.
-  if (!client_writable_ && reading_dest_) {
-    dest_sock_.shutdown(Socket::shutdown_receive);
-  }
-  if (!dest_writable_ && reading_client_) {
-    client_sock_.shutdown(Socket::shutdown_receive);
-  }
   // Now determine if we need to schedule IO operations.
   if (!reading_client_ && client_readable_ && dest_writable_ &&
       upstream_buff_.data_size() < kMaxBufferSize) {
@@ -145,18 +135,18 @@ void ProxyBridge::ForwardTraffic() {
 void ProxyBridge::ClientReadHandler(const error_code& ec, size_t bytes_read) {
   reading_client_ = false;
   upstream_buff_.Commit(bytes_read);
-  // By standard, an EOF from reading the socket (i.e. a FIN packet) does not
-  // necessarily mean the socket is not writable ("half closed socket").
-  // However, that's rarely the case and usually not supported by end devices
-  // and routing devices on common networks. So when read hits error, we
-  // consider the socket is no longer writable, either. On the contrary, a write
-  // error does not mean the socket is not readable, as we may have remaining
-  // bytes in the OS buffer to read.
   if (ec.failed()) {
-    LogError("Client read failed with error ", ec.value());
+    if (ec == eof) {
+      LogInfo("[", connection_id_, "]",
+              "Client connection successfully closed by peer.");
+    } else {
+      LogError("[", connection_id_, "]", "Client read failed with error ",
+               ec.value());
+    }
     client_readable_ = false;
-    if (downstream_buff_.data_size() == 0) {
-      client_writable_ = false;
+    if (upstream_buff_.data_size() == 0) {
+      error_code shutdown_ec;
+      dest_sock_.shutdown(Socket::shutdown_send, shutdown_ec);
     }
   }
   ForwardTraffic();
@@ -169,9 +159,16 @@ void ProxyBridge::ClientWriteHandler(const error_code& ec,
 #ifndef NDEBUG
   downstream_size_ += bytes_written;
 #endif
+  error_code shutdown_ec;
   if (ec.failed()) {
-    LogError("Client write failed with error ", ec.value());
+    LogError("[", connection_id_, "]", "Client write failed with error ",
+             ec.value());
     client_writable_ = false;
+    dest_sock_.shutdown(Socket::shutdown_receive, shutdown_ec);
+  }
+  if (!dest_readable_ && downstream_buff_.data_size() == 0) {
+    client_writable_ = false;
+    client_sock_.shutdown(Socket::shutdown_send, shutdown_ec);
   }
   ForwardTraffic();
 }
@@ -180,10 +177,17 @@ void ProxyBridge::DestReadHandler(const error_code& ec, size_t bytes_read) {
   reading_dest_ = false;
   downstream_buff_.Commit(bytes_read);
   if (ec.failed()) {
-    LogError("Dest read failed with error ", ec.value());
+    if (ec == eof) {
+      LogInfo("[", connection_id_, "]",
+              "Dest connection successfully closed by peer.");
+    } else {
+      LogError("[", connection_id_, "]", "Dest read failed with error ",
+               ec.value());
+    }
     dest_readable_ = false;
-    if (upstream_buff_.data_size() == 0) {
-      dest_writable_ = false;
+    if (downstream_buff_.data_size() == 0) {
+      error_code shutdown_ec;
+      client_sock_.shutdown(Socket::shutdown_send, shutdown_ec);
     }
   }
   ForwardTraffic();
@@ -195,9 +199,16 @@ void ProxyBridge::DestWriteHandler(const error_code& ec, size_t bytes_written) {
 #ifndef NDEBUG
   upstream_size_ += bytes_written;
 #endif
+  error_code shutdown_ec;
   if (ec.failed()) {
-    LogError("Dest write failed with error ", ec.value());
+    LogError("[", connection_id_, "]", "Dest write failed with error ",
+             ec.value());
     dest_writable_ = false;
+    client_sock_.shutdown(Socket::shutdown_receive, shutdown_ec);
+  }
+  if (!client_readable_ && upstream_buff_.data_size() == 0) {
+    dest_writable_ = false;
+    dest_sock_.shutdown(Socket::shutdown_send, shutdown_ec);
   }
   ForwardTraffic();
 }
@@ -290,8 +301,7 @@ void ProxyBridge::SetSocks5StateCallbacks() {
 }
 
 void ProxyBridge::AcceptInboundConnection(Socket sock) {
-  LogInfo("Accepted inbound connection, client = ",
-          client_sock_.native_handle());
+  LogInfo("[", connection_id_, "]", "Accepted inbound connection.");
   // Cancel the async_wait on errors
   error_code ec;
   client_sock_.cancel(ec);

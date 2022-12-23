@@ -14,7 +14,7 @@
 
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
-package(default_visibility = ["//cc:scp_internal_pkg"])
+package(default_visibility = ["//visibility:public"])
 
 proto_library(
     name = "core_common_proto",

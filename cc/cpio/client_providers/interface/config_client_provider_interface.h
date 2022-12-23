@@ -24,6 +24,7 @@
 #include "cpio/proto/config_client.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/config_client/type_def.h"
+#include "public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
 /**
@@ -38,8 +39,9 @@ class ConfigClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult GetParameter(
-      core::AsyncContext<config_client::GetParameterProtoRequest,
-                         config_client::GetParameterProtoResponse>&
+      core::AsyncContext<
+          cmrt::sdk::parameter_service::v1::GetParameterRequest,
+          cmrt::sdk::parameter_service::v1::GetParameterResponse>&
           context) noexcept = 0;
 
   /**

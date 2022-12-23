@@ -24,7 +24,6 @@
 
 #include "core/interface/async_context.h"
 #include "core/interface/async_executor_interface.h"
-#include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "google/protobuf/any.pb.h"
@@ -41,14 +40,10 @@ class MetricClientProvider : public MetricClientProviderInterface {
       const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
       const std::shared_ptr<MetricClientOptions>& metric_client_options,
       const std::shared_ptr<InstanceClientProviderInterface>&
-          instance_client_provider,
-      const std::shared_ptr<core::MessageRouterInterface<
-          google::protobuf::Any, google::protobuf::Any>>& message_router =
-          nullptr)
+          instance_client_provider)
       : async_executor_(async_executor),
         metric_client_options_(metric_client_options),
         instance_client_provider_(instance_client_provider),
-        message_router_(message_router),
         is_running_(false),
         active_push_count_(0),
         number_metrics_in_vector_(0) {}
@@ -59,18 +54,18 @@ class MetricClientProvider : public MetricClientProviderInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
-  core::ExecutionResult RecordMetrics(
-      core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                         metric_client::RecordMetricsProtoResponse>&
+  core::ExecutionResult PutMetrics(
+      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
           record_metric_context) noexcept override;
 
  protected:
   /**
-   * @brief Triggered when RecordMetricsProtoRequest arrives.
+   * @brief Triggered when PutMetricsRequest arrives.
    *
    * @param context async execution context.
    */
-  virtual void OnRecordMetrics(
+  virtual void OnPutMetrics(
       core::AsyncContext<google::protobuf::Any, google::protobuf::Any>
           context) noexcept;
 
@@ -81,9 +76,9 @@ class MetricClientProvider : public MetricClientProviderInterface {
    * contexts.
    */
   virtual core::ExecutionResult MetricsBatchPush(
-      const std::shared_ptr<std::vector<
-          core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                             metric_client::RecordMetricsProtoResponse>>>&
+      const std::shared_ptr<std::vector<core::AsyncContext<
+          cmrt::sdk::metric_service::v1::PutMetricsRequest,
+          cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
           metric_requests_vector) noexcept = 0;
 
   /**
@@ -113,14 +108,10 @@ class MetricClientProvider : public MetricClientProviderInterface {
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
 
   /// The vector stores the metric record requests received.
-  std::vector<core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                                 metric_client::RecordMetricsProtoResponse>>
+  std::vector<
+      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>>
       metric_requests_vector_;
-
-  /// The message router where the metric client subscribes actions.
-  std::shared_ptr<core::MessageRouterInterface<google::protobuf::Any,
-                                               google::protobuf::Any>>
-      message_router_;
 
   /// Indicates whther the component stopped
   bool is_running_;

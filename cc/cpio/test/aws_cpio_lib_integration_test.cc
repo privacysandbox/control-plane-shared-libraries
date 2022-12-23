@@ -72,13 +72,13 @@ static constexpr char kParameterName2[] = "test_parameter_name_2";
 static constexpr char kParameterValue2[] = "test_parameter_value_2";
 
 namespace google::scp::cpio::test {
-shared_ptr<RecordMetricsRequest> CreateRecordMetricsRequest() {
+shared_ptr<PutMetricsRequest> CreatePutMetricsRequest() {
   Metric metric;
   metric.name = "test_metric";
   metric.value = "12";
   metric.unit = MetricUnit::kCount;
   metric.labels = {{"lable_key", "label_value"}};
-  auto request = make_shared<RecordMetricsRequest>();
+  auto request = make_shared<PutMetricsRequest>();
   request->metrics.push_back(metric);
   return request;
 }
@@ -166,14 +166,14 @@ TEST_F(CpioIntegrationTest, MetricClientBatchRecordingDisabled) {
     threads.push_back(thread([&]() {
       for (auto j = 0; j < 5; j++) {
         atomic<bool> condition = false;
-        EXPECT_EQ(metric_client->RecordMetrics(
-                      std::move(*CreateRecordMetricsRequest()),
-                      [&](const ExecutionResult result,
-                          RecordMetricsResponse response) {
-                        EXPECT_EQ(result, SuccessExecutionResult());
-                        condition = true;
-                      }),
-                  SuccessExecutionResult());
+        EXPECT_EQ(
+            metric_client->PutMetrics(
+                std::move(*CreatePutMetricsRequest()),
+                [&](const ExecutionResult result, PutMetricsResponse response) {
+                  EXPECT_EQ(result, SuccessExecutionResult());
+                  condition = true;
+                }),
+            SuccessExecutionResult());
         WaitUntil([&condition]() { return condition.load(); },
                   std::chrono::milliseconds(60000));
       }
@@ -193,14 +193,14 @@ TEST_F(CpioIntegrationTest, MetricClientBatchRecordingEnabled) {
     threads.push_back(thread([&]() {
       for (auto j = 0; j < 20; j++) {
         atomic<bool> condition = false;
-        EXPECT_EQ(metric_client->RecordMetrics(
-                      std::move(*CreateRecordMetricsRequest()),
-                      [&](const ExecutionResult result,
-                          RecordMetricsResponse response) {
-                        EXPECT_EQ(result, SuccessExecutionResult());
-                        condition = true;
-                      }),
-                  SuccessExecutionResult());
+        EXPECT_EQ(
+            metric_client->PutMetrics(
+                std::move(*CreatePutMetricsRequest()),
+                [&](const ExecutionResult result, PutMetricsResponse response) {
+                  EXPECT_EQ(result, SuccessExecutionResult());
+                  condition = true;
+                }),
+            SuccessExecutionResult());
         WaitUntil([&condition]() { return condition.load(); },
                   std::chrono::milliseconds(60000));
       }

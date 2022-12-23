@@ -25,29 +25,27 @@
 
 #include "core/async_executor/mock/mock_async_executor.h"
 #include "core/interface/async_context.h"
-#include "core/message_router/src/error_codes.h"
-#include "core/message_router/src/message_router.h"
 #include "core/test/utils/conditional_wait.h"
 #include "cpio/client_providers/metric_client_provider/mock/mock_metric_client_provider_with_overrides.h"
 #include "cpio/client_providers/metric_client_provider/src/error_codes.h"
-#include "cpio/common/aws/src/error_codes.h"
-#include "cpio/proto/metric_client.pb.h"
+#include "cpio/common/src/aws/error_codes.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
 using Aws::ShutdownAPI;
+using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
+using google::cmrt::sdk::metric_service::v1::PutMetricsResponse;
 using google::protobuf::Any;
 using google::scp::core::AsyncContext;
 using google::scp::core ::AsyncExecutorInterface;
 using google::scp::core::AsyncOperation;
 using google::scp::core::FailureExecutionResult;
-using google::scp::core::MessageRouter;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::Timestamp;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::errors::GetErrorMessage;
-using google::scp::core::errors::SC_MESSAGE_ROUTER_REQUEST_ALREADY_SUBSCRIBED;
 using google::scp::core::errors::
     SC_METRIC_CLIENT_PROVIDER_EXECUTOR_NOT_AVAILABLE;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING;
@@ -56,8 +54,6 @@ using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::mock::
     MockMetricClientProviderWithOverrides;
-using google::scp::cpio::metric_client::RecordMetricsProtoRequest;
-using google::scp::cpio::metric_client::RecordMetricsProtoResponse;
 using std::atomic;
 using std::function;
 using std::make_shared;
@@ -93,33 +89,11 @@ class MetricClientProviderTest : public ::testing::Test {
 
   shared_ptr<MockAsyncExecutor> mock_async_executor_ =
       make_shared<MockAsyncExecutor>();
-  shared_ptr<MessageRouter> message_router_ = make_shared<MessageRouter>();
 };
-
-TEST_F(MetricClientProviderTest, EmptyMessageRouterWithBatchRecording) {
-  auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(true), nullptr);
-  client->schedule_metric_push_mock = [&]() {
-    return SuccessExecutionResult();
-  };
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->Run(), SuccessExecutionResult());
-}
-
-TEST_F(MetricClientProviderTest, EmptyMessageRouterWithoutBatchRecording) {
-  auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(false), nullptr);
-  client->schedule_metric_push_mock = [&]() {
-    return SuccessExecutionResult();
-  };
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->Run(), SuccessExecutionResult());
-  EXPECT_EQ(client->Stop(), SuccessExecutionResult());
-}
 
 TEST_F(MetricClientProviderTest, EmptyAsyncExecutorIsNotOKWithBatchRecording) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      nullptr, CreateMetricClientOptions(true), nullptr);
+      nullptr, CreateMetricClientOptions(true));
   EXPECT_EQ(
       client->Init(),
       FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_EXECUTOR_NOT_AVAILABLE));
@@ -127,31 +101,40 @@ TEST_F(MetricClientProviderTest, EmptyAsyncExecutorIsNotOKWithBatchRecording) {
 
 TEST_F(MetricClientProviderTest, EmptyAsyncExecutorIsOKWithoutBatchRecording) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      nullptr, CreateMetricClientOptions(false), message_router_);
+      nullptr, CreateMetricClientOptions(false));
+
+  auto request = make_shared<PutMetricsRequest>();
+  auto metric = request->add_metrics();
+  metric->set_name("metric1");
+  metric->set_value("123");
+
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
+      request,
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
+
+  int64_t batch_push_called_count = 0;
+  client->metrics_batch_push_mock =
+      [&](const std::shared_ptr<std::vector<core::AsyncContext<
+              cmrt::sdk::metric_service::v1::PutMetricsRequest,
+              cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
+              metric_requests_vector) noexcept {
+        EXPECT_EQ(metric_requests_vector->size(), 1);
+        batch_push_called_count += 1;
+        return SuccessExecutionResult();
+      };
 
   EXPECT_EQ(client->Init(), SuccessExecutionResult());
   EXPECT_EQ(client->Run(), SuccessExecutionResult());
-
-  client->record_metric_result_mock = SuccessExecutionResult();
-
-  RecordMetricsProtoRequest record_metric_request;
-  auto any_request = make_shared<Any>();
-  any_request->PackFrom(record_metric_request);
-  atomic<bool> condition = false;
-  auto any_context = make_shared<AsyncContext<Any, Any>>(
-      move(any_request), [&](AsyncContext<Any, Any>& any_context) {
-        EXPECT_EQ(any_context.result, SuccessExecutionResult());
-        condition = true;
-      });
-
-  message_router_->OnMessageReceived(any_context);
-  WaitUntil([&]() { return condition.load(); });
+  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+  EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
+  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+  EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
+  WaitUntil([&]() { return batch_push_called_count == 2; });
 }
 
 TEST_F(MetricClientProviderTest, EmptyNamespaceFailsInit) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(false, ""),
-      message_router_);
+      mock_async_executor_, CreateMetricClientOptions(false, ""));
   auto result = client->Init();
   EXPECT_EQ(result, FailureExecutionResult(
                         SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET));
@@ -159,39 +142,37 @@ TEST_F(MetricClientProviderTest, EmptyNamespaceFailsInit) {
 
 TEST_F(MetricClientProviderTest, InvalidMetric) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(false), message_router_);
+      mock_async_executor_, CreateMetricClientOptions(false));
 
-  AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse> context(
-      make_shared<RecordMetricsProtoRequest>(),
-      [&](AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>&
-              context) {});
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
+      make_shared<PutMetricsRequest>(),
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
   EXPECT_EQ(client->Init(), SuccessExecutionResult());
   EXPECT_EQ(client->Run(), SuccessExecutionResult());
-  EXPECT_EQ(client->RecordMetrics(context),
+  EXPECT_EQ(client->PutMetrics(context),
             FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET));
   EXPECT_EQ(client->Stop(), SuccessExecutionResult());
 }
 
 TEST_F(MetricClientProviderTest, FailedWithoutRunning) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(true), message_router_);
+      mock_async_executor_, CreateMetricClientOptions(true));
 
-  AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse> context(
-      make_shared<RecordMetricsProtoRequest>(),
-      [&](AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>&
-              context) {});
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
+      make_shared<PutMetricsRequest>(),
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
   EXPECT_EQ(client->Init(), SuccessExecutionResult());
   EXPECT_EQ(client->ScheduleMetricsBatchPush(),
             FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING));
-  EXPECT_EQ(client->RecordMetrics(context),
+  EXPECT_EQ(client->PutMetrics(context),
             FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING));
 }
 
 TEST_F(MetricClientProviderTest, LaunchScheduleMetricsBatchPushWithRun) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(true), message_router_);
+      mock_async_executor_, CreateMetricClientOptions(true));
 
   bool schedule_for_is_called = false;
   mock_async_executor_->schedule_for_mock =
@@ -208,40 +189,40 @@ TEST_F(MetricClientProviderTest, LaunchScheduleMetricsBatchPushWithRun) {
 
 TEST_F(MetricClientProviderTest, RecordMetricWithoutBatch) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(false), message_router_);
+      mock_async_executor_, CreateMetricClientOptions(false));
 
-  auto request = make_shared<RecordMetricsProtoRequest>();
+  auto request = make_shared<PutMetricsRequest>();
   auto metric = request->add_metrics();
   metric->set_name("metric1");
   metric->set_value("123");
 
-  AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse> context(
-      request, [&](AsyncContext<RecordMetricsProtoRequest,
-                                RecordMetricsProtoResponse>& context) {});
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
+      request,
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
   int64_t batch_push_called_count = 0;
   client->metrics_batch_push_mock =
-      [&](const std::shared_ptr<std::vector<
-              core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                                 metric_client::RecordMetricsProtoResponse>>>&
+      [&](const std::shared_ptr<std::vector<core::AsyncContext<
+              cmrt::sdk::metric_service::v1::PutMetricsRequest,
+              cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
               metric_requests_vector) noexcept {
-        batch_push_called_count += 1;
         EXPECT_EQ(metric_requests_vector->size(), 1);
+        batch_push_called_count += 1;
         return SuccessExecutionResult();
       };
 
   EXPECT_EQ(client->Init(), SuccessExecutionResult());
   EXPECT_EQ(client->Run(), SuccessExecutionResult());
-  EXPECT_EQ(client->RecordMetrics(context), SuccessExecutionResult());
+  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
-  EXPECT_EQ(client->RecordMetrics(context), SuccessExecutionResult());
+  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
   WaitUntil([&]() { return batch_push_called_count == 2; });
 }
 
 TEST_F(MetricClientProviderTest, RecordMetricWithBatch) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(true), message_router_);
+      mock_async_executor_, CreateMetricClientOptions(true));
 
   atomic<bool> schedule_for_is_called = false;
   mock_async_executor_->schedule_for_mock =
@@ -251,20 +232,19 @@ TEST_F(MetricClientProviderTest, RecordMetricWithBatch) {
         return SuccessExecutionResult();
       };
 
-  auto record_metric_request = make_shared<RecordMetricsProtoRequest>();
+  auto record_metric_request = make_shared<PutMetricsRequest>();
   auto metric = record_metric_request->add_metrics();
   metric->set_name("metric1");
   metric->set_value("123");
-  AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse> context(
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
       record_metric_request,
-      [&](AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>&
-              context) {});
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
   atomic<bool> batch_push_called = false;
   client->metrics_batch_push_mock =
-      [&](const std::shared_ptr<std::vector<
-              core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                                 metric_client::RecordMetricsProtoResponse>>>&
+      [&](const std::shared_ptr<std::vector<core::AsyncContext<
+              cmrt::sdk::metric_service::v1::PutMetricsRequest,
+              cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
               metric_requests_vector) noexcept {
         batch_push_called.store(true);
         EXPECT_EQ(metric_requests_vector->size(), kMetricsBatchSize);
@@ -275,7 +255,7 @@ TEST_F(MetricClientProviderTest, RecordMetricWithBatch) {
   EXPECT_EQ(client->Run(), SuccessExecutionResult());
 
   for (int i = 0; i <= 2001; i++) {
-    EXPECT_EQ(client->RecordMetrics(context), SuccessExecutionResult());
+    EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
   }
 
   WaitUntil([&]() { return schedule_for_is_called.load(); });
@@ -285,16 +265,15 @@ TEST_F(MetricClientProviderTest, RecordMetricWithBatch) {
 
 TEST_F(MetricClientProviderTest, RunMetricsBatchPush) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
-      mock_async_executor_, CreateMetricClientOptions(true), message_router_);
+      mock_async_executor_, CreateMetricClientOptions(true));
 
-  auto record_metric_request = make_shared<RecordMetricsProtoRequest>();
+  auto record_metric_request = make_shared<PutMetricsRequest>();
   auto metric = record_metric_request->add_metrics();
   metric->set_name("metric1");
   metric->set_value("123");
-  AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse> context(
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
       record_metric_request,
-      [&](AsyncContext<RecordMetricsProtoRequest, RecordMetricsProtoResponse>&
-              context) {});
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
   int64_t schedule_metric_push_count = 0;
   client->schedule_metric_push_mock = [&]() {
@@ -304,20 +283,20 @@ TEST_F(MetricClientProviderTest, RunMetricsBatchPush) {
 
   int64_t batch_push_called_count = 0;
   client->metrics_batch_push_mock =
-      [&](const std::shared_ptr<std::vector<
-              core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                                 metric_client::RecordMetricsProtoResponse>>>&
+      [&](const std::shared_ptr<std::vector<core::AsyncContext<
+              cmrt::sdk::metric_service::v1::PutMetricsRequest,
+              cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
               metric_requests_vector) noexcept {
-        batch_push_called_count += 1;
         EXPECT_EQ(metric_requests_vector->size(), 2);
+        batch_push_called_count += 1;
         return SuccessExecutionResult();
       };
 
   EXPECT_EQ(client->Init(), SuccessExecutionResult());
   EXPECT_EQ(client->Run(), SuccessExecutionResult());
 
-  EXPECT_EQ(client->RecordMetrics(context), SuccessExecutionResult());
-  EXPECT_EQ(client->RecordMetrics(context), SuccessExecutionResult());
+  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 2);
   client->RunMetricsBatchPush();
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);

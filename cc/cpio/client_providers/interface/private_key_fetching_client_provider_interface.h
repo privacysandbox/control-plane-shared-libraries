@@ -24,13 +24,19 @@
 #include "core/interface/service_interface.h"
 #include "core/interface/type_def.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/type_def.h"
 
 namespace google::scp::cpio::client_providers {
 
 /// Request for fetching private key.
 struct PrivateKeyFetchingRequest {
+  /// The account identity authorized to fetch the keys.
+  std::shared_ptr<AccountIdentity> account_identity;
   /// The base URI of private key vending service.
   std::shared_ptr<core::Uri> private_key_service_base_uri;
+  /// The region of the private key vending service.
+  std::shared_ptr<std::string> service_region;
+
   /// The list of identifiers of the public and private key pair.
   std::shared_ptr<std::string> key_id;
 };

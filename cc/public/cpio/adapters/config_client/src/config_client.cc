@@ -27,6 +27,7 @@
 #include "core/interface/errors.h"
 #include "cpio/proto/config_client.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
 
 #include "error_codes.h"
 
@@ -46,8 +47,6 @@ using google::scp::cpio::GetTagResponse;
 using google::scp::cpio::client_providers::ConfigClientProviderFactory;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
 using google::scp::cpio::config_client::GetInstanceIdProtoResponse;
-using google::scp::cpio::config_client::GetParameterProtoRequest;
-using google::scp::cpio::config_client::GetParameterProtoResponse;
 using google::scp::cpio::config_client::GetTagProtoRequest;
 using google::scp::cpio::config_client::GetTagProtoResponse;
 using std::bind;
@@ -99,7 +98,8 @@ ExecutionResult ConfigClient::Stop() noexcept {
 void ConfigClient::OnGetParameterCallback(
     const GetParameterRequest& request,
     Callback<GetParameterResponse>& callback,
-    AsyncContext<GetParameterProtoRequest, GetParameterProtoResponse>&
+    AsyncContext<cmrt::sdk::parameter_service::v1::GetParameterRequest,
+                 cmrt::sdk::parameter_service::v1::GetParameterResponse>&
         get_parameter_context) noexcept {
   if (!get_parameter_context.result.Successful()) {
     ERROR_CONTEXT(
@@ -112,7 +112,7 @@ void ConfigClient::OnGetParameterCallback(
     return;
   }
   GetParameterResponse response;
-  response.parameter_value = get_parameter_context.response->value();
+  response.parameter_value = get_parameter_context.response->parameter_value();
   callback(get_parameter_context.result, std::move(response));
 }
 
@@ -128,10 +128,12 @@ core::ExecutionResult ConfigClient::GetParameter(
     return execution_result;
   }
 
-  auto proto_request = make_shared<GetParameterProtoRequest>();
+  auto proto_request =
+      make_shared<cmrt::sdk::parameter_service::v1::GetParameterRequest>();
   proto_request->set_parameter_name(request.parameter_name);
 
-  AsyncContext<GetParameterProtoRequest, GetParameterProtoResponse>
+  AsyncContext<cmrt::sdk::parameter_service::v1::GetParameterRequest,
+               cmrt::sdk::parameter_service::v1::GetParameterResponse>
       get_parameter_context(move(proto_request),
                             bind(&ConfigClient::OnGetParameterCallback, this,
                                  request, callback, _1),

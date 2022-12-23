@@ -23,8 +23,8 @@ java_library(
     ],
     deps = [
         "//java/com/google/crypto/tink/integration/awskmsv2",
-        "//java/com/google/scp/coordinator/keymanagement/shared/util",
         "//java/com/google/scp/operator/cpio/cryptoclient:aws",
+        "//java/com/google/scp/shared/util",
         "//java/external:acai",
         "//java/external:aws_apache_http",
         "//java/external:aws_auth",

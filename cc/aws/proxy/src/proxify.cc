@@ -59,8 +59,14 @@ int main(int argc, char* argv[]) {
   if (access(lib_path.c_str(), F_OK) != 0) {
     std::cerr << "ERROR: Cannot access " << lib_path << ": " << strerror(errno)
               << std::endl;
+    return -1;
   }
   std::string socket_vendor_path = dir_name + "/" + socket_vendor;
+  if (access(socket_vendor_path.c_str(), F_OK) != 0) {
+    std::cerr << "ERROR: Cannot access " << socket_vendor_path << ": "
+              << strerror(errno) << std::endl;
+    return -1;
+  }
   // Run the socket_vendor. If there's already a running socket_vendor, this
   // will end with a benign failure.
   if (fork() == 0) {

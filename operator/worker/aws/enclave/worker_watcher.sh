@@ -42,12 +42,14 @@ fi
 # the errors are invisible without debug-mode. Exits with non-zero code upon
 # encountering a config or permission error
 check_permissions() {
-  echo "Verifying access to EC2 metadata API..."
-  local region=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/placement/region)
+  echo "Verifying access to EC2 metadata API and initializing a session..."
+  local token=$(curl -s --fail-with-body -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 120")
+  echo "Acquired session token."
+  local region=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/placement/region -H "X-aws-ec2-metadata-token: ${token}")
   echo "region=${region}"
-  local instance_id=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/instance-id)
+  local instance_id=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/instance-id -H "X-aws-ec2-metadata-token: ${token}")
   echo "instance_id=${instance_id}"
-  local role=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/iam/security-credentials/)
+  local role=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/iam/security-credentials/ -H "X-aws-ec2-metadata-token: ${token}")
   echo "Verifying IAM role attached..."
   echo "role=${role}"
   # Now check if we can get the tags of this instance
@@ -134,10 +136,13 @@ fetch_tag_value() {
 update_allocator_config() {
   echo "Updating allocator.yaml"
 
+  local token
+  token=$(curl -s --fail-with-body -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 120")
+  echo "Acquired session token."
   local region
-  region=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/placement/region)
+  region=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/placement/region -H "X-aws-ec2-metadata-token: ${token}")
   local instance_id
-  instance_id=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/instance-id)
+  instance_id=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/instance-id -H "X-aws-ec2-metadata-token: ${token}")
   # Default to 2 vCPU / ~7 GB if tags inaccessible or malformed. Should support
   # all instance shapes that support enclaves (c5.xlarge and larger).
   local num_cpus

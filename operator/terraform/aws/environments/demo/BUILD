@@ -20,12 +20,10 @@ package(default_visibility = ["//visibility:public"])
 # Not symlinked for simplicity in interacting with various operator
 # environments.
 SHARED_FILES = [
-    # LINT.IfChange
     # ami_params.auto.tfvars
     "//operator/terraform/aws:ami_params_auto_tfvars",
     "operator_service.tf",
     "operator_service_variables.tf",
-    # LINT.ThenChange(:README.export.md)
 ]
 
 pkg_files(
@@ -38,16 +36,11 @@ pkg_files(
     name = "demo_files",
     srcs = [
         ".terraform.lock.hcl",
-        # Note: README.md is the repo-internal readme and README.export.md is
-        # the one intended to be included in the tar.
-        "README.export.md",
+        "README.md",
         "example.auto.tfvars",
         "main.tf",
     ],
     prefix = "demo",
-    renames = {
-        "README.export.md": "README.md",
-    },
 )
 
 # pkg_tar requires links be declared with mklink, otherwise the linked file is

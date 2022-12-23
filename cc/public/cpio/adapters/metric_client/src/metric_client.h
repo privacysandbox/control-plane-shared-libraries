@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
-#include "cpio/proto/metric_client.pb.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/metric_client_interface.h"
 
@@ -36,9 +36,9 @@ class MetricClient : public MetricClientInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
-  core::ExecutionResult RecordMetrics(
-      RecordMetricsRequest request,
-      Callback<RecordMetricsResponse> callback) noexcept override;
+  core::ExecutionResult PutMetrics(
+      PutMetricsRequest request,
+      Callback<PutMetricsResponse> callback) noexcept override;
 
  protected:
   /**
@@ -48,11 +48,11 @@ class MetricClient : public MetricClientInterface {
    * @param callback caller's callback
    * @param record_metrics_context execution context.
    */
-  void OnRecordMetricsCallback(
-      const RecordMetricsRequest& request,
-      Callback<RecordMetricsResponse>& callback,
-      core::AsyncContext<metric_client::RecordMetricsProtoRequest,
-                         metric_client::RecordMetricsProtoResponse>&
+  void OnPutMetricsCallback(
+      const PutMetricsRequest& request,
+      Callback<PutMetricsResponse>& callback,
+      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
           record_metrics_context) noexcept;
 
   std::shared_ptr<client_providers::MetricClientProviderInterface>

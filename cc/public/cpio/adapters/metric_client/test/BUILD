@@ -43,6 +43,7 @@ cc_test(
         "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/interface/metric_client",
         "//cc/public/cpio/interface/metric_client:type_def",
+        "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )

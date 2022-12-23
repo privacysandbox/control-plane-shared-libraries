@@ -29,12 +29,12 @@
 #include "core/test/utils/conditional_wait.h"
 #include "cpio/client_providers/metric_client_provider/mock/mock_metric_client_provider_with_overrides.h"
 #include "cpio/client_providers/metric_client_provider/src/error_codes.h"
-#include "cpio/proto/metric_client.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/adapters/metric_client/mock/mock_metric_client_with_overrides.h"
 #include "public/cpio/core/mock/mock_lib_cpio.h"
 #include "public/cpio/interface/metric_client/metric_client_interface.h"
 #include "public/cpio/interface/metric_client/type_def.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -46,15 +46,6 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_CPIO_INVALID_REQUEST;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET;
 using google::scp::core::test::WaitUntil;
-using google::scp::cpio::Metric;
-using google::scp::cpio::MetricClient;
-using google::scp::cpio::MetricClientOptions;
-using google::scp::cpio::MetricUnit;
-using google::scp::cpio::RecordMetricsRequest;
-using google::scp::cpio::RecordMetricsResponse;
-using google::scp::cpio::metric_client::MetricUnitProto;
-using google::scp::cpio::metric_client::RecordMetricsProtoRequest;
-using google::scp::cpio::metric_client::RecordMetricsProtoResponse;
 using google::scp::cpio::mock::MockMetricClientWithOverrides;
 using std::atomic;
 using std::make_shared;
@@ -94,7 +85,7 @@ class MetricClientTest : public ::testing::Test {
     client_ = make_unique<MockMetricClientWithOverrides>(metric_client_options);
   }
 
-  void AddMetric(RecordMetricsRequest& request) {
+  void AddMetric(PutMetricsRequest& request) {
     Metric request_metric;
     request_metric.name = kName;
     request_metric.value = kValue;
@@ -103,7 +94,8 @@ class MetricClientTest : public ::testing::Test {
     request.metrics.push_back(request_metric);
   }
 
-  void AddMetricProto(RecordMetricsProtoRequest& request) {
+  void AddMetricProto(
+      cmrt::sdk::metric_service::v1::PutMetricsRequest& request) {
     auto metric = request.add_metrics();
     metric->set_name(kName);
     metric->set_value(kValue);
@@ -111,7 +103,8 @@ class MetricClientTest : public ::testing::Test {
     for (const auto& label : kLabels) {
       labels->insert(MapPair<string, string>(label.first, label.second));
     }
-    metric->set_unit(MetricUnitProto::METRIC_UNIT_COUNT);
+    metric->set_unit(
+        cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_COUNT);
   }
 
   unique_ptr<MockMetricClientWithOverrides> client_;
@@ -121,23 +114,22 @@ TEST_F(MetricClientTest, RecordMetricRequestSuccess) {
   auto expected_result = SuccessExecutionResult();
   client_->GetMetricClientProvider()->record_metric_result_mock =
       expected_result;
-  RecordMetricsProtoRequest proto_request;
+  cmrt::sdk::metric_service::v1::PutMetricsRequest proto_request;
   AddMetricProto(proto_request);
   client_->GetMetricClientProvider()->record_metrics_request_mock =
       proto_request;
-  RecordMetricsRequest request;
+  PutMetricsRequest request;
   AddMetric(request);
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
   atomic<bool> condition = false;
-  EXPECT_EQ(
-      client_->RecordMetrics(
-          request,
-          [&](const ExecutionResult result, RecordMetricsResponse response) {
-            EXPECT_EQ(result, SuccessExecutionResult());
-            condition = true;
-          }),
-      SuccessExecutionResult());
+  EXPECT_EQ(client_->PutMetrics(
+                request,
+                [&](const ExecutionResult result, PutMetricsResponse response) {
+                  EXPECT_EQ(result, SuccessExecutionResult());
+                  condition = true;
+                }),
+            SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
   EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
 }
@@ -146,25 +138,24 @@ TEST_F(MetricClientTest, MultipleMetrics) {
   auto expected_result = SuccessExecutionResult();
   client_->GetMetricClientProvider()->record_metric_result_mock =
       expected_result;
-  RecordMetricsProtoRequest proto_request;
+  cmrt::sdk::metric_service::v1::PutMetricsRequest proto_request;
   AddMetricProto(proto_request);
   AddMetricProto(proto_request);
   client_->GetMetricClientProvider()->record_metrics_request_mock =
       proto_request;
-  RecordMetricsRequest request;
+  PutMetricsRequest request;
   AddMetric(request);
   AddMetric(request);
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
   atomic<bool> condition = false;
-  EXPECT_EQ(
-      client_->RecordMetrics(
-          request,
-          [&](const ExecutionResult result, RecordMetricsResponse response) {
-            EXPECT_EQ(result, SuccessExecutionResult());
-            condition = true;
-          }),
-      SuccessExecutionResult());
+  EXPECT_EQ(client_->PutMetrics(
+                request,
+                [&](const ExecutionResult result, PutMetricsResponse response) {
+                  EXPECT_EQ(result, SuccessExecutionResult());
+                  condition = true;
+                }),
+            SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
   EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
 }
@@ -175,17 +166,17 @@ TEST_F(MetricClientTest, RecordMetricRequestFailure) {
   client_->GetMetricClientProvider()->record_metric_result_mock =
       expected_result;
   auto public_error = FailureExecutionResult(SC_CPIO_INVALID_REQUEST);
-  RecordMetricsRequest request;
+  PutMetricsRequest request;
   AddMetric(request);
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
   atomic<bool> condition = false;
-  EXPECT_EQ(client_->RecordMetrics(request,
-                                   [&](const ExecutionResult result,
-                                       RecordMetricsResponse response) {
-                                     EXPECT_EQ(result, public_error);
-                                     condition = true;
-                                   }),
+  EXPECT_EQ(client_->PutMetrics(
+                request,
+                [&](const ExecutionResult result, PutMetricsResponse response) {
+                  EXPECT_EQ(result, public_error);
+                  condition = true;
+                }),
             public_error);
   WaitUntil([&]() { return condition.load(); });
   EXPECT_EQ(client_->Stop(), SuccessExecutionResult());

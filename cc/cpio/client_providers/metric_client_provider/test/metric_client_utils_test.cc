@@ -22,39 +22,37 @@
 #include <string>
 
 #include "cpio/client_providers/metric_client_provider/src/error_codes.h"
-#include "cpio/proto/metric_client.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
+using google::cmrt::sdk::metric_service::v1::Metric;
+using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NAME_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_VALUE_NOT_SET;
-using google::scp::cpio::MetricUnit;
 using google::scp::cpio::client_providers::MetricClientUtils;
-using google::scp::cpio::metric_client::MetricProto;
-using google::scp::cpio::metric_client::MetricUnitProto;
-using google::scp::cpio::metric_client::RecordMetricsProtoRequest;
 
 namespace google::scp::cpio::client_providers::test {
 TEST(MetricClientUtilsTest, ConvertMetricUnit) {
   EXPECT_EQ(MetricClientUtils::ConvertToMetricUnitProto(MetricUnit::kBits),
-            MetricUnitProto::METRIC_UNIT_BITS);
+            cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_BITS);
   EXPECT_EQ(MetricClientUtils::ConvertToMetricUnitProto(MetricUnit::kCount),
-            MetricUnitProto::METRIC_UNIT_COUNT);
+            cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_COUNT);
   EXPECT_EQ(
       MetricClientUtils::ConvertToMetricUnitProto(MetricUnit::kCountPerSecond),
-      MetricUnitProto::METRIC_UNIT_COUNT_PER_SECOND);
+      cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_COUNT_PER_SECOND);
 }
 
 TEST(MetricClientUtilsTest, NoMetric) {
-  RecordMetricsProtoRequest request;
-  EXPECT_EQ(MetricClientUtils::ValidateRequest(RecordMetricsProtoRequest()),
+  PutMetricsRequest request;
+  EXPECT_EQ(MetricClientUtils::ValidateRequest(PutMetricsRequest()),
             FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET));
 }
 
 TEST(MetricClientUtilsTest, NoMetricName) {
-  RecordMetricsProtoRequest request;
+  PutMetricsRequest request;
   request.add_metrics();
 
   EXPECT_EQ(
@@ -63,7 +61,7 @@ TEST(MetricClientUtilsTest, NoMetricName) {
 }
 
 TEST(MetricClientUtilsTest, NoMetricValue) {
-  RecordMetricsProtoRequest request;
+  PutMetricsRequest request;
   auto metric = request.add_metrics();
   metric->set_name("metric1");
   EXPECT_EQ(
@@ -72,7 +70,7 @@ TEST(MetricClientUtilsTest, NoMetricValue) {
 }
 
 TEST(MetricClientUtilsTest, OneMetricWithoutName) {
-  RecordMetricsProtoRequest request;
+  PutMetricsRequest request;
   auto metric = request.add_metrics();
   metric->set_name("metric1");
   metric->set_value("123");
@@ -84,7 +82,7 @@ TEST(MetricClientUtilsTest, OneMetricWithoutName) {
 }
 
 TEST(MetricClientUtilsTest, ValidMetric) {
-  RecordMetricsProtoRequest request;
+  PutMetricsRequest request;
   auto metric = request.add_metrics();
   metric->set_name("metric1");
   metric->set_value("123");

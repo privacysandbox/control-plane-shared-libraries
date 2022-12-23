@@ -22,12 +22,11 @@
 #include <vector>
 
 #include "core/interface/async_context.h"
-#include "core/interface/message_router_interface.h"
-#include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/config_client_provider_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
-#include "google/protobuf/any.pb.h"
+#include "cpio/client_providers/interface/parameter_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
 /*! @copydoc ConfigClientProviderInterface
@@ -39,12 +38,7 @@ class ConfigClientProvider : public ConfigClientProviderInterface {
   explicit ConfigClientProvider(
       const std::shared_ptr<ConfigClientOptions>& config_client_options,
       const std::shared_ptr<InstanceClientProviderInterface>&
-          instance_client_provider,
-      const std::shared_ptr<core::MessageRouterInterface<
-          google::protobuf::Any, google::protobuf::Any>>& message_router)
-      : config_client_options_(config_client_options),
-        instance_client_provider_(instance_client_provider),
-        message_router_(message_router) {}
+          instance_client_provider);
 
   core::ExecutionResult Init() noexcept override;
 
@@ -62,33 +56,23 @@ class ConfigClientProvider : public ConfigClientProviderInterface {
                          config_client::GetInstanceIdProtoResponse>&
           context) noexcept override;
 
+  core::ExecutionResult GetParameter(
+      core::AsyncContext<
+          cmrt::sdk::parameter_service::v1::GetParameterRequest,
+          cmrt::sdk::parameter_service::v1::GetParameterResponse>&
+          context) noexcept override;
+
  protected:
   /**
-   * @brief Triggered when GetTagProtoRequest arrives.
+   * @brief Fetches the Parameter values for the given parameter names.
    *
-   * @param context async execution context.
+   * @param parameter_names the given parameter names.
+   * @param parameter_values_map returned parameter values.
+   * @return core::ExecutionResult the fetch results.
    */
-  virtual void OnGetTag(
-      core::AsyncContext<google::protobuf::Any, google::protobuf::Any>
-          context) noexcept;
-
-  /**
-   * @brief Triggered when GetInstanceIdProtoRequest arrives.
-   *
-   * @param context async execution context.
-   */
-  virtual void OnGetInstanceId(
-      core::AsyncContext<google::protobuf::Any, google::protobuf::Any>
-          context) noexcept;
-
-  /**
-   * @brief Triggered when GetParameterProtoRequest arrives.
-   *
-   * @param context async execution context.
-   */
-  virtual void OnGetParameter(
-      core::AsyncContext<google::protobuf::Any, google::protobuf::Any>
-          context) noexcept;
+  core::ExecutionResult GetParameters(
+      const std::vector<std::string>& parameter_names,
+      std::map<std::string, std::string>& parameter_values_map) noexcept;
 
   /// Configurations for ConfigClient.
   std::shared_ptr<ConfigClientOptions> config_client_options_;
@@ -96,10 +80,8 @@ class ConfigClientProvider : public ConfigClientProviderInterface {
   /// InstanceClientProvider.
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
 
-  /// The message router where the config client subscribes actions.
-  std::shared_ptr<core::MessageRouterInterface<google::protobuf::Any,
-                                               google::protobuf::Any>>
-      message_router_;
+  /// ParameterClientProvider.
+  std::shared_ptr<ParameterClientProviderInterface> parameter_client_provider_;
 
   /// The instance ID pre-fetched during initializing.
   std::string instance_id_;
@@ -110,5 +92,9 @@ class ConfigClientProvider : public ConfigClientProviderInterface {
 
   /// The result of fetching instance ID.
   core::ExecutionResult fetch_instance_id_result_;
+
+  /// The parameter values prefetched during initializing. The key is parameter
+  /// name and the value is parameter value.
+  std::map<std::string, std::string> parameter_values_map_;
 };
 }  // namespace google::scp::cpio::client_providers

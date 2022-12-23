@@ -41,5 +41,6 @@ cc_library(
         "//cc/cpio/client_providers/config_client_provider/src:config_client_provider_lib",
         "//cc/cpio/proto:cc_proto",
         "//cc/public/cpio/interface:type_def",
+        "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
     ],
 )

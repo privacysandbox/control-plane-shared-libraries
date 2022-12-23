@@ -29,6 +29,7 @@ using google::scp::core::AsyncExecutor;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::HttpClientInterface;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::cpio::client_providers::RoleCredentialsProviderInterface;
 using google::scp::cpio::client_providers::mock::
     MockLibCpioProviderWithOverrides;
 using std::make_unique;
@@ -91,6 +92,21 @@ TEST_F(LibCpioProviderTest, HttpClientNotCreatedInInit) {
   EXPECT_EQ(lib_cpio_provider->GetHttpClient(http_client),
             SuccessExecutionResult());
   EXPECT_THAT(http_client, NotNull());
+
+  EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
+}
+
+TEST_F(LibCpioProviderTest, RoleCredentialsProviderNotCreatedInInit) {
+  auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
+  EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
+  EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
+  EXPECT_THAT(lib_cpio_provider->GetRoleCredentialsProviderMember(), IsNull());
+
+  shared_ptr<RoleCredentialsProviderInterface> role_credentials_provider;
+  EXPECT_EQ(
+      lib_cpio_provider->GetRoleCredentialsProvider(role_credentials_provider),
+      SuccessExecutionResult());
+  EXPECT_THAT(role_credentials_provider, NotNull());
 
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }

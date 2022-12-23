@@ -52,12 +52,12 @@ struct Metric {
 };
 
 /// Represents all fields required to record custom metrics.
-struct RecordMetricsRequest {
+struct PutMetricsRequest {
   std::vector<Metric> metrics;
 };
 
 /// The response object of recording custom metrics.
-struct RecordMetricsResponse {};
+struct PutMetricsResponse {};
 
 /**
  * @brief Interface responsible for recording custom metrics.
@@ -75,9 +75,9 @@ class MetricClientInterface : public core::ServiceInterface {
    * including when the call fails.
    * @return core::ExecutionResult scheduling result returned synchronously.
    */
-  virtual core::ExecutionResult RecordMetrics(
-      RecordMetricsRequest request,
-      Callback<RecordMetricsResponse> callback) noexcept = 0;
+  virtual core::ExecutionResult PutMetrics(
+      PutMetricsRequest request,
+      Callback<PutMetricsResponse> callback) noexcept = 0;
 };
 
 /// Factory to create MetricClient.
