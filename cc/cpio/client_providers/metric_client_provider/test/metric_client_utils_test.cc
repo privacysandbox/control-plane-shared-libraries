@@ -33,6 +33,9 @@ using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NAME_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_VALUE_NOT_SET;
 using google::scp::cpio::client_providers::MetricClientUtils;
+using std::make_shared;
+
+static constexpr char kMetricNamespace[] = "namespace";
 
 namespace google::scp::cpio::client_providers::test {
 TEST(MetricClientUtilsTest, ConvertMetricUnit) {
@@ -47,46 +50,61 @@ TEST(MetricClientUtilsTest, ConvertMetricUnit) {
 
 TEST(MetricClientUtilsTest, NoMetric) {
   PutMetricsRequest request;
-  EXPECT_EQ(MetricClientUtils::ValidateRequest(PutMetricsRequest()),
+  request.set_metric_namespace(kMetricNamespace);
+  EXPECT_EQ(MetricClientUtils::ValidateRequest(request, nullptr),
             FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET));
 }
 
 TEST(MetricClientUtilsTest, NoMetricName) {
   PutMetricsRequest request;
+  request.set_metric_namespace(kMetricNamespace);
   request.add_metrics();
 
   EXPECT_EQ(
-      MetricClientUtils::ValidateRequest(request),
+      MetricClientUtils::ValidateRequest(request, nullptr),
       FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NAME_NOT_SET));
 }
 
 TEST(MetricClientUtilsTest, NoMetricValue) {
   PutMetricsRequest request;
+  request.set_metric_namespace(kMetricNamespace);
   auto metric = request.add_metrics();
   metric->set_name("metric1");
   EXPECT_EQ(
-      MetricClientUtils::ValidateRequest(request),
+      MetricClientUtils::ValidateRequest(request, nullptr),
       FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_VALUE_NOT_SET));
 }
 
 TEST(MetricClientUtilsTest, OneMetricWithoutName) {
   PutMetricsRequest request;
+  request.set_metric_namespace(kMetricNamespace);
   auto metric = request.add_metrics();
   metric->set_name("metric1");
   metric->set_value("123");
   request.add_metrics();
 
   EXPECT_EQ(
-      MetricClientUtils::ValidateRequest(request),
+      MetricClientUtils::ValidateRequest(request, nullptr),
       FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NAME_NOT_SET));
 }
 
-TEST(MetricClientUtilsTest, ValidMetric) {
+TEST(MetricClientUtilsTest, NoNamespaceWhenOptionsAreSet) {
   PutMetricsRequest request;
   auto metric = request.add_metrics();
   metric->set_name("metric1");
   metric->set_value("123");
-  EXPECT_EQ(MetricClientUtils::ValidateRequest(request),
+  EXPECT_EQ(MetricClientUtils::ValidateRequest(
+                request, make_shared<MetricClientOptions>()),
+            SuccessExecutionResult());
+}
+
+TEST(MetricClientUtilsTest, ValidMetric) {
+  PutMetricsRequest request;
+  request.set_metric_namespace(kMetricNamespace);
+  auto metric = request.add_metrics();
+  metric->set_name("metric1");
+  metric->set_value("123");
+  EXPECT_EQ(MetricClientUtils::ValidateRequest(request, nullptr),
             SuccessExecutionResult());
 }
 }  // namespace google::scp::cpio::client_providers::test

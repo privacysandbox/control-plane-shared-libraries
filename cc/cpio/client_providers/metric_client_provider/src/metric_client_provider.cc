@@ -67,9 +67,15 @@ static constexpr size_t kShutdownWaitIntervalMilliseconds = 100;
 static constexpr size_t kMetricsBatchSize = 1000;
 
 namespace google::scp::cpio::client_providers {
+bool BatchRecordingEnabled(
+    const shared_ptr<MetricClientOptions>& metric_client_options) {
+  return metric_client_options && metric_client_options->enable_batch_recording;
+}
+
 ExecutionResult MetricClientProvider::Init() noexcept {
   // Metric namespace cannot be empty.
-  if (metric_client_options_->metric_namespace.empty()) {
+  if (metric_client_options_ &&
+      metric_client_options_->metric_namespace.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET);
     ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -77,7 +83,7 @@ ExecutionResult MetricClientProvider::Init() noexcept {
     return execution_result;
   }
 
-  if (metric_client_options_->enable_batch_recording && !async_executor_) {
+  if (BatchRecordingEnabled(metric_client_options_) && !async_executor_) {
     return FailureExecutionResult(
         SC_METRIC_CLIENT_PROVIDER_EXECUTOR_NOT_AVAILABLE);
   }
@@ -96,7 +102,7 @@ ExecutionResult MetricClientProvider::Run() noexcept {
   }
 
   is_running_ = true;
-  if (metric_client_options_->enable_batch_recording) {
+  if (BatchRecordingEnabled(metric_client_options_)) {
     return ScheduleMetricsBatchPush();
   }
   return SuccessExecutionResult();
@@ -106,7 +112,7 @@ ExecutionResult MetricClientProvider::Stop() noexcept {
   sync_mutex_.lock();
   is_running_ = false;
   sync_mutex_.unlock();
-  if (metric_client_options_->enable_batch_recording) {
+  if (BatchRecordingEnabled(metric_client_options_)) {
     current_cancellation_callback_();
     // To push the remaining metrics in the vector.
     RunMetricsBatchPush();
@@ -132,8 +138,8 @@ ExecutionResult MetricClientProvider::PutMetrics(
     return execution_result;
   }
 
-  auto execution_result =
-      MetricClientUtils::ValidateRequest(*record_metric_context.request);
+  auto execution_result = MetricClientUtils::ValidateRequest(
+      *record_metric_context.request, metric_client_options_);
   if (!execution_result.Successful()) {
     ERROR_CONTEXT(kMetricClientProvider, record_metric_context,
                   execution_result, "Invalid metric.");
@@ -154,7 +160,7 @@ ExecutionResult MetricClientProvider::PutMetrics(
    * excessive memory usage by storing too many metrics in the vector when the
    * batch schedule time duration is too large.
    */
-  if (!metric_client_options_->enable_batch_recording ||
+  if (!BatchRecordingEnabled(metric_client_options_) ||
       number_metrics_in_vector_.load() >= kMetricsBatchSize) {
     RunMetricsBatchPush();
   }
@@ -217,5 +223,4 @@ void MetricClientProvider::OnPutMetrics(
            any_context, _1));
   context.result = PutMetrics(context);
 }
-
 }  // namespace google::scp::cpio::client_providers

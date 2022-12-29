@@ -53,6 +53,8 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::Timestamp;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
+using google::scp::core::errors::
+    SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::AwsMetricClientUtils;
 using google::scp::cpio::client_providers::mock::
@@ -122,7 +124,7 @@ TEST_F(AwsMetricClientProviderTest, InitSuccess) {
   EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(AwsMetricClientProviderTest, InitFailure) {
+TEST_F(AwsMetricClientProviderTest, FailedToGetRegion) {
   auto failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
   client_->GetInstanceClientProvider()->get_region_result_mock = failure;
   EXPECT_EQ(client_->Init(), failure);
@@ -266,6 +268,61 @@ TEST_F(AwsMetricClientProviderTest, OnPutMetricDataAsyncCallbackWithSuccess) {
             SuccessExecutionResult());
   WaitUntil([&]() { return context_finish_count == 3; });
 
+  EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
+}
+
+TEST_F(AwsMetricClientProviderTest,
+       MultipleMetricsWithoutOptionsSetShouldFail) {
+  client_ = make_unique<MockAwsMetricClientProviderOverrides>(nullptr, nullptr);
+  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+
+  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
+  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+
+  auto requests_vector = make_shared<
+      vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>();
+  for (auto metric_num : {100, 500, 600, 800}) {
+    PutMetricsRequest record_metric_request;
+    SetPutMetricsRequest(record_metric_request, kValue, metric_num);
+
+    AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
+        make_shared<PutMetricsRequest>(record_metric_request),
+        [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
+    requests_vector->push_back(context);
+  }
+  EXPECT_EQ(client_->MetricsBatchPush(requests_vector),
+            FailureExecutionResult(
+                SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET));
+  EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
+}
+
+TEST_F(AwsMetricClientProviderTest, OneMetricWithoutOptionsSetSucceed) {
+  client_ = make_unique<MockAwsMetricClientProviderOverrides>(nullptr, nullptr);
+  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+
+  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
+  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+
+  Aws::NoResult result;
+  client_->GetCloudWatchClient()->put_metric_data_outcome_mock =
+      PutMetricDataOutcome(result);
+
+  auto requests_vector = make_shared<
+      vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>();
+  PutMetricsRequest record_metric_request;
+  SetPutMetricsRequest(record_metric_request, kValue, 100);
+
+  atomic<bool> finished = false;
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
+      make_shared<PutMetricsRequest>(record_metric_request),
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {
+        EXPECT_EQ(context.result, SuccessExecutionResult());
+        finished = true;
+      });
+  requests_vector->push_back(context);
+
+  EXPECT_EQ(client_->MetricsBatchPush(requests_vector),
+            SuccessExecutionResult());
   EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
 }
 }  // namespace google::scp::cpio::client_providers::test

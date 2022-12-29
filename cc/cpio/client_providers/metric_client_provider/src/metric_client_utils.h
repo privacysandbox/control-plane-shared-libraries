@@ -17,6 +17,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/type_def.h"
@@ -29,6 +30,7 @@ class MetricClientUtils {
       MetricUnit metric_unit);
 
   static core::ExecutionResult ValidateRequest(
-      const cmrt::sdk::metric_service::v1::PutMetricsRequest& request);
+      const cmrt::sdk::metric_service::v1::PutMetricsRequest& request,
+      const std::shared_ptr<MetricClientOptions>& options);
 };
 }  // namespace google::scp::cpio::client_providers

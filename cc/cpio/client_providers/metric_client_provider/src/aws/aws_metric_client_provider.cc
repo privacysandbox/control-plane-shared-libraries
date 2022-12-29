@@ -57,6 +57,8 @@ using google::scp::core::MessageRouterInterface;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
+    SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET;
+using google::scp::core::errors::
     SC_AWS_METRIC_CLIENT_PROVIDER_REQUEST_PAYLOAD_OVERSIZE;
 using google::scp::cpio::common::CreateClientConfiguration;
 using std::bind;
@@ -119,10 +121,28 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
     const shared_ptr<
         vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>&
         metric_requests_vector) noexcept {
+  if (metric_requests_vector->empty()) {
+    return SuccessExecutionResult();
+  }
+
+  // When perform batch recording, metric_client_options_ is required.
+  if (!metric_client_options_ && metric_requests_vector->size() > 1) {
+    auto execution_result = FailureExecutionResult(
+        SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET);
+    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+          "Failed to create ClientConfiguration");
+    return execution_result;
+  }
+
   vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>> context_chunk;
 
   PutMetricDataRequest request_chunk;
-  string name_space = metric_client_options_->metric_namespace;
+  // Already confirmed if metric_client_options_ is not set,
+  // metric_requests_vector should only have one entry.
+  string name_space =
+      metric_client_options_
+          ? metric_client_options_->metric_namespace
+          : (*metric_requests_vector)[0].request->metric_namespace();
   request_chunk.SetNamespace(name_space.c_str());
   size_t chunk_payload = 0;
   size_t chunk_size = 0;

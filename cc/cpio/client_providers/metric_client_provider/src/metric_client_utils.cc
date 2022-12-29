@@ -17,7 +17,9 @@
 #include "metric_client_utils.h"
 
 #include <map>
+#include <memory>
 
+#include "cpio/client_providers/metric_client_provider/src/error_codes.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/type_def.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
@@ -31,7 +33,9 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NAME_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_VALUE_NOT_SET;
+using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET;
 using google::scp::cpio::MetricUnit;
+using std::shared_ptr;
 
 static const std::map<MetricUnit,
                       google::cmrt::sdk::metric_service::v1::MetricUnit>
@@ -110,7 +114,13 @@ MetricClientUtils::ConvertToMetricUnitProto(MetricUnit metric_unit) {
 }
 
 ExecutionResult MetricClientUtils::ValidateRequest(
-    const PutMetricsRequest& request) {
+    const PutMetricsRequest& request,
+    const shared_ptr<MetricClientOptions>& options) {
+  // If options is set, the namespace is passed in through options.
+  if (!options && request.metric_namespace().empty()) {
+    return FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET);
+  }
+
   if (request.metrics().empty()) {
     return FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET);
   }

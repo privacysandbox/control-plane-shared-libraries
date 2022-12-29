@@ -29,8 +29,10 @@ service MetricService {
 
 // Request to write metrics on cloud.
 message PutMetricsRequest {
+  // Namespace for the metrics.
+  string metric_namespace = 1;
   // Metrics to be written.
-  repeated Metric metrics = 1;
+  repeated Metric metrics = 2;
 }
 
 // Response of writing metrics on cloud.

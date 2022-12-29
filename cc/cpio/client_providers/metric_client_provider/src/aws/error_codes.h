@@ -27,7 +27,6 @@ DEFINE_ERROR_CODE(
     SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_LIMIT_REACHED_PER_REQUEST,
     SC_AWS_METRIC_CLIENT_PROVIDER, 0x0001,
     "Exceeding the metric limit per request", HttpStatusCode::BAD_REQUEST)
-
 DEFINE_ERROR_CODE(SC_AWS_METRIC_CLIENT_PROVIDER_REQUEST_PAYLOAD_OVERSIZE,
                   SC_AWS_METRIC_CLIENT_PROVIDER, 0x0002,
                   "Request payload must not have a size greater than 560000.",
@@ -38,20 +37,21 @@ DEFINE_ERROR_CODE(
     "Timestamp cannot be two weeks before or 2 hours after the current "
     "date",
     HttpStatusCode::BAD_REQUEST)
-
 DEFINE_ERROR_CODE(SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_METRIC_VALUE,
                   SC_AWS_METRIC_CLIENT_PROVIDER, 0x0004,
                   "Invalid metric value cannot convert to double",
                   HttpStatusCode::BAD_REQUEST)
-
 DEFINE_ERROR_CODE(
     SC_AWS_METRIC_CLIENT_PROVIDER_OVERSIZE_DATUM_DIMENSIONS,
     SC_AWS_METRIC_CLIENT_PROVIDER, 0x0005,
     "AWS metric datum dimensions must not have a size greater than 30",
     HttpStatusCode::BAD_REQUEST)
-
 DEFINE_ERROR_CODE(SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_METRIC_UNIT,
                   SC_AWS_METRIC_CLIENT_PROVIDER, 0x0006, "Invalid metric unit",
+                  HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET,
+                  SC_AWS_METRIC_CLIENT_PROVIDER, 0x0007,
+                  "Should set metric client options",
                   HttpStatusCode::BAD_REQUEST)
 
 MAP_TO_PUBLIC_ERROR_CODE(
@@ -68,4 +68,7 @@ MAP_TO_PUBLIC_ERROR_CODE(
     SC_CPIO_REQUEST_TOO_LARGE)
 MAP_TO_PUBLIC_ERROR_CODE(SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_METRIC_UNIT,
                          SC_CPIO_INVALID_REQUEST)
+MAP_TO_PUBLIC_ERROR_CODE(
+    SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET,
+    SC_CPIO_INVALID_REQUEST)
 }  // namespace google::scp::core::errors
