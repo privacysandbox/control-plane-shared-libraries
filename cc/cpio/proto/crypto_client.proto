@@ -16,6 +16,9 @@ syntax = "proto3";
 
 package google.scp.cpio.crypto_client;
 
+import "cc/cpio/proto/public_key_client.proto";
+import "cc/cpio/proto/private_key_client.proto";
+
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
 
@@ -50,24 +53,26 @@ enum SecretLengthProto {
 
 // All data needed for HpkeEncrypt.
 message HpkeEncryptProtoRequest {
+  // Public key to encrypt the payload.
+  public_key_client.PublicKeyProto public_key = 1;
   // Data to be encrypted.
-  string payload = 1;
+  string payload = 2;
   // App generated associated data.
-  string shared_info = 2;
+  string shared_info = 3;
   // HPKE parameters. It is optional and if not set, use the default one in
   // CPIO.
-  HpkeParamsProto hpke_params = 3;
+  HpkeParamsProto hpke_params = 4;
   // Enables bidirectional encryption if true.
-  bool is_bidirectional = 4;
+  bool is_bidirectional = 5;
   // Only to be used when is_bidirectional is true. The same HPKE context will
   // export the same secret when the exporter_context and secret_length are the
   // same. Make sure the exporter_context and secret_length match in HpkeEncrypt
   // and HpkeDecrypt to get the same secret. If not set, "aead key" will be used
   // by default.
-  string exporter_context = 5;
+  string exporter_context = 6;
   // Only to be used when is_bidirectional is true. If not set,
   // SECRET_LENGTH_16_BYTES will be used be default.
-  SecretLengthProto secret_length = 6;
+  SecretLengthProto secret_length = 7;
 }
 
 // Encrypted data for HPKE. Do not put data which should not be sent over wire
@@ -90,24 +95,26 @@ message HpkeEncryptProtoResponse {
 
 // All data needed for HpkeDecrypt.
 message HpkeDecryptProtoRequest {
+  // Private key to decrypt the encrypted_data.
+  private_key_client.PrivateKeyProto private_key = 1;
   // Encrypted data.
-  HpkeEncryptedData encrypted_data = 1;
+  HpkeEncryptedData encrypted_data = 2;
   // App generated associated data. Make sure it matches the one for encrypt.
-  string shared_info = 2;
+  string shared_info = 3;
   // HPKE parameters. It is optional and if not set, use the default one in
   // CPIO.
-  HpkeParamsProto hpke_params = 3;
+  HpkeParamsProto hpke_params = 4;
   // Enables bidirectional encryption if true.
-  bool is_bidirectional = 4;
+  bool is_bidirectional = 5;
   // Only to be used when is_bidirectional is true. The same HPKE context will
   // export the same secret when the exporter_context and secret_length are the
   // same. Make sure the exporter_context and secret_length match in HpkeEncrypt
   // and HpkeDecrypt to get the same secret. If not set, "aead key" will be used
   // by default.
-  string exporter_context = 5;
+  string exporter_context = 6;
   // Only to be used when is_bidirectional is true. If not set,
   // SECRET_LENGTH_16_BYTES will be used be default.
-  SecretLengthProto secret_length = 6;
+  SecretLengthProto secret_length = 7;
 }
 
 // Result from HpkeDecrypt.

@@ -36,6 +36,7 @@ cc_library(
 
 exports_files([
     "cpio_provider_interface.h",
+    "crypto_client_provider_interface.h",
     "instance_client_provider_interface.h",
     "config_client_provider_interface.h",
     "parameter_client_provider_interface.h",
@@ -52,6 +53,7 @@ filegroup(
     srcs = [
         ":config_client_provider_interface.h",
         ":cpio_provider_interface.h",
+        ":crypto_client_provider_interface.h",
         ":instance_client_provider_interface.h",
         ":kms_client_provider_interface.h",
         ":metric_client_provider_interface.h",

@@ -25,4 +25,8 @@ REGISTER_COMPONENT_CODE(SC_CORE_UTILS, 0x0014)
 DEFINE_ERROR_CODE(SC_CORE_UTILS_INVALID_INPUT, SC_CORE_UTILS, 0x0001,
                   "The input is invalid.", HttpStatusCode::BAD_REQUEST)
 
+DEFINE_ERROR_CODE(SC_CORE_UTILS_INVALID_BASE64_ENCODING_LENGTH, SC_CORE_UTILS,
+                  0x0002, "The Base64 encoding is not a multiple of 4.",
+                  HttpStatusCode::BAD_REQUEST)
+
 }  // namespace google::scp::core::errors

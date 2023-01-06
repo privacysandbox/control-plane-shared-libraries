@@ -28,6 +28,10 @@ using std::string;
 
 namespace google::scp::core::utils {
 ExecutionResult Base64Decode(const string& encoded, string& decoded) {
+  if ((encoded.length() % 4) != 0) {
+    return FailureExecutionResult(
+        errors::SC_CORE_UTILS_INVALID_BASE64_ENCODING_LENGTH);
+  }
   size_t required_len = 0;
   if (EVP_DecodedLength(&required_len, encoded.length()) == 0) {
     return FailureExecutionResult(errors::SC_CORE_UTILS_INVALID_INPUT);
@@ -60,6 +64,31 @@ ExecutionResult Base64Encode(const string& decoded, string& encoded) {
   }
   encoded = string(reinterpret_cast<char*>(buffer.get()), ret);
   return SuccessExecutionResult();
+}
+
+ExecutionResultOr<string> PadBase64Encoding(const string& encoded) {
+  ExecutionResultOr<string> ret_val;
+  switch (encoded.length() % 4) {
+    case 0:
+      ret_val.emplace<string>(encoded);
+      break;
+    case 2:
+      ret_val.emplace<string>(encoded + "==");
+      break;
+    case 3:
+      ret_val.emplace<string>(encoded + "=");
+      break;
+    case 1:
+    default:
+      // Base64 encoded representation consists of 4 (6-bit) characters, to
+      // represent 3 (8-bit) decoded characters. A single encoded character is
+      // 6-bit and is not enough in size to represent a decoded character of 8
+      // bits.
+      ret_val = FailureExecutionResult(
+          errors::SC_CORE_UTILS_INVALID_BASE64_ENCODING_LENGTH);
+      break;
+  }
+  return ret_val;
 }
 
 }  // namespace google::scp::core::utils

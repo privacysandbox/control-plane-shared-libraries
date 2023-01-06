@@ -96,7 +96,13 @@ struct AsyncContext {
   void Finish() noexcept {
     if (callback) {
       if (!result.Successful()) {
-        ERROR_CONTEXT("AsyncContext", (*this), result, "Error");
+        // typeid(TRequest).name() is an approximation of the context's template
+        // types mangled in compiler defined format, mainly for debugging
+        // purposes.
+        ERROR_CONTEXT("AsyncContext", (*this), result,
+                      "AsyncContext Finished. Mangled RequestType: '%s', "
+                      "Mangled ResponseType: '%s'",
+                      typeid(TRequest).name(), typeid(TResponse).name());
       }
       callback(*this);
     }
@@ -128,12 +134,14 @@ struct AsyncContext {
 };
 
 /**
- * @brief Assigns the result to the context, schedules Finish(), and
+ * @brief Finish Context on a thread on the provided AsyncExecutor thread pool.
+ * Assigns the result to the context, schedules Finish(), and
  * returns the result. If the context cannot be finished async, it will be
  * finished synchronously on the current thread.
  * @param result execution result of operation.
  * @param context the async context to be completed.
- * @param async_executor the executor for the async context.
+ * @param async_executor the executor (thread pool) for the async context to
+ * be completed on.
  * @param priority the priority for the executor. Defaults to High.
  */
 template <typename TRequest, typename TResponse>
@@ -150,6 +158,20 @@ void FinishContext(
            .Successful()) {
     context.Finish();
   }
+}
+
+/**
+ * @brief Finish Context on the current thread.
+ * Assigns the result to the context, schedules Finish(), and returns the
+ * result.
+ * @param result execution result of operation.
+ * @param context the async context to be completed.
+ */
+template <typename TRequest, typename TResponse>
+void FinishContext(const ExecutionResult& result,
+                   AsyncContext<TRequest, TResponse>& context) {
+  context.result = result;
+  context.Finish();
 }
 
 }  // namespace google::scp::core

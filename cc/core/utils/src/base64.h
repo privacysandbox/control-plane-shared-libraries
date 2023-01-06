@@ -39,4 +39,16 @@ ExecutionResult Base64Decode(const std::string& encoded, std::string& decoded);
  */
 ExecutionResult Base64Encode(const std::string& decoded, std::string& encoded);
 
+/**
+ * @brief Append [0, 2] '=' to \a encoded and return the result. This is for use
+ * with services which maybe don't correctly pad their Base64 encodings.
+ *
+ * If encoded.length() % 4 == 1, returns encoded. This scenario should never
+ * happen unless the original encoding method is incorrect.
+ *
+ * @param encoded  The input value to be padded.
+ * @return ExecutionResultOr<string> The padded value.
+ */
+ExecutionResultOr<std::string> PadBase64Encoding(const std::string& encoded);
+
 }  // namespace google::scp::core::utils

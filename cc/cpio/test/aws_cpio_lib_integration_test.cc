@@ -142,8 +142,6 @@ class CpioIntegrationTest : public ::testing::Test {
     PutParameter(ssm_client, kParameterName2, kParameterValue2);
 
     auto config_client_options = make_shared<TestAwsConfigClientOptions>();
-    vector<string> parameter_names({kParameterName1, kParameterName2});
-    config_client_options->parameter_names = parameter_names;
     config_client_options->ssm_endpoint_override =
         make_shared<string>(localstack_endpoint);
     config_client = make_unique<TestAwsConfigClient>(config_client_options);

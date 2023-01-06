@@ -41,8 +41,6 @@ resource "aws_dynamodb_table" "metadata_db_table" {
     enabled = var.enable_dynamo_point_in_time_recovery
   }
 
-  # TODO(b/196234571) add TTL support
-
   # Tags for identifying the table in various metrics (billing, cloudwatch, etc)
   tags = {
     name        = var.table_name

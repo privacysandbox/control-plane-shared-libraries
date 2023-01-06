@@ -64,37 +64,27 @@ class ConfigClientProvider : public ConfigClientProviderInterface {
 
  protected:
   /**
-   * @brief Fetches the Parameter values for the given parameter names.
+   * @brief To be called when get parameter finished.
    *
-   * @param parameter_names the given parameter names.
-   * @param parameter_values_map returned parameter values.
+   * @param config_client_context context to get parameter from ConfigClient.
+   * @param parameter_client_context context to get parameter from
+   * ParameterClient.
    * @return core::ExecutionResult the fetch results.
    */
-  core::ExecutionResult GetParameters(
-      const std::vector<std::string>& parameter_names,
-      std::map<std::string, std::string>& parameter_values_map) noexcept;
-
-  /// Configurations for ConfigClient.
-  std::shared_ptr<ConfigClientOptions> config_client_options_;
+  void OnGetParameterCallback(
+      core::AsyncContext<
+          cmrt::sdk::parameter_service::v1::GetParameterRequest,
+          cmrt::sdk::parameter_service::v1::GetParameterResponse>&
+          config_client_context,
+      core::AsyncContext<
+          cmrt::sdk::parameter_service::v1::GetParameterRequest,
+          cmrt::sdk::parameter_service::v1::GetParameterResponse>&
+          parameter_client_context) noexcept;
 
   /// InstanceClientProvider.
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
 
   /// ParameterClientProvider.
   std::shared_ptr<ParameterClientProviderInterface> parameter_client_provider_;
-
-  /// The instance ID pre-fetched during initializing.
-  std::string instance_id_;
-
-  /// The tag values prefetched during initializing. The key is tag
-  /// name and the value is tag value.
-  std::map<std::string, std::string> tag_values_map_;
-
-  /// The result of fetching instance ID.
-  core::ExecutionResult fetch_instance_id_result_;
-
-  /// The parameter values prefetched during initializing. The key is parameter
-  /// name and the value is parameter value.
-  std::map<std::string, std::string> parameter_values_map_;
 };
 }  // namespace google::scp::cpio::client_providers

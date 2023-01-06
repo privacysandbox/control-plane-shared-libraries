@@ -72,8 +72,6 @@ int main(int argc, char* argv[]) {
   }
 
   ConfigClientOptions config_client_options;
-  config_client_options.tag_names.emplace_back(kEnvTag);
-  config_client_options.parameter_names.emplace_back(kTestParameterName);
   auto config_client = ConfigClientFactory::Create(move(config_client_options));
   result = config_client->Init();
   if (!result.Successful()) {

@@ -43,9 +43,6 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
-using google::scp::core::errors::
-    SC_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME;
-using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME;
 using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
 using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND;
 using google::scp::cpio::config_client::GetInstanceIdProtoRequest;
@@ -70,8 +67,7 @@ namespace google::scp::cpio::client_providers {
 ConfigClientProvider::ConfigClientProvider(
     const shared_ptr<ConfigClientOptions>& config_client_options,
     const shared_ptr<InstanceClientProviderInterface>& instance_client_provider)
-    : config_client_options_(config_client_options),
-      instance_client_provider_(instance_client_provider) {
+    : instance_client_provider_(instance_client_provider) {
   parameter_client_provider_ = ParameterClientProviderFactory::Create(
       make_shared<ParameterClientOptions>(), instance_client_provider_);
 }
@@ -93,33 +89,6 @@ ExecutionResult ConfigClientProvider::Run() noexcept {
     return execution_result;
   }
 
-  // Prefetches static metadata by issuing blocking calls. And only error out
-  // when try to use them.
-  fetch_instance_id_result_ =
-      instance_client_provider_->GetCurrentInstanceId(instance_id_);
-  if (!fetch_instance_id_result_.Successful()) {
-    ERROR(kConfigClientProvider, kZeroUuid, kZeroUuid,
-          fetch_instance_id_result_,
-          "Failed getting AWS instance ID during initialization.");
-  }
-
-  execution_result = instance_client_provider_->GetTagsOfInstance(
-      config_client_options_->tag_names, instance_id_, tag_values_map_);
-  if (!execution_result.Successful()) {
-    ERROR(kConfigClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed getting the tag values during initialization.");
-    return execution_result;
-  }
-
-  // Prefetches static metadata by issuing blocking calls.
-  execution_result = GetParameters(config_client_options_->parameter_names,
-                                   parameter_values_map_);
-  if (!execution_result.Successful()) {
-    ERROR(kConfigClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed getting the AWS parameter values during initialization.");
-    return execution_result;
-  }
-
   return SuccessExecutionResult();
 }
 
@@ -136,78 +105,50 @@ ExecutionResult ConfigClientProvider::Stop() noexcept {
 
 ExecutionResult ConfigClientProvider::GetParameter(
     AsyncContext<GetParameterRequest, GetParameterResponse>& context) noexcept {
-  if (context.request->parameter_name().empty()) {
-    auto execution_result = FailureExecutionResult(
-        SC_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME);
-    ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
-                  "Failed to get the parameter value for %s.",
-                  context.request->parameter_name().c_str());
-    context.result = execution_result;
-    context.Finish();
-    return execution_result;
-  }
+  AsyncContext<GetParameterRequest, GetParameterResponse>
+      parameter_client_context(
+          move(context.request),
+          bind(&ConfigClientProvider::OnGetParameterCallback, this, context,
+               _1));
 
-  auto response = make_shared<GetParameterResponse>();
-  auto result = SuccessExecutionResult();
-
-  auto it = parameter_values_map_.find(context.request->parameter_name());
-  if (it == parameter_values_map_.end()) {
-    result =
-        FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND);
-  } else {
-    response->set_parameter_value(it->second);
-  }
-
-  context.response = move(response);
-  context.result = result;
-  context.Finish();
-
-  return SuccessExecutionResult();
+  return parameter_client_provider_->GetParameter(parameter_client_context);
 }
 
-ExecutionResult ConfigClientProvider::GetParameters(
-    const vector<string>& parameter_names,
-    map<string, string>& parameter_values_map) noexcept {
-  if (parameter_names.empty()) {
-    return SuccessExecutionResult();
+void ConfigClientProvider::OnGetParameterCallback(
+    core::AsyncContext<GetParameterRequest, GetParameterResponse>&
+        config_client_context,
+    core::AsyncContext<GetParameterRequest, GetParameterResponse>&
+        parameter_client_context) noexcept {
+  config_client_context.result = parameter_client_context.result;
+  if (!config_client_context.result.Successful()) {
+    ERROR_CONTEXT(kConfigClientProvider, config_client_context,
+                  config_client_context.result,
+                  "Failed to get parameter for name %s.",
+                  parameter_client_context.request->parameter_name().c_str());
+    config_client_context.Finish();
+    return;
   }
-
-  for (auto const& parameter_name : parameter_names) {
-    promise<pair<ExecutionResult, shared_ptr<GetParameterResponse>>>
-        request_promise;
-    AsyncContext<GetParameterRequest, GetParameterResponse> context;
-    context.request = make_shared<GetParameterRequest>();
-    context.request->set_parameter_name(parameter_name);
-    context.callback =
-        [&](AsyncContext<GetParameterRequest, GetParameterResponse>& context) {
-          request_promise.set_value({context.result, context.response});
-        };
-
-    auto execution_result = parameter_client_provider_->GetParameter(context);
-    RETURN_IF_FAILURE(execution_result);
-
-    auto result = request_promise.get_future().get();
-    RETURN_IF_FAILURE(result.first);
-
-    parameter_values_map[parameter_name] = result.second->parameter_value();
-  }
-
-  return SuccessExecutionResult();
+  config_client_context.response = move(parameter_client_context.response);
+  config_client_context.Finish();
 }
 
 ExecutionResult ConfigClientProvider::GetInstanceId(
     AsyncContext<GetInstanceIdProtoRequest, GetInstanceIdProtoResponse>&
         context) noexcept {
-  auto response = make_shared<GetInstanceIdProtoResponse>();
-  auto result = SuccessExecutionResult();
-  if (instance_id_.empty()) {
-    result = fetch_instance_id_result_;
-  } else {
-    response->set_instance_id(instance_id_);
+  string instance_id;
+  auto execution_result =
+      instance_client_provider_->GetCurrentInstanceId(instance_id);
+  if (!execution_result.Successful()) {
+    ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
+                  "Failed getting AWS instance ID.");
+    context.result = execution_result;
+    context.Finish();
+    return execution_result;
   }
 
-  context.response = move(response);
-  context.result = result;
+  context.response = make_shared<GetInstanceIdProtoResponse>();
+  context.response->set_instance_id(instance_id);
+  context.result = SuccessExecutionResult();
   context.Finish();
 
   return SuccessExecutionResult();
@@ -215,35 +156,37 @@ ExecutionResult ConfigClientProvider::GetInstanceId(
 
 ExecutionResult ConfigClientProvider::GetTag(
     AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) noexcept {
-  if (context.request->tag_name().empty()) {
-    auto execution_result =
-        FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME);
+  string instance_id;
+  auto execution_result =
+      instance_client_provider_->GetCurrentInstanceId(instance_id);
+  if (!execution_result.Successful()) {
     ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
-                  "Failed to get tag with empty tag name.");
+                  "Failed getting AWS instance ID.");
     context.result = execution_result;
     context.Finish();
     return execution_result;
   }
 
-  auto response = make_shared<GetTagProtoResponse>();
-  auto execution_result = SuccessExecutionResult();
-
-  auto it = tag_values_map_.find(context.request->tag_name());
-  if (it == tag_values_map_.end()) {
-    execution_result =
-        FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND);
+  vector<string> tag_names(1);
+  tag_names.emplace_back(context.request->tag_name());
+  map<string, string> tag_values_map;
+  execution_result = instance_client_provider_->GetTagsOfInstance(
+      tag_names, instance_id, tag_values_map);
+  if (!execution_result.Successful()) {
     ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
-                  "Failed to get the tag value for %s.",
+                  "Failed getting instance tag for name %s.",
                   context.request->tag_name().c_str());
-  } else {
-    response->set_value(it->second);
+    context.result = execution_result;
+    context.Finish();
+    return execution_result;
   }
 
-  context.response = move(response);
-  context.result = execution_result;
+  context.result = SuccessExecutionResult();
+  context.response = make_shared<GetTagProtoResponse>();
+  context.response->set_value(tag_values_map.at(context.request->tag_name()));
   context.Finish();
 
-  return SuccessExecutionResult();
+  return context.result;
 }
 
 #ifndef TEST_CPIO

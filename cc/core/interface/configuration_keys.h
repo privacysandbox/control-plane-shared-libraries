@@ -24,4 +24,7 @@ static constexpr char kGcpProjectId[] = "google_scp_gcp_project_id";
 // GCP Cloud Spanner
 static constexpr char kSpannerInstance[] = "google_scp_spanner_instance_name";
 static constexpr char kSpannerDatabase[] = "google_scp_spanner_database_name";
+// Skip a log if unable to apply during log recovery
+static constexpr char kTransactionManagerSkipFailedLogsInRecovery[] =
+    "google_scp_transaction_manager_skip_failed_logs_in_recovery";
 }  // namespace google::scp::core

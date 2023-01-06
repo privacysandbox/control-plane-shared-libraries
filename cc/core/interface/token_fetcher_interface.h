@@ -29,11 +29,11 @@ struct FetchTokenRequest {};
 /**
  * @brief generic response containing queried token and associated metadata
  * @param token fetched token
- * @param token_expiration_timestamp time in future until which token is valid
+ * @param token_lifetime_in_seconds duration in seconds of which token is valid
  */
 struct FetchTokenResponse {
   Token token;
-  Timestamp token_expiration_timestamp = UINT64_MAX;
+  std::chrono::seconds token_lifetime_in_seconds = std::chrono::seconds::max();
 };
 
 /**

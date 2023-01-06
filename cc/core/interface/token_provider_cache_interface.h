@@ -25,7 +25,7 @@ namespace google::scp::core {
 /**
  * @brief Interface to provide tokens from a cache
  */
-class TokenProviderCacheInterface {
+class TokenProviderCacheInterface : public ServiceInterface {
  public:
   /**
    * @brief Get cached token

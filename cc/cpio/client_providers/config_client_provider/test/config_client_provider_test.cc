@@ -45,9 +45,6 @@ using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
-using google::scp::core::errors::
-    SC_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME;
-using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME;
 using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
 using google::scp::core::errors::SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND;
 using google::scp::core::test::WaitUntil;
@@ -90,9 +87,10 @@ class ConfigClientProviderTest : public ::testing::Test {
 
   void SetUp() override {
     config_client_options_ = make_shared<ConfigClientOptions>();
-    config_client_options_->parameter_names.emplace_back(kParameterName);
     client_ = make_unique<MockConfigClientProviderWithOverrides>(
         config_client_options_);
+    EXPECT_EQ(client_->Init(), SuccessExecutionResult());
+    EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
     client_->GetInstanceClientProvider()->region_mock = kRegion;
     client_->GetInstanceClientProvider()->instance_id_mock = kInstanceId;
@@ -106,7 +104,6 @@ class ConfigClientProviderTest : public ::testing::Test {
     get_parameter_response.set_parameter_value(kParameterValue);
     client_->GetParameterClientProvider()->get_parameter_response_mock =
         get_parameter_response;
-    EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   }
 
   void TearDown() override {
@@ -121,8 +118,6 @@ TEST_F(ConfigClientProviderTest, FailedToFetchInstanceId) {
   FailureExecutionResult failure(SC_AWS_INTERNAL_SERVICE_ERROR);
   client_->GetInstanceClientProvider()->get_instance_id_result_mock = failure;
 
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
   atomic<bool> condition = false;
   AsyncContext<GetInstanceIdProtoRequest, GetInstanceIdProtoResponse> context(
       make_shared<GetInstanceIdProtoRequest>(),
@@ -131,13 +126,11 @@ TEST_F(ConfigClientProviderTest, FailedToFetchInstanceId) {
         EXPECT_EQ(context.result, failure);
         condition = true;
       });
-  EXPECT_EQ(client_->GetInstanceId(context), SuccessExecutionResult());
+  EXPECT_EQ(client_->GetInstanceId(context), failure);
   WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(ConfigClientProviderTest, SucceededToFetchInstanceId) {
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
   atomic<bool> condition = false;
   AsyncContext<GetInstanceIdProtoRequest, GetInstanceIdProtoResponse> context(
       make_shared<GetInstanceIdProtoRequest>(),
@@ -152,36 +145,27 @@ TEST_F(ConfigClientProviderTest, SucceededToFetchInstanceId) {
   WaitUntil([&]() { return condition.load(); });
 }
 
-TEST_F(ConfigClientProviderTest, InvalidTagName) {
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
-  atomic<bool> condition = false;
-  auto request = make_shared<GetTagProtoRequest>();
-  AsyncContext<GetTagProtoRequest, GetTagProtoResponse> context(
-      move(request),
-      [&](AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) {
-        EXPECT_EQ(
-            context.result,
-            FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME));
-        condition = true;
-      });
-
-  EXPECT_EQ(client_->GetTag(context),
-            FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_INVALID_TAG_NAME));
-  WaitUntil([&]() { return condition.load(); });
-}
-
 TEST_F(ConfigClientProviderTest, FailedToFetchTag) {
   FailureExecutionResult result(SC_AWS_INTERNAL_SERVICE_ERROR);
   client_->GetInstanceClientProvider()->get_tags_result_mock = result;
 
-  EXPECT_EQ(client_->Run(),
+  atomic<bool> condition = false;
+  auto request = make_shared<GetTagProtoRequest>();
+  request->set_tag_name(kTagName);
+  AsyncContext<GetTagProtoRequest, GetTagProtoResponse> context(
+      move(request),
+      [&](AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) {
+        EXPECT_EQ(context.result,
+                  FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+        condition = true;
+      });
+
+  EXPECT_EQ(client_->GetTag(context),
             FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+  WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(ConfigClientProviderTest, SucceededToFetchTag) {
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
   atomic<bool> condition = false;
   auto request = make_shared<GetTagProtoRequest>();
   request->set_tag_name(kTagName);
@@ -197,55 +181,26 @@ TEST_F(ConfigClientProviderTest, SucceededToFetchTag) {
   WaitUntil([&]() { return condition.load(); });
 }
 
-TEST_F(ConfigClientProviderTest, TagNotFound) {
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
-  atomic<bool> condition = false;
-  auto request = make_shared<GetTagProtoRequest>();
-  request->set_tag_name("tag_2");
-  AsyncContext<GetTagProtoRequest, GetTagProtoResponse> context(
-      move(request),
-      [&](AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) {
-        EXPECT_EQ(context.result, FailureExecutionResult(
-                                      SC_CONFIG_CLIENT_PROVIDER_TAG_NOT_FOUND));
-        condition = true;
-      });
-
-  EXPECT_EQ(client_->GetTag(context), SuccessExecutionResult());
-  WaitUntil([&]() { return condition.load(); });
-}
-
-TEST_F(ConfigClientProviderTest, InvalidParameterName) {
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
-  atomic<bool> condition = false;
-  auto request = make_shared<GetParameterRequest>();
-  AsyncContext<GetParameterRequest, GetParameterResponse> context(
-      move(request),
-      [&](AsyncContext<GetParameterRequest, GetParameterResponse>& context) {
-        EXPECT_EQ(context.result,
-                  FailureExecutionResult(
-                      SC_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME));
-        condition = true;
-      });
-
-  EXPECT_EQ(
-      client_->GetParameter(context),
-      FailureExecutionResult(SC_CONFIG_CLIENT_PROVIDER_INVALID_PARAMETER_NAME));
-  WaitUntil([&]() { return condition.load(); });
-}
-
 TEST_F(ConfigClientProviderTest, FailedToFetchParameter) {
   FailureExecutionResult result(SC_AWS_INTERNAL_SERVICE_ERROR);
   client_->GetParameterClientProvider()->get_parameter_result_mock = result;
 
-  EXPECT_EQ(client_->Run(),
-            FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+  atomic<bool> condition = false;
+  auto request = make_shared<GetParameterRequest>();
+  request->set_parameter_name(kParameterName);
+  AsyncContext<GetParameterRequest, GetParameterResponse> context(
+      move(request),
+      [&](AsyncContext<GetParameterRequest, GetParameterResponse>& context) {
+        EXPECT_EQ(context.result,
+                  FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR));
+        condition = true;
+      });
+
+  EXPECT_EQ(client_->GetParameter(context), SuccessExecutionResult());
+  WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(ConfigClientProviderTest, SucceededToFetchParameter) {
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
   atomic<bool> condition = false;
   auto request = make_shared<GetParameterRequest>();
   request->set_parameter_name(kParameterName);
@@ -254,25 +209,6 @@ TEST_F(ConfigClientProviderTest, SucceededToFetchParameter) {
       [&](AsyncContext<GetParameterRequest, GetParameterResponse>& context) {
         EXPECT_EQ(context.result, SuccessExecutionResult());
         EXPECT_EQ(context.response->parameter_value(), kParameterValue);
-        condition = true;
-      });
-
-  EXPECT_EQ(client_->GetParameter(context), SuccessExecutionResult());
-  WaitUntil([&]() { return condition.load(); });
-}
-
-TEST_F(ConfigClientProviderTest, ParameterNotFound) {
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
-
-  atomic<bool> condition = false;
-  auto request = make_shared<GetParameterRequest>();
-  request->set_parameter_name("tag_2");
-  AsyncContext<GetParameterRequest, GetParameterResponse> context(
-      move(request),
-      [&](AsyncContext<GetParameterRequest, GetParameterResponse>& context) {
-        EXPECT_EQ(context.result,
-                  FailureExecutionResult(
-                      SC_CONFIG_CLIENT_PROVIDER_PARAMETER_NOT_FOUND));
         condition = true;
       });
 

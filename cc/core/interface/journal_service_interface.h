@@ -74,7 +74,7 @@ struct JournalRecoverRequest {
   JournalId max_journal_id_to_process = UINT64_MAX;
   /// The maximum number of journals to recover in one call. If not set, all the
   /// journals will be recovered at once.
-  JournalId max_journals_to_process = UINT64_MAX;
+  JournalId max_number_of_journals_to_process = UINT64_MAX;
 };
 
 /// Represents journal recovery response object.

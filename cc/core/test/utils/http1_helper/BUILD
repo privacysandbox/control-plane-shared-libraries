@@ -12,22 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cc_test(
-    name = "core_utils_test",
-    size = "small",
-    srcs = glob(
-        [
-            "*.cc",
-        ],
-    ),
-    copts = [
-        "-std=c++17",
-    ],
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "test_http1_server",
+    testonly = True,
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
     deps = [
-        "//cc:cc_base_include_dir",
-        "//cc/core/interface:interface_lib",
-        "//cc/core/utils/src:core_utils",
-        "//cc/public/core/test/interface:execution_result_test_lib",
-        "@com_google_googletest//:gtest_main",
+        "//cc/core/interface:errors_lib",
+        "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/interface:execution_result",
+        "@boost//:asio",
+        "@boost//:beast",
     ],
 )

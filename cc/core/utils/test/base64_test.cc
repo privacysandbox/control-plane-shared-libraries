@@ -19,8 +19,12 @@
 #include <string>
 
 #include "core/utils/src/error_codes.h"
+#include "public/core/test/interface/execution_result_test_lib.h"
 
+using google::scp::core::test::IsSuccessfulAndHolds;
+using google::scp::core::test::ResultIs;
 using std::string;
+using testing::Eq;
 
 namespace google::scp::core::utils::test {
 TEST(Base64Test, Base64EncodeInvalidValue) {
@@ -38,10 +42,12 @@ TEST(Base64Test, Base64EncodeValidValue) {
 }
 
 TEST(Base64Test, Base64DecodeInvalidValue) {
+  // Not correctly padded - needs "==" appended.
   string encoded("sdasdasdas");
   string decoded;
   EXPECT_EQ(Base64Decode(encoded, decoded),
-            FailureExecutionResult(errors::SC_CORE_UTILS_INVALID_INPUT));
+            FailureExecutionResult(
+                errors::SC_CORE_UTILS_INVALID_BASE64_ENCODING_LENGTH));
 }
 
 TEST(Base64Test, Base64DecodeValidValues) {
@@ -52,6 +58,19 @@ TEST(Base64Test, Base64DecodeValidValues) {
   string encoded("dGVzdF90ZXN0X3Rlc3Q=");
   EXPECT_EQ(Base64Decode(encoded, decoded), SuccessExecutionResult());
   EXPECT_EQ(decoded, "test_test_test");
+}
+
+TEST(Base64Test, PadBase64EncodingTest) {
+  EXPECT_THAT(PadBase64Encoding("1234"), IsSuccessfulAndHolds("1234"));
+
+  // This scenario should never happen in reality but will return error.
+  EXPECT_THAT(PadBase64Encoding("12345"),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_CORE_UTILS_INVALID_BASE64_ENCODING_LENGTH)));
+
+  EXPECT_THAT(PadBase64Encoding("123456"), IsSuccessfulAndHolds("123456=="));
+
+  EXPECT_THAT(PadBase64Encoding("1234567"), IsSuccessfulAndHolds("1234567="));
 }
 
 }  // namespace google::scp::core::utils::test

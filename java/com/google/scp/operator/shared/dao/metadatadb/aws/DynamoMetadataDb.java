@@ -111,7 +111,7 @@ public final class DynamoMetadataDb implements JobMetadataDb {
 
     Instant ttl = clock.instant().plus(jobMetadataTtl, ChronoUnit.DAYS);
     logger.log(Level.INFO, "Set Ttl to " + ttl);
-    jobMetadata = jobMetadata.toBuilder().setTtl(ttl.toEpochMilli()).build();
+    jobMetadata = jobMetadata.toBuilder().setTtl(ttl.getEpochSecond()).build();
     logger.log(Level.INFO, "Persisting Ttl as " + jobMetadata.getTtl());
     PutItemEnhancedRequest<JobMetadata> putItemEnhancedRequest =
         PutItemEnhancedRequest.builder(JobMetadata.class)

@@ -57,6 +57,8 @@ struct ListBlobsRequest : BlobRequest {
    * @brief Is used to continue a list operation. In a case of numerous results,
    * the service will return a marker to be used on the next call as a
    * pagination token.
+   * The list will only include keys that occur lexicographically after the
+   * marker.
    */
   std::shared_ptr<std::string> marker;
 };

@@ -21,8 +21,8 @@ load(
 package(default_visibility = ["//visibility:public"])
 
 proto_library(
-    name = "metric_service_proto",
-    srcs = ["metric_service.proto"],
+    name = "instance_service_proto",
+    srcs = ["instance_service.proto"],
     deps = [
         "//cc/core/common/proto:core_common_proto",
     ],
@@ -32,14 +32,14 @@ proto_library(
 # C++
 ##############################################################################
 cc_proto_library(
-    name = "metric_service_cc_proto",
-    deps = [":metric_service_proto"],
+    name = "instance_service_cc_proto",
+    deps = [":instance_service_proto"],
 )
 
 cc_grpc_library(
-    name = "metric_service_cc_grpc",
-    srcs = [":metric_service_proto"],
+    name = "instance_service_cc_grpc",
+    srcs = [":instance_service_proto"],
     generate_mocks = True,
     grpc_only = True,
-    deps = [":metric_service_cc_proto"],
+    deps = [":instance_service_cc_proto"],
 )

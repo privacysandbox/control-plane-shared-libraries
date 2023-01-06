@@ -32,31 +32,64 @@ typedef uint64_t JournalId;
 typedef uint64_t CheckpointId;
 typedef std::string Token;
 
-/// Struct that stores byte array and the metadata associated with it.
+static constexpr JournalId kInvalidJournalId = 0;
+static constexpr CheckpointId kInvalidCheckpointId = 0;
+
+/// Structure that acts as a wrapper around a vector of bytes.
+/// This structure allows callers to keep track of the current used buffer via
+/// 'length' and the total allocated capacity via 'capacity'.
+/// This structure allows callers to consume partial prefix bytes as specified
+/// by the 'length' field. If 'length' and 'capacity' are the same, this is the
+/// default case and the full buffer will be used.
 struct BytesBuffer {
   BytesBuffer() : BytesBuffer(0) {}
 
+  /**
+   * @brief Construct a new Bytes Buffer object that is empty of size.
+   *
+   * @param size
+   */
   explicit BytesBuffer(size_t size)
       : bytes(std::make_shared<std::vector<Byte>>(size)), capacity(size) {}
 
-  explicit BytesBuffer(const std::string& str) : BytesBuffer(str.size()) {
-    bytes->assign(str.begin(), str.end());
+  /**
+   * @brief Construct a new Bytes Buffer object from a string
+   *
+   * @param buffer_string
+   */
+  explicit BytesBuffer(const std::string& buffer_string)
+      : BytesBuffer(buffer_string.size()) {
+    bytes->assign(buffer_string.begin(), buffer_string.end());
     length = bytes->size();
   }
 
-  std::shared_ptr<std::vector<Byte>> bytes;
-  size_t length = 0;
-  size_t capacity = 0;
-
-  template <size_t N>
-  inline void AssignBody(const char (&str)[N]) {
-    bytes->assign(str, str + N - 1);  // mind the trailing null
-    length = N - 1;
+  /**
+   * @brief Construct a new Bytes Buffer object with only a certain prefix of
+   * the buffer to be used
+   *
+   * @param bytes_buffer
+   * @param prefix_length_to_use
+   */
+  explicit BytesBuffer(const std::shared_ptr<BytesBuffer>& bytes_buffer,
+                       size_t prefix_length_to_use) {
+    bytes = bytes_buffer->bytes;
+    length = prefix_length_to_use;
+    capacity = bytes_buffer->capacity;
+    assert(prefix_length_to_use <= capacity);
   }
 
   inline std::string ToString() const {
     return std::string(bytes->data(), length);
   }
+
+  /**
+   * @brief 'length' is the length of the bytes buffer to consume. Note that,
+   * the actual buffer may represent a larger size as specified by 'capacity'.
+   * 'length' <= 'capacity'.
+   */
+  std::shared_ptr<std::vector<Byte>> bytes;
+  size_t length = 0;
+  size_t capacity = 0;
 };
 
 typedef std::string PublicPrivateKeyPairId;

@@ -30,23 +30,6 @@ using InstanceId = std::string;
 /// Configurations for ConfigClient.
 struct ConfigClientOptions {
   virtual ~ConfigClientOptions() = default;
-
-  /**
-   * @brief The tag values for this given tag_names should be
-   * written to cloud first. In AWS, it should be a label in EC2 instance, and
-   * in GCP, it is stored in Metadata Service. CPIO will fetch the
-   * them during initialization time, store it in memory and serve
-   * them through ConfigClient.
-   */
-  std::vector<TagName> tag_names;
-  /**
-   * @brief The parameter values for this given parameter_names should be
-   * written to cloud first. In AWS, they should be stored in the Parameter
-   * Store, and in GCP, they should be stored in the Secret Manager. CPIO will
-   * fetch these parameters during initialization time, store them in memory and
-   * serve them through ConfigClient.
-   */
-  std::vector<ParameterName> parameter_names;
 };
 }  // namespace google::scp::cpio
 
