@@ -16,8 +16,8 @@ syntax = "proto3";
 
 package google.scp.cpio.crypto_client;
 
-import "cc/cpio/proto/public_key_client.proto";
-import "cc/cpio/proto/private_key_client.proto";
+import "cc/public/cpio/proto/public_key_service/v1/public_key_service.proto";
+import "cc/public/cpio/proto/private_key_service/v1/private_key_service.proto";
 
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
@@ -54,7 +54,7 @@ enum SecretLengthProto {
 // All data needed for HpkeEncrypt.
 message HpkeEncryptProtoRequest {
   // Public key to encrypt the payload.
-  public_key_client.PublicKeyProto public_key = 1;
+  cmrt.sdk.public_key_service.v1.PublicKey public_key = 1;
   // Data to be encrypted.
   string payload = 2;
   // App generated associated data.
@@ -96,7 +96,7 @@ message HpkeEncryptProtoResponse {
 // All data needed for HpkeDecrypt.
 message HpkeDecryptProtoRequest {
   // Private key to decrypt the encrypted_data.
-  private_key_client.PrivateKeyProto private_key = 1;
+  cmrt.sdk.private_key_service.v1.PrivateKey private_key = 1;
   // Encrypted data.
   HpkeEncryptedData encrypted_data = 2;
   // App generated associated data. Make sure it matches the one for encrypt.

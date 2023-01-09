@@ -30,6 +30,8 @@ cc_library(
         "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
+        "//cc/public/cpio/proto/private_key_service/v1:private_key_service_cc_proto",
+        "//cc/public/cpio/proto/public_key_service/v1:public_key_service_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -37,6 +39,7 @@ cc_library(
 exports_files([
     "cpio_provider_interface.h",
     "crypto_client_provider_interface.h",
+    "cloud_initializer_interface.h",
     "instance_client_provider_interface.h",
     "config_client_provider_interface.h",
     "parameter_client_provider_interface.h",
@@ -51,6 +54,7 @@ exports_files([
 filegroup(
     name = "cpio_client_provider_interface_srcs",
     srcs = [
+        ":cloud_initializer_interface.h",
         ":config_client_provider_interface.h",
         ":cpio_provider_interface.h",
         ":crypto_client_provider_interface.h",

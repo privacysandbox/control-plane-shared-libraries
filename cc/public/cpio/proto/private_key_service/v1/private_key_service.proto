@@ -14,21 +14,36 @@
 
 syntax = "proto3";
 
-package google.scp.cpio.private_key_client;
+package google.cmrt.sdk.private_key_service.v1;
+
+import "cc/core/common/proto/common.proto";
 
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
 
-message ListPrivateKeysByIdsProtoRequest {
+// Service to fetch private keys.
+service PrivateKeyService {
+  // Fetches private keys from KeyService for the given Key Ids. These keys are
+  // already decrypted.
+  rpc ListPrivateKeysByIds(ListPrivateKeysByIdsRequest)
+      returns (ListPrivateKeysByIdsResponse) {}
+}
+
+// Request to list private keys.
+message ListPrivateKeysByIdsRequest {
   repeated string key_ids = 1;
 }
 
-message ListPrivateKeysByIdsProtoResponse {
-  repeated PrivateKeyProto private_keys = 1;
+// Response of listing private keys
+message ListPrivateKeysByIdsResponse {
+  // The execution result.
+  scp.core.common.proto.ExecutionResult result = 1;
+  repeated PrivateKey private_keys = 2;
 }
 
-message PrivateKeyProto {
-  // The id of the private key.
+// Wrap of private key.
+message PrivateKey {
+  // The id of the public and private key pair.
   string key_id = 1;
   // The value of the public key.
   string public_key = 2;

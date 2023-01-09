@@ -14,20 +14,34 @@
 
 syntax = "proto3";
 
-package google.scp.cpio.public_key_client;
+package google.cmrt.sdk.public_key_service.v1;
+
+import "cc/core/common/proto/common.proto";
 
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
 
-message ListPublicKeysProtoRequest {}
-
-message ListPublicKeysProtoResponse {
-  repeated PublicKeyProto public_keys = 1;
-  // The expiration time of the public key.
-  int64 expiration_time_in_ms = 4;
+// Service to fetch public keys.
+service PublicKeyService {
+  // Fetches latest public keys from KeyService.
+  rpc ListPublicKeys(ListPublicKeysRequest) returns (ListPublicKeysResponse) {}
 }
 
-message PublicKeyProto {
+// Request to list public keys.
+message ListPublicKeysRequest {}
+
+// Response of listing public keys
+message ListPublicKeysResponse {
+  // The execution result.
+  scp.core.common.proto.ExecutionResult result = 1;
+  // PublicKey list.
+  repeated PublicKey public_keys = 2;
+  // The expiration time of the public keys.
+  int64 expiration_time_in_ms = 3;
+}
+
+// Wrap of public key.
+message PublicKey {
   // The id of the public key.
   string key_id = 1;
   // The value of the public key.

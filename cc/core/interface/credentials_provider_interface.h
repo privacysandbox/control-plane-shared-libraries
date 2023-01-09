@@ -20,7 +20,7 @@
 #include <string>
 
 #include "async_context.h"
-#include "service_interface.h"
+#include "initializable_interface.h"
 
 namespace google::scp::core {
 /// Represents the get credentials request object.
@@ -34,7 +34,7 @@ struct GetCredentialsResponse {
 };
 
 /// Provides cloud credentials functionality.
-class CredentialsProviderInterface : public ServiceInterface {
+class CredentialsProviderInterface : public InitializableInterface {
  public:
   virtual ~CredentialsProviderInterface() = default;
 

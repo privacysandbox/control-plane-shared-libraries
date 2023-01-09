@@ -21,9 +21,9 @@
 
 #include "core/interface/async_context.h"
 #include "core/interface/service_interface.h"
-#include "cpio/proto/public_key_client.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/public_key_client/type_def.h"
+#include "public/cpio/proto/public_key_service/v1/public_key_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
 /**
@@ -39,8 +39,9 @@ class PublicKeyClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult ListPublicKeys(
-      core::AsyncContext<public_key_client::ListPublicKeysProtoRequest,
-                         public_key_client::ListPublicKeysProtoResponse>&
+      core::AsyncContext<
+          cmrt::sdk::public_key_service::v1::ListPublicKeysRequest,
+          cmrt::sdk::public_key_service::v1::ListPublicKeysResponse>&
           context) noexcept = 0;
 };
 

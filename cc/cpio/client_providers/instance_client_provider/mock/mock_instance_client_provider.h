@@ -19,6 +19,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
@@ -38,7 +39,7 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  std::string instance_id_mock;
+  std::string instance_id_mock = "instance_id";
   core::ExecutionResult get_instance_id_result_mock =
       core::SuccessExecutionResult();
 
@@ -51,7 +52,7 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  std::string region_mock;
+  std::string region_mock = "us-east-1";
   core::ExecutionResult get_region_result_mock = core::SuccessExecutionResult();
 
   core::ExecutionResult GetCurrentInstanceRegion(
@@ -63,7 +64,8 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  std::map<std::string, std::string> tag_values_mock;
+  std::map<std::string, std::string> tag_values_mock = {
+      std::make_pair("tag1", "value1")};
   core::ExecutionResult get_tags_result_mock = core::SuccessExecutionResult();
 
   core::ExecutionResult GetTagsOfInstance(
@@ -78,15 +80,17 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
 
   core::ExecutionResult GetCurrentInstancePublicIpv4Address(
       std::string& instance_public_ipv4_address) noexcept override {
+    instance_public_ipv4_address = "1.1.1.1";
     return core::SuccessExecutionResult();
   }
 
   core::ExecutionResult GetCurrentInstancePrivateIpv4Address(
       std::string& instance_private_ipv4_address) noexcept override {
+    instance_private_ipv4_address = "10.1.1.1";
     return core::SuccessExecutionResult();
   }
 
-  std::string project_id_mock;
+  std::string project_id_mock = "12345";
   core::ExecutionResult get_project_id_result_mock =
       core::SuccessExecutionResult();
 
@@ -99,7 +103,7 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  std::string instance_zone_mock;
+  std::string instance_zone_mock = "zone-a";
   core::ExecutionResult get_instance_zone_result_mock =
       core::SuccessExecutionResult();
 

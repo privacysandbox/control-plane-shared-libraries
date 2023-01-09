@@ -21,9 +21,9 @@
 
 #include "core/interface/async_context.h"
 #include "core/interface/service_interface.h"
-#include "cpio/proto/private_key_client.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/private_key_client/type_def.h"
+#include "public/cpio/proto/private_key_service/v1/private_key_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
 /**
@@ -39,8 +39,9 @@ class PrivateKeyClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult ListPrivateKeysByIds(
-      core::AsyncContext<private_key_client::ListPrivateKeysByIdsProtoRequest,
-                         private_key_client::ListPrivateKeysByIdsProtoResponse>&
+      core::AsyncContext<
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest,
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>&
           context) noexcept = 0;
 };
 

@@ -16,7 +16,7 @@
 #pragma once
 
 #include "core/interface/async_context.h"
-#include "core/interface/service_interface.h"
+#include "core/interface/initializable_interface.h"
 
 namespace google::scp::core {
 
@@ -33,14 +33,14 @@ struct FetchTokenRequest {};
  */
 struct FetchTokenResponse {
   Token token;
-  std::chrono::seconds token_lifetime_in_seconds = std::chrono::seconds::max();
+  std::chrono::seconds token_lifetime_in_seconds;
 };
 
 /**
  * @brief An interface for callers to fetch token from another
  * component/service.
  */
-class TokenFetcherInterface {
+class TokenFetcherInterface : public InitializableInterface {
  public:
   /**
    * @brief Fetch the token asynchronously
