@@ -207,3 +207,22 @@ cc_library(
         "@curl",
     ],
 )
+
+cc_library(
+    name = "sqs",
+    srcs =
+        [
+            "lib/libaws-cpp-sdk-sqs.a",
+        ],
+    hdrs = glob(
+        [
+            "include/aws/sqs/*.h",
+            "include/aws/sqs/model/*.h",
+        ],
+    ),
+    strip_include_prefix = "include",
+    deps = [
+        ":core",
+        "@curl",
+    ],
+)

@@ -25,8 +25,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.scp.coordinator.privacy.budgeting.model.PrivacyBudgetUnit;
 import com.google.scp.operator.cpio.distributedprivacybudgetclient.PrivacyBudgetClient.PrivacyBudgetClientException;
-import com.google.scp.shared.aws.util.AwsHttpClient;
-import com.google.scp.shared.aws.util.HttpClientResponse;
+import com.google.scp.shared.api.util.HttpClientResponse;
+import com.google.scp.shared.api.util.HttpClientWithInterceptor;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -44,7 +44,7 @@ import org.mockito.junit.MockitoRule;
 public final class PrivacyBudgetClientTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private AwsHttpClient awsHttpClient;
+  @Mock private HttpClientWithInterceptor awsHttpClient;
 
   private final UUID transactionId = UUID.randomUUID();
   private final String endpoint = "http://www.google.com/v1";

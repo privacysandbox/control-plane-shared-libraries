@@ -18,8 +18,8 @@
 
 #include "core/interface/async_context.h"
 #include "core/interface/service_interface.h"
-#include "cpio/proto/crypto_client.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/crypto_service/v1/crypto_service.pb.h"
 
 namespace google::scp::cpio {
 /**
@@ -37,8 +37,8 @@ class CryptoClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult HpkeEncrypt(
-      core::AsyncContext<crypto_client::HpkeEncryptProtoRequest,
-                         crypto_client::HpkeEncryptProtoResponse>&
+      core::AsyncContext<cmrt::sdk::crypto_service::v1::HpkeEncryptRequest,
+                         cmrt::sdk::crypto_service::v1::HpkeEncryptResponse>&
           context) noexcept = 0;
 
   /**
@@ -48,8 +48,8 @@ class CryptoClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult HpkeDecrypt(
-      core::AsyncContext<crypto_client::HpkeDecryptProtoRequest,
-                         crypto_client::HpkeDecryptProtoResponse>&
+      core::AsyncContext<cmrt::sdk::crypto_service::v1::HpkeDecryptRequest,
+                         cmrt::sdk::crypto_service::v1::HpkeDecryptResponse>&
           context) noexcept = 0;
 
   /**
@@ -59,8 +59,8 @@ class CryptoClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult AeadEncrypt(
-      core::AsyncContext<crypto_client::AeadEncryptProtoRequest,
-                         crypto_client::AeadEncryptProtoResponse>&
+      core::AsyncContext<cmrt::sdk::crypto_service::v1::AeadEncryptRequest,
+                         cmrt::sdk::crypto_service::v1::AeadEncryptResponse>&
           context) noexcept = 0;
 
   /**
@@ -70,8 +70,8 @@ class CryptoClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult AeadDecrypt(
-      core::AsyncContext<crypto_client::AeadDecryptProtoRequest,
-                         crypto_client::AeadDecryptProtoResponse>&
+      core::AsyncContext<cmrt::sdk::crypto_service::v1::AeadDecryptRequest,
+                         cmrt::sdk::crypto_service::v1::AeadDecryptResponse>&
           context) noexcept = 0;
 };
 }  // namespace google::scp::cpio

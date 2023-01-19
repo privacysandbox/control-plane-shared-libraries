@@ -41,7 +41,7 @@ class AwsParameterClientProvider : public ParameterClientProviderInterface {
    * @brief Constructs a new Aws Parameter Client Provider object
    *
    * @param parameter_client_options configurations for ParameterClient.
-   * @param message_router message router to subscribe messages.
+   * @param instance_client_provider Aws instance client.
    */
   AwsParameterClientProvider(
       const std::shared_ptr<ParameterClientOptions>& options,

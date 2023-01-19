@@ -16,23 +16,14 @@
 
 package com.google.scp.operator.cpio.distributedprivacybudgetclient;
 
-import com.google.common.collect.ImmutableList;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.scp.operator.cpio.configclient.Annotations.CoordinatorARegionBinding;
-import com.google.scp.operator.cpio.configclient.Annotations.CoordinatorBRegionBinding;
-import com.google.scp.operator.cpio.configclient.aws.Annotations.CoordinatorACredentialsProvider;
-import com.google.scp.operator.cpio.configclient.aws.Annotations.CoordinatorBCredentialsProvider;
-import com.google.scp.shared.aws.credsprovider.AwsSessionCredentialsProvider;
-import com.google.scp.shared.aws.util.AwsAuthTokenInterceptor;
-import com.google.scp.shared.aws.util.AwsHttpClient;
-import com.google.scp.shared.clients.configclient.aws.AwsClientConfigModule.AwsCredentialAccessKey;
-import com.google.scp.shared.clients.configclient.aws.AwsClientConfigModule.AwsCredentialSecretKey;
-import java.util.Optional;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import com.google.inject.BindingAnnotation;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Module class which binds the Transaction interfaces to the actual implementations. Also, one
@@ -41,26 +32,7 @@ import software.amazon.awssdk.regions.Region;
  * contain a signature generated against the provided auth endpoints. PBS Servers forward the
  * request to these auth endpoints for authentication
  */
-public final class DistributedPrivacyBudgetClientModule
-    extends DistributedPrivacyBudgetClientBaseModule {
-
-  private final String coordinatorAPrivacyBudgetServiceBaseUrl;
-  private final String coordinatorBPrivacyBudgetServiceBaseUrl;
-  private final String coordinatorAPrivacyBudgetServiceAuthEndpoint;
-  private final String coordinatorBPrivacyBudgetServiceAuthEndpoint;
-
-  public DistributedPrivacyBudgetClientModule(
-      String coordinatorAPrivacyBudgetServiceBaseUrl,
-      String coordinatorBPrivacyBudgetServiceBaseUrl,
-      String coordinatorAPrivacyBudgetServiceAuthEndpoint,
-      String coordinatorBPrivacyBudgetServiceAuthEndpoint) {
-    this.coordinatorAPrivacyBudgetServiceBaseUrl = coordinatorAPrivacyBudgetServiceBaseUrl;
-    this.coordinatorBPrivacyBudgetServiceBaseUrl = coordinatorBPrivacyBudgetServiceBaseUrl;
-    this.coordinatorAPrivacyBudgetServiceAuthEndpoint =
-        coordinatorAPrivacyBudgetServiceAuthEndpoint;
-    this.coordinatorBPrivacyBudgetServiceAuthEndpoint =
-        coordinatorBPrivacyBudgetServiceAuthEndpoint;
-  }
+public class DistributedPrivacyBudgetClientModule extends DistributedPrivacyBudgetClientBaseModule {
 
   @Override
   protected Class<? extends DistributedPrivacyBudgetClient>
@@ -74,45 +46,33 @@ public final class DistributedPrivacyBudgetClientModule
     bind(TransactionManager.class).to(TransactionManagerImpl.class);
     bind(TransactionPhaseManager.class).to(TransactionPhaseManagerImpl.class);
   }
+  /**
+   * Full URL (including protocol and api version path fragment) of coordinator A's privacy
+   * budgeting service. Do not include trailing slash
+   */
+  @BindingAnnotation
+  @Target({FIELD, PARAMETER, METHOD})
+  @Retention(RUNTIME)
+  public @interface CoordinatorAPrivacyBudgetServiceBaseUrl {}
 
-  @Provides
-  @Singleton
-  public ImmutableList<PrivacyBudgetClient> privacyBudgetClients(
-      @AwsCredentialAccessKey String accessKey,
-      @AwsCredentialSecretKey String secretKey,
-      @CoordinatorACredentialsProvider
-          AwsSessionCredentialsProvider coordinatorACredentialsProvider,
-      @CoordinatorBCredentialsProvider
-          AwsSessionCredentialsProvider coordinatorBCredentialsProvider,
-      @CoordinatorARegionBinding Region coordinatorARegion,
-      @CoordinatorBRegionBinding Region coordinatorBRegion) {
-    Optional<AwsCredentialsProvider> staticCredentialProvider = Optional.empty();
-    if (!accessKey.isEmpty() && !secretKey.isEmpty()) {
-      // Doesn't use STS, so requests can't be signed (no session token).
-      // Required for e2e testing.
-      staticCredentialProvider =
-          Optional.of(
-              StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)));
-    }
+  /**
+   * Full URL (including protocol and api version path fragment) of coordinator B's privacy
+   * budgeting service. Do not include trailing slash
+   */
+  @BindingAnnotation
+  @Target({FIELD, PARAMETER, METHOD})
+  @Retention(RUNTIME)
+  public @interface CoordinatorBPrivacyBudgetServiceBaseUrl {}
 
-    AwsAuthTokenInterceptor coordinatorATokenInterceptor =
-        new AwsAuthTokenInterceptor(
-            coordinatorARegion,
-            coordinatorAPrivacyBudgetServiceAuthEndpoint,
-            staticCredentialProvider.orElse(coordinatorACredentialsProvider));
-    AwsHttpClient coordinatorAAwsHttpClient = new AwsHttpClient(coordinatorATokenInterceptor);
+  /** Auth endpoint of coordinator A's privacy budgeting service. */
+  @BindingAnnotation
+  @Target({FIELD, PARAMETER, METHOD})
+  @Retention(RUNTIME)
+  public @interface CoordinatorAPrivacyBudgetServiceAuthEndpoint {}
 
-    AwsAuthTokenInterceptor coordinatorBTokenInterceptor =
-        new AwsAuthTokenInterceptor(
-            coordinatorBRegion,
-            coordinatorBPrivacyBudgetServiceAuthEndpoint,
-            staticCredentialProvider.orElse(coordinatorBCredentialsProvider));
-    AwsHttpClient coordinatorBAwsHttpClient = new AwsHttpClient(coordinatorBTokenInterceptor);
-
-    return ImmutableList.of(
-        new PrivacyBudgetClientImpl(
-            coordinatorAAwsHttpClient, coordinatorAPrivacyBudgetServiceBaseUrl),
-        new PrivacyBudgetClientImpl(
-            coordinatorBAwsHttpClient, coordinatorBPrivacyBudgetServiceBaseUrl));
-  }
+  /** Auth endpoint of coordinator B's privacy budgeting service. */
+  @BindingAnnotation
+  @Target({FIELD, PARAMETER, METHOD})
+  @Retention(RUNTIME)
+  public @interface CoordinatorBPrivacyBudgetServiceAuthEndpoint {}
 }

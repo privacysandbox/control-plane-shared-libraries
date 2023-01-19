@@ -59,7 +59,6 @@ TEST_F(LibCpioTest, NoLogTest) {
   EXPECT_EQ(Cpio::InitCpio(options), SuccessExecutionResult());
   EXPECT_THAT(GlobalLogger::GetGlobalLogger(), IsNull());
   EXPECT_THAT(GlobalCpio::GetGlobalCpio(), NotNull());
-  EXPECT_THAT(GlobalCpio::GetGlobalCpio()->GetMessageRouter(), IsNull());
   EXPECT_EQ(Cpio::ShutdownCpio(options), SuccessExecutionResult());
 }
 
@@ -69,7 +68,6 @@ TEST_F(LibCpioTest, ConsoleLogTest) {
   EXPECT_EQ(Cpio::InitCpio(options), SuccessExecutionResult());
   EXPECT_THAT(GlobalLogger::GetGlobalLogger(), NotNull());
   EXPECT_THAT(GlobalCpio::GetGlobalCpio(), NotNull());
-  EXPECT_THAT(GlobalCpio::GetGlobalCpio()->GetMessageRouter(), IsNull());
   EXPECT_EQ(Cpio::ShutdownCpio(options), SuccessExecutionResult());
 }
 
@@ -79,7 +77,6 @@ TEST_F(LibCpioTest, SysLogTest) {
   EXPECT_EQ(Cpio::InitCpio(options), SuccessExecutionResult());
   EXPECT_THAT(GlobalLogger::GetGlobalLogger(), NotNull());
   EXPECT_THAT(GlobalCpio::GetGlobalCpio(), NotNull());
-  EXPECT_THAT(GlobalCpio::GetGlobalCpio()->GetMessageRouter(), IsNull());
   EXPECT_EQ(Cpio::ShutdownCpio(options), SuccessExecutionResult());
 }
 

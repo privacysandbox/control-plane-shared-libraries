@@ -33,7 +33,8 @@ connect
 getsockopt
 ioctl
 listen
-setsockopt'
+setsockopt
+socket'
 
 
 expected_sha=$(echo $expected_symbols | sha1sum | awk '{print $1}')

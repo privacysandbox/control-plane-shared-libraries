@@ -37,6 +37,14 @@ DEFINE_ERROR_CODE(SC_CPIO_CLOUD_REQUEST_LIMIT_REACHED, SC_CPIO, 0x0004,
 DEFINE_ERROR_CODE(SC_CPIO_CLOUD_SERVICE_UNAVAILABLE, SC_CPIO, 0x0005,
                   "Cloud service unavailable",
                   HttpStatusCode::SERVICE_UNAVAILABLE)
+DEFINE_ERROR_CODE(SC_CPIO_CLOUD_NOT_IMPLEMENTED, SC_CPIO, 0x000F,
+                  "Not implemented", HttpStatusCode::NOT_IMPLEMENTED)
+DEFINE_ERROR_CODE(SC_CPIO_CLOUD_REQUEST_TIMEOUT, SC_CPIO, 0x0010,
+                  "Request timeout", HttpStatusCode::REQUEST_TIMEOUT)
+DEFINE_ERROR_CODE(SC_CPIO_CLOUD_NOT_FOUND, SC_CPIO, 0x0011, "Not found",
+                  HttpStatusCode::NOT_FOUND)
+DEFINE_ERROR_CODE(SC_CPIO_CLOUD_INVALID_ARGUMENT, SC_CPIO, 0x0012,
+                  "Invalid argument", HttpStatusCode::BAD_REQUEST)
 
 DEFINE_ERROR_CODE(SC_CPIO_COMPONENT_FAILED_INITIALIZED, SC_CPIO, 0x0006,
                   "The component is failed to initialized",

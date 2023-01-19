@@ -230,6 +230,24 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "sqs",
+    srcs = glob([
+        "aws-cpp-sdk-sqs/source/*.cpp",  # SOURCE
+        "aws-cpp-sdk-sqs/source/model/*.cpp",  # MODEL SOURCE
+    ]),
+    hdrs = glob([
+        "aws-cpp-sdk-kms/include/aws/sqs/*.h",  # HEADERS
+        "aws-cpp-sdk-kms/include/aws/sqs/model/*.h",  # MODEL HEADERS
+    ]),
+    includes = [
+        "aws-cpp-sdk-sqs/include",
+    ],
+    deps = [
+        ":core",
+    ],
+)
+
 genrule(
     name = "SDKConfig_h",
     outs = [

@@ -192,8 +192,9 @@ ExecutionResult ConfigClientProvider::GetTag(
 #ifndef TEST_CPIO
 shared_ptr<ConfigClientProviderInterface> ConfigClientProviderFactory::Create(
     const shared_ptr<ConfigClientOptions>& options) {
-  return make_shared<ConfigClientProvider>(
-      options, GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider());
+  std::shared_ptr<InstanceClientProviderInterface> instance_client;
+  GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(instance_client);
+  return make_shared<ConfigClientProvider>(options, instance_client);
 }
 #endif
 }  // namespace google::scp::cpio::client_providers

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.scp.shared.aws.util;
+package com.google.scp.shared.api.util;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
@@ -37,15 +37,16 @@ import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpRequestInterceptor;
 import org.apache.hc.core5.http.Method;
 import org.apache.hc.core5.reactor.IOReactorStatus;
 import org.apache.hc.core5.util.Timeout;
 
 /**
  * This is a wrapper on top the bare-bones Apache HttpClient 5.0. Every request executed by the
- * HttpClient in this wrapper is subject to be intercepted by AwsAuthTokenInjectionInterceptor
+ * HttpClient in this wrapper is subject to be intercepted by an HttpRequestInterceptor.
  */
-public class AwsHttpClient {
+public class HttpClientWithInterceptor {
   private static final RetryRegistry RETRY_REGISTRY =
       RetryRegistry.of(
           RetryConfig.custom()
@@ -72,9 +73,9 @@ public class AwsHttpClient {
   private final Retry retryConfig;
 
   @Inject
-  public AwsHttpClient(AwsAuthTokenInterceptor awsAuthTokenInterceptor) {
+  public HttpClientWithInterceptor(HttpRequestInterceptor authTokenInterceptor) {
     this.httpClient =
-        HttpAsyncClients.customHttp2().addRequestInterceptorFirst(awsAuthTokenInterceptor).build();
+        HttpAsyncClients.customHttp2().addRequestInterceptorFirst(authTokenInterceptor).build();
     if (!IOReactorStatus.ACTIVE.equals(httpClient.getStatus())) {
       httpClient.start();
     }
@@ -89,7 +90,7 @@ public class AwsHttpClient {
    * @param httpClient
    */
   @VisibleForTesting
-  AwsHttpClient(CloseableHttpAsyncClient httpClient) {
+  HttpClientWithInterceptor(CloseableHttpAsyncClient httpClient) {
     this.httpClient = httpClient;
     if (!IOReactorStatus.ACTIVE.equals(httpClient.getStatus())) {
       httpClient.start();

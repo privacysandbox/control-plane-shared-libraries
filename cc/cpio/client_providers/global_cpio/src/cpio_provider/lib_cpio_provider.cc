@@ -51,17 +51,12 @@ static const size_t kThreadPoolThreadCount = 2;
 static const size_t kThreadPoolQueueSize = 100000;
 
 namespace google::scp::cpio::client_providers {
-// MessageRouter is not needed for native library mode.
-LibCpioProvider::LibCpioProvider() : message_router_(nullptr) {
-  instance_client_provider_ = InstanceClientProviderFactory::Create();
-}
-
 core::ExecutionResult LibCpioProvider::Init() noexcept {
-  return instance_client_provider_->Init();
+  return SuccessExecutionResult();
 }
 
 core::ExecutionResult LibCpioProvider::Run() noexcept {
-  return instance_client_provider_->Run();
+  return SuccessExecutionResult();
 }
 
 core::ExecutionResult LibCpioProvider::Stop() noexcept {
@@ -83,13 +78,15 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
     }
   }
 
-  return instance_client_provider_->Stop();
-}
-
-std::shared_ptr<
-    MessageRouterInterface<google::protobuf::Any, google::protobuf::Any>>
-LibCpioProvider::GetMessageRouter() noexcept {
-  return message_router_;
+  if (instance_client_provider_) {
+    auto execution_result = instance_client_provider_->Stop();
+    if (!execution_result.Successful()) {
+      ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+            "Failed to stop instance client provider.");
+      return execution_result;
+    }
+  }
+  return SuccessExecutionResult();
 }
 
 ExecutionResult LibCpioProvider::GetHttpClient(
@@ -151,9 +148,30 @@ ExecutionResult LibCpioProvider::GetAsyncExecutor(
   return SuccessExecutionResult();
 }
 
-std::shared_ptr<InstanceClientProviderInterface>
-LibCpioProvider::GetInstanceClientProvider() noexcept {
-  return instance_client_provider_;
+ExecutionResult LibCpioProvider::GetInstanceClientProvider(
+    shared_ptr<InstanceClientProviderInterface>&
+        instance_client_provider) noexcept {
+  if (instance_client_provider_) {
+    instance_client_provider = instance_client_provider_;
+    return SuccessExecutionResult();
+  }
+
+  instance_client_provider_ = InstanceClientProviderFactory::Create();
+  auto execution_result = instance_client_provider_->Init();
+  if (!execution_result.Successful()) {
+    ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+          "Failed to initialize instance client provider.");
+    return execution_result;
+  }
+
+  execution_result = instance_client_provider_->Run();
+  if (!execution_result.Successful()) {
+    ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+          "Failed to run instance client provider.");
+    return execution_result;
+  }
+  instance_client_provider = instance_client_provider_;
+  return SuccessExecutionResult();
 }
 
 ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
@@ -172,8 +190,16 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
     return execution_result;
   }
 
-  role_credentials_provider_ = RoleCredentialsProviderFactory::Create(
-      GetInstanceClientProvider(), async_executor);
+  shared_ptr<InstanceClientProviderInterface> instance_client;
+  execution_result = GetInstanceClientProvider(instance_client);
+  if (!execution_result.Successful()) {
+    ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+          "Failed to get instance client.");
+    return execution_result;
+  }
+
+  role_credentials_provider_ =
+      RoleCredentialsProviderFactory::Create(instance_client, async_executor);
   execution_result = role_credentials_provider_->Init();
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,

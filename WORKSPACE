@@ -386,8 +386,6 @@ AWS_SDK_VERSION = "2.17.239"
 
 GOOGLE_GAX_VERSION = "2.4.0"
 
-TINK_VERSION = "1.5.0"
-
 AUTO_SERVICE_VERSION = "1.0"
 
 maven_install(
@@ -427,8 +425,6 @@ maven_install(
         "commons-logging:commons-logging:1.1.1",
         "com.google.api:gax:" + GOOGLE_GAX_VERSION,
         "com.google.http-client:google-http-client-jackson2:1.40.0",
-        #"com.google.crypto.tink:tink:" + TINK_VERSION, # Using Tink from github master branch until new version releases
-        #"com.google.crypto.tink:tink-gcpkms:" + TINK_VERSION, # Using Tink from github master branch until new version releases
         "com.google.protobuf:protobuf-java:" + PROTOBUF_CORE_VERSION,
         "com.google.protobuf:protobuf-java-util:" + PROTOBUF_CORE_VERSION,
         "com.google.cloud:google-cloud-monitoring:3.4.1",
@@ -481,6 +477,7 @@ maven_install(
         "software.amazon.awssdk:dynamodb:" + AWS_SDK_VERSION,
         "software.amazon.awssdk:cloudwatch:" + AWS_SDK_VERSION,
         "software.amazon.awssdk:ec2:" + AWS_SDK_VERSION,
+        "software.amazon.awssdk:pricing:" + AWS_SDK_VERSION,
         "software.amazon.awssdk:regions:" + AWS_SDK_VERSION,
         "software.amazon.awssdk:s3:" + AWS_SDK_VERSION,
         "software.amazon.awssdk:aws-core:" + AWS_SDK_VERSION,

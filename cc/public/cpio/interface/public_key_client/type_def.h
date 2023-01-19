@@ -14,23 +14,22 @@
  * limitations under the License.
  */
 
-package com.google.scp.shared.aws.util;
+#ifndef SCP_CPIO_INTERFACE_PUBLIC_KEY_CLIENT_TYPE_DEF_H_
+#define SCP_CPIO_INTERFACE_PUBLIC_KEY_CLIENT_TYPE_DEF_H_
 
-import com.google.auto.value.AutoValue;
-import java.util.Map;
+#include <string>
+#include <vector>
 
-/** Http response's execution result with status and status code. */
-@AutoValue
-public abstract class HttpClientResponse {
+namespace google::scp::cpio {
+using PublicKeyVendingServiceEndpoint = std::string;
 
-  public static HttpClientResponse create(
-      int statusCode, String responseBody, Map<String, String> headers) {
-    return new AutoValue_HttpClientResponse(statusCode, responseBody, headers);
-  }
+// Configuration for public key vending endpoint.
+struct PublicKeyClientOptions {
+  virtual ~PublicKeyClientOptions() = default;
+  /// This list of endpoints host the public key.
+  std::vector<PublicKeyVendingServiceEndpoint> endpoints;
+};
 
-  public abstract int statusCode();
+}  // namespace google::scp::cpio
 
-  public abstract String responseBody();
-
-  public abstract Map<String, String> headers();
-}
+#endif  // SCP_CPIO_INTERFACE_PUBLIC_KEY_CLIENT_TYPE_DEF_H_

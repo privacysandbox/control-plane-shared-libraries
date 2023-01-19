@@ -30,6 +30,6 @@ java_test(
         "//java/external:aws_http_client_spi",
         "//java/external:google_truth",
         "//java/external:mockito",
-        "//java/external:tink_imported",
+        "//java/external:tink",
     ],
 )

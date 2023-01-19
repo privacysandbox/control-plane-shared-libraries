@@ -23,8 +23,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.scp.coordinator.privacy.budgeting.model.PrivacyBudgetUnit;
-import com.google.scp.shared.aws.util.AwsHttpClient;
-import com.google.scp.shared.aws.util.HttpClientResponse;
+import com.google.scp.shared.api.util.HttpClientResponse;
+import com.google.scp.shared.api.util.HttpClientWithInterceptor;
 import com.google.scp.shared.mapper.TimeObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -55,11 +55,11 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   private static final String claimedIdentityHeaderKey = "x-gscp-claimed-identity";
   private static final ObjectMapper mapper = new TimeObjectMapper();
 
-  private final AwsHttpClient awsHttpClient;
+  private final HttpClientWithInterceptor httpClient;
   private final String baseUrl;
 
-  public PrivacyBudgetClientImpl(AwsHttpClient awsHttpClient, String baseUrl) {
-    this.awsHttpClient = awsHttpClient;
+  public PrivacyBudgetClientImpl(HttpClientWithInterceptor httpClient, String baseUrl) {
+    this.httpClient = httpClient;
     this.baseUrl = baseUrl;
   }
 
@@ -160,7 +160,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
         "[{}] Making GET request to {}",
         transaction.getId().toString(),
         baseUrl + transactionStatusPath);
-    var response = awsHttpClient.executeGet(baseUrl + transactionStatusPath, headers);
+    var response = httpClient.executeGet(baseUrl + transactionStatusPath, headers);
     logger.info("GET request response: " + response);
     return generateTransactionStatus(response);
   }
@@ -290,7 +290,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
       logger.info(
           "[{}] Making POST request to {}", transaction.getId().toString(), baseUrl + relativePath);
       var response =
-          awsHttpClient.executePost(
+          httpClient.executePost(
               baseUrl + relativePath, payload, getTransactionPhaseRequestHeaders(transaction));
       logger.info("POST request response: " + response);
       updateTransactionState(transaction, response);

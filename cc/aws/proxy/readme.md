@@ -15,10 +15,12 @@ current list of overridden symbols are listed as below:
 * ioctl
 * listen
 * setsockopt
+* socket
 
-On outgoing connection, all traffic starts with `connect()` call. We've
-overridden it and sneakily change the socket into a VSOCK socket to the proxy,
-and perform socks5 handshake before it returns.
+On outgoing connection, all traffic starts with `connect()` call. When a TCP
+socket is created via `socket()`, namely a `AF_INET`/`AF_INET6` socket with
+`SOCK_STEAM` type, we forcibly make it `AF_VSOCK`. SOCKS5 handshake is performed
+inside `connect()` before it returns.
 
 With regards to incoming connections, for security reasons, we do not listen on
 VSOCK port inside the enclave. Instead, we connect out to the proxy to establish

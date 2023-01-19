@@ -45,3 +45,20 @@ java_test(
         "//java/external:google_truth",
     ],
 )
+
+java_test(
+    name = "HttpClientWithInterceptorTest",
+    srcs = ["HttpClientWithInterceptorTest.java"],
+    tags = [
+        "exclusive",
+    ],
+    deps = [
+        "//java/com/google/scp/shared/api/util",
+        "//java/external:apache_httpclient5",
+        "//java/external:apache_httpcore5",
+        "//java/external:aws_auth",
+        "//java/external:google_truth",
+        "//java/external:mockito",
+        "//java/external:mockito_inline",
+    ],
+)

@@ -60,6 +60,7 @@ static int (*libc_accept)(int sockfd, struct sockaddr* addr,
                           socklen_t* addrlen);
 static int (*libc_accept4)(int sockfd, struct sockaddr* addr,
                            socklen_t* addrlen, int flags);
+static int (*libc_socket)(int domain, int type, int protocol) noexcept;
 // The ioctl() syscall signature contains variadic arguments for historical
 // reasons (i.e. allowing different types without forced casting). However, a
 // real syscall cannot have variadic arguments at all. The real internal
@@ -118,6 +119,8 @@ void preload_init(void) {
       reinterpret_cast<decltype(libc_accept)>(dlsym(RTLD_NEXT, STR(accept)));
   libc_accept4 =
       reinterpret_cast<decltype(libc_accept4)>(dlsym(RTLD_NEXT, STR(accept4)));
+  libc_socket =
+      reinterpret_cast<decltype(libc_socket)>(dlsym(RTLD_NEXT, STR(socket)));
 #undef _STR
 #undef STR
 }
@@ -141,11 +144,18 @@ EXPORT int res_ninit(res_state statep) {
   return r;
 }
 
+EXPORT int socket(int domain, int type, int protocol) noexcept {
+  if ((domain == AF_INET || domain == AF_INET6) && (type & SOCK_STREAM)) {
+    return libc_socket(AF_VSOCK, type, 0);
+  }
+  return libc_socket(domain, type, protocol);
+}
+
 EXPORT int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
   // First of all, we only care about TCP sockets over IPv4 or IPv6. That is,
   // SOCK_STREAM type over AF_INET or AF_INET6. If any condition doesn't match
   // or even the getsockopt call fails, we fallback to libc_connect() so that
-  // any error is handled by the prestine libc_connect().
+  // any error is handled by the pristine libc_connect().
   int sock_type = 0;
   socklen_t sock_type_len = sizeof(sock_type);
   int ret = libc_getsockopt(sockfd, SOL_SOCKET, SO_TYPE,
@@ -159,30 +169,16 @@ EXPORT int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
                                   &sock_domain_len) != 0) {
     return libc_connect(sockfd, addr, addrlen);
   }
-  // If the socket is not TCP over IPv4/IPv6, fallback to libc_connect.
-  if (sock_type != SOCK_STREAM ||
-      (sock_domain != AF_INET && sock_domain != AF_INET6)) {
+  // Previously, we've forced every socket() call of AF_INET/AF_INET6 to return
+  // AF_VSOCK sockets. If this socket is not VSOCK, fallback to libc_connect.
+  if (sock_type != SOCK_STREAM || sock_domain != AF_VSOCK) {
     return libc_connect(sockfd, addr, addrlen);
   }
-  // Here we know this is a TCP socket over IPv4 or IPv6. We should convert this
-  // into a vsock socket.
-  int vsock_fd = socket(AF_VSOCK, SOCK_STREAM, 0);
-  if (vsock_fd < 0) {
-    return -1;
-  }
-  // Auto close vsock_fd after this scope. We'll either fail some operations or
-  // successfully make a dup into sockfd. In both cases, it will need to be
-  // closed.
-  AutoCloseFd autoclose(vsock_fd);
   // Preserve the file modes (esp. blocking/non-blocking) so that we can apply
   // the same modes later.
   int fl = fcntl(sockfd, F_GETFL);
-  // "Atomically" close sockfd and duplicate the vsock_fd into sockfd. So that
-  // the application can use the same fd value. This essentially changes the
-  // sockfd family from AF_INET(6) to AF_VSOCK
-  if (dup2(vsock_fd, sockfd) < 0) {
-    return -1;
-  }
+  // Set blocking
+  fcntl(sockfd, F_SETFL, (fl & ~O_NONBLOCK));
   sockaddr_vm vsock_addr = GetProxyVsockAddr();
   if (libc_connect(sockfd, reinterpret_cast<sockaddr*>(&vsock_addr),
                    sizeof(vsock_addr)) < 0) {
@@ -206,7 +202,7 @@ EXPORT int setsockopt(int sockfd, int level, int optname, const void* optval,
   // (success) in these scenarios, to avoid unnecessary failures.
   int sock_domain = 0;
   socklen_t sock_domain_len = sizeof(sock_domain);
-  if ((level == SOL_TCP || level == IPPROTO_TCP) &&
+  if ((level == IPPROTO_TCP || level == IPPROTO_IP || level == IPPROTO_IPV6) &&
       !libc_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN,
                        static_cast<void*>(&sock_domain), &sock_domain_len) &&
       sock_domain == AF_VSOCK) {
@@ -219,7 +215,7 @@ EXPORT int getsockopt(int sockfd, int level, int optname,
                       void* __restrict optval, socklen_t* __restrict optlen) {
   int sock_domain = 0;
   socklen_t sock_domain_len = sizeof(sock_domain);
-  if ((level == SOL_TCP || level == IPPROTO_TCP) &&
+  if ((level == IPPROTO_TCP || level == IPPROTO_IP || level == IPPROTO_IPV6) &&
       !libc_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN,
                        static_cast<void*>(&sock_domain), &sock_domain_len) &&
       sock_domain == AF_VSOCK) {
@@ -242,7 +238,7 @@ static ssize_t recv_all(int fd, void* buf, size_t len, int flags) {
       // Otherwise, a real error happened
       return received;
     } else if (r == 0) {
-      // Socket is shutdown, this is enssentially an EOF.
+      // Socket is shutdown, this is essentially an EOF.
       return received;
     } else {
       received += r;
@@ -410,7 +406,7 @@ EXPORT int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
   socklen_t sock_domain_len = sizeof(sock_domain);
   ret = libc_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN,
                        static_cast<void*>(&sock_domain), &sock_domain_len);
-  if (ret != 0 || (sock_domain != AF_INET && sock_domain != AF_INET6)) {
+  if (ret != 0 || sock_domain != AF_VSOCK) {
     return libc_bind(sockfd, addr, addrlen);
   }
   uint16_t port = 0;

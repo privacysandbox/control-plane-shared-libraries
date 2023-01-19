@@ -27,4 +27,6 @@ static constexpr char kSpannerDatabase[] = "google_scp_spanner_database_name";
 // Skip a log if unable to apply during log recovery
 static constexpr char kTransactionManagerSkipFailedLogsInRecovery[] =
     "google_scp_transaction_manager_skip_failed_logs_in_recovery";
+static constexpr char kPBSJournalServiceFlushIntervalInMilliseconds[] =
+    "google_scp_journal_service_flush_inteval_in_milliseconds";
 }  // namespace google::scp::core

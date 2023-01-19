@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.scp.shared.aws.util;
+package com.google.scp.shared.api.util;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -49,7 +49,8 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 @RunWith(JUnit4.class)
-public final class AwsHttpClientTest {
+public final class HttpClientWithInterceptorTest {
+
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock CloseableHttpAsyncClient httpClient;
@@ -57,13 +58,13 @@ public final class AwsHttpClientTest {
   private final String endpointUrl = "https://www.google.com/";
   private final String relativePath = "phasePath";
 
-  private AwsHttpClient awsHttpClient;
+  private HttpClientWithInterceptor httpClientWithInterceptor;
   private Header[] responseHeaders;
 
   @Before
   public void setup() throws IOException {
     when(httpClient.getStatus()).thenReturn(IOReactorStatus.ACTIVE);
-    awsHttpClient = new AwsHttpClient(httpClient);
+    httpClientWithInterceptor = new HttpClientWithInterceptor(httpClient);
     this.responseHeaders =
         new BasicHeader[] {
           new BasicHeader("resKey1", "resVal1"), new BasicHeader("resKey2", "resVal2")
@@ -80,7 +81,7 @@ public final class AwsHttpClientTest {
     when(responseFuture.get()).thenReturn(response1);
 
     HttpClientResponse response =
-        awsHttpClient.executeGet(endpointUrl + relativePath, requestHeaders);
+        httpClientWithInterceptor.executeGet(endpointUrl + relativePath, requestHeaders);
 
     assertThat(response.statusCode()).isEqualTo(HttpStatus.SC_OK);
     assertThat(response.headers()).isEqualTo(headerArrayToMap(responseHeaders));
@@ -101,7 +102,7 @@ public final class AwsHttpClientTest {
     when(responseFuture.get()).thenReturn(response1);
 
     HttpClientResponse response =
-        awsHttpClient.executePost(endpointUrl + relativePath, payload, requestHeaders);
+        httpClientWithInterceptor.executePost(endpointUrl + relativePath, payload, requestHeaders);
 
     assertThat(response.statusCode()).isEqualTo(HttpStatus.SC_OK);
     assertThat(response.headers()).isEqualTo(headerArrayToMap(responseHeaders));
@@ -125,7 +126,7 @@ public final class AwsHttpClientTest {
     when(responseFuture.get()).thenThrow(exception, exception).thenReturn(response1);
 
     HttpClientResponse response =
-        awsHttpClient.executePost(endpointUrl + relativePath, payload, requestHeaders);
+        httpClientWithInterceptor.executePost(endpointUrl + relativePath, payload, requestHeaders);
 
     assertThat(response.statusCode()).isEqualTo(HttpStatus.SC_OK);
     assertThat(response.headers()).isEqualTo(headerArrayToMap(responseHeaders));
@@ -148,7 +149,9 @@ public final class AwsHttpClientTest {
     IOException actualException =
         assertThrows(
             IOException.class,
-            () -> awsHttpClient.executePost(endpointUrl + relativePath, payload, requestHeaders));
+            () ->
+                httpClientWithInterceptor.executePost(
+                    endpointUrl + relativePath, payload, requestHeaders));
 
     IOException expectedException = new IOException("Connection timed out");
     assertThat(expectedException.getMessage()).isEqualTo(actualException.getMessage());
@@ -168,7 +171,9 @@ public final class AwsHttpClientTest {
     RuntimeException actualException =
         assertThrows(
             RuntimeException.class,
-            () -> awsHttpClient.executePost(endpointUrl + relativePath, payload, requestHeaders));
+            () ->
+                httpClientWithInterceptor.executePost(
+                    endpointUrl + relativePath, payload, requestHeaders));
 
     RuntimeException expectedException =
         new RuntimeException("Unexpected exception or error thrown while performing http request.");
@@ -183,7 +188,7 @@ public final class AwsHttpClientTest {
     when(httpClient.getStatus()).thenReturn(IOReactorStatus.INACTIVE);
     doNothing().when(httpClient).start();
 
-    awsHttpClient = new AwsHttpClient(httpClient);
+    httpClientWithInterceptor = new HttpClientWithInterceptor(httpClient);
 
     verify(httpClient, times(1)).start();
   }

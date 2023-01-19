@@ -31,6 +31,7 @@ java_test(
     deps = [
         "//java/com/google/scp/coordinator/privacy/budgeting/model",
         "//java/com/google/scp/operator/cpio/distributedprivacybudgetclient:distributed_privacy_budget_client",
+        "//java/com/google/scp/shared/api/util",
         "//java/com/google/scp/shared/aws/util",
         "//java/external:autovalue",
         "//java/external:autovalue_annotations",

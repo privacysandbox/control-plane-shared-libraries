@@ -28,6 +28,7 @@ cc_library(
         "//cc/cpio/proto:cc_proto",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:type_def",
+        "//cc/public/cpio/proto/crypto_service/v1:crypto_service_cc_proto",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
         "//cc/public/cpio/proto/private_key_service/v1:private_key_service_cc_proto",

@@ -22,37 +22,37 @@ import "cc/public/cpio/proto/private_key_service/v1/private_key_service.proto";
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
 
-enum HpkeKemProto {
+enum HpkeKem {
   KEM_UNKNOWN = 0;
   DHKEM_X25519_HKDF_SHA256 = 1;
 }
 
-enum HpkeKdfProto {
+enum HpkeKdf {
   KDF_UNKNOWN = 0;
   HKDF_SHA256 = 1;
 }
 
-enum HpkeAeadProto {
+enum HpkeAead {
   AEAD_UNKNOWN = 0;
   AES_128_GCM = 1;
   AES_256_GCM = 2;
   CHACHA20_POLY1305 = 3;
 }
 
-message HpkeParamsProto {
-  HpkeKemProto kem = 1;
-  HpkeKdfProto kdf = 2;
-  HpkeAeadProto aead = 3;
+message HpkeParams {
+  HpkeKem kem = 1;
+  HpkeKdf kdf = 2;
+  HpkeAead aead = 3;
 }
 
-enum SecretLengthProto {
+enum SecretLength {
   SECRET_LENGTH_UNKNOWN = 0;
   SECRET_LENGTH_16_BYTES = 1;
   SECRET_LENGTH_32_BYTES = 2;
 }
 
 // All data needed for HpkeEncrypt.
-message HpkeEncryptProtoRequest {
+message HpkeEncryptRequest {
   // Public key to encrypt the payload.
   cmrt.sdk.public_key_service.v1.PublicKey public_key = 1;
   // Data to be encrypted.
@@ -61,7 +61,7 @@ message HpkeEncryptProtoRequest {
   string shared_info = 3;
   // HPKE parameters. It is optional and if not set, use the default one in
   // CPIO.
-  HpkeParamsProto hpke_params = 4;
+  HpkeParams hpke_params = 4;
   // Enables bidirectional encryption if true.
   bool is_bidirectional = 5;
   // Only to be used when is_bidirectional is true. The same HPKE context will
@@ -72,7 +72,7 @@ message HpkeEncryptProtoRequest {
   string exporter_context = 6;
   // Only to be used when is_bidirectional is true. If not set,
   // SECRET_LENGTH_16_BYTES will be used be default.
-  SecretLengthProto secret_length = 7;
+  SecretLength secret_length = 7;
 }
 
 // Encrypted data for HPKE. Do not put data which should not be sent over wire
@@ -85,7 +85,7 @@ message HpkeEncryptedData {
 }
 
 // Result from HpkeEcrypt.
-message HpkeEncryptProtoResponse {
+message HpkeEncryptResponse {
   // Encrypted data.
   HpkeEncryptedData encrypted_data = 1;
   // Only be present in bi-directional encryption to decrypt the response. Don't
@@ -94,7 +94,7 @@ message HpkeEncryptProtoResponse {
 }
 
 // All data needed for HpkeDecrypt.
-message HpkeDecryptProtoRequest {
+message HpkeDecryptRequest {
   // Private key to decrypt the encrypted_data.
   cmrt.sdk.private_key_service.v1.PrivateKey private_key = 1;
   // Encrypted data.
@@ -103,7 +103,7 @@ message HpkeDecryptProtoRequest {
   string shared_info = 3;
   // HPKE parameters. It is optional and if not set, use the default one in
   // CPIO.
-  HpkeParamsProto hpke_params = 4;
+  HpkeParams hpke_params = 4;
   // Enables bidirectional encryption if true.
   bool is_bidirectional = 5;
   // Only to be used when is_bidirectional is true. The same HPKE context will
@@ -114,11 +114,11 @@ message HpkeDecryptProtoRequest {
   string exporter_context = 6;
   // Only to be used when is_bidirectional is true. If not set,
   // SECRET_LENGTH_16_BYTES will be used be default.
-  SecretLengthProto secret_length = 7;
+  SecretLength secret_length = 7;
 }
 
 // Result from HpkeDecrypt.
-message HpkeDecryptProtoResponse {
+message HpkeDecryptResponse {
   // Decypted payload.
   string payload = 1;
   // Only be present in bi-directional encryption to encrypt the response. Don't
@@ -127,7 +127,7 @@ message HpkeDecryptProtoResponse {
 }
 
 // All data needed for AeadEncrypt.
-message AeadEncryptProtoRequest {
+message AeadEncryptRequest {
   // Data to be encrypted.
   string payload = 1;
   // Secret to generate Aead.
@@ -144,13 +144,13 @@ message AeadEncryptedData {
 }
 
 // Result from AeadEncrypt.
-message AeadEncryptProtoResponse {
+message AeadEncryptResponse {
   // Encrypted data.
   AeadEncryptedData encrypted_data = 1;
 }
 
 // All data needed for AeadDecrypt.
-message AeadDecryptProtoRequest {
+message AeadDecryptRequest {
   // Encrypted data.
   AeadEncryptedData encrypted_data = 1;
   // Secret to generate Aead.
@@ -160,7 +160,7 @@ message AeadDecryptProtoRequest {
 }
 
 // Result from AeadDecrypt.
-message AeadDecryptProtoResponse {
+message AeadDecryptResponse {
   // Decypted payload.
   string payload = 1;
 }

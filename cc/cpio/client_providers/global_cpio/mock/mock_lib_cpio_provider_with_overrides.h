@@ -26,8 +26,14 @@
 namespace google::scp::cpio::client_providers::mock {
 class MockLibCpioProviderWithOverrides : public LibCpioProvider {
  public:
-  MockLibCpioProviderWithOverrides() : LibCpioProvider() {
+  MockLibCpioProviderWithOverrides() : LibCpioProvider() {}
+
+  core::ExecutionResult GetInstanceClientProvider(
+      std::shared_ptr<InstanceClientProviderInterface>&
+          instance_client_provider) noexcept override {
     instance_client_provider_ = std::make_shared<MockInstanceClientProvider>();
+    instance_client_provider = instance_client_provider_;
+    return core::SuccessExecutionResult();
   }
 
   std::shared_ptr<core::AsyncExecutorInterface> GetAsyncExecutorMember() {
@@ -36,6 +42,11 @@ class MockLibCpioProviderWithOverrides : public LibCpioProvider {
 
   std::shared_ptr<core::HttpClientInterface> GetHttpClientMember() {
     return http_client_;
+  }
+
+  std::shared_ptr<InstanceClientProviderInterface>
+  GetInstanceClientProviderMember() {
+    return instance_client_provider_;
   }
 
   std::shared_ptr<RoleCredentialsProviderInterface>

@@ -37,16 +37,6 @@ namespace google::scp::cpio::client_providers {
 class CpioProviderInterface : public core::ServiceInterface {
  public:
   /**
-   * @brief Gets the Message Router object.
-   *
-   * @return std::shared_ptr<core::MessageRouterInterface<google::protobuf::Any,
-   * google::protobuf::Any>> message router object.
-   */
-  virtual std::shared_ptr<core::MessageRouterInterface<google::protobuf::Any,
-                                                       google::protobuf::Any>>
-  GetMessageRouter() noexcept = 0;
-
-  /**
    * @brief Gets the global Async Executor. Only create it when it is
    * needed.
    *
@@ -69,11 +59,12 @@ class CpioProviderInterface : public core::ServiceInterface {
   /**
    * @brief Gets the InstanceClientProvider.
    *
-   * @return std::shared_ptr<InstanceClientProviderInterface> the
-   * InstanceClientProvider.
+   * @param instance_client output InstanceClientProvider.
+   * @return core::ExecutionResult get result.
    */
-  virtual std::shared_ptr<InstanceClientProviderInterface>
-  GetInstanceClientProvider() noexcept = 0;
+  virtual core::ExecutionResult GetInstanceClientProvider(
+      std::shared_ptr<InstanceClientProviderInterface>&
+          instance_client) noexcept = 0;
 
   /**
    * @brief Gets the Role Credentials Provider object when it is needed.

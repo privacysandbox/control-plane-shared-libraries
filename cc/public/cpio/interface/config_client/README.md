@@ -15,4 +15,7 @@ surfaced through GetTag function.
 
     bazel test cc/public/cpio/adapters/config_client/... && bazel test cc/cpio/client_providers/config_client_provider/...
 
-# [Example](/cc/public/cpio/examples/config_client_test.cc)
+# Example
+
+This example [here](/cc/public/cpio/examples/local_config_client_test.cc) could be run locally. This example [here](/cc/public/cpio/examples/config_client_test.cc) needs to be run inside EC2 instance.
+

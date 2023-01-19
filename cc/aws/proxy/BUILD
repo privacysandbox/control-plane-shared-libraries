@@ -95,7 +95,6 @@ genrule(
         yum install glibc-devel-2.26-60.amzn2 glibc-headers-2.26-60.amzn2 gcc-7.3.1-15.amzn2 gcc-c++-7.3.1-15.amzn2 tar git -y > /dev/null
         tar xf /source_code.tar -C /
         cd /scp
-        export USE_BAZEL_VERSION=`cat .bazelversion`
         bazel build \
           //cc/aws/proxy/src:proxify \
           //cc/aws/proxy/src:proxy \

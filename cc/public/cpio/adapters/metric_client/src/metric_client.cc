@@ -45,6 +45,7 @@ using google::scp::core::utils::ConvertToPublicExecutionResult;
 using google::scp::cpio::PutMetricsRequest;
 using google::scp::cpio::PutMetricsResponse;
 using google::scp::cpio::client_providers::GlobalCpio;
+using google::scp::cpio::client_providers::InstanceClientProviderInterface;
 using google::scp::cpio::client_providers::MetricClientProviderFactory;
 using google::scp::cpio::client_providers::MetricClientUtils;
 using std::bind;
@@ -65,9 +66,11 @@ MetricClient::MetricClient(
   if (options->enable_batch_recording) {
     GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor);
   }
+  shared_ptr<InstanceClientProviderInterface> instance_client_provider;
+  GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(
+      instance_client_provider);
   metric_client_provider_ = MetricClientProviderFactory::Create(
-      options, GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(),
-      async_executor);
+      options, instance_client_provider, async_executor);
 }
 
 ExecutionResult MetricClient::Init() noexcept {

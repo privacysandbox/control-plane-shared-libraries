@@ -29,6 +29,7 @@ using google::scp::core::AsyncExecutor;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::HttpClientInterface;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::cpio::client_providers::InstanceClientProviderInterface;
 using google::scp::cpio::client_providers::RoleCredentialsProviderInterface;
 using google::scp::cpio::client_providers::mock::
     MockLibCpioProviderWithOverrides;
@@ -51,19 +52,17 @@ class LibCpioProviderTest : public ::testing::Test {
   }
 };
 
-TEST_F(LibCpioProviderTest, MessageRouterIsNull) {
+TEST_F(LibCpioProviderTest, InstanceClientProviderNotCreatedInInt) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
-  EXPECT_THAT(lib_cpio_provider->GetMessageRouter(), IsNull());
-  EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
-}
+  EXPECT_THAT(lib_cpio_provider->GetInstanceClientProviderMember(), IsNull());
 
-TEST_F(LibCpioProviderTest, GetInstanceClientProvider) {
-  auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
-  EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
-  EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
-  EXPECT_THAT(lib_cpio_provider->GetInstanceClientProvider(), NotNull());
+  shared_ptr<InstanceClientProviderInterface> instance_client_provider;
+  EXPECT_EQ(
+      lib_cpio_provider->GetInstanceClientProvider(instance_client_provider),
+      SuccessExecutionResult());
+  EXPECT_THAT(instance_client_provider, NotNull());
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 

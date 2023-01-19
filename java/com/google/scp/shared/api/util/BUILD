@@ -20,10 +20,18 @@ java_library(
     deps = [
         "//java/com/google/scp/shared/api/exception",
         "//java/com/google/scp/shared/api/model",
+        "//java/external:apache_httpclient5",
+        "//java/external:apache_httpcore5",
+        "//java/external:autovalue",
+        "//java/external:autovalue_annotations",
+        "//java/external:guava",
+        "//java/external:guice",
         "//java/external:jackson_core",
         "//java/external:jackson_databind",
         "//java/external:protobuf_java",
         "//java/external:protobuf_java_util",
+        "//java/external:resilience4j_core",
+        "//java/external:resilience4j_retry",
         "//shared/protos/api/v1:java_proto",
     ],
 )

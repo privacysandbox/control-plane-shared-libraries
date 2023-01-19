@@ -26,6 +26,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import software.amazon.awssdk.services.kms.KmsClient;
+import software.amazon.awssdk.services.pricing.PricingClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
 
@@ -138,6 +139,11 @@ public abstract class BaseAwsClientsModule extends AbstractModule {
     return provideDynamoDbEnhancedClient();
   }
 
+  @Provides
+  @Singleton
+  public PricingClient providesPricingClient() {
+    return initializeClient(PricingClient.builder());
+  }
   /**
    * Initializes the actual client based on the Client/BuilderType, ie. ClientType = S3Client,
    * BuilderType = S3Client.builder()

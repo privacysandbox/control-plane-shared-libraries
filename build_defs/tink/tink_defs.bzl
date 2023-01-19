@@ -15,43 +15,17 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-TINK_COMMIT = "cb814f1e1b69caf6211046bee083a730625a3cf9"
+# Agu 10, 2022
+# Commit for v1.7.0
+TINK_COMMIT = "5f92a043d35e03ce4b81561220c71d550865fefa"
 TINK_SHALLOW_SINCE = "1643960098 -0800"
+TINK_VERSION = "1.7.0"
 
 # List of Maven dependencies necessary for Tink to compile -- to be included in
 # the list of Maven dependenceis passed to maven_install by the workspace.
-#
-# Note: attempting to maven_install these dependencies from within
-# import_tink_git rather than the parent workspace causes some depdendences to
-# not be visible to the Java compiler for some reason.
-#
-# Copied from https://github.com/google/tink/blob/cb814f1e1b69caf6211046bee083a730625a3cf9/java_src/tink_java_deps.bzl#L7.
 TINK_MAVEN_ARTIFACTS = [
-    "args4j:args4j:2.33",
-    "com.amazonaws:aws-java-sdk-core:1.12.182",
-    "com.amazonaws:aws-java-sdk-kms:1.12.182",
-    "com.google.auto:auto-common:1.2.1",
-    "com.google.auto.service:auto-service:1.0.1",
-    "com.google.auto.service:auto-service-annotations:1.0.1",
-    "com.google.api-client:google-api-client:1.33.2",
-    "com.google.apis:google-api-services-cloudkms:v1-rev108-1.25.0",
-    "com.google.auth:google-auth-library-oauth2-http:1.5.3",
-    "com.google.code.findbugs:jsr305:3.0.1",
-    "com.google.code.gson:gson:2.8.9",
-    "com.google.errorprone:error_prone_annotations:2.10.0",
-    "com.google.http-client:google-http-client:1.31.0",
-    "com.google.http-client:google-http-client-jackson2:1.31.0",
-    "com.google.oauth-client:google-oauth-client:1.30.1",
-    "com.google.truth:truth:0.44",
-    "com.fasterxml.jackson.core:jackson-core:2.13.1",
-    "joda-time:joda-time:2.10.3",
-    "junit:junit:4.13",
-    "org.conscrypt:conscrypt-openjdk-uber:2.4.0",
-    "org.mockito:mockito-core:2.23.0",
-    "org.ow2.asm:asm:7.0",
-    "org.ow2.asm:asm-commons:7.0",
-    "org.pantsbuild:jarjar:1.7.2",
-    "pl.pragmatists:JUnitParams:1.1.1",
+    "com.google.crypto.tink:tink:" + TINK_VERSION,
+    "com.google.crypto.tink:tink-gcpkms:" + TINK_VERSION,
 ]
 
 def import_tink_git(repo_name = ""):
@@ -84,19 +58,6 @@ def import_tink_git(repo_name = ""):
         shallow_since = TINK_SHALLOW_SINCE,
     )
 
-    git_repository(
-        name = "tink_java",
-        commit = TINK_COMMIT,
-        remote = "https://github.com/google/tink.git",
-        shallow_since = TINK_SHALLOW_SINCE,
-        strip_prefix = "java_src",
-        patches = [],
-        patch_args = [
-            # Needed to import Git-based patches.
-            "-p1",
-        ],
-    )
-
     # Note: loading and invoking `tink_java_deps` causes a cyclical dependency issue
     # so Tink's dependencies are just included directly in this workspace above.
 
@@ -117,7 +78,7 @@ def import_tink_git(repo_name = ""):
         remote = "https://github.com/google/tink.git",
         shallow_since = TINK_SHALLOW_SINCE,
         strip_prefix = "cc",
-        patches = [Label("//build_defs/tink:tink.patch")],
+        patches = [],
         patch_args = [
             # Needed to import Git-based patches.
             "-p1",

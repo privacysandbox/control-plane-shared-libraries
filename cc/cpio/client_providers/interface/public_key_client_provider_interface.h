@@ -20,6 +20,7 @@
 #include <string>
 
 #include "core/interface/async_context.h"
+#include "core/interface/http_client_interface.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/public_key_client/type_def.h"
@@ -54,6 +55,7 @@ class PublicKeyClientProviderFactory {
    * PublicKeyClientProvider.
    */
   static std::shared_ptr<PublicKeyClientProviderInterface> Create(
-      const std::shared_ptr<PublicKeyClientOptions>& options);
+      const std::shared_ptr<PublicKeyClientOptions>& options,
+      const std::shared_ptr<core::HttpClientInterface>& http_client);
 };
 }  // namespace google::scp::cpio::client_providers

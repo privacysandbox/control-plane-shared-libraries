@@ -129,12 +129,14 @@ inline uint64_t MakeErrorCode(uint64_t component, uint64_t error) {
       "Component code is too large! Valid range is [0x0001, 0x7FFF).");       \
   static_assert(error < 0x10000,                                              \
                 "Error code is too large! Valid range is [0x0001, 0xFFFF]."); \
-  static uint64_t error_name = MakeErrorCode(component, error);               \
+  static uint64_t error_name =                                                \
+      ::google::scp::core::errors::MakeErrorCode(component, error);           \
   static bool initialized_##component##error = []() {                         \
-    SCPError scp_error;                                                       \
+    ::google::scp::core::errors::SCPError scp_error;                          \
     scp_error.error_message = message;                                        \
     scp_error.error_http_status_code = http_status_code;                      \
-    GetGlobalErrorCodes()[component].emplace(error_name, scp_error);          \
+    ::google::scp::core::errors::GetGlobalErrorCodes()[component].emplace(    \
+        error_name, scp_error);                                               \
     return true;                                                              \
   }();
 
@@ -146,7 +148,8 @@ inline uint64_t MakeErrorCode(uint64_t component, uint64_t error) {
  */
 #define MAP_TO_PUBLIC_ERROR_CODE(error_code, public_error_code)      \
   static bool mapped_##error_code = []() {                           \
-    GetPublicErrorCodesMap().emplace(error_code, public_error_code); \
+    ::google::scp::core::errors::GetPublicErrorCodesMap().emplace(   \
+        error_code, public_error_code);                              \
     return true;                                                     \
   }();
 

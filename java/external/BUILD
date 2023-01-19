@@ -370,45 +370,14 @@ alias(
     actual = "@com_google_differential_privacy//java/main/com/google/privacy/differentialprivacy/testing:statistical_utils",
 )
 
-java_import(
-    name = "tink_imported",
-    jars = [
-        "@tink_java//:tink",
-    ],
-    deps = [
-        "@maven//:com_google_code_gson_gson",
-        "@maven//:com_google_protobuf_protobuf_java",
-    ],
-)
-
 alias(
     name = "tink",
-    # TODO: Change back to "@maven//:com_google_crypto_tink_tink" once
-    # release catches up with HPKE implmentation
-    actual = ":tink_imported",
-)
-
-java_import(
-    name = "tink_gcpkms_imported",
-    jars = [
-        "@tink_java//:tink-gcpkms",
-    ],
-    # Dependencies added from https://github.com/google/tink/blob/cb814f1e1b69caf6211046bee083a730625a3cf9/java_src/src/main/java/com/google/crypto/tink/integration/gcpkms/BUILD.bazel#L18-L24
-    deps = [
-        "@maven//:com_google_api_client_google_api_client",
-        "@maven//:com_google_apis_google_api_services_cloudkms",
-        "@maven//:com_google_auth_google_auth_library_oauth2_http",
-        "@maven//:com_google_auto_service_auto_service_annotations",
-        "@maven//:com_google_http_client_google_http_client",
-        "@maven//:com_google_http_client_google_http_client_jackson2",
-        "@maven//:com_google_oauth_client_google_oauth_client",
-    ],
+    actual = "@maven//:com_google_crypto_tink_tink",
 )
 
 alias(
     name = "tink-gcpkms",
-    # TODO: Change to "@maven//:com_google_crypto_tink_tink_gcpkms" once release catches up.
-    actual = ":tink_gcpkms_imported",
+    actual = "@maven//:com_google_crypto_tink_tink_gcpkms",
 )
 
 alias(

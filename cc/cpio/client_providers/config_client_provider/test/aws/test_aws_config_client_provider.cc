@@ -43,8 +43,10 @@ TestAwsConfigClientProvider::TestAwsConfigClientProvider(
 
 shared_ptr<ConfigClientProviderInterface> ConfigClientProviderFactory::Create(
     const std::shared_ptr<ConfigClientOptions>& options) {
+  std::shared_ptr<InstanceClientProviderInterface> instance_client;
+  GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(instance_client);
   return make_shared<TestAwsConfigClientProvider>(
       std::dynamic_pointer_cast<TestAwsConfigClientOptions>(options),
-      GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider());
+      instance_client);
 }
 }  // namespace google::scp::cpio::client_providers

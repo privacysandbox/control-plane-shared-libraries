@@ -15,8 +15,7 @@
  */
 #include "test_http1_server.h"
 
-#include <unistd.h>
-
+#include <map>
 #include <string>
 #include <utility>
 
@@ -29,9 +28,13 @@ namespace http = beast::http;
 using tcp = boost::asio::ip::tcp;
 
 using std::atomic_bool;
+using std::make_pair;
 using std::move;
+using std::multimap;
 using std::string;
 using std::thread;
+using std::transform;
+using std::chrono::milliseconds;
 
 namespace google::scp::core::test {
 namespace {
@@ -69,36 +72,39 @@ ExecutionResultOr<in_port_t> GetUnusedPortNumber() {
 }
 
 TestHttp1Server::TestHttp1Server() {
-  auto port_number_or = GetUnusedPortNumber();
-  if (!port_number_or.Successful()) {
-    std::cerr << errors::GetErrorMessage(port_number_or.result().status_code)
-              << std::endl;
-    exit(EXIT_FAILURE);
-  }
-  port_number_ = *port_number_or;
   atomic_bool ready(false);
   thread_ = thread([this, &ready]() {
-    boost::asio::io_context ioc{/*concurrency_hint=*/1};
-    auto address = boost::asio::ip::make_address("0.0.0.0");
-    tcp::acceptor acceptor{ioc, {address, port_number_}};
-    tcp::socket socket{ioc};
+    boost::asio::io_context ioc(/*concurrency_hint=*/1);
+    tcp::endpoint ep(tcp::v4(), /*port=*/0);
+    tcp::acceptor acceptor(ioc, ep);
+    tcp::socket socket(ioc);
+    port_number_ = acceptor.local_endpoint().port();
 
-    acceptor.async_accept(socket, [this, &socket](beast::error_code ec) {
-      if (!ec) {
-        ReadFromSocketAndWriteResponse(move(socket));
-      } else {
-        std::cerr << "accept failed: " << ec << std::endl;
-        exit(EXIT_FAILURE);
-      }
-    });
-    ready = true;
-    ioc.run();
+    // Handle connections until run_ is false.
+    // Attempt to handle a request for 1 second - if run_ becomes false, stop
+    // accepting requests and finish.
+    // If run_ is still true, continue accepting requests.
+    while (run_) {
+      acceptor.async_accept(socket, [this, &socket](beast::error_code ec) {
+        if (!ec) {
+          ReadFromSocketAndWriteResponse(socket);
+        } else {
+          std::cerr << "accept failed: " << ec << std::endl;
+          exit(EXIT_FAILURE);
+        }
+      });
+      ready = true;
+      ioc.run_for(milliseconds(100));
+      ioc.reset();
+    }
   });
   WaitUntil([&ready]() { return ready.load(); });
 }
 
 // Initiate the asynchronous operations associated with the connection.
-void TestHttp1Server::ReadFromSocketAndWriteResponse(tcp::socket socket) {
+void TestHttp1Server::ReadFromSocketAndWriteResponse(tcp::socket& socket) {
+  // Clear any previous request's content.
+  request_ = http::request<http::dynamic_body>();
   // The buffer for performing reads.
   beast::flat_buffer buffer{1024};
   beast::error_code ec;
@@ -111,10 +117,11 @@ void TestHttp1Server::ReadFromSocketAndWriteResponse(tcp::socket socket) {
   response.keep_alive(false);
 
   response.result(response_status_);
-  response.set(http::field::server, "Beast");
 
-  response.set(http::field::content_type, "text/html");
-  beast::ostream(response.body()) << response_body_;
+  for (const auto& [key, val] : response_headers_) {
+    response.set(key, val);
+  }
+  beast::ostream(response.body()) << response_body_.ToString();
   response.content_length(response.body().size());
 
   http::write(socket, response, ec);
@@ -130,24 +137,46 @@ in_port_t TestHttp1Server::PortNumber() const {
   return port_number_;
 }
 
+string TestHttp1Server::GetPath() const {
+  return "http://localhost:" + std::to_string(port_number_);
+}
+
 // Returns the request object that this server received.
 const http::request<http::dynamic_body>& TestHttp1Server::Request() const {
   return request_;
 }
 
-// Sets the HTTP response status to return to clients - default is OK.
+string TestHttp1Server::RequestBody() const {
+  return beast::buffers_to_string(request_.body().data());
+}
+
 void TestHttp1Server::SetResponseStatus(http::status status) {
   response_status_ = status;
 }
 
-// Sets the HTTP response body to return to clients - default is
-// kBase64EncodedResponse.
-void TestHttp1Server::SetResponseBody(string body) {
+void TestHttp1Server::SetResponseBody(const BytesBuffer& body) {
   response_body_ = body;
 }
 
+void TestHttp1Server::SetResponseHeaders(
+    const std::multimap<std::string, std::string>& response_headers) {
+  response_headers_ = response_headers;
+}
+
 TestHttp1Server::~TestHttp1Server() {
+  // Indicate to thread_ that it should stop so we can safely destroy the
+  // thread.
+  run_ = false;
   thread_.join();
+}
+
+multimap<string, string> GetRequestHeadersMap(
+    const http::request<http::dynamic_body>& request) {
+  multimap<string, string> ret;
+  for (const auto& header : request) {
+    ret.insert({string(header.name_string()), string(header.value())});
+  }
+  return ret;
 }
 
 }  // namespace google::scp::core::test

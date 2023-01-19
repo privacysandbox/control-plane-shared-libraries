@@ -35,17 +35,11 @@ namespace google::scp::cpio::client_providers {
  */
 class LibCpioProvider : public CpioProviderInterface {
  public:
-  LibCpioProvider();
-
   core::ExecutionResult Init() noexcept override;
 
   core::ExecutionResult Run() noexcept override;
 
   core::ExecutionResult Stop() noexcept override;
-
-  std::shared_ptr<core::MessageRouterInterface<google::protobuf::Any,
-                                               google::protobuf::Any>>
-  GetMessageRouter() noexcept override;
 
   core::ExecutionResult GetAsyncExecutor(
       std::shared_ptr<core::AsyncExecutorInterface>& async_executor) noexcept
@@ -55,19 +49,15 @@ class LibCpioProvider : public CpioProviderInterface {
       std::shared_ptr<core::HttpClientInterface>& http_client) noexcept
       override;
 
-  std::shared_ptr<InstanceClientProviderInterface>
-  GetInstanceClientProvider() noexcept override;
+  core::ExecutionResult GetInstanceClientProvider(
+      std::shared_ptr<InstanceClientProviderInterface>&
+          instance_client_provider) noexcept override;
 
   core::ExecutionResult GetRoleCredentialsProvider(
       std::shared_ptr<RoleCredentialsProviderInterface>&
           role_credentials_provider) noexcept override;
 
  protected:
-  /// Global message router.
-  std::shared_ptr<core::MessageRouterInterface<google::protobuf::Any,
-                                               google::protobuf::Any>>
-      message_router_;
-
   /// Global async executor.
   std::shared_ptr<core::AsyncExecutorInterface> async_executor_;
   /// Global http client.
