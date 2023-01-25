@@ -19,12 +19,13 @@
 #include <memory>
 #include <vector>
 
+#include "core/http2_client/mock/mock_http_client.h"
 #include "core/interface/async_context.h"
-#include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/kms_client_provider/mock/mock_kms_client_provider.h"
 #include "cpio/client_providers/private_key_client_provider/src/private_key_client_provider.h"
 #include "cpio/client_providers/private_key_client_provider/src/private_key_client_utils.h"
 #include "cpio/client_providers/private_key_fetching_client_provider/mock/mock_private_key_fetching_client_provider.h"
+#include "cpio/client_providers/role_credentials_provider/mock/mock_role_credentials_provider.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 
@@ -34,11 +35,11 @@ class MockPrivateKeyClientProviderWithOverrides
  public:
   explicit MockPrivateKeyClientProviderWithOverrides(
       const std::shared_ptr<PrivateKeyClientOptions>&
-          private_key_client_options,
-      const std::shared_ptr<core::MessageRouterInterface<
-          google::protobuf::Any, google::protobuf::Any>>& message_router =
-          nullptr)
-      : PrivateKeyClientProvider(private_key_client_options, message_router) {
+          private_key_client_options)
+      : PrivateKeyClientProvider(
+            private_key_client_options,
+            std::make_shared<core::http2_client::mock::MockHttpClient>(),
+            std::make_shared<MockRoleCredentialsProvider>()) {
     kms_client_provider_ = std::make_shared<MockKmsClientProvider>();
     private_key_fetching_client_ =
         std::make_shared<MockPrivateKeyFetchingClientProvider>();

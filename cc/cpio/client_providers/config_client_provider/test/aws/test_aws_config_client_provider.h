@@ -21,7 +21,7 @@
 #include "cpio/client_providers/config_client_provider/src/config_client_provider.h"
 #include "cpio/client_providers/parameter_client_provider/test/aws/test_aws_parameter_client_provider.h"
 #include "public/core/interface/execution_result.h"
-#include "public/cpio/test/test_aws_config_client_options.h"
+#include "public/cpio/test/config_client/test_aws_config_client_options.h"
 
 namespace google::scp::cpio::client_providers {
 /*! @copydoc ConfigClientProvider

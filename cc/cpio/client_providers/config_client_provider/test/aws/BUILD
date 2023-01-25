@@ -35,7 +35,7 @@ cc_library(
         "//cc/cpio/common/src/aws:aws_utils_lib",
         "//cc/cpio/common/test/aws:test_aws_utils_lib",
         "//cc/public/cpio/interface/config_client:type_def",
-        "//cc/public/cpio/test:test_aws_config_client_options",
+        "//cc/public/cpio/test/config_client:test_aws_config_client_options",
         "@aws_sdk_cpp//:ssm",
     ],
 )

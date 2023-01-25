@@ -93,7 +93,7 @@ ExecutionResult Cpio::InitCpio(CpioOptions options) {
   if (!execution_result.Successful()) {
     return execution_result;
   }
-#ifdef LOCAL_CPIO
+#ifdef TEST_CPIO
   return SuccessExecutionResult();
 #else
   return SetGlobalCpio(options);

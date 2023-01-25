@@ -22,11 +22,14 @@ import com.google.scp.operator.protos.shared.backend.JobStatusProto.JobStatus;
 import com.google.scp.operator.shared.dao.metadatadb.testing.JobGenerator;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
 /** Generates a fake Job for testing purposes. */
 public final class FakeJobGenerator {
 
   private static final Instant REQUEST_RECEIVED_AT = Instant.parse("2019-10-01T08:25:24.00Z");
+  private static final Instant REQUEST_PROCESSING_STARTED_AT =
+      Instant.parse("2019-10-01T08:29:24.00Z");
   private static final Instant REQUEST_UPDATED_AT = Instant.parse("2019-10-01T08:29:24.00Z");
 
   /** Generates fake Job from {@code generateBuilder(id)}. */
@@ -42,6 +45,7 @@ public final class FakeJobGenerator {
         .setRequestInfo(JobGenerator.createFakeRequestInfo(id))
         .setCreateTime(REQUEST_RECEIVED_AT)
         .setUpdateTime(REQUEST_UPDATED_AT)
+        .setJobWorkerStartTime(Optional.of(REQUEST_PROCESSING_STARTED_AT))
         .setJobStatus(JobStatus.IN_PROGRESS)
         .setNumAttempts(0);
   }

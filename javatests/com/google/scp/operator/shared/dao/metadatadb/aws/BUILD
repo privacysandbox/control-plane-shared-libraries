@@ -35,6 +35,7 @@ java_test(
         "//java/external:google_truth",
         "//java/external:google_truth8",
         "//java/external:guice",
+        "//java/external:protobuf_java",
         "//java/external:testcontainers",
         "//javatests/com/google/scp/shared/testutils/aws",
         "//operator/protos/shared/backend:java_proto",

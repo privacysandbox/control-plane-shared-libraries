@@ -56,7 +56,7 @@ public final class S3BlobStorageClientModule extends BlobStorageClientModule {
     // TODO path style access will be deprecated so this is not a long term solution.
     S3ClientBuilder builder =
         S3Client.builder()
-            .httpClient(ApacheHttpClient.builder().maxConnections(100).build())
+            .httpClientBuilder(ApacheHttpClient.builder().maxConnections(100))
             .credentialsProvider(awsCredentialsProvider)
             .overrideConfiguration(
                 ClientOverrideConfiguration.builder().retryPolicy(retryPolicy).build())

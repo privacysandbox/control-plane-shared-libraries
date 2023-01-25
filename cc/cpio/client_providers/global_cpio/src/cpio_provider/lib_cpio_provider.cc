@@ -217,9 +217,7 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
   return SuccessExecutionResult();
 }
 
-#ifdef TEST_CPIO
-#elif LOCAL_CPIO
-#else
+#ifndef TEST_CPIO
 unique_ptr<CpioProviderInterface> CpioProviderFactory::Create(
     const shared_ptr<CpioOptions>& options) {
   return make_unique<LibCpioProvider>();

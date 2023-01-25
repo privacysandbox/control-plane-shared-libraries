@@ -14,36 +14,36 @@
  * limitations under the License.
  */
 
-#ifndef SCP_CPIO_LOCAL_LIB_CPIO_H_
-#define SCP_CPIO_LOCAL_LIB_CPIO_H_
+#ifndef SCP_CPIO_TEST_LIB_CPIO_H_
+#define SCP_CPIO_TEST_LIB_CPIO_H_
 
 #include "public/core/interface/execution_result.h"
 
-#include "local_cpio_options.h"
+#include "test_cpio_options.h"
 
 namespace google::scp::cpio {
 
 /**
- * @brief To initialize and shutdown global CPIO objects for local testing.
+ * @brief To initialize and shutdown global CPIO objects for testing.
  */
-class LocalLibCpio {
+class TestLibCpio {
  public:
   /**
-   * @brief Initializes global CPIO objects for local testing.
+   * @brief Initializes global CPIO objects for testing.
    *
-   * @param options global configurations for local testing.
+   * @param options global configurations for testing.
    * @return core::ExecutionResult result of initializing CPIO.
    */
-  static core::ExecutionResult InitCpio(LocalCpioOptions options);
+  static core::ExecutionResult InitCpio(TestCpioOptions options);
 
   /**
-   * @brief Shuts down global CPIO objects for local testing.
+   * @brief Shuts down global CPIO objects for testing.
    *
-   * @param options global configurations for local testing.
+   * @param options global configurations for testing.
    * @return core::ExecutionResult result of terminating CPIO.
    */
-  static core::ExecutionResult ShutdownCpio(LocalCpioOptions options);
+  static core::ExecutionResult ShutdownCpio(TestCpioOptions options);
 };
 }  // namespace google::scp::cpio
 
-#endif  // SCP_CPIO_LOCAL_CPIO_OPTIONS_H_
+#endif  // SCP_CPIO_TEST_CPIO_OPTIONS_H_

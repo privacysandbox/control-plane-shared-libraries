@@ -67,6 +67,7 @@ public class GetJobTaskTest {
         JobGenerator.createFakeJobMetadata(jobRequestId).toBuilder()
             .setRequestReceivedAt(ProtoUtil.toProtoTimestamp(clockTime))
             .setRequestUpdatedAt(ProtoUtil.toProtoTimestamp(clockTime))
+            .setRequestProcessingStartedAt(ProtoUtil.toProtoTimestamp(clockTime))
             .setJobStatus(RECEIVED)
             .clearRecordVersion()
             .clearResultInfo()

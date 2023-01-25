@@ -33,22 +33,24 @@ cc_library(
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
         "//cc/public/cpio/proto/private_key_service/v1:private_key_service_cc_proto",
         "//cc/public/cpio/proto/public_key_service/v1:public_key_service_cc_proto",
+        "//cc/public/cpio/proto/queue_service/v1:queue_service_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
 
 exports_files([
+    "config_client_provider_interface.h",
     "cpio_provider_interface.h",
     "crypto_client_provider_interface.h",
     "cloud_initializer_interface.h",
     "instance_client_provider_interface.h",
-    "config_client_provider_interface.h",
-    "parameter_client_provider_interface.h",
+    "kms_client_provider_interface.h",
     "metric_client_provider_interface.h",
+    "parameter_client_provider_interface.h",
     "private_key_client_provider_interface.h",
     "private_key_fetching_client_provider_interface.h",
     "public_key_client_provider_interface.h",
-    "kms_client_provider_interface.h",
+    "queue_client_provider_interface.h",
     "role_credentials_provider_interface.h",
 ])
 
@@ -66,6 +68,7 @@ filegroup(
         ":private_key_client_provider_interface.h",
         ":private_key_fetching_client_provider_interface.h",
         ":public_key_client_provider_interface.h",
+        ":queue_client_provider_interface.h",
         ":role_credentials_provider_interface.h",
     ],
 )

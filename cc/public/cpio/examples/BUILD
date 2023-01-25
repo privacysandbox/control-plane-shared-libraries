@@ -57,7 +57,7 @@ cc_binary(
         "//cc/core/test/utils:utils_lib",
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface/config_client",
-        "//cc/public/cpio/local:local_lib_cpio",
+        "//cc/public/cpio/test/global_cpio:test_lib_cpio",
         "@aws_sdk_cpp//:core",
     ],
 )
@@ -71,7 +71,7 @@ cc_binary(
         "//cc/core/test/utils:utils_lib",
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface/metric_client",
-        "//cc/public/cpio/local:local_lib_cpio",
+        "//cc/public/cpio/test/global_cpio:test_lib_cpio",
         "@aws_sdk_cpp//:core",
     ],
 )
@@ -100,8 +100,8 @@ cc_binary(
         "//cc/core/interface:async_context_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/public/core/interface:errors",
-        "//cc/public/cpio/local:local_lib_cpio",
-        "//cc/public/cpio/local:local_private_key_client",
+        "//cc/public/cpio/test/global_cpio:test_lib_cpio",
+        "//cc/public/cpio/test/private_key_client:test_private_key_client",
         "@aws_sdk_cpp//:core",
     ],
 )

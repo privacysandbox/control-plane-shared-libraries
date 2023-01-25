@@ -28,11 +28,6 @@ using std::map;
 using std::string;
 using std::vector;
 
-static constexpr char kTestInstanceId[] = "TestInstanceId";
-static constexpr char kTestRegion[] = "TestRegion";
-static constexpr char kTestPrivateIp[] = "1.1.1.1";
-static constexpr char kTestPublicIp[] = "2.2.2.2";
-
 namespace google::scp::cpio::client_providers {
 ExecutionResult TestInstanceClientProvider::Init() noexcept {
   return SuccessExecutionResult();
@@ -48,26 +43,26 @@ ExecutionResult TestInstanceClientProvider::Stop() noexcept {
 
 ExecutionResult TestInstanceClientProvider::GetCurrentInstanceId(
     string& instance_id) noexcept {
-  instance_id = kTestInstanceId;
+  instance_id = test_options_->instance_id;
   return SuccessExecutionResult();
 }
 
 ExecutionResult TestInstanceClientProvider::GetCurrentInstanceRegion(
     string& region) noexcept {
-  region = kTestRegion;
+  region = test_options_->region;
   return SuccessExecutionResult();
 }
 
 ExecutionResult TestInstanceClientProvider::GetCurrentInstancePublicIpv4Address(
     string& instance_public_ipv4_address) noexcept {
-  instance_public_ipv4_address = kTestPublicIp;
+  instance_public_ipv4_address = test_options_->public_ipv4_address;
   return SuccessExecutionResult();
 }
 
 ExecutionResult
 TestInstanceClientProvider::GetCurrentInstancePrivateIpv4Address(
     string& instance_private_ipv4_address) noexcept {
-  instance_private_ipv4_address = kTestPrivateIp;
+  instance_private_ipv4_address = test_options_->private_ipv4_address;
   return SuccessExecutionResult();
 }
 

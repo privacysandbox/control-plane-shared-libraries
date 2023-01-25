@@ -37,7 +37,7 @@ cc_library(
         "//cc/cpio/proto:cc_proto",
         "//cc/public/cpio/interface/metric_client:type_def",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
-        "//cc/public/cpio/test:test_aws_metric_client_options",
+        "//cc/public/cpio/test/metric_client:test_aws_metric_client_options",
         "@aws_sdk_cpp//:monitoring",
         "@com_google_protobuf//:protobuf",
     ],

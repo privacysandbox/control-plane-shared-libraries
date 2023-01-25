@@ -16,13 +16,17 @@
 
 #pragma once
 
+#include <memory>
+
 #include "cpio/client_providers/global_cpio/src/cpio_provider/lib_cpio_provider.h"
+#include "public/cpio/test/global_cpio/test_cpio_options.h"
 
 namespace google::scp::cpio::client_providers {
 /*! @copydoc LibCpioProvider
  */
 class TestLibCpioProvider : public LibCpioProvider {
  public:
-  TestLibCpioProvider();
+  explicit TestLibCpioProvider(
+      const std::shared_ptr<TestCpioOptions>& test_cpio_options);
 };
 }  // namespace google::scp::cpio::client_providers

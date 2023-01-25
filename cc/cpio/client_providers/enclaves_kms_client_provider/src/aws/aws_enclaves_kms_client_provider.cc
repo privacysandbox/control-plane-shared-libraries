@@ -236,16 +236,9 @@ ExecutionResult AwsEnclavesKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
   return SuccessExecutionResult();
 }
 
-std::shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create() {
-  shared_ptr<RoleCredentialsProviderInterface> role_credentials_provider;
-  auto execution_result =
-      GlobalCpio::GetGlobalCpio()->GetRoleCredentialsProvider(
-          role_credentials_provider);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsEnclavesKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get role Credentials provider.");
-    return nullptr;
-  }
+std::shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
+    const shared_ptr<RoleCredentialsProviderInterface>&
+        role_credentials_provider) {
   return make_shared<AwsEnclavesKmsClientProvider>(role_credentials_provider);
 }
 }  // namespace google::scp::cpio::client_providers

@@ -33,6 +33,10 @@ class MockPrivateKeyClientWithOverrides : public PrivateKeyClient {
         client_providers::mock::MockPrivateKeyClientProvider>();
   }
 
+  core::ExecutionResult Init() noexcept override {
+    return private_key_client_provider_->Init();
+  }
+
   std::shared_ptr<client_providers::mock::MockPrivateKeyClientProvider>
   GetPrivateKeyClientProvider() {
     return std::dynamic_pointer_cast<

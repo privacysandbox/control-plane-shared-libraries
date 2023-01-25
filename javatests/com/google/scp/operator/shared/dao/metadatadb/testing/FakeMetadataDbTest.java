@@ -56,6 +56,7 @@ public class FakeMetadataDbTest {
             .setJobKey(jobKey)
             .setRequestReceivedAt(ProtoUtil.toProtoTimestamp(Instant.now()))
             .setRequestUpdatedAt(ProtoUtil.toProtoTimestamp(Instant.now()))
+            .setRequestProcessingStartedAt(ProtoUtil.toProtoTimestamp(Instant.now()))
             .setNumAttempts(0)
             .setJobStatus(JobStatus.RECEIVED)
             .setCreateJobRequest(

@@ -80,6 +80,7 @@ public final class DynamoMetadataTable {
   private static final String RESULT_INFO = "ResultInfo";
   private static final String RECORD_VERSION = "RecordVersion";
   private static final String TTL = "Ttl";
+  private static final String REQUEST_PROCESSING_STARTED_AT = "RequestProcessingStartedAt";
 
   private static TableSchema<CreateJobRequest> getCreateJobRequestSchema() {
     return StaticImmutableTableSchema.builder(
@@ -393,6 +394,13 @@ public final class DynamoMetadataTable {
                     .name(TTL)
                     .getter(attributeValue -> optionalFromProtoField(attributeValue.getTtl()))
                     .setter((builder, optionalLong) -> optionalLong.ifPresent(builder::setTtl)))
+        .addAttribute(
+            Instant.class,
+            attribute ->
+                attribute
+                    .name(REQUEST_PROCESSING_STARTED_AT)
+                    .getter(BackendModelUtil::getRequestProcessingStartedTimeValue)
+                    .setter(BackendModelUtil::setRequestProcessingStartedTimeValue))
         .build();
   }
 

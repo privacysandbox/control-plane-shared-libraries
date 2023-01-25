@@ -24,7 +24,7 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/config_client/config_client_interface.h"
 #include "public/cpio/interface/type_def.h"
-#include "public/cpio/local/local_lib_cpio.h"
+#include "public/cpio/test/global_cpio/test_lib_cpio.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -41,9 +41,9 @@ using google::scp::cpio::GetInstanceIdRequest;
 using google::scp::cpio::GetInstanceIdResponse;
 using google::scp::cpio::GetTagRequest;
 using google::scp::cpio::GetTagResponse;
-using google::scp::cpio::LocalCpioOptions;
-using google::scp::cpio::LocalLibCpio;
 using google::scp::cpio::LogOption;
+using google::scp::cpio::TestCpioOptions;
+using google::scp::cpio::TestLibCpio;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
@@ -61,11 +61,11 @@ static constexpr char kInstanceId[] = "i-1234";
 int main(int argc, char* argv[]) {
   SDKOptions options;
   InitAPI(options);
-  LocalCpioOptions cpio_options;
+  TestCpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
   cpio_options.region = kRegion;
   cpio_options.instance_id = kInstanceId;
-  auto result = LocalLibCpio::InitCpio(cpio_options);
+  auto result = TestLibCpio::InitCpio(cpio_options);
   if (!result.Successful()) {
     std::cout << "Failed to initialize CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;
@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
               << GetErrorMessage(result.status_code) << std::endl;
   }
 
-  result = LocalLibCpio::ShutdownCpio(cpio_options);
+  result = TestLibCpio::ShutdownCpio(cpio_options);
   if (!result.Successful()) {
     std::cout << "Failed to shutdown CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;

@@ -19,7 +19,7 @@
 #include <memory>
 #include <stdexcept>
 
-#include "cpio/client_providers/global_cpio/mock/mock_lib_cpio_provider_with_overrides.h"
+#include "cpio/client_providers/global_cpio/mock/mock_lib_cpio_provider.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "public/core/interface/execution_result.h"
@@ -28,8 +28,7 @@ namespace google::scp::cpio {
 static std::unique_ptr<client_providers::CpioProviderInterface> cpio_ptr;
 
 static core::ExecutionResult SetGlobalCpio() {
-  cpio_ptr = std::make_unique<
-      client_providers::mock::MockLibCpioProviderWithOverrides>();
+  cpio_ptr = std::make_unique<client_providers::mock::MockLibCpioProvider>();
   auto execution_result = cpio_ptr->Init();
   if (!execution_result.Successful()) {
     return execution_result;

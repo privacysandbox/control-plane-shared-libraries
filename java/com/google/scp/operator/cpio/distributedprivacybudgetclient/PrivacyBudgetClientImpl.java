@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.hc.core5.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -196,11 +197,18 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   private ExecutionResult generateExecutionResult(
       Transaction transaction, HttpClientResponse response) throws PrivacyBudgetClientException {
     int statusCode = response.statusCode();
-    if (statusCode == 200) {
+    if (statusCode == HttpStatus.SC_OK) {
       return ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK);
-    } else if (response.statusCode() == 412) {
-      return getExecutionResultBasedOnTransactionStatus(transaction);
-    } else if (response.statusCode() == 409) {
+    }
+    if (ImmutableList.of(HttpStatus.SC_CLIENT_ERROR, HttpStatus.SC_PRECONDITION_FAILED)
+        .contains(statusCode)) {
+      // StatusCode 412 - Returned when last execution timestamp sent by the client does not match
+      // what server has
+      // StatusCode 400 - One of the reasons it can be returned is if client is trying to execute a
+      // phase that is different from what server is expecting
+      return getExecutionResultBasedOnTransactionStatus(transaction, statusCode);
+    }
+    if (statusCode == HttpStatus.SC_CONFLICT) {
       // StatusCode 409 is returned when certain keys have their budgets exhausted.
       try {
         processBudgetExhaustedResponse(response, transaction);
@@ -208,7 +216,8 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
         throw new PrivacyBudgetClientException(e.getMessage());
       }
       return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
-    } else if (statusCode < 500 || statusCode > 599) {
+    }
+    if (statusCode < HttpStatus.SC_SERVER_ERROR || statusCode > 599) {
       return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
     }
     return ExecutionResult.create(ExecutionStatus.RETRY, StatusCode.UNKNOWN);
@@ -248,10 +257,11 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
    * </ul>
    *
    * @param transaction - Transaction whose status needs to be checked against the given coordinator
+   * @param actionHttpStatusCode - The Http status code returned by the transaction phase request
    * @throws IOException - in case the status received is transaction expired
    */
-  private ExecutionResult getExecutionResultBasedOnTransactionStatus(Transaction transaction)
-      throws PrivacyBudgetClientException {
+  private ExecutionResult getExecutionResultBasedOnTransactionStatus(
+      Transaction transaction, int actionHttpStatusCode) throws PrivacyBudgetClientException {
     TransactionStatusResponse transactionStatusResponse = null;
     try {
       transactionStatusResponse = fetchTransactionStatus(transaction);
@@ -264,12 +274,33 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
     }
     transaction.setLastExecutionTimestamp(
         baseUrl, transactionStatusResponse.lastExecutionTimestamp());
-    if (transactionStatusResponse.hasFailed()
-        || transactionStatusResponse.currentPhase() == transaction.getCurrentPhase()) {
+    if (transactionStatusResponse.hasFailed()) {
       return ExecutionResult.create(ExecutionStatus.RETRY, StatusCode.UNKNOWN);
-    } else {
-      return ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK);
     }
+    if (actionHttpStatusCode == HttpStatus.SC_CLIENT_ERROR) {
+      /**
+       * It is ok to mark SUCCESS in response to a 400 only if the server has moved ahead of the
+       * client in its understanding of the current transaction phase. In all other cases status
+       * code of 400 means that a non-retriable error has occurred
+       */
+      int serverPhaseValue = transactionStatusResponse.currentPhase().getNumValue();
+      int clientPhaseValue = transaction.getCurrentPhase().getNumValue();
+      int phaseDiff = serverPhaseValue - clientPhaseValue;
+      switch (phaseDiff) {
+        case 1: // Server is ahead of client by 1 phase
+          return ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK);
+        case 0: // The cause of the 400 is not due to phase differences.
+          return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
+        default: // serverPhaseValue > clientPhaseValue + 1 || serverPhaseValue < clientPhaseValue.
+          throw new PrivacyBudgetClientException(
+              String.format(
+                  "The PrivacyBudget client and server phases are out of sync. server phase numeric"
+                      + " value: %d. client phase numeric value; %d. Transaction cannot be"
+                      + " completed",
+                  serverPhaseValue, clientPhaseValue));
+      }
+    }
+    return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
   }
 
   private TransactionStatusResponse generateTransactionStatus(HttpClientResponse response)

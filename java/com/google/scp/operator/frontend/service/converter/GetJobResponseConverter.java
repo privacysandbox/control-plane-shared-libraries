@@ -92,6 +92,10 @@ public final class GetJobResponseConverter
       if (jobMetadata.hasResultInfo()) {
         builder.setResultInfo(resultInfo);
       }
+      // If the worker hasn't picked up the job, there is no requestProcessedTime in getJob API.
+      if (jobMetadata.hasRequestProcessingStartedAt()) {
+        builder.setRequestProcessingStartedAt(jobMetadata.getRequestProcessingStartedAt());
+      }
       return builder.build();
     } else {
       // This else block should be removed after CreateJobRequest is fully deprecated
@@ -128,6 +132,10 @@ public final class GetJobResponseConverter
               .putAllJobParameters(ImmutableMap.copyOf(jobParameters));
       if (jobMetadata.hasResultInfo()) {
         builder.setResultInfo(resultInfo);
+      }
+      // If the worker hasn't picked up the job, there is no requestProcessedTime in getJob API.
+      if (jobMetadata.hasRequestProcessingStartedAt()) {
+        builder.setRequestProcessingStartedAt(jobMetadata.getRequestProcessingStartedAt());
       }
       return builder.build();
     }

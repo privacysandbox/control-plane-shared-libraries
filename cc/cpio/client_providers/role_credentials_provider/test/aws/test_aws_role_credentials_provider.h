@@ -22,30 +22,32 @@
 #include <aws/core/Aws.h>
 #include <aws/core/client/ClientConfiguration.h>
 
-#include "cpio/client_providers/metric_client_provider/src/aws/aws_metric_client_provider.h"
-#include "public/cpio/test/metric_client/test_aws_metric_client_options.h"
+#include "cpio/client_providers/role_credentials_provider/src/aws/aws_role_credentials_provider.h"
+#include "public/cpio/test/test_aws_role_credentials_options.h"
 
 namespace google::scp::cpio::client_providers {
-/*! @copydoc AwsMetricClientProvider
+/*! @copydoc AwsRoleCredentialsProvider
  */
-class TestAwsMetricClientProvider : public AwsMetricClientProvider {
+class TestAwsRoleCredentialsProvider : public AwsRoleCredentialsProvider {
  public:
-  explicit TestAwsMetricClientProvider(
-      const std::shared_ptr<TestAwsMetricClientOptions>& metric_client_options,
+  explicit TestAwsRoleCredentialsProvider(
+      const std::shared_ptr<TestAwsRoleCredentialsOptions>&
+          role_credentials_options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider,
       const std::shared_ptr<core::AsyncExecutorInterface>& async_executor)
-      : AwsMetricClientProvider(metric_client_options, instance_client_provider,
-                                async_executor),
+      : AwsRoleCredentialsProvider(role_credentials_options,
+                                   instance_client_provider, async_executor),
         cloud_watch_endpoint_override_(
-            metric_client_options->cloud_watch_endpoint_override) {}
+            role_credentials_options->cloud_watch_endpoint_override),
+        region_(role_credentials_options->region) {}
 
  protected:
-  void CreateClientConfiguration(
-      const std::shared_ptr<std::string>& region,
+  core::ExecutionResult CreateClientConfiguration(
       std::shared_ptr<Aws::Client::ClientConfiguration>& client_config) noexcept
       override;
 
   std::shared_ptr<std::string> cloud_watch_endpoint_override_;
+  std::shared_ptr<std::string> region_;
 };
 }  // namespace google::scp::cpio::client_providers

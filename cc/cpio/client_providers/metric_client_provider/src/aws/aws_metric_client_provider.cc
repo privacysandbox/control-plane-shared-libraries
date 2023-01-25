@@ -80,20 +80,15 @@ static constexpr size_t kAwsPayloadSizeLimit = 1024 * 1024;
 static constexpr char kAwsMetricClientProvider[] = "AwsMetricClientProvider";
 
 namespace google::scp::cpio::client_providers {
-ExecutionResult AwsMetricClientProvider::CreateClientConfiguration(
-    shared_ptr<ClientConfiguration>& client_config) noexcept {
-  auto region = make_shared<string>();
-  auto execution_result =
-      instance_client_provider_->GetCurrentInstanceRegion(*region);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get region");
-    return execution_result;
-  }
+ExecutionResult AwsMetricClientProvider::GetRegion(string& region) noexcept {
+  return instance_client_provider_->GetCurrentInstanceRegion(region);
+}
 
+void AwsMetricClientProvider::CreateClientConfiguration(
+    const shared_ptr<string>& region,
+    shared_ptr<ClientConfiguration>& client_config) noexcept {
   client_config = common::CreateClientConfiguration(region);
   client_config->maxConnections = kCloudwatchMaxConcurrentConnections;
-  return SuccessExecutionResult();
 }
 
 ExecutionResult AwsMetricClientProvider::Init() noexcept {
@@ -104,13 +99,16 @@ ExecutionResult AwsMetricClientProvider::Init() noexcept {
     return execution_result;
   }
 
-  shared_ptr<ClientConfiguration> client_config;
-  execution_result = CreateClientConfiguration(client_config);
+  auto region = make_shared<string>();
+  execution_result = GetRegion(*region);
   if (!execution_result.Successful()) {
     ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create ClientConfiguration");
+          "Failed to get region");
     return execution_result;
   }
+
+  shared_ptr<ClientConfiguration> client_config;
+  CreateClientConfiguration(region, client_config);
 
   cloud_watch_client_ = make_shared<CloudWatchClient>(*client_config);
 

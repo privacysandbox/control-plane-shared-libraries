@@ -30,7 +30,8 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/adapters/config_client/test/test_aws_config_client.h"
 #include "public/cpio/adapters/metric_client/test/test_aws_metric_client.h"
-#include "public/cpio/interface/cpio.h"
+#include "public/cpio/test/global_cpio/test_cpio_options.h"
+#include "public/cpio/test/global_cpio/test_lib_cpio.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -50,6 +51,8 @@ using google::scp::cpio::TestAwsConfigClient;
 using google::scp::cpio::TestAwsConfigClientOptions;
 using google::scp::cpio::TestAwsMetricClient;
 using google::scp::cpio::TestAwsMetricClientOptions;
+using google::scp::cpio::TestCpioOptions;
+using google::scp::cpio::TestLibCpio;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
@@ -104,9 +107,9 @@ class CpioIntegrationTest : public ::testing::Test {
   }
 
   void SetUp() override {
-    CpioOptions cpio_options;
     cpio_options.log_option = LogOption::kConsoleLog;
-    EXPECT_EQ(Cpio::InitCpio(cpio_options), SuccessExecutionResult());
+    cpio_options.region = "us-east-1";
+    EXPECT_EQ(TestLibCpio::InitCpio(cpio_options), SuccessExecutionResult());
   }
 
   void TearDown() override {
@@ -117,9 +120,8 @@ class CpioIntegrationTest : public ::testing::Test {
       EXPECT_EQ(config_client->Stop(), SuccessExecutionResult());
     }
 
-    CpioOptions cpio_options;
-    cpio_options.log_option = LogOption::kConsoleLog;
-    EXPECT_EQ(Cpio::ShutdownCpio(cpio_options), SuccessExecutionResult());
+    EXPECT_EQ(TestLibCpio::ShutdownCpio(cpio_options),
+              SuccessExecutionResult());
   }
 
   void CreateMetricClient(bool enable_batch_recording) {
@@ -154,6 +156,8 @@ class CpioIntegrationTest : public ::testing::Test {
       string(kLocalHost) + ":" + string(kLocalstackPort);
   unique_ptr<TestAwsMetricClient> metric_client;
   unique_ptr<TestAwsConfigClient> config_client;
+
+  TestCpioOptions cpio_options;
 };
 
 TEST_F(CpioIntegrationTest, MetricClientBatchRecordingDisabled) {

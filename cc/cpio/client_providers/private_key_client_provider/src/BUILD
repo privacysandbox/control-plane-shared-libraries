@@ -25,7 +25,6 @@ cc_library(
     ],
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/core/message_router/src:message_router_lib",
         "//cc/cpio/client_providers/enclaves_kms_client_provider/src:enclaves_kms_client_provider_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:type_def",

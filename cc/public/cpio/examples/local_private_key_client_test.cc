@@ -26,7 +26,7 @@
 #include "public/cpio/interface/private_key_client/private_key_client_interface.h"
 #include "public/cpio/interface/private_key_client/type_def.h"
 #include "public/cpio/interface/type_def.h"
-#include "public/cpio/local/local_lib_cpio.h"
+#include "public/cpio/test/global_cpio/test_lib_cpio.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -38,13 +38,13 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::ListPrivateKeysByIdsRequest;
 using google::scp::cpio::ListPrivateKeysByIdsResponse;
-using google::scp::cpio::LocalCpioOptions;
-using google::scp::cpio::LocalLibCpio;
 using google::scp::cpio::LogOption;
 using google::scp::cpio::PrivateKeyClientFactory;
 using google::scp::cpio::PrivateKeyClientInterface;
 using google::scp::cpio::PrivateKeyClientOptions;
 using google::scp::cpio::PrivateKeyVendingEndpoint;
+using google::scp::cpio::TestCpioOptions;
+using google::scp::cpio::TestLibCpio;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
@@ -75,10 +75,10 @@ constexpr char kKeyId1[] = "055e9f89-a4fe-449d-aabd-4688861e341d";
 int main(int argc, char* argv[]) {
   SDKOptions options;
   InitAPI(options);
-  LocalCpioOptions cpio_options;
+  TestCpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
   cpio_options.region = kServiceRegion;
-  auto result = LocalLibCpio::InitCpio(cpio_options);
+  auto result = TestLibCpio::InitCpio(cpio_options);
   if (!result.Successful()) {
     std::cout << "Failed to initialize CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;
@@ -144,7 +144,7 @@ int main(int argc, char* argv[]) {
               << GetErrorMessage(result.status_code) << std::endl;
   }
 
-  result = LocalLibCpio::ShutdownCpio(cpio_options);
+  result = TestLibCpio::ShutdownCpio(cpio_options);
   if (!result.Successful()) {
     std::cout << "Failed to shutdown CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;

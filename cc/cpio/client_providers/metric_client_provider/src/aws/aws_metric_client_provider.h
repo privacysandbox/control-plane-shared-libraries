@@ -69,12 +69,21 @@ class AwsMetricClientProvider : public MetricClientProvider {
           metric_requests_vector) noexcept override;
 
   /**
+   * @brief Get the region of current instance.
+   *
+   * @param region returned region.
+   * @return core::ExecutionResult execution result.
+   */
+  core::ExecutionResult GetRegion(std::string& region) noexcept;
+
+  /**
    * @brief Creates a Client Configuration object.
    *
+   * @param region input region.
    * @param client_config returned Client Configuration.
-   * @return core::ExecutionResult creation result.
    */
-  virtual core::ExecutionResult CreateClientConfiguration(
+  virtual void CreateClientConfiguration(
+      const std::shared_ptr<std::string>& region,
       std::shared_ptr<Aws::Client::ClientConfiguration>&
           client_config) noexcept;
 

@@ -23,11 +23,11 @@
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/kms/KMSClient.h>
+#include <tink/aead.h>
 
 #include "core/interface/async_context.h"
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
-#include "external/tink_cc/aead.h"
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio::client_providers {

@@ -22,7 +22,7 @@
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/parameter_client_provider/test/aws/test_aws_parameter_client_provider.h"
 #include "public/core/interface/execution_result.h"
-#include "public/cpio/test/test_aws_config_client_options.h"
+#include "public/cpio/test/config_client/test_aws_config_client_options.h"
 
 using std::make_shared;
 using std::move;

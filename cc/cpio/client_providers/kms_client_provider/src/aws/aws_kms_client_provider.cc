@@ -259,16 +259,9 @@ shared_ptr<KMSClient> AwsKmsClientProvider::GetKmsClient(
   return make_shared<KMSClient>(*aws_credentials, *client_config);
 }
 
-std::shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create() {
-  shared_ptr<RoleCredentialsProviderInterface> role_credentials_provider;
-  auto execution_result =
-      GlobalCpio::GetGlobalCpio()->GetRoleCredentialsProvider(
-          role_credentials_provider);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get AWS Credentials.");
-    return nullptr;
-  }
+std::shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
+    const shared_ptr<RoleCredentialsProviderInterface>&
+        role_credentials_provider) {
   return make_shared<AwsKmsClientProvider>(role_credentials_provider);
 }
 }  // namespace google::scp::cpio::client_providers

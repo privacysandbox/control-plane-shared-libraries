@@ -176,6 +176,9 @@ public final class JobClientImplTest {
     assertThat(actual.get()).isEqualTo(expectedBaseJob);
     assertThat(jobMetadataDb.getLastJobMetadataUpdated().getJobStatus())
         .isEqualTo(JobStatus.IN_PROGRESS);
+    // Check the worker start process time also updates
+    assertThat(jobMetadataDb.getLastJobMetadataUpdated().getRequestProcessingStartedAt())
+        .isEqualTo(ProtoUtil.toProtoTimestamp(Instant.now(clock)));
   }
 
   @Test
@@ -229,6 +232,9 @@ public final class JobClientImplTest {
     assertThat(actual.get()).isEqualTo(expectedBaseJob);
     assertThat(jobMetadataDb.getLastJobMetadataUpdated().getJobStatus())
         .isEqualTo(JobStatus.IN_PROGRESS);
+    // Check the worker start process time also updates when retry
+    assertThat(jobMetadataDb.getLastJobMetadataUpdated().getRequestProcessingStartedAt())
+        .isEqualTo(ProtoUtil.toProtoTimestamp(Instant.now(clock)));
   }
 
   @Test
@@ -294,6 +300,8 @@ public final class JobClientImplTest {
             .setJobStatus(JobStatus.FINISHED)
             .setResultInfo(resultInfo)
             .setNumAttempts(1)
+            .setRequestProcessingStartedAt(
+                jobMetadataDb.getLastJobMetadataUpdated().getRequestProcessingStartedAt())
             .build();
     // make sure job metadata updated
     assertThat(jobMetadataDb.getLastJobMetadataUpdated()).isEqualTo(expectedMetadata);

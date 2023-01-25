@@ -21,7 +21,7 @@ cc_test(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/cpio/client_providers/global_cpio/test:test_global_cpio_lib",
-        "//cc/public/cpio/test:test_lib_cpio",
+        "//cc/public/cpio/test/global_cpio:test_lib_cpio",
         "@aws_sdk_cpp//:core",
         "@com_google_googletest//:gtest_main",
     ],

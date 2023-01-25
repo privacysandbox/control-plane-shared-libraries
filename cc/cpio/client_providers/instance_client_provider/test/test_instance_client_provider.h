@@ -24,13 +24,38 @@
 #include "core/interface/service_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/test/global_cpio/test_cpio_options.h"
 
 namespace google::scp::cpio::client_providers {
+/// Configurations for Test InstanceClientProvider.
+struct TestInstanceClientOptions {
+  TestInstanceClientOptions() = default;
+
+  explicit TestInstanceClientOptions(const TestCpioOptions& cpio_options)
+      : region(cpio_options.region),
+        instance_id(cpio_options.instance_id),
+        public_ipv4_address(cpio_options.public_ipv4_address),
+        private_ipv4_address(cpio_options.private_ipv4_address) {}
+
+  /// Cloud region.
+  std::string region;
+  /// Instance ID.
+  std::string instance_id;
+  /// Public IP address.
+  std::string public_ipv4_address;
+  /// Private IP address.
+  std::string private_ipv4_address;
+};
+
 /**
  * @copydoc InstanceClientProviderInterface.
  */
 class TestInstanceClientProvider : public InstanceClientProviderInterface {
  public:
+  explicit TestInstanceClientProvider(
+      const std::shared_ptr<TestInstanceClientOptions>& test_options)
+      : test_options_(test_options) {}
+
   core::ExecutionResult Init() noexcept override;
 
   core::ExecutionResult Run() noexcept override;
@@ -58,5 +83,8 @@ class TestInstanceClientProvider : public InstanceClientProviderInterface {
 
   core::ExecutionResult GetCurrentInstanceZone(
       std::string& instance_zone) noexcept override;
+
+ private:
+  std::shared_ptr<TestInstanceClientOptions> test_options_;
 };
 }  // namespace google::scp::cpio::client_providers

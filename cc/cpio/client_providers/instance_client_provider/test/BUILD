@@ -26,22 +26,6 @@ cc_library(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
-    ],
-)
-
-cc_library(
-    name = "local_instance_client_provider_lib",
-    srcs = [
-        "local_instance_client_provider.cc",
-        "local_instance_client_provider.h",
-        "//cc/cpio/client_providers/interface:instance_client_provider_interface.h",
-    ],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc:cc_base_include_dir",
-        "//cc/core/interface:interface_lib",
-        "//cc/public/cpio/local:local_cpio_options",
+        "//cc/public/cpio/test/global_cpio:test_cpio_options",
     ],
 )

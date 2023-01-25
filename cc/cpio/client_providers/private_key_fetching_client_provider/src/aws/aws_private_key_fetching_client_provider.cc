@@ -23,7 +23,6 @@
 #include <nghttp2/asio_http2.h>
 
 #include "core/interface/http_client_interface.h"
-#include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 
 #include "error_codes.h"
@@ -148,23 +147,10 @@ AwsPrivateKeyFetchingClientProvider::SignHttpRequestUsingV4Signer(
 }
 
 std::shared_ptr<PrivateKeyFetchingClientProviderInterface>
-PrivateKeyFetchingClientProviderFactory::Create() {
-  shared_ptr<RoleCredentialsProviderInterface> role_credentials_provider;
-  auto execution_result =
-      GlobalCpio::GetGlobalCpio()->GetRoleCredentialsProvider(
-          role_credentials_provider);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsPrivateKeyFetchingClientProvider, kZeroUuid, kZeroUuid,
-          execution_result, "Failed to get role credentials provider.");
-    return nullptr;
-  }
-  shared_ptr<HttpClientInterface> http_client;
-  execution_result = GlobalCpio::GetGlobalCpio()->GetHttpClient(http_client);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsPrivateKeyFetchingClientProvider, kZeroUuid, kZeroUuid,
-          execution_result, "Failed to get http client.");
-    return nullptr;
-  }
+PrivateKeyFetchingClientProviderFactory::Create(
+    const shared_ptr<HttpClientInterface>& http_client,
+    const shared_ptr<RoleCredentialsProviderInterface>&
+        role_credentials_provider) {
   return make_shared<AwsPrivateKeyFetchingClientProvider>(
       http_client, role_credentials_provider);
 }

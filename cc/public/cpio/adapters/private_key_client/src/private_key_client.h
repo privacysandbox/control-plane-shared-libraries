@@ -29,7 +29,8 @@ namespace google::scp::cpio {
 class PrivateKeyClient : public PrivateKeyClientInterface {
  public:
   explicit PrivateKeyClient(
-      const std::shared_ptr<PrivateKeyClientOptions>& options);
+      const std::shared_ptr<PrivateKeyClientOptions>& options)
+      : options_(options) {}
 
   core::ExecutionResult Init() noexcept override;
 
@@ -59,5 +60,8 @@ class PrivateKeyClient : public PrivateKeyClientInterface {
 
   std::shared_ptr<client_providers::PrivateKeyClientProviderInterface>
       private_key_client_provider_;
+
+ private:
+  std::shared_ptr<PrivateKeyClientOptions> options_;
 };
 }  // namespace google::scp::cpio

@@ -34,6 +34,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
+import com.google.protobuf.Timestamp;
 import com.google.scp.operator.protos.shared.backend.CreateJobRequestProto.CreateJobRequest;
 import com.google.scp.operator.protos.shared.backend.ErrorCountProto.ErrorCount;
 import com.google.scp.operator.protos.shared.backend.ErrorSummaryProto.ErrorSummary;
@@ -80,6 +81,7 @@ public class DynamoMetadataDbTest {
   @Inject @MetadataDbDynamoTableName String tableName;
   JobKey jobKey;
   JobMetadata jobMetadata;
+  ResultInfo resultInfo;
 
   /**
    * Performs an equality assertion on two JobMetadata objects and ignores version number and ttl
@@ -128,6 +130,23 @@ public class DynamoMetadataDbTest {
                             "debug_privacy_budget_limit",
                             "5"))
                     .build())
+            .build();
+
+    resultInfo =
+        ResultInfo.newBuilder()
+            .setReturnCode(SUCCESS.name())
+            .setReturnMessage("Success")
+            .setErrorSummary(
+                ErrorSummary.newBuilder()
+                    .setNumReportsWithErrors(5)
+                    .addAllErrorCounts(
+                        ImmutableList.of(
+                            ErrorCount.newBuilder()
+                                .setCategory(DECRYPTION_ERROR.name())
+                                .setCount(5L)
+                                .build()))
+                    .build())
+            .setFinishedAt(ProtoUtil.toProtoTimestamp(Instant.parse("2021-01-01T00:00:00Z")))
             .build();
   }
 
@@ -182,6 +201,28 @@ public class DynamoMetadataDbTest {
 
     assertThat(lookedUpJobMetadata).isPresent();
     assertJobMetadataEquals(lookedUpJobMetadata.get(), jobMetadata);
+    assertThat(lookedUpJobMetadata.get().getRequestProcessingStartedAt())
+        .isEqualTo(Timestamp.getDefaultInstance());
+  }
+
+  /** Test that a metadata item with optional fields can be inserted and read back */
+  @Test
+  public void testDynamoInsertAndGetWithOptionalFields() throws Exception {
+
+    JobMetadata modifiedJobMetadata =
+        jobMetadata.toBuilder()
+            .setJobStatus(FINISHED)
+            .setResultInfo(resultInfo)
+            .setRequestProcessingStartedAt(
+                ProtoUtil.toProtoTimestamp(Instant.parse("2021-01-01T00:00:00Z")))
+            .build();
+
+    dynamoMetadataDb.insertJobMetadata(modifiedJobMetadata);
+    Optional<JobMetadata> lookedUpJobMetadata =
+        dynamoMetadataDb.getJobMetadata(jobKey.getJobRequestId());
+
+    assertThat(lookedUpJobMetadata).isPresent();
+    assertJobMetadataEquals(lookedUpJobMetadata.get(), modifiedJobMetadata);
   }
 
   /** Test that an exception is thrown when a duplicate metadata item is inserted */
@@ -208,22 +249,7 @@ public class DynamoMetadataDbTest {
   /** Test updating a metadata item */
   @Test
   public void testDynamoUpdateItem() throws Exception {
-    ResultInfo resultInfo =
-        ResultInfo.newBuilder()
-            .setReturnCode(SUCCESS.name())
-            .setReturnMessage("Success")
-            .setErrorSummary(
-                ErrorSummary.newBuilder()
-                    .setNumReportsWithErrors(5)
-                    .addAllErrorCounts(
-                        ImmutableList.of(
-                            ErrorCount.newBuilder()
-                                .setCategory(DECRYPTION_ERROR.name())
-                                .setCount(5L)
-                                .build()))
-                    .build())
-            .setFinishedAt(ProtoUtil.toProtoTimestamp(Instant.parse("2021-01-01T00:00:00Z")))
-            .build();
+    // No setup
 
     dynamoMetadataDb.insertJobMetadata(jobMetadata);
     Optional<JobMetadata> lookedUpJobMetadata =

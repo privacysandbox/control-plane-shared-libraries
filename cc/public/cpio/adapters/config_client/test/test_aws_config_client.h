@@ -20,7 +20,7 @@
 
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/adapters/config_client/src/config_client.h"
-#include "public/cpio/test/test_aws_config_client_options.h"
+#include "public/cpio/test/config_client/test_aws_config_client_options.h"
 
 namespace google::scp::cpio {
 /*! @copydoc ConfigClientInterface

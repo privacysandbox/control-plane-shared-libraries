@@ -71,6 +71,10 @@ public abstract class Job {
   @JsonProperty("num_attempts")
   public abstract Integer numAttempts();
 
+  /** The worker starts processing time for the job during the last attempt. */
+  @JsonProperty("job_worker_start_time")
+  public abstract Optional<Instant> jobWorkerStartTime();
+
   /** Returns a new builder instance from a {@code Job} instance. */
   public abstract Builder toBuilder();
 
@@ -104,6 +108,9 @@ public abstract class Job {
 
     /** Set the number of job processing attempts. */
     public abstract Builder setNumAttempts(Integer numAttempts);
+
+    /** Set the worker start processing time for the job during the last attempt. */
+    public abstract Builder setJobWorkerStartTime(Optional<Instant> jobWorkerStartTime);
 
     /** Creates a new instance of the {@code Job} class from the builder. */
     public abstract Job build();

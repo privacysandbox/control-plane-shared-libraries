@@ -26,6 +26,8 @@ namespace google::scp::core::errors {
 
 /// Enumerator for all the http status codes.
 enum class HttpStatusCode {
+  UNKNOWN = 0,
+
   // 2xx
   OK = 200,
   CREATED = 201,
@@ -59,6 +61,7 @@ enum class HttpStatusCode {
   REQUEST_RANGE_NOT_SATISFIABLE = 416,
   MISDIRECTED_REQUEST = 421,
   TOO_MANY_REQUESTS = 429,
+  CANCELLED = 444,
 
   // 5xx
   INTERNAL_SERVER_ERROR = 500,
@@ -146,11 +149,11 @@ inline uint64_t MakeErrorCode(uint64_t component, uint64_t error) {
  * @param error_code The global error code.
  * @param public_error_code public error code associated with this error.
  */
-#define MAP_TO_PUBLIC_ERROR_CODE(error_code, public_error_code)      \
-  static bool mapped_##error_code = []() {                           \
-    ::google::scp::core::errors::GetPublicErrorCodesMap().emplace(   \
-        error_code, public_error_code);                              \
-    return true;                                                     \
+#define MAP_TO_PUBLIC_ERROR_CODE(error_code, public_error_code)    \
+  static bool mapped_##error_code = []() {                         \
+    ::google::scp::core::errors::GetPublicErrorCodesMap().emplace( \
+        error_code, public_error_code);                            \
+    return true;                                                   \
   }();
 
 /**

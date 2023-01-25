@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef SCP_CPIO_TEST_AWS_METRIC_CLIENT_OPTIONS_H_
+#define SCP_CPIO_TEST_AWS_METRIC_CLIENT_OPTIONS_H_
 
 #include <memory>
+#include <string>
 
-#include "cpio/client_providers/global_cpio/src/cpio_provider/lib_cpio_provider.h"
-#include "public/cpio/local/local_cpio_options.h"
+#include "public/cpio/interface/metric_client/type_def.h"
 
-namespace google::scp::cpio::client_providers {
-/*! @copydoc LibCpioProvider
- */
-class LocalLibCpioProvider : public LibCpioProvider {
- public:
-  LocalLibCpioProvider(
-      const std::shared_ptr<LocalCpioOptions>& local_cpio_options);
+namespace google::scp::cpio {
+/// MetricClientOptions for testing on AWS.
+struct TestAwsMetricClientOptions : public MetricClientOptions {
+  std::shared_ptr<std::string> cloud_watch_endpoint_override;
 };
-}  // namespace google::scp::cpio::client_providers
+}  // namespace google::scp::cpio
+
+#endif  // SCP_CPIO_TEST_AWS_METRIC_CLIENT_OPTIONS_H_

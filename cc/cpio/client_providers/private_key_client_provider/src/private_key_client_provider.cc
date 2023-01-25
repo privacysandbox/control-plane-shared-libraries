@@ -23,11 +23,13 @@
 #include <vector>
 
 #include "core/interface/async_context.h"
+#include "core/interface/http_client_interface.h"
 #include "core/interface/http_types.h"
-#include "core/interface/message_router_interface.h"
+#include "core/utils/src/base64.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "cpio/client_providers/interface/private_key_client_provider_interface.h"
+#include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "cpio/client_providers/interface/type_def.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
@@ -44,11 +46,13 @@ using google::protobuf::Any;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
+using google::scp::core::HttpClientInterface;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::Uri;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA;
+using google::scp::core::utils::Base64Encode;
 using std::atomic;
 using std::bind;
 using std::make_shared;
@@ -63,12 +67,15 @@ static constexpr char kPrivateKeyClientProvider[] = "PrivateKeyClientProvider";
 namespace google::scp::cpio::client_providers {
 PrivateKeyClientProvider::PrivateKeyClientProvider(
     const shared_ptr<PrivateKeyClientOptions>& private_key_client_options,
-    const shared_ptr<core::MessageRouterInterface<Any, Any>>& message_router)
-    : private_key_client_options_(private_key_client_options),
-      message_router_(message_router) {
-  kms_client_provider_ = KmsClientProviderFactory::Create();
+    const shared_ptr<HttpClientInterface>& http_client,
+    const shared_ptr<RoleCredentialsProviderInterface>&
+        role_credentials_provider)
+    : private_key_client_options_(private_key_client_options) {
+  kms_client_provider_ =
+      KmsClientProviderFactory::Create(role_credentials_provider);
   private_key_fetching_client_ =
-      PrivateKeyFetchingClientProviderFactory::Create();
+      PrivateKeyFetchingClientProviderFactory::Create(
+          http_client, role_credentials_provider);
 }
 
 ExecutionResult PrivateKeyClientProvider::Init() noexcept {
@@ -80,14 +87,6 @@ ExecutionResult PrivateKeyClientProvider::Init() noexcept {
   }
   endpoint_num_ = endpoint_list_.size();
 
-  if (message_router_) {
-    ListPrivateKeysByIdsRequest list_private_keys_by_ids_proto_request;
-    Any any_request;
-    any_request.PackFrom(list_private_keys_by_ids_proto_request);
-    return message_router_->Subscribe(
-        any_request.type_url(),
-        bind(&PrivateKeyClientProvider::OnListPrivateKeysByIds, this, _1));
-  }
   return SuccessExecutionResult();
 }
 
@@ -97,18 +96,6 @@ ExecutionResult PrivateKeyClientProvider::Run() noexcept {
 
 ExecutionResult PrivateKeyClientProvider::Stop() noexcept {
   return SuccessExecutionResult();
-}
-
-void PrivateKeyClientProvider::OnListPrivateKeysByIds(
-    AsyncContext<Any, Any> any_context) noexcept {
-  auto request = make_shared<ListPrivateKeysByIdsRequest>();
-  any_context.request->UnpackTo(request.get());
-  AsyncContext<ListPrivateKeysByIdsRequest, ListPrivateKeysByIdsResponse>
-      context(move(request),
-              bind(CallbackToPackAnyResponse<ListPrivateKeysByIdsRequest,
-                                             ListPrivateKeysByIdsResponse>,
-                   any_context, _1));
-  context.result = ListPrivateKeysByIds(context);
 }
 
 ExecutionResult PrivateKeyClientProvider::ListPrivateKeysByIds(
@@ -324,8 +311,23 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
 
     // Returns a ListPrivateKeysByIds response after all private key operations
     // are complete.
+    string encoded_key;
+    execution_result = Base64Encode(private_key, encoded_key);
+    if (!execution_result.Successful()) {
+      auto got_failure = false;
+      if (list_keys_status->got_failure.compare_exchange_strong(got_failure,
+                                                                true)) {
+        list_private_keys_context.result = execution_result;
+        list_private_keys_context.Finish();
+        ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                      list_private_keys_context.result,
+                      "Failed to encode the private key using base64.");
+      }
+      return;
+    }
+
     list_keys_status->responses.at(endpoints_status->key_id_index)
-        .set_private_key(private_key);
+        .set_private_key(encoded_key);
     auto list_keys_finished_prev =
         list_keys_status->finished_counter.fetch_add(1);
     if (list_keys_finished_prev == list_keys_status->responses.size() - 1) {
@@ -342,8 +344,12 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
 
 shared_ptr<PrivateKeyClientProviderInterface>
 PrivateKeyClientProviderFactory::Create(
-    const std::shared_ptr<PrivateKeyClientOptions>& options) {
-  return make_shared<PrivateKeyClientProvider>(options);
+    const std::shared_ptr<PrivateKeyClientOptions>& options,
+    const std::shared_ptr<core::HttpClientInterface>& http_client,
+    const std::shared_ptr<RoleCredentialsProviderInterface>&
+        role_credentials_provider) {
+  return make_shared<PrivateKeyClientProvider>(options, http_client,
+                                               role_credentials_provider);
 }
 
 }  // namespace google::scp::cpio::client_providers

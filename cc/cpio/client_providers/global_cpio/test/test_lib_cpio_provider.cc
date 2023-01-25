@@ -25,15 +25,20 @@
 
 using std::make_shared;
 using std::make_unique;
+using std::shared_ptr;
 using std::unique_ptr;
 
 namespace google::scp::cpio::client_providers {
-TestLibCpioProvider::TestLibCpioProvider() : LibCpioProvider() {
-  instance_client_provider_ = make_shared<TestInstanceClientProvider>();
+TestLibCpioProvider::TestLibCpioProvider(
+    const shared_ptr<TestCpioOptions>& test_cpio_options)
+    : LibCpioProvider() {
+  instance_client_provider_ = make_shared<TestInstanceClientProvider>(
+      make_shared<TestInstanceClientOptions>(*test_cpio_options));
 }
 
 unique_ptr<CpioProviderInterface> CpioProviderFactory::Create(
-    const std::shared_ptr<CpioOptions>& options) {
-  return make_unique<TestLibCpioProvider>();
+    const shared_ptr<CpioOptions>& options) {
+  return make_unique<TestLibCpioProvider>(
+      std::dynamic_pointer_cast<TestCpioOptions>(options));
 }
 }  // namespace google::scp::cpio::client_providers

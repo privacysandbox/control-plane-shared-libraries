@@ -15,7 +15,7 @@
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
-    name = "local_private_key_client_provider_lib",
+    name = "test_private_key_client_provider_lib",
     srcs = [
         "//cc/cpio/client_providers/interface:private_key_client_provider_interface.h",
         "//cc/cpio/client_providers/private_key_client_provider/src:private_key_client_provider_srcs",
@@ -53,6 +53,7 @@ cc_test(
         "//cc/cpio/client_providers/private_key_client_provider/mock:private_key_client_provider_mock",
         "//cc/cpio/client_providers/private_key_client_provider/src:private_key_client_provider_lib",
         "//cc/cpio/client_providers/private_key_fetching_client_provider/mock:private_key_fetching_client_provider_mock",
+        "//cc/public/core/test/interface:execution_result_test_lib",
         "//cc/public/cpio/core/mock:lib_cpio_mock",
         "//cc/public/cpio/proto/private_key_service/v1:private_key_service_cc_proto",
         "//cc/public/cpio/proto/public_key_service/v1:public_key_service_cc_proto",

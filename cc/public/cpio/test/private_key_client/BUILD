@@ -12,25 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//cc:scp_internal_pkg"])
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "global_cpio_mock",
-    srcs = glob(
+    name = "test_private_key_client",
+    srcs = ["//cc/public/cpio/adapters/private_key_client/src:private_key_client_srcs"],
+    hdrs =
         [
-            "**/*.h",
+            "//cc/public/cpio/interface/private_key_client:private_key_client_interface.h",
         ],
-    ),
-    copts = [
-        "-std=c++17",
-    ],
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/core/async_executor/mock:core_async_executor_mock",
-        "//cc/core/http2_client/mock:http2_client_mock",
+        "//cc/core/interface:async_context_lib",
         "//cc/core/interface:interface_lib",
-        "//cc/cpio/client_providers/global_cpio/src/cpio_provider:cpio_provider_lib",
-        "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
-        "//cc/cpio/client_providers/role_credentials_provider/mock:role_credentials_provider_mock",
+        "//cc/core/utils/src:core_utils",
+        "//cc/cpio/client_providers/private_key_client_provider/test:test_private_key_client_provider_lib",
+        "//cc/cpio/proto:cc_proto",
+        "//cc/public/cpio/interface:type_def",
+        "//cc/public/cpio/interface/private_key_client:type_def",
     ],
 )

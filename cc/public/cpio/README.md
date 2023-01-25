@@ -38,12 +38,11 @@ Before using any CPIO clients, CPIO needs to be initialized by calling Cpio::Ini
 # Layout
 
 1. [cc/public/cpio/interface](interface) and [cc/public/core/interface](/cc/public/core/interface): interfaces and all other public visible targets provided to users of this project.
-2. [cc/public/cpio/test](test): public visible targets to help hermetic testing.
-3. [cc/public/cpio/local](local): public visible targets to help bringing up local CPIO.
-4. [cc/public/cpio/examples](examples): example codes for different clients.
-5. [cc/public/cpio/examples/deploy](examples/deploy): example script to deploy binary to Nitro Enclave.
-6. [cc/public/cpio/adapters](adapters), [cc/public/cpio/core](core/), [cc/cpio](/cc/cpio) and [cc/core](/cc/core): implementations. The targets there are not public visible.
-7. [build_defs/cc](/build_defs/cc), [WORKSPACE](/WORKSPACE): external dependencies.
+2. [cc/public/cpio/test](test): public visible targets to help testing CPIO.
+3. [cc/public/cpio/examples](examples): example codes for different clients.
+4. [cc/public/cpio/examples/deploy](examples/deploy): example script to deploy binary to Nitro Enclave.
+5. [cc/public/cpio/adapters](adapters), [cc/public/cpio/core](core/), [cc/cpio](/cc/cpio) and [cc/core](/cc/core): implementations. The targets there are not public visible.
+6. [build_defs/cc](/build_defs/cc), [WORKSPACE](/WORKSPACE): external dependencies.
 # Clients
 1. [ConfigClient](interface/config_client)
 2. [MetricClient](interface/metric_client)

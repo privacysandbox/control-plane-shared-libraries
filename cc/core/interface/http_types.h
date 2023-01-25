@@ -71,7 +71,7 @@ struct HttpResponse {
   /// Represents the body of the response.
   BytesBuffer body;
   /// Represents the http status code.
-  errors::HttpStatusCode code;
+  errors::HttpStatusCode code = errors::HttpStatusCode::UNKNOWN;
 };
 
 }  // namespace google::scp::core

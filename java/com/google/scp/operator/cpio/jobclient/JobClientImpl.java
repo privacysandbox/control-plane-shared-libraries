@@ -192,6 +192,7 @@ public final class JobClientImpl implements JobClient {
       metadataDb.updateJobMetadata(
           metadata.get().toBuilder()
               .setJobStatus(JobStatus.IN_PROGRESS)
+              .setRequestProcessingStartedAt(ProtoUtil.toProtoTimestamp(Instant.now(clock)))
               .setNumAttempts(metadata.get().getNumAttempts() + 1)
               .build());
       // Cache job in memory, to be able to retrieve the queue item when job completes.

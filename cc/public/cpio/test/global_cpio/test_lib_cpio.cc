@@ -14,28 +14,28 @@
  * limitations under the License.
  */
 
-#include "local_lib_cpio.h"
+#include "test_lib_cpio.h"
 
 #include <memory>
 
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
-#include "cpio/client_providers/global_cpio/test/local_lib_cpio_provider.h"
+#include "cpio/client_providers/global_cpio/test/test_lib_cpio_provider.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/cpio.h"
-#include "public/cpio/local/local_cpio_options.h"
+#include "public/cpio/test/global_cpio/test_cpio_options.h"
 
 using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::cpio::client_providers::GlobalCpio;
-using google::scp::cpio::client_providers::LocalLibCpioProvider;
+using google::scp::cpio::client_providers::TestLibCpioProvider;
 using std::make_shared;
 using std::make_unique;
 
 namespace google::scp::cpio {
-static ExecutionResult SetGlobalCpio(const LocalCpioOptions& options) {
+static ExecutionResult SetGlobalCpio(const TestCpioOptions& options) {
   cpio_ptr =
-      make_unique<LocalLibCpioProvider>(make_shared<LocalCpioOptions>(options));
+      make_unique<TestLibCpioProvider>(make_shared<TestCpioOptions>(options));
   auto execution_result = cpio_ptr->Init();
   if (!execution_result.Successful()) {
     return execution_result;
@@ -49,7 +49,7 @@ static ExecutionResult SetGlobalCpio(const LocalCpioOptions& options) {
   return SuccessExecutionResult();
 }
 
-ExecutionResult LocalLibCpio::InitCpio(LocalCpioOptions options) {
+ExecutionResult TestLibCpio::InitCpio(TestCpioOptions options) {
   auto execution_result = Cpio::InitCpio(options.ToCpioOptions());
   if (!execution_result.Successful()) {
     return execution_result;
@@ -57,7 +57,7 @@ ExecutionResult LocalLibCpio::InitCpio(LocalCpioOptions options) {
   return SetGlobalCpio(options);
 }
 
-ExecutionResult LocalLibCpio::ShutdownCpio(LocalCpioOptions options) {
+ExecutionResult TestLibCpio::ShutdownCpio(TestCpioOptions options) {
   return Cpio::ShutdownCpio(options.ToCpioOptions());
 }
 }  // namespace google::scp::cpio

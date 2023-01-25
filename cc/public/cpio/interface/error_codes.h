@@ -45,6 +45,10 @@ DEFINE_ERROR_CODE(SC_CPIO_CLOUD_NOT_FOUND, SC_CPIO, 0x0011, "Not found",
                   HttpStatusCode::NOT_FOUND)
 DEFINE_ERROR_CODE(SC_CPIO_CLOUD_INVALID_ARGUMENT, SC_CPIO, 0x0012,
                   "Invalid argument", HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(SC_CPIO_CLOUD_REQUEST_ABORTED, SC_CPIO, 0x0013,
+                  "Request aborted", HttpStatusCode::CANCELLED)
+DEFINE_ERROR_CODE(SC_CPIO_CLOUD_ALREADY_EXISTS, SC_CPIO, 0x0014,
+                  "Already exists", HttpStatusCode::CONFLICT)
 
 DEFINE_ERROR_CODE(SC_CPIO_COMPONENT_FAILED_INITIALIZED, SC_CPIO, 0x0006,
                   "The component is failed to initialized",

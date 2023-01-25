@@ -21,7 +21,7 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/proto/crypto_service/v1/crypto_service.pb.h"
 
-namespace google::scp::cpio {
+namespace google::scp::cpio::client_providers {
 /**
  * @brief Interface responsible for retrieving encrypter and decrypter, or
  * encrypting and decrypting payload.
@@ -74,4 +74,12 @@ class CryptoClientProviderInterface : public core::ServiceInterface {
                          cmrt::sdk::crypto_service::v1::AeadDecryptResponse>&
           context) noexcept = 0;
 };
-}  // namespace google::scp::cpio
+
+/// Configurations for CryptoClient.
+struct CryptoClientOptions {
+  virtual ~CryptoClientOptions() = default;
+
+  // Parameters to be used for encrypt/decrypt data using HPKE.
+  cmrt::sdk::crypto_service::v1::HpkeParams hpke_params;
+};
+}  // namespace google::scp::cpio::client_providers

@@ -111,7 +111,7 @@ message HpkeEncryptResponse {
   HpkeEncryptedData encrypted_data = 2;
   // Only be present in bi-directional encryption to decrypt the response. Don't
   // send it over wire.
-  string secret = 3;
+  bytes secret = 3;
 }
 
 // All data needed for HpkeDecrypt.
@@ -149,7 +149,7 @@ message HpkeDecryptResponse {
   string payload = 2;
   // Only be present in bi-directional encryption to encrypt the response. Don't
   // send it over wire.
-  string secret = 3;
+  bytes secret = 3;
 }
 
 // All data needed for AeadEncrypt.
@@ -157,7 +157,7 @@ message AeadEncryptRequest {
   // Data to be encrypted.
   string payload = 1;
   // Secret to generate Aead.
-  string secret = 2;
+  bytes secret = 2;
   // App generated associated data.
   string shared_info = 3;
 }
@@ -182,7 +182,7 @@ message AeadDecryptRequest {
   // Encrypted data.
   AeadEncryptedData encrypted_data = 1;
   // Secret to generate Aead.
-  string secret = 2;
+  bytes secret = 2;
   // App generated associated data.
   string shared_info = 3;
 }

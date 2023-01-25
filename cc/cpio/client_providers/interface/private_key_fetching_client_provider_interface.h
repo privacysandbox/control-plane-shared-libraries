@@ -21,8 +21,10 @@
 #include <vector>
 
 #include "core/interface/async_context.h"
+#include "core/interface/http_client_interface.h"
 #include "core/interface/service_interface.h"
 #include "core/interface/type_def.h"
+#include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/type_def.h"
 
@@ -123,9 +125,14 @@ class PrivateKeyFetchingClientProviderFactory {
   /**
    * @brief Factory to create PrivateKeyFetchingClientProvider.
    *
+   * @param http_client the HttpClient.
+   * @param role_credentials_provider the RoleCredentialsProvider.
    * @return std::shared_ptr<PrivateKeyFetchingClientProviderInterface> created
    * PrivateKeyFetchingClientProvider.
    */
-  static std::shared_ptr<PrivateKeyFetchingClientProviderInterface> Create();
+  static std::shared_ptr<PrivateKeyFetchingClientProviderInterface> Create(
+      const std::shared_ptr<core::HttpClientInterface>& http_client,
+      const std::shared_ptr<RoleCredentialsProviderInterface>&
+          role_credentials_provider);
 };
 }  // namespace google::scp::cpio::client_providers

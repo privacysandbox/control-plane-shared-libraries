@@ -15,55 +15,6 @@
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
-    name = "local_lib_cpio_provider",
-    srcs = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/global_cpio/src/cpio_provider:lib_cpio_provider_srcs"],
-        "//conditions:default": ["//cc/cpio/client_providers/global_cpio/src/cpio_provider:lib_cpio_provider_srcs"],
-    }) + [
-        "//cc/cpio/client_providers/interface:cpio_provider_interface.h",
-        "local_lib_cpio_provider.h",
-        "local_lib_cpio_provider.cc",
-    ],
-    copts = [
-        "-DLOCAL_CPIO=1",
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc:cc_base_include_dir",
-        "//cc/core/async_executor/src:core_async_executor_lib",
-        "//cc/core/http2_client/src:http2_client_lib",
-        "//cc/core/logger/src:logger_lib",
-        "//cc/core/logger/src/log_providers:log_providers_lib",
-        "//cc/core/logger/src/log_providers/syslog:syslog_lib",
-        "//cc/core/message_router/src:message_router_lib",
-        "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_lib",
-        "//cc/cpio/client_providers/instance_client_provider/test:local_instance_client_provider_lib",
-        "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_lib",
-        "//cc/public/cpio/interface:type_def",
-        "//cc/public/cpio/local:local_cpio_options",
-    ],
-)
-
-cc_library(
-    name = "local_global_cpio_lib",
-    srcs =
-        [
-            "//cc/cpio/client_providers/global_cpio/src:global_cpio_srcs",
-        ],
-    copts = [
-        "-DLOCAL_CPIO=1",
-        "-std=c++17",
-    ],
-    deps = [
-        ":local_lib_cpio_provider",
-        "//cc:cc_base_include_dir",
-        "//cc/core/logger/src:logger_lib",
-        "//cc/core/logger/src/log_providers:log_providers_lib",
-        "//cc/core/logger/src/log_providers/syslog:syslog_lib",
-    ],
-)
-
-cc_library(
     name = "test_lib_cpio_provider",
     srcs = select({
         "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/global_cpio/src/cpio_provider:lib_cpio_provider_srcs"],
@@ -89,6 +40,7 @@ cc_library(
         "//cc/cpio/client_providers/instance_client_provider/test:test_instance_client_provider_lib",
         "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_lib",
         "//cc/public/cpio/interface:type_def",
+        "//cc/public/cpio/test/global_cpio:test_cpio_options",
     ],
 )
 

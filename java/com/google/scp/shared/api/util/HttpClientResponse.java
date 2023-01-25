@@ -18,6 +18,7 @@ package com.google.scp.shared.api.util;
 
 import com.google.auto.value.AutoValue;
 import java.util.Map;
+import javax.annotation.Nullable;
 
 /** Http response's execution result with status and status code. */
 @AutoValue
@@ -30,6 +31,7 @@ public abstract class HttpClientResponse {
 
   public abstract int statusCode();
 
+  @Nullable
   public abstract String responseBody();
 
   public abstract Map<String, String> headers();

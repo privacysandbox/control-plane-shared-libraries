@@ -16,11 +16,15 @@
 
 package com.google.scp.operator.shared.model;
 
+import static com.google.scp.shared.proto.ProtoUtil.toJavaInstant;
+import static com.google.scp.shared.proto.ProtoUtil.toProtoTimestamp;
+
 import com.google.scp.operator.protos.shared.backend.CreateJobRequestProto.CreateJobRequest;
 import com.google.scp.operator.protos.shared.backend.JobKeyProto;
 import com.google.scp.operator.protos.shared.backend.RequestInfoProto.RequestInfo;
 import com.google.scp.operator.protos.shared.backend.ResultInfoProto.ResultInfo;
 import com.google.scp.operator.protos.shared.backend.metadatadb.JobMetadataProto.JobMetadata;
+import java.time.Instant;
 import javax.annotation.Nullable;
 
 /** Utilities for backend models. */
@@ -96,6 +100,27 @@ public class BackendModelUtil {
       JobMetadata.Builder jobMetadata, @Nullable ResultInfo resultInfo) {
     if (resultInfo != null) {
       jobMetadata.setResultInfo(resultInfo);
+    }
+  }
+
+  /**
+   * Returns JobMetadata.requestProcessingStartedAt value, or null if it is not set. This is used in
+   * conversion of model to schemas which accept null instead of Optional.
+   */
+  public static Instant getRequestProcessingStartedTimeValue(JobMetadata jobMetadata) {
+    return jobMetadata.hasRequestProcessingStartedAt()
+        ? toJavaInstant(jobMetadata.getRequestProcessingStartedAt())
+        : null;
+  }
+
+  /**
+   * Sets the JobMetadata.requestProcessingStartedAt value if the given {@param jobMetadata} is not
+   * null. This is used in conversion of model to schemas which accept null instead of Optional.
+   */
+  public static void setRequestProcessingStartedTimeValue(
+      JobMetadata.Builder jobMetadata, @Nullable Instant requestProcessingStartedAt) {
+    if (requestProcessingStartedAt != null) {
+      jobMetadata.setRequestProcessingStartedAt(toProtoTimestamp(requestProcessingStartedAt));
     }
   }
 }

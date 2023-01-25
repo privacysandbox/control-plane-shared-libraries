@@ -13,21 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef SCP_CPIO_TEST_CPIO_OPTIONS_H_
+#define SCP_CPIO_TEST_CPIO_OPTIONS_H_
 
-#ifndef SCP_CPIO_TEST_AWS_METRIC_CLIENT_OPTIONS_H_
-#define SCP_CPIO_TEST_AWS_METRIC_CLIENT_OPTIONS_H_
-
-#include <memory>
 #include <string>
 
-#include "public/cpio/interface/metric_client/type_def.h"
+#include "public/cpio/interface/type_def.h"
 
 namespace google::scp::cpio {
-/// MetricClientOptions for testing on AWS.
-struct TestAwsMetricClientOptions : public MetricClientOptions {
-  std::shared_ptr<std::string> region;
-  std::shared_ptr<std::string> cloud_watch_endpoint_override;
+/// Global CPIO options to test CPIO.
+struct TestCpioOptions : public CpioOptions {
+  /// Cloud region.
+  std::string region;
+  /// Instance ID.
+  std::string instance_id;
+  /// Public IP address.
+  std::string public_ipv4_address;
+  /// Private IP address.
+  std::string private_ipv4_address;
+
+  CpioOptions ToCpioOptions() {
+    CpioOptions cpio_options;
+    cpio_options.log_option = CpioOptions::log_option;
+    return cpio_options;
+  }
 };
 }  // namespace google::scp::cpio
 
-#endif  // SCP_CPIO_TEST_AWS_METRIC_CLIENT_OPTIONS_H_
+#endif  // SCP_CPIO_TEST_CPIO_OPTIONS_H_

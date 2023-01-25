@@ -24,6 +24,7 @@ java_library(
         "//java/external:apache_httpcore5",
         "//java/external:autovalue",
         "//java/external:autovalue_annotations",
+        "//java/external:findbugs",
         "//java/external:guava",
         "//java/external:guice",
         "//java/external:jackson_core",

@@ -62,6 +62,7 @@ public final class PrivacyBudgetClientTest {
   private HttpClientResponse retryableFailureResponse;
   private HttpClientResponse nonRetryableFailureResponse;
   private HttpClientResponse preconditionNotMetFailureResponse;
+  private HttpClientResponse badRequestFailureResponse;
   private HttpClientResponse budgetExhaustedResponse;
   private Transaction transaction;
 
@@ -79,6 +80,7 @@ public final class PrivacyBudgetClientTest {
     retryableFailureResponse = HttpClientResponse.create(500, "", Collections.emptyMap());
     nonRetryableFailureResponse = HttpClientResponse.create(400, "", Collections.emptyMap());
     preconditionNotMetFailureResponse = HttpClientResponse.create(412, "", Collections.emptyMap());
+    badRequestFailureResponse = HttpClientResponse.create(400, "", Collections.emptyMap());
     budgetExhaustedResponse =
         HttpClientResponse.create(409, "{\"f\":[0],\"v\":\"1.0\"}", Collections.emptyMap());
   }
@@ -126,6 +128,20 @@ public final class PrivacyBudgetClientTest {
             eq(expectedPayload()),
             eq(expectedHeadersMap(endpoint, transaction))))
         .thenReturn(nonRetryableFailureResponse);
+    long lastExecTimeStamp = Instant.now().toEpochMilli();
+    Map<String, String> responseHeaders =
+        ImmutableMap.of(
+            "x-gscp-transaction-last-execution-timestamp", String.valueOf(lastExecTimeStamp));
+    HttpClientResponse statusResponse =
+        HttpClientResponse.create(
+            200,
+            "{\"has_failures\":false,\"is_expired\":false,\"last_execution_timestamp\":1682345560947309"
+                + ",\"transaction_execution_phase\":\"BEGIN\"}",
+            responseHeaders);
+    Map<String, String> statusRequestExpectedHeadersMap = expectedHeadersMap(endpoint, transaction);
+    statusRequestExpectedHeadersMap.remove("x-gscp-transaction-last-execution-timestamp");
+    when(awsHttpClient.executeGet(eq(transactionStatusUri), eq(statusRequestExpectedHeadersMap)))
+        .thenReturn(statusResponse);
 
     ExecutionResult executionResult = privacyBudgetClient.performActionBegin(transaction);
 
@@ -248,36 +264,6 @@ public final class PrivacyBudgetClientTest {
   }
 
   @Test
-  public void performAction_begin_preConditionNotMet_statusCheck_phaseSucceeded()
-      throws IOException, PrivacyBudgetClientException {
-    transaction =
-        generateTransaction(endpoint, transactionId, TransactionPhase.BEGIN, transactionRequest);
-    long lastExecTimeStamp = Instant.now().toEpochMilli();
-    Map<String, String> responseHeaders =
-        ImmutableMap.of(
-            "x-gscp-transaction-last-execution-timestamp", String.valueOf(lastExecTimeStamp));
-    HttpClientResponse statusResponse =
-        HttpClientResponse.create(
-            200,
-            "{\"has_failures\":false,\"is_expired\":false,\"last_execution_timestamp\":1682345560947309"
-                + ",\"transaction_execution_phase\":\"PREPARE\"}",
-            responseHeaders);
-    when(awsHttpClient.executePost(
-            eq(beginPhaseUri),
-            eq(expectedPayload()),
-            eq(expectedHeadersMap(endpoint, transaction))))
-        .thenReturn(preconditionNotMetFailureResponse);
-    when(awsHttpClient.executeGet(
-            eq(transactionStatusUri), eq(expectedHeadersMap(endpoint, transaction))))
-        .thenReturn(statusResponse);
-
-    ExecutionResult executionResult = privacyBudgetClient.performActionBegin(transaction);
-
-    assertThat(executionResult.executionStatus()).isEqualTo(ExecutionStatus.SUCCESS);
-    assertThat(executionResult.statusCode()).isEqualTo(StatusCode.OK);
-  }
-
-  @Test
   public void performAction_begin_preConditionNotMet_statusCheck_phaseFailed()
       throws IOException, PrivacyBudgetClientException {
     transaction =
@@ -387,6 +373,137 @@ public final class PrivacyBudgetClientTest {
     assertThat(expectedException.getMessage()).isEqualTo(actualException.getMessage());
   }
 
+  @Test
+  public void performAction_commit_Response400_statusCheck_phaseSucceeded()
+      throws IOException, PrivacyBudgetClientException {
+    transaction =
+        generateTransaction(endpoint, transactionId, TransactionPhase.COMMIT, transactionRequest);
+    long lastExecTimeStamp = Instant.now().toEpochMilli();
+    Map<String, String> responseHeaders =
+        ImmutableMap.of(
+            "x-gscp-transaction-last-execution-timestamp", String.valueOf(lastExecTimeStamp));
+    HttpClientResponse statusResponse =
+        HttpClientResponse.create(
+            200,
+            "{\"has_failures\":false,\"is_expired\":false,\"last_execution_timestamp\":1682345560947309"
+                + ",\"transaction_execution_phase\":\"NOTIFY\"}",
+            responseHeaders);
+    when(awsHttpClient.executePost(
+            eq(commitPhaseUri),
+            eq(expectedPayload()),
+            eq(expectedHeadersMap(endpoint, transaction))))
+        .thenReturn(badRequestFailureResponse);
+    Map<String, String> statusRequestExpectedHeadersMap = expectedHeadersMap(endpoint, transaction);
+    statusRequestExpectedHeadersMap.remove("x-gscp-transaction-last-execution-timestamp");
+    when(awsHttpClient.executeGet(eq(transactionStatusUri), eq(statusRequestExpectedHeadersMap)))
+        .thenReturn(statusResponse);
+
+    ExecutionResult executionResult = privacyBudgetClient.performActionCommit(transaction);
+
+    assertThat(executionResult.executionStatus()).isEqualTo(ExecutionStatus.SUCCESS);
+    assertThat(executionResult.statusCode()).isEqualTo(StatusCode.OK);
+  }
+
+  @Test
+  public void performAction_commit_Response400_statusCheck_phaseFailed()
+      throws IOException, PrivacyBudgetClientException {
+    transaction =
+        generateTransaction(endpoint, transactionId, TransactionPhase.COMMIT, transactionRequest);
+    long lastExecTimeStamp = Instant.now().toEpochMilli();
+    Map<String, String> responseHeaders =
+        ImmutableMap.of(
+            "x-gscp-transaction-last-execution-timestamp", String.valueOf(lastExecTimeStamp));
+    HttpClientResponse statusResponse =
+        HttpClientResponse.create(
+            200,
+            "{\"has_failures\":true,\"is_expired\":false,\"last_execution_timestamp\":1682345560947309"
+                + ",\"transaction_execution_phase\":\"COMMIT\"}",
+            responseHeaders);
+    when(awsHttpClient.executePost(
+            eq(commitPhaseUri),
+            eq(expectedPayload()),
+            eq(expectedHeadersMap(endpoint, transaction))))
+        .thenReturn(badRequestFailureResponse);
+    Map<String, String> statusRequestExpectedHeadersMap = expectedHeadersMap(endpoint, transaction);
+    statusRequestExpectedHeadersMap.remove("x-gscp-transaction-last-execution-timestamp");
+    when(awsHttpClient.executeGet(eq(transactionStatusUri), eq(statusRequestExpectedHeadersMap)))
+        .thenReturn(statusResponse);
+
+    ExecutionResult executionResult = privacyBudgetClient.performActionCommit(transaction);
+
+    assertThat(executionResult.executionStatus()).isEqualTo(ExecutionStatus.RETRY);
+    assertThat(executionResult.statusCode()).isEqualTo(StatusCode.UNKNOWN);
+  }
+
+  @Test
+  public void performAction_Prepare_Response400_statusCheck_ServerPhaseAheadBy2()
+      throws IOException, PrivacyBudgetClientException {
+    transaction =
+        generateTransaction(endpoint, transactionId, TransactionPhase.PREPARE, transactionRequest);
+
+    long lastExecTimeStamp = Instant.now().toEpochMilli();
+    Map<String, String> responseHeaders =
+        ImmutableMap.of(
+            "x-gscp-transaction-last-execution-timestamp", String.valueOf(lastExecTimeStamp));
+    HttpClientResponse statusResponse =
+        HttpClientResponse.create(
+            200,
+            "{\"has_failures\":false,\"is_expired\":false,\"last_execution_timestamp\":1682345560947309"
+                + ",\"transaction_execution_phase\":\"NOTIFY\"}",
+            responseHeaders);
+    when(awsHttpClient.executePost(
+            eq(preparePhaseUri),
+            eq(expectedPayload()),
+            eq(expectedHeadersMap(endpoint, transaction))))
+        .thenReturn(badRequestFailureResponse);
+    Map<String, String> statusRequestExpectedHeadersMap = expectedHeadersMap(endpoint, transaction);
+    statusRequestExpectedHeadersMap.remove("x-gscp-transaction-last-execution-timestamp");
+    when(awsHttpClient.executeGet(eq(transactionStatusUri), eq(statusRequestExpectedHeadersMap)))
+        .thenReturn(statusResponse);
+    PrivacyBudgetClientException expectedException =
+        new PrivacyBudgetClientException(
+            "The PrivacyBudget client and server phases are out of sync. server phase numeric"
+                + " value: 4. client phase numeric value; 2. Transaction cannot be completed");
+
+    PrivacyBudgetClientException actualException =
+        assertThrows(
+            PrivacyBudgetClientException.class,
+            () -> privacyBudgetClient.performActionPrepare(transaction));
+
+    assertThat(actualException.getMessage()).isEqualTo(expectedException.getMessage());
+  }
+
+  @Test
+  public void performAction_commit_Response400_statusCheck_statusCheckFailed()
+      throws IOException, PrivacyBudgetClientException {
+    transaction =
+        generateTransaction(endpoint, transactionId, TransactionPhase.COMMIT, transactionRequest);
+    long lastExecTimeStamp = Instant.now().toEpochMilli();
+    Map<String, String> responseHeaders =
+        ImmutableMap.of(
+            "x-gscp-transaction-last-execution-timestamp", String.valueOf(lastExecTimeStamp));
+    HttpClientResponse statusResponse =
+        HttpClientResponse.create(
+            200,
+            "{\"has_failures\":false,\"is_expired\":false,\"last_execution_timestamp\":1682345560947309"
+                + ",\"transaction_execution_phase\":\"NOTIFY\"}",
+            responseHeaders);
+    when(awsHttpClient.executePost(
+            eq(commitPhaseUri),
+            eq(expectedPayload()),
+            eq(expectedHeadersMap(endpoint, transaction))))
+        .thenReturn(badRequestFailureResponse);
+    Map<String, String> statusRequestExpectedHeadersMap = expectedHeadersMap(endpoint, transaction);
+    statusRequestExpectedHeadersMap.remove("x-gscp-transaction-last-execution-timestamp");
+    when(awsHttpClient.executeGet(eq(transactionStatusUri), eq(statusRequestExpectedHeadersMap)))
+        .thenThrow(new IOException("Timeout waiting for reply"));
+
+    ExecutionResult executionResult = privacyBudgetClient.performActionCommit(transaction);
+
+    assertThat(executionResult.executionStatus()).isEqualTo(ExecutionStatus.FAILURE);
+    assertThat(executionResult.statusCode()).isEqualTo(StatusCode.UNKNOWN);
+  }
+
   private Transaction generateTransaction(
       String endpoint,
       UUID transactionId,
@@ -437,7 +554,7 @@ public final class PrivacyBudgetClientTest {
     if (transaction.getCurrentPhase() != TransactionPhase.BEGIN) {
       headers.put(
           "x-gscp-transaction-last-execution-timestamp",
-          String.valueOf(transaction.getLastExecutionTimestamp(endpoint)));
+          transaction.getLastExecutionTimestamp(endpoint));
     }
     return headers;
   }

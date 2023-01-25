@@ -25,7 +25,7 @@
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "cpio/common/test/aws/test_aws_utils.h"
-#include "public/cpio/test/test_aws_metric_client_options.h"
+#include "public/cpio/test/metric_client/test_aws_metric_client_options.h"
 
 using Aws::Client::ClientConfiguration;
 using google::scp::core::AsyncExecutorInterface;
@@ -37,11 +37,11 @@ using std::shared_ptr;
 using std::string;
 
 namespace google::scp::cpio::client_providers {
-ExecutionResult TestAwsMetricClientProvider::CreateClientConfiguration(
+void TestAwsMetricClientProvider::CreateClientConfiguration(
+    const shared_ptr<string>& region,
     shared_ptr<ClientConfiguration>& client_config) noexcept {
   client_config =
-      CreateTestClientConfiguration(cloud_watch_endpoint_override_, region_);
-  return SuccessExecutionResult();
+      CreateTestClientConfiguration(cloud_watch_endpoint_override_, region);
 }
 
 shared_ptr<MetricClientProviderInterface> MetricClientProviderFactory::Create(

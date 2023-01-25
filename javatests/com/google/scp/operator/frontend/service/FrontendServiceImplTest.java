@@ -67,6 +67,9 @@ public final class FrontendServiceImplTest {
   CreateJobRequest createJobRequest;
   String attributionReportTo;
   JobMetadata jobMetadata;
+  JobMetadata receivedJobMetadata;
+  JobMetadata processedJobMetadata;
+  JobMetadata finishedJobMetadata;
   JobKey jobKey;
   Instant clockTime;
   Timestamp clockTimestamp;
@@ -79,7 +82,7 @@ public final class FrontendServiceImplTest {
     attributionReportTo =
         createJobRequest.getJobParametersMap().get(JOB_PARAM_ATTRIBUTION_REPORT_TO);
     jobMetadata = JobGenerator.createFakeJobMetadata(REQUEST_ID);
-    jobMetadata =
+    receivedJobMetadata =
         jobMetadata.toBuilder()
             .setRequestReceivedAt(ProtoUtil.toProtoTimestamp(clockTime))
             .setRequestUpdatedAt(ProtoUtil.toProtoTimestamp(clockTime))
@@ -87,6 +90,20 @@ public final class FrontendServiceImplTest {
             .clearRecordVersion()
             .clearResultInfo()
             .clearCreateJobRequest()
+            .setRequestInfo(jobMetadata.getRequestInfo())
+            .build();
+    processedJobMetadata =
+        receivedJobMetadata.toBuilder()
+            .setJobStatus(JobStatus.IN_PROGRESS)
+            .setRequestProcessingStartedAt(ProtoUtil.toProtoTimestamp(clockTime))
+            .build();
+    finishedJobMetadata =
+        jobMetadata.toBuilder()
+            .setJobStatus(JobStatus.FINISHED)
+            .setRequestReceivedAt(ProtoUtil.toProtoTimestamp(clockTime))
+            .setRequestUpdatedAt(ProtoUtil.toProtoTimestamp(clockTime))
+            .setRequestProcessingStartedAt(ProtoUtil.toProtoTimestamp(clockTime))
+            .clearRecordVersion()
             .setRequestInfo(jobMetadata.getRequestInfo())
             .build();
     jobKey = jobMetadata.getJobKey();
@@ -101,7 +118,7 @@ public final class FrontendServiceImplTest {
 
     // No assertion on the CreateJobResponse that is returned since it has no fields to check
     assertThat(fakeMetadataDb.getLastJobMetadataInserted().toBuilder().setServerJobId("").build())
-        .isEqualTo(jobMetadata);
+        .isEqualTo(receivedJobMetadata);
   }
 
   /** Test for scenario to insert a job with a validation failure */
@@ -152,10 +169,10 @@ public final class FrontendServiceImplTest {
     assertThatServiceExceptionMatches(serviceException, expectedServiceException);
   }
 
-  /** Test for scenario to get a job that exists with no failures */
+  /** Test for scenario to get a job with received status that exists with no failures */
   @Test
-  public void testGetJob_simple() throws Exception {
-    fakeMetadataDb.setJobMetadataToReturn(Optional.of(jobMetadata));
+  public void testGetJob_received() throws Exception {
+    fakeMetadataDb.setJobMetadataToReturn(Optional.of(receivedJobMetadata));
 
     GetJobResponse getJobResponse = frontendService.getJob(REQUEST_ID);
 
@@ -166,6 +183,43 @@ public final class FrontendServiceImplTest {
                 .setRequestUpdatedAt(clockTimestamp)
                 .setJobStatus(JobStatusProto.JobStatus.RECEIVED)
                 .clearResultInfo()
+                .build());
+    assertThat(fakeMetadataDb.getLastJobKeyStringLookedUp()).isEqualTo(jobKey.getJobRequestId());
+  }
+
+  /** Test for scenario to get a job with the processed status that exists with no failures */
+  @Test
+  public void testGetJob_processed() throws Exception {
+    fakeMetadataDb.setJobMetadataToReturn(Optional.of(processedJobMetadata));
+
+    GetJobResponse getJobResponse = frontendService.getJob(REQUEST_ID);
+
+    assertThat(getJobResponse)
+        .isEqualTo(
+            ServiceJobGenerator.createFakeJobResponse(REQUEST_ID).toBuilder()
+                .setRequestReceivedAt(clockTimestamp)
+                .setRequestUpdatedAt(clockTimestamp)
+                .setJobStatus(JobStatusProto.JobStatus.IN_PROGRESS)
+                .setRequestProcessingStartedAt(clockTimestamp)
+                .clearResultInfo()
+                .build());
+    assertThat(fakeMetadataDb.getLastJobKeyStringLookedUp()).isEqualTo(jobKey.getJobRequestId());
+  }
+
+  /** Test for scenario to get a job with the finished status that exists with no failures */
+  @Test
+  public void testGetJob_finished() throws Exception {
+    fakeMetadataDb.setJobMetadataToReturn(Optional.of(finishedJobMetadata));
+
+    GetJobResponse getJobResponse = frontendService.getJob(REQUEST_ID);
+
+    assertThat(getJobResponse)
+        .isEqualTo(
+            ServiceJobGenerator.createFakeJobResponse(REQUEST_ID).toBuilder()
+                .setRequestReceivedAt(clockTimestamp)
+                .setRequestUpdatedAt(clockTimestamp)
+                .setJobStatus(JobStatusProto.JobStatus.FINISHED)
+                .setRequestProcessingStartedAt(clockTimestamp)
                 .build());
     assertThat(fakeMetadataDb.getLastJobKeyStringLookedUp()).isEqualTo(jobKey.getJobRequestId());
   }

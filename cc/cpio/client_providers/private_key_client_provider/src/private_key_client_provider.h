@@ -21,12 +21,12 @@
 #include <vector>
 
 #include "core/interface/async_context.h"
+#include "core/interface/http_client_interface.h"
 #include "core/interface/http_types.h"
-#include "core/interface/message_router_interface.h"
-#include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "cpio/client_providers/interface/private_key_client_provider_interface.h"
 #include "cpio/client_providers/interface/private_key_fetching_client_provider_interface.h"
+#include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 
@@ -43,9 +43,9 @@ class PrivateKeyClientProvider : public PrivateKeyClientProviderInterface {
   explicit PrivateKeyClientProvider(
       const std::shared_ptr<PrivateKeyClientOptions>&
           private_key_client_options,
-      const std::shared_ptr<core::MessageRouterInterface<
-          google::protobuf::Any, google::protobuf::Any>>& message_router =
-          nullptr);
+      const std::shared_ptr<core::HttpClientInterface>& http_client,
+      const std::shared_ptr<RoleCredentialsProviderInterface>&
+          role_credentials_provider);
 
   core::ExecutionResult Init() noexcept override;
 
@@ -60,15 +60,6 @@ class PrivateKeyClientProvider : public PrivateKeyClientProviderInterface {
           context) noexcept override;
 
  protected:
-  /**
-   * @brief Triggered when ListPrivateKeysByIdsRequest arrives.
-   *
-   * @param context async execution context.
-   */
-  virtual void OnListPrivateKeysByIds(
-      core::AsyncContext<google::protobuf::Any, google::protobuf::Any>
-          context) noexcept;
-
   /// Operation status of list of private keys acquire.
   struct ListPrivateKeysStatus {
     ListPrivateKeysStatus() : finished_counter(0), got_failure(false) {}
@@ -153,11 +144,6 @@ class PrivateKeyClientProvider : public PrivateKeyClientProviderInterface {
 
   /// KMS client provider.
   std::shared_ptr<KmsClientProviderInterface> kms_client_provider_;
-
-  /// The message router where the private key client subscribes actions.
-  std::shared_ptr<core::MessageRouterInterface<google::protobuf::Any,
-                                               google::protobuf::Any>>
-      message_router_;
 
   // This is temp way to collect all endpoints in one vector. Maybe we should
   // change PrivateKeyClientOptions structure to make thing easy.
