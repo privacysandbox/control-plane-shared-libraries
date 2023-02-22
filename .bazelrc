@@ -6,6 +6,7 @@ build --cxxopt=-std=c++17
 build --color=yes
 
 test --cxxopt=-D_SCP_ROMA_LOG_ERRORS=1
+test --cxxopt=-D_SCP_CORE_SOCAT_FORWARDER_NON_PRIVILEGED=1
 
 # Force bazel to use specific JDK, otherwise JDK may not be predictable
 run --javabase=@bazel_tools//tools/jdk:remote_jdk11

@@ -66,6 +66,14 @@ public interface PrivacyBudgetClient {
    */
   ExecutionResult performActionAbort(Transaction transaction) throws PrivacyBudgetClientException;
 
+  /**
+   * Returns the Base URL of the coordinator against which this client performs the transaction
+   * actions.
+   *
+   * @return
+   */
+  String getPrivacyBudgetServerIdentifier();
+
   /** Represents an exception thrown by PrivacyBudgetClient */
   final class PrivacyBudgetClientException extends Exception {
     /** Creates a new instance of the exception. */

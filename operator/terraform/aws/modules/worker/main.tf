@@ -106,6 +106,11 @@ resource "aws_launch_template" "worker_template" {
     }
   }
 
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
   vpc_security_group_ids = var.worker_security_group_ids
 }
 

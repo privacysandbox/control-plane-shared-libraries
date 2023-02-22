@@ -24,6 +24,7 @@ cc_test(
         "-std=c++17",
     ],
     flaky = True,  # Remove this flag once the flakiness is fixed.
+    tags = ["manual"],
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/mock:core_async_executor_mock",

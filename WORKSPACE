@@ -635,9 +635,9 @@ grpc_extra_deps()
 container_pull(
     name = "java_base",
     # Using SHA-256 for reproducibility.
-    digest = "sha256:1606422cc472612cb5bcd885684b4bf87b3813246c266df473357dce5a0fb4b4",
+    digest = "sha256:940d5d7c67553ea25ab03b9ac455a5c023ba973b32b1a58dd6e071f4dd770045",
     registry = "gcr.io",
-    repository = "distroless/java",
+    repository = "distroless/java11-debian11",
 )
 
 # Distroless image for running C++.

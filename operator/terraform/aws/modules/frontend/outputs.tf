@@ -29,3 +29,11 @@ output "frontend_lambda_role_id" {
 output "frontend_api_id" {
   value = aws_apigatewayv2_api.frontend_api_gateway.id
 }
+
+output "create_job_endpoint" {
+  value = replace(aws_apigatewayv2_route.create_job_api_gateway_route.route_key, "/${var.api_version}", "${aws_apigatewayv2_api.frontend_api_gateway.api_endpoint}/${var.api_env_stage_name}/${var.api_version}")
+}
+
+output "get_job_endpoint" {
+  value = replace(aws_apigatewayv2_route.get_job_api_gateway_route.route_key, "/${var.api_version}", "${aws_apigatewayv2_api.frontend_api_gateway.api_endpoint}/${var.api_env_stage_name}/${var.api_version}")
+}

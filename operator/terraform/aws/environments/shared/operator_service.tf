@@ -115,3 +115,11 @@ moved {
 output "frontend_api_id" {
   value = module.operator_service.frontend_api_id
 }
+
+output "create_job_endpoint" {
+  value = module.operator_service.create_job_endpoint
+}
+
+output "get_job_endpoint" {
+  value = module.operator_service.get_job_endpoint
+}

@@ -23,10 +23,10 @@ def worker_aws_deployment(
         ami_groups = "[]",
         packer_ami_config = "//operator/worker/aws:aggregation_worker_ami.pkr.hcl",
         ec2_instance = "m5.xlarge",
-        subnet_id = "",
+        subnet_id = ":subnet_id_flag",
         enclave_cpus = 2,
         enclave_memory_mib = 7168,
-        aws_region = "us-east-1",
+        aws_region = ":aws_region_flag",
         test_key = None,
         test_avro_file = None,
         enclave_env_variables = {},
@@ -36,6 +36,7 @@ def worker_aws_deployment(
         worker_watcher_rpm = "//operator/worker/aws/enclave:aggregate_worker_rpm",
         jar_file = None,
         jar_args = [],
+        jvm_options = [],
         licenses = "//licenses:licenses_tar",
         enable_worker_debug_mode = False):
     """Creates targets for AWS AMI generation and enclave Docker container.
@@ -63,11 +64,12 @@ def worker_aws_deployment(
         to make AMI public.
       packer_ami_config: Path to the packer config template.
       ec2_instance: Ec2 instance type for running packer script.
-      subnet_id: The subnet in which to deploy the EC2 instance to execute the
-        packer scripts.
+      subnet_id: Path to a `string_flag` target defining the subnet in which to
+        deploy the EC2 instance to execute the packer scripts.
       enclave_cpus: Number of cores assigned to enclave.
       enclave_memory_mib: Amount of memory (in MB) assigned to enclave.
-      aws_region: Aws region to run packer script on.
+      aws_region: Path to a `string_flag` target defining the AWS region to run the
+        packer script in.
       test_key: Bazel label of the key to be added to the enclave.
       test_avro_file: Bazel label of the test Avro file to be added to the
         enclave.
@@ -82,6 +84,7 @@ def worker_aws_deployment(
       jar_file: Absolute path to the JAR file in the enclave that should be
         invoked.
       jar_args: CLI args passed to the JAR file inside the enclave.
+      jvm_options: Jvm options passed to control JVM inside the enclave.
       licenses: This should be a label of a tar file containing all the licenses
         of our distribution and all dependencies.
       enable_worker_debug_mode: Whether to run enclave in debug mode.
@@ -103,6 +106,7 @@ def worker_aws_deployment(
         jar_target = worker_path,
         jar_filename = jar_file,
         jar_args = jar_args,
+        jvm_options = jvm_options,
         enclave_cmd_override = enclave_cmd,
         enclave_env_variables = enclave_env_variables,
         repo_name = repo_name,

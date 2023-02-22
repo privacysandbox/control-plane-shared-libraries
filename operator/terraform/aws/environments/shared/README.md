@@ -8,19 +8,19 @@ e.g. "dev" and "prod")
 
 ## Pre-requisites
 
+If not already done, setup Terraform and AWS credentials:
+
 1. Install a compatible version of Terraform (>=
    v1.2.3) [here](https://www.terraform.io/downloads)
-2. Configure AWS credentials
+1. Configure AWS credentials
    using [AWS documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
-3. Untar the operator deployment package
-4. Change directory to `environment/demo`
 
 You should notice that the directory contains the following files:
 
-```shell
-❯ tree demo/
-demo/
-├── ami_params.auto.tfvars -> ../shared/ami_params.auto.tfvars
+```sh
+❯ tree
+.
+├── BUILD
 ├── example.auto.tfvars
 ├── main.tf
 ├── operator_service.tf -> ../shared/operator_service.tf
@@ -30,9 +30,8 @@ demo/
 0 directories, 6 files
 ```
 
-Note `ami_params.auto.tfvars`, `operator_service.tf`,
-and `operator_service_variable.tf` are symlinked files that should not be
-modified.
+Note `operator_service.tf`, `operator_service_variable.tf` and `README.md`
+are symlinked files that should not be modified.
 
 ## Instructions
 
@@ -43,46 +42,51 @@ modified.
    following. Remove coordinator_b_assume_role_parameter if using a single party
    coordinator configuration.
 
-```shell
-coordinator_a_assume_role_parameter = "arn:aws:iam::<CoordinatorAAccount>:role/<CoordinatorARole>"
-coordinator_b_assume_role_parameter = "arn:aws:iam::<CoordinatorBAccount>:role/<CoordinatorBRole>"
-```
+    ```sh
+    coordinator_a_assume_role_parameter = "arn:aws:iam::<CoordinatorAAccount>:role/<CoordinatorARole>"
+    coordinator_b_assume_role_parameter = "arn:aws:iam::<CoordinatorBAccount>:role/<CoordinatorBRole>"
+    ```
 
-For a full list of configuration parameters, see `operator_service_variable.tf`.
-Most configuration variables are optional with the exception of `region`
-, `environment`, and `ami_name` as required variables. If you do not provide a
-value, the default values will be used for optional variables. You may override
-the default values by specifying custom values in the configuration file.
+    For a full list of configuration parameters, see `operator_service_variable.tf`.
+    Most configuration variables are optional with the exception of `region`
+    , `environment`, and `ami_name` as required variables. If you do not provide a
+    value, the default values will be used for optional variables. You may override
+    the default values by specifying custom values in the configuration file.
 
-> Note: You can provide your own VPC by setting `enable_user_provided_vpc` to true and specifying the `user_provided_vpc_subnet_ids` and `user_provided_vpc_security_group_ids` variable.
+    > Note: You can provide your own VPC by setting `enable_user_provided_vpc` to true and specifying the `user_provided_vpc_subnet_ids` and `user_provided_vpc_security_group_ids` variable.
 
-2. Edit terraform configuration [main.tf](./main.tf) - contains terraform
+1. Edit terraform configuration [main.tf](./main.tf) - contains terraform
    provider information and state bucket location to point to a remote state
    bucket that you control, such as the following
 
-```shell
-terraform {
-  backend "s3" {
-    bucket = "<my-new-bucket>"
-    key    = "<my-new-environment.tfstate>"
-    region = "us-east-1"
-  }
-```
+    We recommend you store the [Terraform state](https://www.terraform.io/language/state) in a cloud
+    bucket. Create a S3 bucket via the console/cli, which we'll reference as `tf_state_bucket_name`.
+    Consider enabling `versioning` to preserve, retrieve, and restore previous versions and set
+    appropriate policies for this bucket to prevent accidental changes and deletion.
 
-3. Deploy the service by running the following commands
+    ```sh
+    terraform {
+      backend "s3" {
+        bucket = "<tf_state_bucket_name>"
+        key    = "<new-environment.tfstate>"
+        region = "<tf_state_bucket_aws_region>"
+      }
+    ```
 
-```
-> terraform init
-> terraform plan -out=tfplan # review the changes via terraform show tfplan
-> terraform apply tfplan
-```
+1. Deploy the service by running the following commands
+
+    ```sh
+    > terraform init
+    > terraform plan -out=tfplan # review the changes via terraform show tfplan
+    > terraform apply tfplan
+    ```
 
 ### Update an existing infrastructure
 
 1. Plan and review changes to an existing infrastructure by running the
    following commands.
 
-   ```shell
+   ```sh
    > terraform init
    > terraform plan -out=tfplan # review the changes via terraform show tfplan
    ```
@@ -90,7 +94,7 @@ terraform {
    If you observe changes to the autoscaler group `vpc_zone_identifiers`, such
    as shown below:
 
-   ```shell
+   ```sh
      # module.operator_service.module.worker_autoscaling.aws_autoscaling_group.worker_group will be updated in-place
      ~ resource "aws_autoscaling_group" "worker_group" {
            id                        = "operator-aggregation-service-workers"
@@ -106,28 +110,30 @@ terraform {
            # (21 unchanged attributes hidden)
        }
    ```
-   Go to step 2a, otherwise go to step 2b.
 
-> Note: This situation may occur if you are updating an existing operator from an already associated VPC to a new VPC, such as providing your own VPC or updating the VPC deployment.
+   Go to step 2.1, otherwise go to step 2.2.
 
-2a. If there are updates to the existing VPC, you are recommended to scale down
-the ASG group to 0 capacity before proceeding with the upgrade. You can do so
-manually via the AWS console or CLI.
+    > Note: This situation may occur if you are updating an existing operator from an already associated VPC to a new VPC, such as providing your own VPC or updating the VPC deployment.
 
-Use this
-script [upgrade_operator_vpc](../../util_scripts/deploy/upgrade_operator_vpc)
-that automates the process. Skip 2b if you run the script.
+1.
+   1. If there are updates to the existing VPC, you are recommended to scale down
+    the ASG group to 0 capacity before proceeding with the upgrade. You can do so
+    manually via the AWS console or CLI.
 
-2b. If there are no changes to the autoscaler group `vpc_zone_identifiers`, you
-may proceed with the normal Terraform apply operation by
-running `terraform apply tfplan`. If you encounter issues during the update
-process, please reference the Troubleshooting section.
+      Use this
+    script [upgrade_operator_vpc](../../util_scripts/deploy/upgrade_operator_vpc)
+    that automates the process. Skip 2b if you run the script.
+
+   1. If there are no changes to the autoscaler group `vpc_zone_identifiers`, you
+    may proceed with the normal Terraform apply operation by
+    running `terraform apply tfplan`. If you encounter issues during the update
+    process, please reference the Troubleshooting section.
 
 ## Troubleshooting
 
 ### **Issue**: Failure in VPC output precondition
 
-```shell
+```sh
 │ Error: Module output value precondition failed
 │
 │   on ../../modules/vpc/outputs.tf line 22, in output "vpc_id":
@@ -143,10 +149,10 @@ Check inputs to the `vpc_availability_zones` variable.
 
 ### **Issue**: Unsupported instance type in AZ
 
-```shell
+```sh
 ╷
 │ Error: Error creating Auto Scaling Group: ValidationError: You must use a valid fully-formed launch template. Your requested instance type (m5.2xlarge) is not supported in your requested Availability Zone (us-east-1e). Please retry your request by not specifying an Availability Zone or choosing us-east-1a, us-east-1b, us-east-1c, us-east-1d, us-east-1f.
-│ 	status code: 400, request id: 9ff2b6ed-887f-4158-88a8-898d3573980e
+│   status code: 400, request id: 9ff2b6ed-887f-4158-88a8-898d3573980e
 │
 │   with module.aggregate_service.module.worker_autoscaling.aws_autoscaling_group.worker_group,
 │   on services/autoscaling/main.tf line 21, in resource "aws_autoscaling_group" "worker_group":
@@ -159,7 +165,7 @@ using the `vpc_availability_zones` variable.
 
 ### **Issue**: Failure deleting subnets during VPC update
 
-```
+```sh
 module.vpc.aws_vpc.this: Destroying... (ID: vpc-0626034ed6648e300)
 module.vpc.aws_subnet.foo-b: Still destroying... (ID: vpc-0626034ed6648e300, 20mins elapsed)
 module.vpc.aws_subnet.foo-b: Still destroying... (ID: vpc-0626034ed6648e300, 20mins elapsed)
@@ -168,7 +174,7 @@ module.vpc.aws_subnet.foo-b: Still destroying... (ID: vpc-0626034ed6648e300, 20m
 aws_subnet.foo-b: Error deleting subnet: timeout while waiting
   for state to become 'destroyed' timed out after 20 mins
 aws_vpc.this: DependencyViolation: The vpc 'vpc-0626034ed6648e300' has dependencies and cannot be deleted.
-	status code: 400, request id: 40cfa5b7-4a3f-418c-9f2f-8fa450dda882
+  status code: 400, request id: 40cfa5b7-4a3f-418c-9f2f-8fa450dda882
 ```
 
 This issue can occur if you are updating an operator service with a
@@ -190,20 +196,20 @@ deleted.
       manually [complete a lifecycle action](https://docs.aws.amazon.com/autoscaling/ec2/userguide/completing-lifecycle-hooks.html#completing-lifecycle-hooks-aws-cli)
       of any instances in a wait state, using the following sample command.
 
-       ```shell
+       ```sh
        aws autoscaling complete-lifecycle-action --lifecycle-action-result CONTINUE \
          --lifecycle-hook-name my-launch-hook --auto-scaling-group-name my-asg \
          --lifecycle-action-token bcd2f1b8-9a78-44d3-8a7a-4dd07d7cf635
        ```
 
-3. Run `terraform apply` using the latest states
+1. Run `terraform apply` using the latest states
 
-## Issue: Unable to access worker instances via SSH or EC2 Instance Connect
+### **Issue**: Unable to access worker instances via SSH or EC2 Instance Connect
 
 If you see the following error message connecting to a worker instance via EC2
 Instance Connect using the AWS web console:
 
-```shell
+```sh
 The instance does not have a public IPv4 address
 To connect using the EC2 Instance Connect browser-based client, the instance must have a public IPv4 address.
 ```
@@ -220,5 +226,4 @@ instance. After clicking on the instance, you can go connect -> session manager
 Alternatively, you may install the Session Manager plugin for the AWS cli to
 start and end a session to any instance directly on your console instead of AWS
 web console. See detailed instructions
-[here](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with.html)
-.
+[here](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with.html).

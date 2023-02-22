@@ -23,6 +23,7 @@ import com.google.scp.operator.cpio.distributedprivacybudgetclient.PrivacyBudget
 
 /** Transaction engine is responsible for running the transactions. */
 public class TransactionEngineImpl implements TransactionEngine {
+
   private final TransactionPhaseManager transactionPhaseManager;
   private final ImmutableList<PrivacyBudgetClient> privacyBudgetClients;
 
@@ -118,6 +119,15 @@ public class TransactionEngineImpl implements TransactionEngine {
   private void executeDistributedPhase(TransactionPhase currentPhase, Transaction transaction)
       throws TransactionEngineException {
     for (PrivacyBudgetClient privacyBudgetClient : this.privacyBudgetClients) {
+      String privacyBudgetServerIdentifier = privacyBudgetClient.getPrivacyBudgetServerIdentifier();
+      TransactionPhase lastSuccessfulTransactionPhase =
+          transaction.getLastCompletedTransactionPhaseOnPrivacyBudgetServer(
+              privacyBudgetServerIdentifier);
+      if ((lastSuccessfulTransactionPhase == TransactionPhase.NOTSTARTED
+              && currentPhase != TransactionPhase.BEGIN)
+          || lastSuccessfulTransactionPhase == TransactionPhase.END) {
+        continue;
+      }
       ExecutionResult executionResult =
           dispatchDistributedCommand(privacyBudgetClient, transaction);
       if (executionResult.executionStatus() != ExecutionStatus.SUCCESS) {
@@ -126,6 +136,9 @@ public class TransactionEngineImpl implements TransactionEngine {
           transaction.setCurrentPhaseFailed(true);
           transaction.setCurrentPhaseExecutionResult(executionResult);
         }
+      } else {
+        transaction.setLastCompletedTransactionPhaseOnPrivacyBudgetServer(
+            privacyBudgetServerIdentifier, currentPhase);
       }
     }
 

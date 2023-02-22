@@ -142,6 +142,11 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
     return performTransactionPhaseAction(abortTransactionPath, transaction);
   }
 
+  @Override
+  public String getPrivacyBudgetServerIdentifier() {
+    return baseUrl;
+  }
+
   private void updateTransactionState(Transaction transaction, HttpClientResponse response) {
     if (response.statusCode() == 200) {
       String lastExecTimestamp = response.headers().get(transactionLastExecTimestampHeaderKey);

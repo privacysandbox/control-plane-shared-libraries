@@ -17,3 +17,11 @@
 output "frontend_api_id" {
   value = module.frontend.frontend_api_id
 }
+
+output "create_job_endpoint" {
+  value = module.frontend.create_job_endpoint
+}
+
+output "get_job_endpoint" {
+  value = module.frontend.get_job_endpoint
+}

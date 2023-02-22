@@ -29,10 +29,8 @@ import java.util.UUID;
 public class Transaction {
   // The current transaction id.
   private UUID id;
-  private TransactionPhaseManager transactionPhaseManager;
   // The context of the transaction.
   private TransactionRequest request;
-  private TransactionResponse response;
   private ExecutionResult result;
   // The current phase of the transaction.
   private TransactionPhase currentPhase;
@@ -40,8 +38,6 @@ public class Transaction {
   private ExecutionResult currentPhaseExecutionResult;
   // The execution result of the transaction.
   private ExecutionResult transactionExecutionResult;
-  // Number of pending dispatched commands at the current phase.
-  private long pendingCallbacks;
   // Indicates whether the transaction phase failed.
   private boolean transactionPhaseFailed;
   // Indicates whether the transaction failed.
@@ -51,6 +47,8 @@ public class Transaction {
   // Last execution timestamp against every BaseUrl for any phases of the current transaction to
   // support optimistic concurrency.
   private Map<String, String> lastExecutionTimeNanosForBaseUrl;
+
+  private Map<String, TransactionPhase> lastCompletedTransactionPhaseOnPrivacyBudgetServer;
   // Number of retries before returning failure.
   private int retries;
   // List of privacy budget units whose budget has exhausted
@@ -58,17 +56,16 @@ public class Transaction {
 
   Transaction() {
     id = new UUID(0L, 0L);
-    transactionPhaseManager = new TransactionPhaseManagerImpl();
     currentPhase = TransactionPhase.NOTSTARTED;
     currentPhaseExecutionResult = ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK);
     transactionExecutionResult =
         ExecutionResult.create(
             ExecutionStatus.FAILURE, StatusCode.TRANSACTION_MANAGER_NOT_FINISHED);
-    pendingCallbacks = 0;
     transactionPhaseFailed = false;
     transactionFailed = false;
     currentPhaseFailed = false;
     lastExecutionTimeNanosForBaseUrl = new HashMap<>();
+    lastCompletedTransactionPhaseOnPrivacyBudgetServer = new HashMap<>();
     retries = 5;
     exhaustedPrivacyBudgetUnits = ImmutableList.of();
   }
@@ -87,14 +84,6 @@ public class Transaction {
 
   public void setRequest(TransactionRequest request) {
     this.request = request;
-  }
-
-  public long getPendingCallbacks() {
-    return pendingCallbacks;
-  }
-
-  public void setPendingCallbacks(long pendingCallbacks) {
-    this.pendingCallbacks = pendingCallbacks;
   }
 
   public boolean isTransactionPhaseFailed() {
@@ -139,6 +128,16 @@ public class Transaction {
 
   public void setCurrentPhaseFailed(boolean currentPhaseFailed) {
     this.currentPhaseFailed = currentPhaseFailed;
+  }
+
+  public TransactionPhase getLastCompletedTransactionPhaseOnPrivacyBudgetServer(String baseUrl) {
+    return lastCompletedTransactionPhaseOnPrivacyBudgetServer.getOrDefault(
+        baseUrl, TransactionPhase.NOTSTARTED);
+  }
+
+  public void setLastCompletedTransactionPhaseOnPrivacyBudgetServer(
+      String baseUrl, TransactionPhase transactionPhase) {
+    lastCompletedTransactionPhaseOnPrivacyBudgetServer.put(baseUrl, transactionPhase);
   }
 
   public String getLastExecutionTimestamp(String baseUrl) {

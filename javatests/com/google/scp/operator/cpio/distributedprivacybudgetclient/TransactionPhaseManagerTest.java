@@ -76,7 +76,7 @@ public final class TransactionPhaseManagerTest {
             transactionPhaseManager.proceedToNextPhase(
                 TransactionPhase.BEGIN,
                 ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN)))
-        .isEqualTo(TransactionPhase.UNKNOWN);
+        .isEqualTo(TransactionPhase.ABORT);
     assertThat(
             transactionPhaseManager.proceedToNextPhase(
                 TransactionPhase.BEGIN,

@@ -110,6 +110,17 @@ ExecutionResult Daemonizer::Run() noexcept {
       break;
     }
 
+    // If this is an unknown PID, just continue. This is most likely a process
+    // started by a child, which was then orphaned and ended up parented by this
+    // process.
+    if (pid_to_executable_arg_map_.find(failed_proc_pid) ==
+        pid_to_executable_arg_map_.end()) {
+      std::cout << "A child process which was not explicitly started has died. "
+                   "This is most likely a grandchild process."
+                << std::endl;
+      continue;
+    }
+
     auto failed_process_arg = pid_to_executable_arg_map_[failed_proc_pid];
     // This PID is no longer valid so we remove the mapping from PID to
     // executable arg
