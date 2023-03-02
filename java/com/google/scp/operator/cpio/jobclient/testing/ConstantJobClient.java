@@ -20,6 +20,7 @@ import com.google.scp.operator.cpio.jobclient.JobClient;
 import com.google.scp.operator.cpio.jobclient.model.ErrorReason;
 import com.google.scp.operator.cpio.jobclient.model.Job;
 import com.google.scp.operator.cpio.jobclient.model.JobResult;
+import com.google.scp.operator.protos.shared.backend.JobKeyProto.JobKey;
 import java.util.Optional;
 
 /**
@@ -71,6 +72,11 @@ public final class ConstantJobClient implements JobClient {
     }
 
     lastJobResultCompleted = jobResult;
+  }
+
+  @Override
+  public void appendJobErrorMessage(JobKey jobKey, String error) throws JobClientException {
+    // Requires access to Job Metadata DB to save the error message from Result Info
   }
 
   /** Set true to return an empty {@code Optional<Job>} from the {@code getJob} method. */

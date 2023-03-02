@@ -74,7 +74,10 @@ public final class ErrorSummaryConverter
               .build());
     }
 
-    return ErrorSummary.newBuilder().addAllErrorCounts(errorCounts.build()).build();
+    return ErrorSummary.newBuilder()
+        .addAllErrorCounts(errorCounts.build())
+        .addAllErrorMessages(errorSummary.getErrorMessagesList())
+        .build();
   }
 
   /** Converts the frontend model into the shared model. */
@@ -87,6 +90,7 @@ public final class ErrorSummaryConverter
                 errorSummary.getErrorCountsList().stream()
                     .map(i -> errorCountConverter.reverse().convert(i))
                     .collect(Collectors.toUnmodifiableList())))
+        .addAllErrorMessages(errorSummary.getErrorMessagesList())
         .build();
   }
 }

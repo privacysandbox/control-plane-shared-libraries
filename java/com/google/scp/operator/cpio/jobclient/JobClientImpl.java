@@ -31,6 +31,7 @@ import com.google.scp.operator.cpio.metricclient.MetricClient.MetricClientExcept
 import com.google.scp.operator.cpio.metricclient.model.CustomMetric;
 import com.google.scp.operator.protos.shared.backend.CreateJobRequestProto.CreateJobRequest;
 import com.google.scp.operator.protos.shared.backend.ErrorSummaryProto.ErrorSummary;
+import com.google.scp.operator.protos.shared.backend.JobKeyProto.JobKey;
 import com.google.scp.operator.protos.shared.backend.JobStatusProto.JobStatus;
 import com.google.scp.operator.protos.shared.backend.RequestInfoProto.RequestInfo;
 import com.google.scp.operator.protos.shared.backend.ResultInfoProto.ResultInfo;
@@ -243,7 +244,7 @@ public final class JobClientImpl implements JobClient {
             ErrorReason.JOB_RECEIPT_HANDLE_NOT_FOUND);
       }
 
-      // get the current metadata entry to make sure job is in in-progress state before marking
+      // get the current metadata entry to make sure job is in the IN_PROGRESS state before marking
       // completion
       Optional<JobMetadata> currentMetadata =
           metadataDb.getJobMetadata(jobResult.jobKey().getJobRequestId());
@@ -294,6 +295,56 @@ public final class JobClientImpl implements JobClient {
     }
   }
 
+  public void appendJobErrorMessage(JobKey jobKey, String error) throws JobClientException {
+    try {
+      // Get the current metadata entry to make sure job is in the IN_PROGRESS state before
+      // appending error message.
+      Optional<JobMetadata> currentMetadata = metadataDb.getJobMetadata(jobKey.getJobRequestId());
+
+      if (currentMetadata.isEmpty()) {
+        recordJobClientError(ErrorReason.JOB_METADATA_NOT_FOUND);
+        throw new JobClientException(
+            String.format(
+                "Metadata entry for job '%s' was not found, cannot update error summary.",
+                toJobKeyString(jobKey)),
+            ErrorReason.JOB_METADATA_NOT_FOUND);
+      }
+
+      if (currentMetadata.get().getJobStatus() != JobStatus.IN_PROGRESS) {
+        throw new JobClientException(
+            String.format(
+                "Metadata entry for job '%s' indicates job is in status %s, "
+                    + "but expected to be IN_PROGRESS.",
+                toJobKeyString(jobKey), currentMetadata.get().getJobStatus()),
+            ErrorReason.WRONG_JOB_STATUS);
+      }
+
+      ErrorSummary updatedErrorSummary =
+          currentMetadata.get().getResultInfo().getErrorSummary().toBuilder()
+              .addErrorMessages(error)
+              .build();
+      ResultInfo updatedResultInfo =
+          currentMetadata.get().getResultInfo().toBuilder()
+              .setErrorSummary(updatedErrorSummary)
+              .build();
+
+      JobMetadata updatedMetadata =
+          currentMetadata.get().toBuilder().setResultInfo(updatedResultInfo).build();
+      metadataDb.updateJobMetadata(updatedMetadata);
+
+      logger.info(
+          String.format("Successfully updated error summary for job '%s'", toJobKeyString(jobKey)));
+
+    } catch (JobMetadataDbException | JobMetadataConflictException e) {
+      logger.log(
+          Level.SEVERE,
+          String.format("Failed to update error summary for job '%s'", toJobKeyString(jobKey)),
+          e);
+      recordJobClientError(ErrorReason.JOB_ERROR_SUMMARY_UPDATE_FAILED);
+      throw new JobClientException(e, ErrorReason.JOB_ERROR_SUMMARY_UPDATE_FAILED);
+    }
+  }
+
   /**
    * Performs initial checks on the job.
    *
@@ -319,20 +370,18 @@ public final class JobClientImpl implements JobClient {
   void reportFailedCheck(Job job, String errorMessage, ReturnCode returnCode)
       throws JobClientException {
     try {
-      ResultInfo resultInfo =
-          ResultInfo.newBuilder()
-              .setReturnCode(returnCode.name())
-              .setReturnMessage(errorMessage)
-              .setErrorSummary(ErrorSummary.getDefaultInstance())
-              .setFinishedAt(ProtoUtil.toProtoTimestamp(Instant.now(clock)))
-              .build();
-
       Optional<JobMetadata> jobMetadata = metadataDb.getJobMetadata(toJobKeyString(job.jobKey()));
       if (jobMetadata.isPresent()) {
+        // Only updates the return code, errorMessage, and finishedAt time
+        ResultInfo existingResultInfo = jobMetadata.get().getResultInfo();
         JobMetadata updatedMetadata =
             jobMetadata.get().toBuilder()
                 .setJobStatus(JobStatus.FINISHED)
-                .setResultInfo(resultInfo)
+                .setResultInfo(
+                    existingResultInfo.toBuilder()
+                        .setReturnCode(returnCode.name())
+                        .setReturnMessage(errorMessage)
+                        .setFinishedAt(ProtoUtil.toProtoTimestamp(Instant.now(clock))))
                 .build();
         metadataDb.updateJobMetadata(updatedMetadata);
       } else {
@@ -431,21 +480,24 @@ public final class JobClientImpl implements JobClient {
   /** Checks if a job is already being processed and within the job processing timeout. */
   @VisibleForTesting
   boolean isDuplicateJob(Optional<Job> job) {
-    Instant jobLastUpdated = job.get().updateTime();
+    if (job.get().processingStartTime().isEmpty()) {
+      return false;
+    }
+    Instant jobStarted = job.get().processingStartTime().get();
     Duration jobProcessingTimeout = job.get().jobProcessingTimeout();
     Instant currentTime = Instant.now(clock);
 
     logger.info(
         String.format(
-            "received job %s with status %s. The job has been last updated on %s, current time is"
-                + " %s, and job processing timeout is %d seconds.",
+            "received job %s with status %s. The job started at %s, current time is %s, and job"
+                + " processing timeout is %d seconds.",
             job.get().jobKey(),
             job.get().jobStatus(),
-            jobLastUpdated,
+            jobStarted,
             currentTime,
             jobProcessingTimeout.toSeconds()));
 
     return job.get().jobStatus() == JobStatus.IN_PROGRESS
-        && jobLastUpdated.plus(jobProcessingTimeout).isAfter(currentTime);
+        && jobStarted.plus(jobProcessingTimeout).isAfter(currentTime);
   }
 }

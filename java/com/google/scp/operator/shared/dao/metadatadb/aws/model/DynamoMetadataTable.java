@@ -67,6 +67,7 @@ public final class DynamoMetadataTable {
   // ErrorSummary Attributes
   private static final String NUM_REPORTS_WITH_ERRORS = "NumReportsWithErrors";
   private static final String ERROR_COUNTS = "ErrorCounts";
+  private static final String INTERNAL_ERROR_MESSAGES = "InternalErrorMessages";
 
   // JobMetadata Table Attributes
   private static final String JOB_KEY = "JobKey";
@@ -266,6 +267,13 @@ public final class DynamoMetadataTable {
                     .attributeConverter(ErrorCountsAttributeConverter.create())
                     .getter(ErrorSummary::getErrorCountsList)
                     .setter(ErrorSummary.Builder::addAllErrorCounts))
+        .addAttribute(
+            EnhancedType.listOf(String.class),
+            attribute ->
+                attribute
+                    .name(INTERNAL_ERROR_MESSAGES)
+                    .getter(ErrorSummary::getErrorMessagesList)
+                    .setter(ErrorSummary.Builder::addAllErrorMessages))
         .build();
   }
 

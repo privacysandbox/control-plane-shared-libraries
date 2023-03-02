@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
  * transaction details
  */
 public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
+
   private static final Logger logger = LoggerFactory.getLogger(PrivacyBudgetClientImpl.class);
 
   private static final String beginTransactionPath = "/transactions:begin";
@@ -263,14 +264,19 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
    *
    * @param transaction - Transaction whose status needs to be checked against the given coordinator
    * @param actionHttpStatusCode - The Http status code returned by the transaction phase request
-   * @throws IOException - in case the status received is transaction expired
+   * @throws PrivacyBudgetClientException - in case the status received is transaction expired or
+   *     the transaction phase between client and server are out sync by more than 1 phase
    */
   private ExecutionResult getExecutionResultBasedOnTransactionStatus(
       Transaction transaction, int actionHttpStatusCode) throws PrivacyBudgetClientException {
     TransactionStatusResponse transactionStatusResponse = null;
     try {
       transactionStatusResponse = fetchTransactionStatus(transaction);
-    } catch (IOException e) {
+    } catch (Exception e) {
+      logger.error(
+          "[{}] Failed to fetch transaction status. Error is: ",
+          transaction.getId(),
+          e.getMessage());
       return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
     }
     if (transactionStatusResponse.isExpired()) {

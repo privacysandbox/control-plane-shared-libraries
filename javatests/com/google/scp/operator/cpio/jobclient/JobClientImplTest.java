@@ -54,17 +54,20 @@ import com.google.scp.operator.shared.dao.jobqueue.common.JobQueue;
 import com.google.scp.operator.shared.dao.jobqueue.common.JobQueue.JobQueueException;
 import com.google.scp.operator.shared.dao.jobqueue.testing.FakeJobQueue;
 import com.google.scp.operator.shared.dao.metadatadb.common.JobMetadataDb;
+import com.google.scp.operator.shared.dao.metadatadb.common.JobMetadataDb.JobMetadataDbException;
 import com.google.scp.operator.shared.dao.metadatadb.testing.FakeMetadataDb;
 import com.google.scp.shared.proto.ProtoUtil;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import javax.inject.Inject;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -402,11 +405,105 @@ public final class JobClientImplTest {
         baseJob.toBuilder()
             .setJobStatus(JobStatus.IN_PROGRESS)
             .setCreateTime(Instant.parse("2021-01-01T12:28:00Z"))
+            .setProcessingStartTime(Optional.of(Instant.parse("2021-01-01T12:28:00Z")))
             .setUpdateTime(Instant.parse("2021-01-01T12:29:00Z"))
             .setJobProcessingTimeout(Duration.ofMinutes(5))
             .build();
 
     assertThat(jobClient.isDuplicateJob(Optional.of(job))).isEqualTo(true);
+  }
+
+  @Test
+  public void updateJobResultErrorSummary_throwsMetadataNotFound() throws JobClientException {
+    jobMetadataDb.setJobMetadataToReturn(Optional.empty());
+
+    ThrowingRunnable methodToTest =
+        () -> jobClient.appendJobErrorMessage(JobKey.newBuilder().build(), "");
+
+    assertThrows(JobClientException.class, methodToTest);
+  }
+
+  @Test
+  public void updateJobResultErrorSummary_throwsNotInProgress() throws JobClientException {
+    JobMetadata metadata = baseJobMetadata.toBuilder().setJobStatus(JobStatus.FINISHED).build();
+    jobMetadataDb.setJobMetadataToReturn(Optional.of(metadata));
+
+    ThrowingRunnable methodToTest = () -> jobClient.appendJobErrorMessage(metadata.getJobKey(), "");
+
+    assertThrows(JobClientException.class, methodToTest);
+  }
+
+  @Test
+  public void updateJobResultErrorSummary_success()
+      throws JobClientException, JobMetadataDbException {
+    String sampleErrorMessage = "fake.error.message to put within the error summary";
+    JobMetadata metadata = baseJobMetadata.toBuilder().setJobStatus(JobStatus.IN_PROGRESS).build();
+    jobMetadataDb.setJobMetadataToReturn(Optional.of(metadata));
+
+    jobClient.appendJobErrorMessage(metadata.getJobKey(), sampleErrorMessage);
+
+    assertThat(
+            jobMetadataDb
+                .getLastJobMetadataUpdated()
+                .getResultInfo()
+                .getErrorSummary()
+                .getErrorMessages(0))
+        .isEqualTo(sampleErrorMessage);
+  }
+
+  @Test
+  public void updateJobResultErrorSummary_errorMessagesCorrectLength() throws JobClientException {
+    int expectedErrorMessageListLength = 5;
+    String sampleErrorMessage = "fake.error.message to put within the error summary";
+    JobMetadata metadata = baseJobMetadata.toBuilder().setJobStatus(JobStatus.IN_PROGRESS).build();
+    jobMetadataDb.setJobMetadataToReturn(Optional.of(metadata));
+
+    for (int i = 0; i < expectedErrorMessageListLength; i++) {
+      jobClient.appendJobErrorMessage(metadata.getJobKey(), sampleErrorMessage + i);
+      // Fake JobMetadataDB stores updated metadata in separate variable from what getJobMetadata()
+      // returns, so it must be manually assigned back to it here
+      jobMetadataDb.setJobMetadataToReturn(Optional.of(jobMetadataDb.getLastJobMetadataUpdated()));
+    }
+
+    assertThat(
+            jobMetadataDb
+                .getLastJobMetadataUpdated()
+                .getResultInfo()
+                .getErrorSummary()
+                .getErrorMessagesList()
+                .size())
+        .isEqualTo(expectedErrorMessageListLength);
+  }
+
+  @Test
+  public void updateJobResultErrorSummary_errorMessagesCorrectlySet() throws JobClientException {
+    String[] sampleErrorMessages =
+        new String[] {
+          "fake.error.message 1",
+          "fake.error.message 2",
+          "my.fake.message 3",
+          "fake message 4",
+          "my fake message 5"
+        };
+    JobMetadata metadata = baseJobMetadata.toBuilder().setJobStatus(JobStatus.IN_PROGRESS).build();
+    jobMetadataDb.setJobMetadataToReturn(Optional.of(metadata));
+
+    for (int i = 0; i < sampleErrorMessages.length; i++) {
+      jobClient.appendJobErrorMessage(metadata.getJobKey(), sampleErrorMessages[i]);
+      // Fake JobMetadataDB stores updated metadata in separate variable from what getJobMetadata()
+      // returns, so it must be manually assigned back to it here
+      jobMetadataDb.setJobMetadataToReturn(Optional.of(jobMetadataDb.getLastJobMetadataUpdated()));
+    }
+    List<String> actualErrorMessages =
+        jobMetadataDb
+            .getLastJobMetadataUpdated()
+            .getResultInfo()
+            .getErrorSummary()
+            .getErrorMessagesList();
+
+    for (int i = 0; i < sampleErrorMessages.length; i++) {
+      assertThat(actualErrorMessages.get(i)).isEqualTo(sampleErrorMessages[i]);
+    }
   }
 
   private static final class TestEnv extends AbstractModule {

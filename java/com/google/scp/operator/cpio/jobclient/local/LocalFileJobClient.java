@@ -27,6 +27,7 @@ import com.google.scp.operator.cpio.jobclient.model.ErrorReason;
 import com.google.scp.operator.cpio.jobclient.model.Job;
 import com.google.scp.operator.cpio.jobclient.model.JobResult;
 import com.google.scp.operator.cpio.jobclient.testing.FakeJobGenerator;
+import com.google.scp.operator.protos.shared.backend.JobKeyProto.JobKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -133,5 +134,10 @@ final class LocalFileJobClient implements JobClient {
     } catch (IOException e) {
       throw new JobClientException(e, ErrorReason.JOB_MARK_COMPLETION_FAILED);
     }
+  }
+
+  @Override
+  public void appendJobErrorMessage(JobKey jobKey, String error) throws JobClientException {
+    // Requires access to Job Metadata DB to save the error message from Result Info
   }
 }

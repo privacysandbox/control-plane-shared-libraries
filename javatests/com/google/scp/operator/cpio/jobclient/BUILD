@@ -48,5 +48,6 @@ java_test(
         "//java/external:acai",
         "//java/external:google_truth",
         "//java/external:guice",
+        "//operator/protos/shared/backend:java_proto",
     ],
 )
