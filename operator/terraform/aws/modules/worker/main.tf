@@ -170,6 +170,7 @@ data "aws_iam_policy_document" "enclave_policy_doc" {
       "ec2:DescribeTags",
       "autoscaling:CompleteLifecycleAction",
       "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:SetInstanceHealth",
     ]
     resources = ["*"]
   }
