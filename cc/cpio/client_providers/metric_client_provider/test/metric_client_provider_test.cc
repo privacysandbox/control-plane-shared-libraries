@@ -20,6 +20,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include <aws/core/Aws.h>
 
@@ -62,7 +64,9 @@ using std::move;
 using std::shared_ptr;
 using std::static_pointer_cast;
 using std::string;
+using std::thread;
 using std::unique_ptr;
+using std::vector;
 
 static constexpr size_t kMetricsBatchSize = 1000;
 
@@ -310,27 +314,36 @@ class MetricClientProviderWithoutOptionsTest : public MetricClientProviderTest {
   shared_ptr<MockMetricClientProviderWithOverrides> client_;
 };
 
-TEST_F(MetricClientProviderWithoutOptionsTest, PutMetricsSuccess) {
+TEST_F(MetricClientProviderWithoutOptionsTest,
+       PutMetricSuccessWithMultipleThreads) {
   auto request = CreatePutMetricsRequest();
   request->set_metric_namespace("namespace");
   AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
       move(request),
       [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
-  int64_t batch_push_called_count = 0;
+  atomic<int> batch_push_called_count = 0;
   client_->metrics_batch_push_mock =
-      [&](const std::shared_ptr<std::vector<core::AsyncContext<
-              cmrt::sdk::metric_service::v1::PutMetricsRequest,
-              cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
+      [&](const shared_ptr<
+          vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>&
               metric_requests_vector) noexcept {
         EXPECT_EQ(metric_requests_vector->size(), 1);
-        batch_push_called_count += 1;
+        batch_push_called_count++;
         return SuccessExecutionResult();
       };
+  vector<thread> threads;
+  for (auto i = 0; i < 100; ++i) {
+    threads.push_back(thread([&]() {
+      EXPECT_EQ(client_->PutMetrics(context), SuccessExecutionResult());
+    }));
+  }
 
-  EXPECT_EQ(client_->PutMetrics(context), SuccessExecutionResult());
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
   EXPECT_EQ(client_->GetSizeMetricRequestsVector(), 0);
-  WaitUntil([&]() { return batch_push_called_count == 1; });
+  WaitUntil([&]() { return batch_push_called_count.load() == 100; });
 }
 
 TEST_F(MetricClientProviderWithoutOptionsTest, EmptyNamespaceShouldFail) {

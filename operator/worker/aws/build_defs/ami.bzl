@@ -62,7 +62,7 @@ def _packer_worker_ami_impl(ctx):
         output = packer_file,
         substitutions = {
             "{ec2_instance}": ctx.attr.ec2_instance,
-            "{aws_region}": ctx.attr.aws_region,
+            "{aws_region}": ctx.attr.aws_region[BuildSettingInfo].value,
             "{container_path}": enclave_tar.short_path,
             "{container_filename}": enclave_tar.basename,
             "{proxy_rpm}": proxy_rpm.short_path,
@@ -73,7 +73,7 @@ def _packer_worker_ami_impl(ctx):
             "{ami_groups}": ctx.attr.ami_groups,
             "{enable_worker_debug_mode}": "true" if ctx.attr.enable_worker_debug_mode else "false",
             "{licenses}": licenses_tar.short_path,
-            "{subnet_id}": ctx.attr.subnet_id,
+            "{subnet_id}": ctx.attr.subnet_id[BuildSettingInfo].value,
         },
     )
 
@@ -137,9 +137,9 @@ packer_worker_ami = rule(
         "enclave_memory_mib": attr.int(
             default = 7168,
         ),
-        "aws_region": attr.string(
+        "aws_region": attr.label(
             mandatory = True,
-            default = "us-east-1",
+            providers = [BuildSettingInfo],
         ),
         "proxy_rpm": attr.label(
             default = Label("//cc/aws/proxy:vsockproxy_rpm"),
@@ -175,8 +175,9 @@ packer_worker_ami = rule(
             allow_single_file = True,
             mandatory = True,
         ),
-        "subnet_id": attr.string(
-            default = "",
+        "subnet_id": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
         ),
     },
     executable = True,

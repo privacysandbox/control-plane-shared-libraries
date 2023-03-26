@@ -34,7 +34,7 @@ class QueueClientProviderInterface : public core::ServiceInterface {
   virtual ~QueueClientProviderInterface() = default;
   /**
    * @brief Enqueue a message to the queue.
-   * @param context context of the operation.
+   * @param enqueue_message_context context of the operation.
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult EnqueueMessage(
@@ -43,7 +43,7 @@ class QueueClientProviderInterface : public core::ServiceInterface {
           enqueue_message_context) noexcept = 0;
   /**
    * @brief Get top message from the queue.
-   * @param context context of the operation.
+   * @param get_top_message_context context of the operation.
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult GetTopMessage(
@@ -51,18 +51,18 @@ class QueueClientProviderInterface : public core::ServiceInterface {
                          cmrt::sdk::queue_service::v1::GetTopMessageResponse>&
           get_top_message_context) noexcept = 0;
   /**
-   * @brief Update expiration time of a message from the queue.
-   * @param context context of the operation.
+   * @brief Update visibility timeout of a message from the queue.
+   * @param update_message_visibility_timeout_context context of the operation.
    * @return ExecutionResult result of the operation.
    */
-  virtual core::ExecutionResult UpdateMessageExpirationTime(
+  virtual core::ExecutionResult UpdateMessageVisibilityTimeout(
       core::AsyncContext<
-          cmrt::sdk::queue_service::v1::UpdateMessageExpirationTimeRequest,
-          cmrt::sdk::queue_service::v1::UpdateMessageExpirationTimeResponse>&
-          update_message_expiration_time_context) noexcept = 0;
+          cmrt::sdk::queue_service::v1::UpdateMessageVisibilityTimeoutRequest,
+          cmrt::sdk::queue_service::v1::UpdateMessageVisibilityTimeoutResponse>&
+          update_message_visibility_timeout_context) noexcept = 0;
   /**
    * @brief Delete a message from the queue.
-   * @param context context of the operation.
+   * @param delete_message_context context of the operation.
    * @return ExecutionResult result of the operation.
    */
   virtual core::ExecutionResult DeleteMessage(
@@ -83,6 +83,16 @@ struct QueueClientOptions {
    *
    */
   std::string queue_name;
+
+  /**
+   * @brief Optional. The default value of visibility timeout. When a message is
+   * received from a client, it stays in the queue. The queue sets the
+   * visibility timeout to the message, a period of time during which queue
+   * prevents other client from receiving and processing this message. The
+   * default visiblity timeout is 600 seconds. The minimum is 0 sesocnds and
+   * maximum is 600 seconds.
+   */
+  uint16_t default_visibility_timeout_in_seconds;
 };
 
 class QueueClientProviderFactory {
@@ -91,10 +101,16 @@ class QueueClientProviderFactory {
    * @brief Factory to create QueueClientProvider.
    *
    * @param options QueueClientOptions.
+   * @param instance_client Instance Client.
+   * @param cpu_async_executor CPU Async Eexcutor.
+   * @param io_async_executor IO Async Eexcutor.
    * @return std::shared_ptr<QueueClientProviderInterface> created
    * QueueClientProviderProvider.
    */
   static std::shared_ptr<QueueClientProviderInterface> Create(
-      const std::shared_ptr<QueueClientOptions>& options);
+      const std::shared_ptr<QueueClientOptions>& options,
+      std::shared_ptr<InstanceClientProviderInterface> instance_client,
+      std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
+      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor) noexcept;
 };
 }  // namespace google::scp::cpio::client_providers

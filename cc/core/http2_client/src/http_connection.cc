@@ -29,10 +29,12 @@
 #include <nghttp2/asio_http2.h>
 #include <nghttp2/asio_http2_client.h>
 
+#include "absl/strings/str_cat.h"
 #include "cc/core/common/global_logger/src/global_logger.h"
 #include "cc/core/common/uuid/src/uuid.h"
 #include "cc/core/interface/async_context.h"
 #include "cc/core/interface/http_client_interface.h"
+#include "cc/core/utils/src/http.h"
 #include "public/core/interface/execution_result.h"
 
 #include "error_codes.h"
@@ -50,6 +52,7 @@ using boost::system::error_code;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::common::ToString;
 using google::scp::core::common::Uuid;
+using google::scp::core::utils::GetEscapedUriWithQuery;
 using nghttp2::asio_http2::header_map;
 using nghttp2::asio_http2::client::configure_tls_context;
 using nghttp2::asio_http2::client::response;
@@ -273,9 +276,17 @@ void HttpConnection::SendHttpRequest(
   headers.insert({string(kClientActivityIdHeader),
                   {ToString(http_context.activity_id), false}});
 
+  auto uri = GetEscapedUriWithQuery(*http_context.request);
+  if (!uri.Successful()) {
+    pending_network_calls_.Erase(request_id);
+    ERROR_CONTEXT(kHttp2Client, http_context, uri.result(),
+                  "Failed escaping URI.");
+    FinishContext(uri.result(), http_context, async_executor_);
+    return;
+  }
+
   error_code ec;
-  auto uri = *http_context.request->path;
-  auto http_request = session_->submit(ec, method, uri, body, headers);
+  auto http_request = session_->submit(ec, method, uri.value(), body, headers);
   if (ec) {
     pending_network_calls_.Erase(request_id);
     http_context.result = RetryExecutionResult(

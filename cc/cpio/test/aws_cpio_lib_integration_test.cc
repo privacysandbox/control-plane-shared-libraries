@@ -68,7 +68,7 @@ static constexpr char kLocalHost[] = "http://127.0.0.1";
 static constexpr char kLocalstackContainerName[] =
     "cpio_integration_test_localstack";
 // TODO(b/241857324): pick available ports randomly.
-static constexpr char kLocalstackPort[] = "8080";
+static constexpr char kLocalstackPort[] = "8888";
 static constexpr char kParameterName1[] = "test_parameter_name_1";
 static constexpr char kParameterValue1[] = "test_parameter_value_1";
 static constexpr char kParameterName2[] = "test_parameter_name_2";

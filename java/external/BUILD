@@ -659,3 +659,18 @@ alias(
     name = "google_common_proto",
     actual = "@maven//:com_google_api_grpc_proto_google_common_protos",
 )
+
+alias(
+    name = "google_api_services_cloudkms",
+    actual = "@maven//:com_google_apis_google_api_services_cloudkms",
+)
+
+alias(
+    name = "google_http_client",
+    actual = "@maven//:com_google_http_client_google_http_client",
+)
+
+alias(
+    name = "google_http_client_gson",
+    actual = "@maven//:com_google_http_client_google_http_client_gson",
+)

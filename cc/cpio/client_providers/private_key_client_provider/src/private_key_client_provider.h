@@ -25,7 +25,7 @@
 #include "core/interface/http_types.h"
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "cpio/client_providers/interface/private_key_client_provider_interface.h"
-#include "cpio/client_providers/interface/private_key_fetching_client_provider_interface.h"
+#include "cpio/client_providers/interface/private_key_fetcher_provider_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
@@ -44,8 +44,12 @@ class PrivateKeyClientProvider : public PrivateKeyClientProviderInterface {
       const std::shared_ptr<PrivateKeyClientOptions>&
           private_key_client_options,
       const std::shared_ptr<core::HttpClientInterface>& http_client,
-      const std::shared_ptr<RoleCredentialsProviderInterface>&
-          role_credentials_provider);
+      const std::shared_ptr<PrivateKeyFetcherProviderInterface>&
+          private_key_fetcher,
+      const std::shared_ptr<KmsClientProviderInterface>& kms_client)
+      : private_key_client_options_(private_key_client_options),
+        private_key_fetcher_(private_key_fetcher),
+        kms_client_provider_(kms_client) {}
 
   core::ExecutionResult Init() noexcept override;
 
@@ -139,8 +143,7 @@ class PrivateKeyClientProvider : public PrivateKeyClientProviderInterface {
   std::shared_ptr<PrivateKeyClientOptions> private_key_client_options_;
 
   /// The private key fetching client instance.
-  std::shared_ptr<PrivateKeyFetchingClientProviderInterface>
-      private_key_fetching_client_;
+  std::shared_ptr<PrivateKeyFetcherProviderInterface> private_key_fetcher_;
 
   /// KMS client provider.
   std::shared_ptr<KmsClientProviderInterface> kms_client_provider_;

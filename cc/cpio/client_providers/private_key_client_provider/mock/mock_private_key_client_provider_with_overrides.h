@@ -24,8 +24,7 @@
 #include "cpio/client_providers/kms_client_provider/mock/mock_kms_client_provider.h"
 #include "cpio/client_providers/private_key_client_provider/src/private_key_client_provider.h"
 #include "cpio/client_providers/private_key_client_provider/src/private_key_client_utils.h"
-#include "cpio/client_providers/private_key_fetching_client_provider/mock/mock_private_key_fetching_client_provider.h"
-#include "cpio/client_providers/role_credentials_provider/mock/mock_role_credentials_provider.h"
+#include "cpio/client_providers/private_key_fetcher_provider/mock/mock_private_key_fetcher_provider.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 
@@ -39,11 +38,8 @@ class MockPrivateKeyClientProviderWithOverrides
       : PrivateKeyClientProvider(
             private_key_client_options,
             std::make_shared<core::http2_client::mock::MockHttpClient>(),
-            std::make_shared<MockRoleCredentialsProvider>()) {
-    kms_client_provider_ = std::make_shared<MockKmsClientProvider>();
-    private_key_fetching_client_ =
-        std::make_shared<MockPrivateKeyFetchingClientProvider>();
-  }
+            std::make_shared<MockPrivateKeyFetcherProvider>(),
+            std::make_shared<MockKmsClientProvider>()) {}
 
   std::function<core::ExecutionResult(
       core::AsyncContext<
@@ -80,10 +76,10 @@ class MockPrivateKeyClientProviderWithOverrides
         kms_client_provider_);
   }
 
-  std::shared_ptr<MockPrivateKeyFetchingClientProvider>
-  GetPrivateKeyFetchingClientProvider() {
-    return std::dynamic_pointer_cast<MockPrivateKeyFetchingClientProvider>(
-        private_key_fetching_client_);
+  std::shared_ptr<MockPrivateKeyFetcherProvider>
+  GetPrivateKeyFetcherProvider() {
+    return std::dynamic_pointer_cast<MockPrivateKeyFetcherProvider>(
+        private_key_fetcher_);
   }
 
   size_t GetEndpointNum() { return PrivateKeyClientProvider::endpoint_num_; }

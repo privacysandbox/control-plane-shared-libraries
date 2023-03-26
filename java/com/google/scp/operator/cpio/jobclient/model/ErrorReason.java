@@ -29,6 +29,8 @@ public enum ErrorReason {
   WRONG_JOB_STATUS,
   // Encountered an error when trying to mark job completed.
   JOB_MARK_COMPLETION_FAILED,
+  // Could not update ErrorSummary by appending an error message.
+  JOB_ERROR_SUMMARY_UPDATE_FAILED,
   // An unspecified fatal error occurred.
   UNSPECIFIED_ERROR
 }

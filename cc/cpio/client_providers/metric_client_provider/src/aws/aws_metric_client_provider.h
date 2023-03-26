@@ -46,16 +46,17 @@ class AwsMetricClientProvider : public MetricClientProvider {
    * @param instance_client_provider the Instance Client Provider.
    * @param region the optional region input. A temporary solution for PBS.
    * @param async_executor the thread pool for batch recording.
-   * @param message_router the message router for server mode.
+   * @param io_async_executor the thread pool to replace aws thread pool.
    */
   explicit AwsMetricClientProvider(
       const std::shared_ptr<MetricClientOptions>& metric_client_options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider,
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor =
-          nullptr)
+      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
       : MetricClientProvider(async_executor, metric_client_options,
-                             instance_client_provider) {}
+                             instance_client_provider),
+        io_async_executor_(io_async_executor) {}
 
   AwsMetricClientProvider() = delete;
 
@@ -87,24 +88,28 @@ class AwsMetricClientProvider : public MetricClientProvider {
       std::shared_ptr<Aws::Client::ClientConfiguration>&
           client_config) noexcept;
 
+  /// CloudWatchClient.
+  std::shared_ptr<Aws::CloudWatch::CloudWatchClient> cloud_watch_client_;
+
+ private:
   /**
    * @brief Is called after AWS PutMetricDataAsync is completed.
    *
-   * @param record_metric_context the record custom metric operation
-   * context.
+   * @param metric_requests_vector the vector of record custom metric operation
+   * context in PutMetricDataAsyncCall.
    * @param outcome the operation outcome of AWS PutMetricDataAsync.
    */
-  virtual void OnPutMetricDataAsyncCallback(
-      const std::shared_ptr<std::vector<core::AsyncContext<
-          cmrt::sdk::metric_service::v1::PutMetricsRequest,
-          cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
+  void OnPutMetricDataAsyncCallback(
+      std::vector<
+          core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                             cmrt::sdk::metric_service::v1::PutMetricsResponse>>
           metric_requests_vector,
       const Aws::CloudWatch::CloudWatchClient*,
       const Aws::CloudWatch::Model::PutMetricDataRequest&,
       const Aws::CloudWatch::Model::PutMetricDataOutcome& outcome,
       const std::shared_ptr<const Aws::Client::AsyncCallerContext>&) noexcept;
 
-  /// CloudWatchClient.
-  std::shared_ptr<Aws::CloudWatch::CloudWatchClient> cloud_watch_client_;
+  /// An instance of the IO async executor.
+  const std::shared_ptr<core::AsyncExecutorInterface> io_async_executor_;
 };
 }  // namespace google::scp::cpio::client_providers

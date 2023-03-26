@@ -25,13 +25,17 @@
 #include <utility>
 #include <vector>
 
+#include <google/protobuf/util/time_util.h>
+
 #include "core/interface/http_types.h"
-#include "cpio/client_providers/interface/private_key_fetching_client_provider_interface.h"
-#include "public/cpio/proto/private_key_service/v1/private_key_service.pb.h"
+#include "cpio/client_providers/interface/private_key_fetcher_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/private_key_service/v1/private_key_service.pb.h"
 
 #include "error_codes.h"
 
+using google::cmrt::sdk::private_key_service::v1::PrivateKey;
+using google::protobuf::util::TimeUtil;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::HttpHeaders;
@@ -42,7 +46,6 @@ using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_SECRET_PIECE_SIZE_UNMATCHED;
 using google::scp::cpio::client_providers::KeyData;
 using google::scp::cpio::client_providers::PrivateKeyFetchingResponse;
-using google::cmrt::sdk::private_key_service::v1::PrivateKey;
 using std::byte;
 using std::shared_ptr;
 using std::string;
@@ -76,7 +79,10 @@ ExecutionResult PrivateKeyClientUtils::GetPrivateKeyInfo(
 
   private_key.set_key_id(resource_name);
   private_key.set_public_key(*response->public_key_material);
-  private_key.set_expiration_time_in_ms(response->expiration_time_ms);
+  *private_key.mutable_expiration_time() =
+      TimeUtil::MillisecondsToTimestamp(response->expiration_time_in_ms);
+  *private_key.mutable_creation_time() =
+      TimeUtil::MillisecondsToTimestamp(response->creation_time_in_ms);
 
   return SuccessExecutionResult();
 }

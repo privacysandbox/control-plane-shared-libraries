@@ -27,8 +27,8 @@
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "cpio/client_providers/metric_client_provider/interface/aggregate_metric_interface.h"
 #include "cpio/client_providers/metric_client_provider/interface/type_def.h"
-#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 #include "error_codes.h"
 
@@ -44,7 +44,8 @@ class AggregateMetric : public AggregateMetricInterface {
       const std::shared_ptr<MetricDefinition>& metric_info,
       core::TimeDuration time_duration = 60000,
       const std::shared_ptr<std::vector<std::string>>& event_code_list =
-          nullptr);
+          nullptr,
+        const std::string& event_code_label_key = kEventCodeLabelKey);
 
   core::ExecutionResult Init() noexcept override;
 
@@ -113,5 +114,7 @@ class AggregateMetric : public AggregateMetricInterface {
   std::mutex sync_mutex_;
   /// Indicates whther the component stopped
   bool is_running_;
+
+  static constexpr char kEventCodeLabelKey[] = "EventCode";
 };
 }  // namespace google::scp::cpio::client_providers

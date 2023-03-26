@@ -24,9 +24,10 @@
 #include <utility>
 
 #include "core/interface/http_types.h"
-#include "public/cpio/proto/public_key_service/v1/public_key_service.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/public_key_service/v1/public_key_service.pb.h"
 
+using google::cmrt::sdk::public_key_service::v1::PublicKey;
 using google::scp::core::BytesBuffer;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -37,7 +38,6 @@ using google::scp::core::errors::
     SC_PUBLIC_KEY_CLIENT_PROVIDER_EXPIRED_TIME_FETCH_FAILED;
 using google::scp::core::errors::
     SC_PUBLIC_KEY_CLIENT_PROVIDER_PUBLIC_KEYS_FETCH_FAILED;
-using google::cmrt::sdk::public_key_service::v1::PublicKey;
 using std::get_time;
 using std::istringstream;
 using std::mktime;

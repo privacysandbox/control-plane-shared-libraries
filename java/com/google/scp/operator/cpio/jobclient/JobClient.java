@@ -19,6 +19,7 @@ package com.google.scp.operator.cpio.jobclient;
 import com.google.scp.operator.cpio.jobclient.model.ErrorReason;
 import com.google.scp.operator.cpio.jobclient.model.Job;
 import com.google.scp.operator.cpio.jobclient.model.JobResult;
+import com.google.scp.operator.protos.shared.backend.JobKeyProto.JobKey;
 import java.util.Optional;
 
 /** Interface for handling aggregation jobs */
@@ -39,6 +40,16 @@ public interface JobClient {
    * @param jobResult
    */
   void markJobCompleted(JobResult jobResult) throws JobClientException;
+
+  /**
+   * Appends error message to a Job's ErrorSummary field within its ResultInfo.
+   *
+   * @param jobKey JobKey of the Job to append to
+   * @param error Error message to append to ErrorSummary
+   * @throws JobClientException When the Job's metadata cannot be accessed, if the Job is not
+   *     IN_PROGRESS, or if the error message cannot be saved
+   */
+  void appendJobErrorMessage(JobKey jobKey, String error) throws JobClientException;
 
   /** Represents an exception thrown by the {@code JobClient} class. */
   class JobClientException extends Exception {

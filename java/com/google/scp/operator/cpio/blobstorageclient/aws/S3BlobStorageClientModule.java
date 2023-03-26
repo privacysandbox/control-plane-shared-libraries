@@ -17,8 +17,10 @@
 package com.google.scp.operator.cpio.blobstorageclient.aws;
 
 import com.google.inject.BindingAnnotation;
+import com.google.inject.Key;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.OptionalBinder;
 import com.google.scp.operator.cpio.blobstorageclient.BlobStorageClient;
 import com.google.scp.operator.cpio.blobstorageclient.BlobStorageClientModule;
 import com.google.scp.shared.clients.configclient.Annotations.ApplicationRegionBinding;
@@ -69,11 +71,33 @@ public final class S3BlobStorageClientModule extends BlobStorageClientModule {
   }
 
   @Override
-  public void configureModule() {}
+  public void configureModule() {
+    // Default binding for S3UsePartialRequests
+    OptionalBinder.newOptionalBinder(binder(), Key.get(Boolean.class, S3UsePartialRequests.class))
+        .setDefault()
+        .toInstance(false);
+    // Default binding for PartialRequestBufferSize
+    OptionalBinder.newOptionalBinder(
+            binder(), Key.get(Integer.class, PartialRequestBufferSize.class))
+        .setDefault()
+        .toInstance(1800000);
+  }
 
-  /** Annotation for a binding to override the S3 endpoint */
+  /** Annotation for a binding to override the S3 endpoint. */
   @BindingAnnotation
   @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
   @Retention(RetentionPolicy.RUNTIME)
   public @interface S3EndpointOverrideBinding {}
+
+  /** Annotations for a binding that indicates whether to use http partial request. */
+  @BindingAnnotation
+  @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
+  @Retention(RetentionPolicy.RUNTIME)
+  public @interface S3UsePartialRequests {}
+
+  /** Annotations for a binding that specifies the http partial request size. */
+  @BindingAnnotation
+  @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
+  @Retention(RetentionPolicy.RUNTIME)
+  public @interface PartialRequestBufferSize {}
 }

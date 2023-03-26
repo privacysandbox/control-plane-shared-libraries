@@ -135,55 +135,15 @@ void ConfigClientProvider::OnGetParameterCallback(
 ExecutionResult ConfigClientProvider::GetInstanceId(
     AsyncContext<GetInstanceIdProtoRequest, GetInstanceIdProtoResponse>&
         context) noexcept {
-  string instance_id;
-  auto execution_result =
-      instance_client_provider_->GetCurrentInstanceId(instance_id);
-  if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
-                  "Failed getting AWS instance ID.");
-    context.result = execution_result;
-    context.Finish();
-    return execution_result;
-  }
-
-  context.response = make_shared<GetInstanceIdProtoResponse>();
-  context.response->set_instance_id(instance_id);
-  context.result = SuccessExecutionResult();
+  context.result = FailureExecutionResult(SC_UNKNOWN);
   context.Finish();
 
-  return SuccessExecutionResult();
+  return context.result;
 }
 
 ExecutionResult ConfigClientProvider::GetTag(
     AsyncContext<GetTagProtoRequest, GetTagProtoResponse>& context) noexcept {
-  string instance_id;
-  auto execution_result =
-      instance_client_provider_->GetCurrentInstanceId(instance_id);
-  if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
-                  "Failed getting AWS instance ID.");
-    context.result = execution_result;
-    context.Finish();
-    return execution_result;
-  }
-
-  vector<string> tag_names(1);
-  tag_names.emplace_back(context.request->tag_name());
-  map<string, string> tag_values_map;
-  execution_result = instance_client_provider_->GetTagsOfInstance(
-      tag_names, instance_id, tag_values_map);
-  if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kConfigClientProvider, context, execution_result,
-                  "Failed getting instance tag for name %s.",
-                  context.request->tag_name().c_str());
-    context.result = execution_result;
-    context.Finish();
-    return execution_result;
-  }
-
-  context.result = SuccessExecutionResult();
-  context.response = make_shared<GetTagProtoResponse>();
-  context.response->set_value(tag_values_map.at(context.request->tag_name()));
+  context.result = FailureExecutionResult(SC_UNKNOWN);
   context.Finish();
 
   return context.result;

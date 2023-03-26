@@ -65,23 +65,10 @@ using std::placeholders::_1;
 static constexpr char kPrivateKeyClientProvider[] = "PrivateKeyClientProvider";
 
 namespace google::scp::cpio::client_providers {
-PrivateKeyClientProvider::PrivateKeyClientProvider(
-    const shared_ptr<PrivateKeyClientOptions>& private_key_client_options,
-    const shared_ptr<HttpClientInterface>& http_client,
-    const shared_ptr<RoleCredentialsProviderInterface>&
-        role_credentials_provider)
-    : private_key_client_options_(private_key_client_options) {
-  kms_client_provider_ =
-      KmsClientProviderFactory::Create(role_credentials_provider);
-  private_key_fetching_client_ =
-      PrivateKeyFetchingClientProviderFactory::Create(
-          http_client, role_credentials_provider);
-}
-
 ExecutionResult PrivateKeyClientProvider::Init() noexcept {
   endpoint_list_.push_back(
       private_key_client_options_->primary_private_key_vending_endpoint);
-  for (auto endpoint :
+  for (const auto& endpoint :
        private_key_client_options_->secondary_private_key_vending_endpoints) {
     endpoint_list_.push_back(endpoint);
   }
@@ -114,14 +101,10 @@ ExecutionResult PrivateKeyClientProvider::ListPrivateKeysByIds(
     auto key_id = list_private_keys_context.request->key_ids()[key_id_index];
     for (size_t uri_index = 0; uri_index < endpoint_num_; ++uri_index) {
       auto request = make_shared<PrivateKeyFetchingRequest>();
-      auto endpoint = endpoint_list_[uri_index];
+      const auto& endpoint = endpoint_list_[uri_index];
       request->key_id = make_shared<string>(key_id);
-      request->private_key_service_base_uri =
-          make_shared<core::Uri>(endpoint.private_key_vending_service_endpoint);
-      request->service_region =
-          make_shared<std::string>(endpoint.service_region);
-      request->account_identity =
-          make_shared<AccountIdentity>(endpoint.account_identity);
+      request->key_vending_endpoint =
+          make_shared<PrivateKeyVendingEndpoint>(endpoint);
 
       AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>
           fetch_private_key_context(
@@ -130,8 +113,8 @@ ExecutionResult PrivateKeyClientProvider::ListPrivateKeysByIds(
                    list_private_keys_context, _1, list_keys_status,
                    endpoints_status, uri_index));
 
-      auto execution_result = private_key_fetching_client_->FetchPrivateKey(
-          fetch_private_key_context);
+      auto execution_result =
+          private_key_fetcher_->FetchPrivateKey(fetch_private_key_context);
 
       if (!execution_result.Successful()) {
         // To avoid running context.Finish() repeatedly, use
@@ -237,9 +220,14 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
     return;
   }
   kms_decrypt_request.account_identity =
-      fetch_private_key_context.request->account_identity;
-  kms_decrypt_request.kms_region =
-      fetch_private_key_context.request->service_region;
+      make_shared<string>(fetch_private_key_context.request
+                              ->key_vending_endpoint->account_identity);
+  kms_decrypt_request.kms_region = make_shared<string>(
+      fetch_private_key_context.request->key_vending_endpoint->service_region);
+  // Only used for GCP.
+  kms_decrypt_request.gcp_wip_provider =
+      make_shared<string>(fetch_private_key_context.request
+                              ->key_vending_endpoint->gcp_wip_provider);
   AsyncContext<KmsDecryptRequest, KmsDecryptResponse> decrypt_context(
       make_shared<KmsDecryptRequest>(kms_decrypt_request),
       bind(&PrivateKeyClientProvider::OnDecrpytCallback, this,
@@ -347,9 +335,16 @@ PrivateKeyClientProviderFactory::Create(
     const std::shared_ptr<PrivateKeyClientOptions>& options,
     const std::shared_ptr<core::HttpClientInterface>& http_client,
     const std::shared_ptr<RoleCredentialsProviderInterface>&
-        role_credentials_provider) {
-  return make_shared<PrivateKeyClientProvider>(options, http_client,
-                                               role_credentials_provider);
+        role_credentials_provider,
+    const std::shared_ptr<AuthTokenProviderInterface>& auth_token_provider) {
+  auto kms_client_provider =
+      KmsClientProviderFactory::Create(role_credentials_provider);
+  // TODO: provide AuthTokenProvider in lib_cpio_provider.
+  auto private_key_fetcher = PrivateKeyFetcherProviderFactory::Create(
+      http_client, role_credentials_provider, auth_token_provider);
+
+  return make_shared<PrivateKeyClientProvider>(
+      options, http_client, private_key_fetcher, kms_client_provider);
 }
 
 }  // namespace google::scp::cpio::client_providers

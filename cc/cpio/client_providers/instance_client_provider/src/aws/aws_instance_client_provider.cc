@@ -30,6 +30,7 @@
 
 #include "cc/core/common/uuid/src/uuid.h"
 #include "core/common/global_logger/src/global_logger.h"
+#include "core/interface/http_client_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"
 #include "public/core/interface/execution_result.h"
 
@@ -42,8 +43,20 @@ using Aws::EC2::Model::DescribeTagsOutcome;
 using Aws::EC2::Model::DescribeTagsRequest;
 using Aws::EC2::Model::Filter;
 using Aws::Internal::EC2MetadataClient;
+using google::cmrt::sdk::instance_service::v1::
+    GetCurrentInstanceResourceNameRequest;
+using google::cmrt::sdk::instance_service::v1::
+    GetCurrentInstanceResourceNameResponse;
+using google::cmrt::sdk::instance_service::v1::
+    GetInstanceDetailsByResourceNameRequest;
+using google::cmrt::sdk::instance_service::v1::
+    GetInstanceDetailsByResourceNameResponse;
+using google::cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest;
+using google::cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse;
+using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
+using google::scp::core::HttpClientInterface;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
@@ -111,14 +124,37 @@ ExecutionResult AwsInstanceClientProvider::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceProjectId(
-    std::string&) noexcept {
+ExecutionResult AwsInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
+    const std::string& resource_name,
+    cmrt::sdk::instance_service::v1::InstanceDetails&
+        instance_details) noexcept {
   // Not implemented.
   return FailureExecutionResult(SC_UNKNOWN);
 }
 
-ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceZone(
-    std::string&) noexcept {
+ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceResourceName(
+    AsyncContext<GetCurrentInstanceResourceNameRequest,
+                 GetCurrentInstanceResourceNameResponse>& context) noexcept {
+  // Not implemented.
+  return FailureExecutionResult(SC_UNKNOWN);
+}
+
+ExecutionResult AwsInstanceClientProvider::GetTagsByResourceName(
+    AsyncContext<GetTagsByResourceNameRequest, GetTagsByResourceNameResponse>&
+        context) noexcept {
+  // Not implemented.
+  return FailureExecutionResult(SC_UNKNOWN);
+}
+
+ExecutionResult AwsInstanceClientProvider::GetInstanceDetailsByResourceName(
+    AsyncContext<GetInstanceDetailsByResourceNameRequest,
+                 GetInstanceDetailsByResourceNameResponse>& context) noexcept {
+  // Not implemented.
+  return FailureExecutionResult(SC_UNKNOWN);
+}
+
+ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceResourceNameSync(
+    std::string& resource_name) noexcept {
   // Not implemented.
   return FailureExecutionResult(SC_UNKNOWN);
 }
@@ -131,12 +167,6 @@ ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceId(
 ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceRegion(
     string& region) noexcept {
   return GetResource(region, kResourcePathForRegion);
-}
-
-ExecutionResult AwsInstanceClientProvider::GetCurrentInstancePublicIpv4Address(
-    string& instance_public_ipv4_address) noexcept {
-  return GetResource(instance_public_ipv4_address,
-                     kResourcePathForInstancePublicIpv4Address);
 }
 
 ExecutionResult AwsInstanceClientProvider::GetCurrentInstancePrivateIpv4Address(
@@ -235,8 +265,13 @@ ExecutionResult AwsInstanceClientProvider::GetResource(
   return SuccessExecutionResult();
 }
 
-std::shared_ptr<InstanceClientProviderInterface>
-InstanceClientProviderFactory::Create() {
+shared_ptr<InstanceClientProviderInterface>
+InstanceClientProviderFactory::Create(
+    const shared_ptr<AuthTokenProviderInterface>& auth_token_provider,
+    const shared_ptr<HttpClientInterface>& http1_client,
+    const shared_ptr<HttpClientInterface>& http2_client,
+    const shared_ptr<core::AsyncExecutorInterface>& async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
   return make_shared<AwsInstanceClientProvider>();
 }
 }  // namespace google::scp::cpio::client_providers

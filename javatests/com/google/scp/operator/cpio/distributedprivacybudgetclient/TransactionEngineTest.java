@@ -53,6 +53,8 @@ public final class TransactionEngineTest {
     transactionEngine =
         new TransactionEngineImpl(
             transactionPhaseManager, ImmutableList.of(privacyBudgetClient1, privacyBudgetClient2));
+    when(privacyBudgetClient1.getPrivacyBudgetServerIdentifier()).thenReturn("coordinator 1");
+    when(privacyBudgetClient2.getPrivacyBudgetServerIdentifier()).thenReturn("coordinator 2");
   }
 
   @Test
@@ -492,7 +494,39 @@ public final class TransactionEngineTest {
     when(transactionPhaseManager.proceedToNextPhase(
             TransactionPhase.NOTSTARTED,
             ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK)))
+        .thenReturn(TransactionPhase.BEGIN);
+    when(transactionPhaseManager.proceedToNextPhase(
+            TransactionPhase.BEGIN, ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK)))
+        .thenReturn(TransactionPhase.PREPARE);
+    when(transactionPhaseManager.proceedToNextPhase(
+            TransactionPhase.PREPARE,
+            ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK)))
+        .thenReturn(TransactionPhase.COMMIT);
+    when(transactionPhaseManager.proceedToNextPhase(
+            TransactionPhase.COMMIT,
+            ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK)))
+        .thenReturn(TransactionPhase.NOTIFY);
+    when(transactionPhaseManager.proceedToNextPhase(
+            TransactionPhase.NOTIFY,
+            ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK)))
         .thenReturn(TransactionPhase.END);
+
+    when(privacyBudgetClient1.performActionBegin(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient2.performActionBegin(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient1.performActionPrepare(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient2.performActionPrepare(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient1.performActionCommit(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient2.performActionCommit(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient1.performActionNotify(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient2.performActionNotify(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
     when(privacyBudgetClient1.performActionEnd(any(Transaction.class)))
         .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
     when(privacyBudgetClient2.performActionEnd(any(Transaction.class)))
@@ -500,9 +534,45 @@ public final class TransactionEngineTest {
 
     transactionEngine.execute(getTestRequest());
 
-    verify(transactionPhaseManager, times(1)).proceedToNextPhase(any(), any());
+    verify(transactionPhaseManager, times(5)).proceedToNextPhase(any(), any());
     verify(privacyBudgetClient1, times(1)).performActionEnd(any(Transaction.class));
     verify(privacyBudgetClient2, times(1)).performActionEnd(any(Transaction.class));
+  }
+
+  @Test
+  public void execute_AbortNotExecutedWhenCurrentPhaseNotStarted() throws Exception {
+    when(transactionPhaseManager.proceedToNextPhase(
+            TransactionPhase.NOTSTARTED,
+            ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK)))
+        .thenReturn(TransactionPhase.BEGIN);
+    when(transactionPhaseManager.proceedToNextPhase(
+            TransactionPhase.BEGIN,
+            ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN)))
+        .thenReturn(TransactionPhase.ABORT);
+    when(transactionPhaseManager.proceedToNextPhase(
+            TransactionPhase.ABORT, ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK)))
+        .thenReturn(TransactionPhase.END);
+
+    when(privacyBudgetClient1.performActionBegin(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient2.performActionBegin(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN));
+    when(privacyBudgetClient1.performActionAbort(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+    when(privacyBudgetClient1.performActionEnd(any(Transaction.class)))
+        .thenReturn(ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK));
+
+    assertThrows(
+        TransactionEngineException.class, () -> transactionEngine.execute(getTestRequest()));
+
+    verify(transactionPhaseManager, times(3)).proceedToNextPhase(any(), any());
+    verify(privacyBudgetClient1, times(1)).performActionBegin(any(Transaction.class));
+    verify(privacyBudgetClient1, times(1)).performActionAbort(any(Transaction.class));
+    verify(privacyBudgetClient1, times(1)).performActionEnd(any(Transaction.class));
+
+    verify(privacyBudgetClient2, times(1)).performActionBegin(any(Transaction.class));
+    verify(privacyBudgetClient2, never()).performActionAbort(any(Transaction.class));
+    verify(privacyBudgetClient2, never()).performActionEnd(any(Transaction.class));
   }
 
   private TransactionRequest getTestRequest() {

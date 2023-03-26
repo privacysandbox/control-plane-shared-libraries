@@ -16,13 +16,11 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
     name = "test_aws_parameter_client_provider_lib",
-    srcs = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs"],
-        "//conditions:default": ["//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs"],
-    }) + [
-        "//cc/cpio/client_providers/interface:parameter_client_provider_interface.h",
-        "test_aws_parameter_client_provider.h",
+    srcs = [
         "test_aws_parameter_client_provider.cc",
+        "test_aws_parameter_client_provider.h",
+        "//cc/cpio/client_providers/interface:parameter_client_provider_interface.h",
+        "//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs",
     ],
     copts = [
         "-DTEST_CPIO=1",

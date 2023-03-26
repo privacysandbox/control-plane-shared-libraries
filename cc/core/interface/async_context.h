@@ -93,7 +93,7 @@ struct AsyncContext {
   }
 
   /// Finishes the async operation by calling the callback.
-  void Finish() noexcept {
+  virtual void Finish() noexcept {
     if (callback) {
       if (!result.Successful()) {
         // typeid(TRequest).name() is an approximation of the context's template

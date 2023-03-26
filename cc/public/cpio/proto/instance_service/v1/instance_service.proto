@@ -21,65 +21,83 @@ import "cc/core/common/proto/common.proto";
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
 
-// Service to fetch metadata from instances.
+// Services to fetch metadata from instances.
 service InstanceService {
-  // Fetches resource ID for the current instance. In AWS, returns instance ID.
-  // In GCP, returns projects/{project}/zones/{zone}/instances/{instance_id}.
-  rpc GetCurrentInstanceResourceId(GetCurrentInstanceResourceIdRequest)
-      returns (GetCurrentInstanceResourceIdResponse) {}
-  // Fetches region for the current instance.
-  rpc GetCurrentInstanceRegion(GetCurrentInstanceRegionRequest)
-      returns (GetCurrentInstanceRegionResponse) {}
-  // Fetches instance info for the given instance resource ID. In AWS, the
-  // resource ID is instance ID. In GCP, it is
-  // projects/{project}/zones/{zone}/instances/{instance_id}.
-  rpc GetInstanceInfoByResourceId(GetInstanceInfoByResourceIdRequest)
-      returns (GetInstanceInfoByResourceIdResponse) {}
+  // Get the resource name of the current instance.
+  rpc GetCurrentInstanceResourceName(GetCurrentInstanceResourceNameRequest)
+      returns (GetCurrentInstanceResourceNameResponse) {}
+  // Get the tags for a given resource name.
+  rpc GetTagsByResourceName(GetTagsByResourceNameRequest)
+      returns (GetTagsByResourceNameResponse) {}
+  // Get instance details for a given instance resource name.
+  rpc GetInstanceDetailsByResourceName(GetInstanceDetailsByResourceNameRequest)
+      returns (GetInstanceDetailsByResourceNameResponse) {}
 }
 
-// Request to fetch current instance resource ID.
-message GetCurrentInstanceResourceIdRequest {}
+// Request to get the current instance resource name.
+message GetCurrentInstanceResourceNameRequest {}
 
-// Response of fetching current instance resource ID.
-message GetCurrentInstanceResourceIdResponse {
+// Response of getting the current instance resource name.
+message GetCurrentInstanceResourceNameResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;
-  // Current instance resource ID.
-  string instance_resource_id = 2;
+
+  // Current instance resource name.
+  //
+  // For AWS, returns the Amazon Resource Name (ARN) of current instance:
+  // `arn:aws:ec2:<REGION>:<ACCOUNT_ID>:instance/<INSTANCE_ID>`
+  // For more information about ARNs, see
+  // https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+  //
+  // For GCP, returns full resource name of instance:
+  // `//compute.googleapis.com/projects/{PROJECT_ID}/zones/{ZONE_ID}/instances/{INSTANCE_ID}`.
+  // For more information about GCP full resource name, see
+  // https://cloud.google.com/iam/docs/full-resource-names
+  string instance_resource_name = 2;
 }
 
-// Request to fetch current instance region.
-message GetCurrentInstanceRegionRequest {}
+// Request to get tags for a given resource name.
+message GetTagsByResourceNameRequest {
+  // For AWS, it's the ARN. For GCP, it's the full resource name.
+  string resource_name = 1;
+}
 
-// Response of fetching current instance region.
-message GetCurrentInstanceRegionResponse {
+// Response of get tags for a given resource name.
+message GetTagsByResourceNameResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;
-  // Current instance region.
-  string region = 2;
+  // Tags on the instance.
+  // The server allows a maximum of 300 TagBindings to return.
+  map<string, string> tags = 2;
 }
 
-// Request to fetch info for a given instance.
-message GetInstanceInfoByResourceIdRequest {
-  // In AWS, the resource ID is instance ID.
-  // In GCP, it is projects/{project}/zones/{zone}/instances/{instance_id}.
-  string instance_resource_id = 1;
+// Request to get details for a given instance.
+message GetInstanceDetailsByResourceNameRequest {
+  // Instance resource name. Same as instance_resource_name in
+  // GetCurrentInstanceResourceNameResponse.
+  string instance_resource_name = 1;
 }
 
-// Information for an instance.
-message InstanceInfo {
+message InstanceNetwork {
   // Instance public Ipv4 address.
   string public_ipv4_address = 1;
   // Instance private Ipv4 address.
   string private_ipv4_address = 2;
-  // Tags on the instance.
-  map<string, string> tags = 3;
 }
 
-// Response of fetching info for a given instance.
-message GetInstanceInfoByResourceIdResponse {
+// Details for instance.
+message InstanceDetails {
+  // Instance ID.
+  string instance_id = 1;
+  // Instance networks.
+  // GCP VM instance supports multiple network interfaces.
+  repeated InstanceNetwork networks = 2;
+}
+
+// Response of fetching instance details for a given resource id.
+message GetInstanceDetailsByResourceNameResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;
-  // Instance information.
-  InstanceInfo instance_info = 2;
+  // Instance details.
+  InstanceDetails instance_details = 2;
 }

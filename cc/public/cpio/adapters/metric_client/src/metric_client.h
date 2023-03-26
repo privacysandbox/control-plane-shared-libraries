@@ -19,9 +19,9 @@
 #include <memory>
 
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
-#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/metric_client_interface.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 namespace google::scp::cpio {
 /*! @copydoc MetricClientInterface
@@ -49,12 +49,12 @@ class MetricClient : public MetricClientInterface {
    * @param record_metrics_context execution context.
    */
   void OnPutMetricsCallback(
-      const PutMetricsRequest& request,
-      Callback<PutMetricsResponse>& callback,
+      const PutMetricsRequest& request, Callback<PutMetricsResponse>& callback,
       core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
                          cmrt::sdk::metric_service::v1::PutMetricsResponse>&
           record_metrics_context) noexcept;
 
+  std::shared_ptr<MetricClientOptions> options_;
   std::shared_ptr<client_providers::MetricClientProviderInterface>
       metric_client_provider_;
 };

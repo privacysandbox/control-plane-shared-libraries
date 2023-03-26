@@ -316,10 +316,11 @@ void ClientSessionPool::HandleClientError(const error_code& ec) {
 
 void ClientSessionPool::Stop() {
   stop_.store(true);
+  error_code ec;
   for (auto& sock : pool_) {
-    sock.close();
+    sock.close(ec);
   }
-  client_sock_.close();
+  client_sock_.close(ec);
 }
 
 }  // namespace google::scp::proxy

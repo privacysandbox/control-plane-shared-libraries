@@ -50,4 +50,21 @@ TEST(HashingTest, ValidMD5Hash) {
   EXPECT_EQ(md5_hash, "!\x87\x9D\x8C\x7Fy\x93j\xCD\xB6\xE2\x86&\xEA\x1B\xD8");
 }
 
+TEST(HashingTest, InvalidMD5HashString) {
+  string empty;
+
+  string md5_hash;
+  EXPECT_EQ(CalculateMd5Hash(empty, md5_hash),
+            FailureExecutionResult(errors::SC_CORE_UTILS_INVALID_INPUT));
+  EXPECT_EQ(md5_hash, "");
+}
+
+TEST(HashingTest, ValidMD5HashString) {
+  string value("this_is_a_test_string");
+
+  string md5_hash;
+  EXPECT_EQ(CalculateMd5Hash(value, md5_hash), SuccessExecutionResult());
+  EXPECT_EQ(md5_hash, "!\x87\x9D\x8C\x7Fy\x93j\xCD\xB6\xE2\x86&\xEA\x1B\xD8");
+}
+
 }  // namespace google::scp::core::utils::test

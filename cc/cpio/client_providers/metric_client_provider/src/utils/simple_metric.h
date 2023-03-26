@@ -23,8 +23,8 @@
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "cpio/client_providers/metric_client_provider/interface/simple_metric_interface.h"
 #include "cpio/client_providers/metric_client_provider/interface/type_def.h"
-#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
 /*! @copydoc SimpleMetricInterface

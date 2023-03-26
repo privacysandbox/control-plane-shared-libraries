@@ -175,7 +175,6 @@ void AwsParameterClientProvider::OnGetParametersCallback(
       outcome.GetResult().GetParameters()[0].GetValue().c_str());
   list_parameters_context.result = SuccessExecutionResult();
   list_parameters_context.Finish();
-  return;
 }
 
 #ifndef TEST_CPIO

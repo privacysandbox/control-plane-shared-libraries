@@ -36,6 +36,11 @@ struct KmsDecryptRequest {
   std::shared_ptr<std::string> key_arn;
   /// The ciphertext.
   std::shared_ptr<std::string> ciphertext;
+  /// Only for GCP. Pool to provide workload identity.
+  /// Refer to
+  /// https://cloud.google.com/iam/docs/workload-identity-federation#pools for
+  /// details.
+  std::shared_ptr<std::string> gcp_wip_provider;
 };
 
 /// Represents a KMS response object.

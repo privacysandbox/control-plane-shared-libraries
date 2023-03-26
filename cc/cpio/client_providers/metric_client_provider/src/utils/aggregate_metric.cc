@@ -59,14 +59,13 @@ using std::to_string;
 using std::vector;
 using std::chrono::milliseconds;
 
-static constexpr char kEventCodeLabelKey[] = "EventCode";
-
 namespace google::scp::cpio::client_providers {
 AggregateMetric::AggregateMetric(
     const shared_ptr<AsyncExecutorInterface>& async_executor,
     const shared_ptr<MetricClientProviderInterface>& metric_client,
     const shared_ptr<MetricDefinition>& metric_info, TimeDuration time_duration,
-    const shared_ptr<vector<string>>& event_code_list)
+    const shared_ptr<vector<string>>& event_code_list,
+    const string& event_code_label_key)
     : async_executor_(async_executor),
       metric_client_(metric_client),
       metric_info_(metric_info),
@@ -76,7 +75,7 @@ AggregateMetric::AggregateMetric(
   if (event_code_list) {
     for (const auto& event_code : *event_code_list) {
       MetricLabels labels;
-      labels[kEventCodeLabelKey] = event_code;
+      labels[event_code_label_key] = event_code;
       auto tag = make_shared<MetricTag>(nullptr, nullptr,
                                         make_shared<MetricLabels>(labels));
       event_counters_[event_code] = 0;

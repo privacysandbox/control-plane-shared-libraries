@@ -47,4 +47,21 @@ ExecutionResult CalculateMd5Hash(const BytesBuffer& buffer, string& checksum) {
   return SuccessExecutionResult();
 }
 
+ExecutionResult CalculateMd5Hash(const string& buffer, string& checksum) {
+  if (buffer.length() == 0) {
+    return FailureExecutionResult(errors::SC_CORE_UTILS_INVALID_INPUT);
+  }
+
+  unsigned char digest_length[MD5_DIGEST_LENGTH];
+  MD5_CTX md5_context;
+  MD5_Init(&md5_context);
+  MD5_Update(&md5_context, buffer.c_str(), buffer.length());
+
+  MD5_Final(digest_length, &md5_context);
+
+  checksum.clear();
+  checksum = string(reinterpret_cast<char*>(digest_length), MD5_DIGEST_LENGTH);
+  return SuccessExecutionResult();
+}
+
 }  // namespace google::scp::core::utils

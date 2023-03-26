@@ -39,24 +39,12 @@ class PrivateKeyClient : public PrivateKeyClientInterface {
   core::ExecutionResult Stop() noexcept override;
 
   core::ExecutionResult ListPrivateKeysByIds(
-      ListPrivateKeysByIdsRequest request,
-      Callback<ListPrivateKeysByIdsResponse> callback) noexcept override;
+      cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest request,
+      Callback<cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>
+          callback) noexcept override;
 
  protected:
-  /**
-   * @brief Callback when ListPrivateKeysByIds results are returned.
-   *
-   * @param request caller's request.
-   * @param callback caller's callback
-   * @param list_private_keys_context execution context.
-   */
-  void OnListPrivateKeysByIdsCallback(
-      const ListPrivateKeysByIdsRequest& request,
-      Callback<ListPrivateKeysByIdsResponse>& callback,
-      core::AsyncContext<
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest,
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>&
-          list_private_keys_context) noexcept;
+  virtual core::ExecutionResult CreatePrivateKeyClientProvider() noexcept;
 
   std::shared_ptr<client_providers::PrivateKeyClientProviderInterface>
       private_key_client_provider_;

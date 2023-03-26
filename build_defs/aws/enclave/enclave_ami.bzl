@@ -30,7 +30,7 @@ def _generic_enclave_ami_pkr_script_impl(ctx):
         output = packer_file,
         substitutions = {
             "{ec2_instance}": ctx.attr.ec2_instance,
-            "{aws_region}": ctx.attr.aws_region,
+            "{aws_region}": ctx.attr.aws_region_override[BuildSettingInfo].value if ctx.attr.aws_region_override != None else ctx.attr.aws_region,
             "{container_path}": enclave_container_image.short_path,
             "{container_filename}": enclave_container_image.basename,
             "{proxy_rpm}": ctx.file.proxy_rpm.short_path,
@@ -88,6 +88,10 @@ generic_enclave_ami_pkr_script = rule(
         "aws_region": attr.string(
             mandatory = True,
             default = "us-east-1",
+        ),
+        "aws_region_override": attr.label(
+            mandatory = False,
+            providers = [BuildSettingInfo],
         ),
         "subnet_id": attr.string(
             mandatory = True,

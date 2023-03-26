@@ -23,7 +23,7 @@
 
 #include "core/interface/http_types.h"
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
-#include "cpio/client_providers/interface/private_key_fetching_client_provider_interface.h"
+#include "cpio/client_providers/interface/private_key_fetcher_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/proto/private_key_service/v1/private_key_service.pb.h"

@@ -29,8 +29,8 @@ set -euo pipefail
 # Allow values to be overriden with environment variables.
 ENCLAVE_PATH="${ENCLAVE_PATH:-/opt/google/worker/enclave.eif}"
 ALLOCATOR_YAML_PATH="${ALLOCATOR_YAML_PATH:-/etc/nitro_enclaves/allocator.yaml}"
+ENCLAVE_FAILURE_COUNT_FILE="/tmp/enclave_start_failure_count"
 ENABLE_WORKER_DEBUG_MODE="${ENABLE_WORKER_DEBUG_MODE:-0}"
-
 WORKER_DEBUG_MODE_FLAG=""
 
 if [[ $ENABLE_WORKER_DEBUG_MODE != 0 ]]; then
@@ -79,7 +79,7 @@ check_permissions() {
   echo "Done!"
 }
 
-# Perodically notify systemd that the enclave is alive so long as
+# Periodically notify systemd that the enclave is alive so long as
 # describe-enclaves says there is a running enclave
 watch_enclave() {
   while true ; do
@@ -98,13 +98,56 @@ watch_enclave() {
   done
 }
 
+wait_for_instance_replacement() {
+  while true ; do
+    echo "Waiting for Unhealthy instance replacement."
+    systemd-notify WATCHDOG=1
+    sleep 30;
+  done
+}
+
+handle_enclave_startup_failure() {
+  local enclave_failure_count=0
+  # Increment enclave start failure count.
+  if [ -e ${ENCLAVE_FAILURE_COUNT_FILE} ]; then
+    enclave_failure_count=$(cat ${ENCLAVE_FAILURE_COUNT_FILE})
+  fi
+  enclave_failure_count=$((enclave_failure_count + 1))
+  echo ${enclave_failure_count} > ${ENCLAVE_FAILURE_COUNT_FILE}
+
+  # If the enclave startup failure count is greater or equal to 5, then
+  # mark the EC2 instance Unhealthy for replacement.
+  if (( enclave_failure_count >= 5 )); then
+    local token=$(curl -s --fail-with-body -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 120")
+    echo "Acquired session token."
+    local region=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/placement/region -H "X-aws-ec2-metadata-token: ${token}")
+    local instance_id=$(curl -s --fail-with-body http://169.254.169.254/latest/meta-data/instance-id -H "X-aws-ec2-metadata-token: ${token}")
+    echo "Setting instance ${instance_id} in ${region} to Unhealthy."
+    if aws autoscaling set-instance-health --instance-id "${instance_id}" --region "${region}" --health-status Unhealthy; then
+      echo "Marked instance Unhealthy and waiting for instance replacement."
+      wait_for_instance_replacement
+    else
+      echo "Failed to mark instance unhealthy for replacement."
+      sleep 30
+      systemd-notify ERRNO=1
+      exit 1
+    fi
+  fi
+}
+
 # Starts the enclave with parameters derived from the allocator yaml file
 start_enclave() {
   local allocator=$(get_allocator_config)
   local cpu=$(echo "$allocator" | jq -r .cpu_count)
   local memory=$(echo "$allocator" | jq -r .memory_mib)
 
-  nitro-cli run-enclave --cpu-count="${cpu}" --memory="${memory}" --eif-path "${ENCLAVE_PATH}" $WORKER_DEBUG_MODE_FLAG
+  if ! nitro-cli run-enclave --cpu-count="${cpu}" --memory="${memory}" --eif-path "${ENCLAVE_PATH}" $WORKER_DEBUG_MODE_FLAG; then
+    handle_enclave_startup_failure
+    sleep 10
+    systemd-notify ERRNO=1
+    exit 1
+  fi
+  echo 0 > ${ENCLAVE_FAILURE_COUNT_FILE}
   systemd-notify READY=1
 }
 

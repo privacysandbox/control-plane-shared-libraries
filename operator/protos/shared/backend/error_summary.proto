@@ -29,4 +29,6 @@ message ErrorSummary {
   int64 num_reports_with_errors = 1 [deprecated = true];
   /** Count of errors by category. */
   repeated ErrorCount error_counts = 2;
+  /** List of exceptions thrown when running the job. */
+  repeated string error_messages = 3;
 }

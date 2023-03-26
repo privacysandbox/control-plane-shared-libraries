@@ -82,7 +82,6 @@ cc_binary(
     linkopts = LINK_OPTS,
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/core/interface:async_context_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface:cpio",
@@ -97,7 +96,6 @@ cc_binary(
     linkopts = LINK_OPTS,
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/core/interface:async_context_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/test/global_cpio:test_lib_cpio",
@@ -112,11 +110,24 @@ cc_binary(
     linkopts = LINK_OPTS,
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/core/interface:async_context_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface:cpio",
         "//cc/public/cpio/interface/private_key_client",
+        "@aws_sdk_cpp//:core",
+    ],
+)
+
+cc_binary(
+    name = "crypto_client_test",
+    srcs = ["crypto_client_test.cc"],
+    linkopts = LINK_OPTS,
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/interface:errors",
+        "//cc/public/cpio/interface:cpio",
+        "//cc/public/cpio/interface/crypto_client",
         "@aws_sdk_cpp//:core",
     ],
 )

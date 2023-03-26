@@ -17,8 +17,10 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
 
+#include "absl/container/flat_hash_map.h"
 #include "cpio/client_providers/metric_client_provider/interface/aggregate_metric_interface.h"
 #include "public/core/interface/execution_result.h"
 
@@ -41,7 +43,20 @@ class MockAggregateMetric : public AggregateMetricInterface {
 
   core::ExecutionResult Increment(
       const std::string& event_code) noexcept override {
+    std::unique_lock lock(mutex_);
+    metric_count_map_[event_code] = GetCounter(event_code) + 1;
     return core::SuccessExecutionResult();
   }
+
+  size_t GetCounter(const std::string& event_code = std::string()) {
+    if (event_code.empty() || !metric_count_map_.contains(event_code)) {
+      return 0;
+    }
+    return metric_count_map_.at(event_code);
+  }
+
+ private:
+  std::mutex mutex_;
+  absl::flat_hash_map<std::string, size_t> metric_count_map_;
 };
 }  // namespace google::scp::cpio::client_providers::mock

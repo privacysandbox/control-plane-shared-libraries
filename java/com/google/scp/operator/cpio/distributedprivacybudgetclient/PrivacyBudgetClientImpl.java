@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
  * transaction details
  */
 public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
+
   private static final Logger logger = LoggerFactory.getLogger(PrivacyBudgetClientImpl.class);
 
   private static final String beginTransactionPath = "/transactions:begin";
@@ -142,6 +143,11 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
     return performTransactionPhaseAction(abortTransactionPath, transaction);
   }
 
+  @Override
+  public String getPrivacyBudgetServerIdentifier() {
+    return baseUrl;
+  }
+
   private void updateTransactionState(Transaction transaction, HttpClientResponse response) {
     if (response.statusCode() == 200) {
       String lastExecTimestamp = response.headers().get(transactionLastExecTimestampHeaderKey);
@@ -151,18 +157,16 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
 
   private TransactionStatusResponse fetchTransactionStatus(Transaction transaction)
       throws IOException {
+    final String transactionId = transaction.getId().toString();
     ImmutableMap<String, String> headers =
         new ImmutableMap.Builder<String, String>()
-            .put(transactionIdHeaderKey, transaction.getId().toString().toUpperCase())
+            .put(transactionIdHeaderKey, transactionId.toUpperCase())
             .put(transactionSecretHeaderKey, transaction.getRequest().transactionSecret())
             .put(claimedIdentityHeaderKey, transaction.getRequest().attributionReportTo())
             .build();
-    logger.info(
-        "[{}] Making GET request to {}",
-        transaction.getId().toString(),
-        baseUrl + transactionStatusPath);
+    logger.info("[{}] Making GET request to {}", transactionId, baseUrl + transactionStatusPath);
     var response = httpClient.executeGet(baseUrl + transactionStatusPath, headers);
-    logger.info("GET request response: " + response);
+    logger.info("[{}] GET request response: " + response, transactionId);
     return generateTransactionStatus(response);
   }
 
@@ -258,14 +262,19 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
    *
    * @param transaction - Transaction whose status needs to be checked against the given coordinator
    * @param actionHttpStatusCode - The Http status code returned by the transaction phase request
-   * @throws IOException - in case the status received is transaction expired
+   * @throws PrivacyBudgetClientException - in case the status received is transaction expired or
+   *     the transaction phase between client and server are out sync by more than 1 phase
    */
   private ExecutionResult getExecutionResultBasedOnTransactionStatus(
       Transaction transaction, int actionHttpStatusCode) throws PrivacyBudgetClientException {
     TransactionStatusResponse transactionStatusResponse = null;
     try {
       transactionStatusResponse = fetchTransactionStatus(transaction);
-    } catch (IOException e) {
+    } catch (Exception e) {
+      logger.error(
+          "[{}] Failed to fetch transaction status. Error is: ",
+          transaction.getId(),
+          e.getMessage());
       return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
     }
     if (transactionStatusResponse.isExpired()) {
@@ -317,13 +326,13 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   private ExecutionResult performTransactionPhaseAction(
       String relativePath, Transaction transaction) throws PrivacyBudgetClientException {
     try {
+      final String transactionId = transaction.getId().toString();
       String payload = generatePayload(transaction);
-      logger.info(
-          "[{}] Making POST request to {}", transaction.getId().toString(), baseUrl + relativePath);
+      logger.info("[{}] Making POST request to {}", transactionId, baseUrl + relativePath);
       var response =
           httpClient.executePost(
               baseUrl + relativePath, payload, getTransactionPhaseRequestHeaders(transaction));
-      logger.info("POST request response: " + response);
+      logger.info("[{}] POST request response: " + response, transactionId);
       updateTransactionState(transaction, response);
       return generateExecutionResult(transaction, response);
     } catch (JsonProcessingException e) {

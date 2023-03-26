@@ -72,7 +72,7 @@ public final class HttpClientWithInterceptorTest {
   }
 
   @Test
-  public void executeGet_success() throws IOException, ExecutionException, InterruptedException {
+  public void executeGet_success() throws Exception {
     SimpleHttpResponse response1 = SimpleHttpResponse.create(HttpStatus.SC_OK, "");
     response1.setHeaders(responseHeaders);
     Map<String, String> requestHeaders =
@@ -92,7 +92,7 @@ public final class HttpClientWithInterceptorTest {
   }
 
   @Test
-  public void executePost_success() throws IOException, ExecutionException, InterruptedException {
+  public void executePost_success() throws Exception {
     String payload = "dummy payload string";
     SimpleHttpResponse response1 = SimpleHttpResponse.create(HttpStatus.SC_OK, "");
     response1.setHeaders(responseHeaders);
@@ -113,8 +113,7 @@ public final class HttpClientWithInterceptorTest {
   }
 
   @Test
-  public void executePost_success_afterRetry()
-      throws IOException, ExecutionException, InterruptedException {
+  public void executePost_success_afterRetry() throws Exception {
     String payload = "dummy payload string";
     SimpleHttpResponse response1 = SimpleHttpResponse.create(HttpStatus.SC_OK, "");
     response1.setHeaders(responseHeaders);
@@ -137,14 +136,14 @@ public final class HttpClientWithInterceptorTest {
   }
 
   @Test
-  public void executePost_failure_retriesExhausted()
+  public void executePost_failure_retriesExhausted_checkedException()
       throws ExecutionException, InterruptedException {
     String payload = "dummy payload string";
     Map<String, String> requestHeaders =
         ImmutableMap.of("reqKey1", "reqVal1", "reqKey2", "reqVal2");
     when(httpClient.execute(any(), any())).thenReturn(responseFuture);
     when(responseFuture.get())
-        .thenThrow(new ExecutionException(new IOException("Connection timed out")));
+        .thenThrow(new ExecutionException(new RuntimeException("Connection timed out")));
 
     IOException actualException =
         assertThrows(
@@ -153,34 +152,36 @@ public final class HttpClientWithInterceptorTest {
                 httpClientWithInterceptor.executePost(
                     endpointUrl + relativePath, payload, requestHeaders));
 
-    IOException expectedException = new IOException("Connection timed out");
-    assertThat(expectedException.getMessage()).isEqualTo(actualException.getMessage());
+    IOException expectedException =
+        new IOException(
+            "java.util.concurrent.ExecutionException: java.lang.RuntimeException: Connection timed"
+                + " out");
+    assertThat(actualException.getMessage()).isEqualTo(expectedException.getMessage());
     verify(httpClient, times(3)).execute(any(), any());
     verify(responseFuture, times(3)).get();
   }
 
   @Test
-  public void executePost_throws_someNonRetriableException()
+  public void executePost_failure_retriesExhausted_runtimeException()
       throws ExecutionException, InterruptedException {
     String payload = "dummy payload string";
     Map<String, String> requestHeaders =
         ImmutableMap.of("reqKey1", "reqVal1", "reqKey2", "reqVal2");
     when(httpClient.execute(any(), any())).thenReturn(responseFuture);
-    when(responseFuture.get()).thenThrow(new InterruptedException("some non-retriable exception"));
+    when(responseFuture.get()).thenThrow(new RuntimeException("Connection timed out"));
 
-    RuntimeException actualException =
+    IOException actualException =
         assertThrows(
-            RuntimeException.class,
+            IOException.class,
             () ->
                 httpClientWithInterceptor.executePost(
                     endpointUrl + relativePath, payload, requestHeaders));
 
-    RuntimeException expectedException =
-        new RuntimeException("Unexpected exception or error thrown while performing http request.");
-    assertThat(expectedException.getMessage()).isEqualTo(actualException.getMessage());
-    assertThat(actualException.getCause().getMessage()).isEqualTo("some non-retriable exception");
-    verify(httpClient, times(1)).execute(any(), any());
-    verify(responseFuture, times(1)).get();
+    IOException expectedException =
+        new IOException("java.lang.RuntimeException: Connection timed out");
+    assertThat(actualException.getMessage()).isEqualTo(expectedException.getMessage());
+    verify(httpClient, times(3)).execute(any(), any());
+    verify(responseFuture, times(3)).get();
   }
 
   @Test

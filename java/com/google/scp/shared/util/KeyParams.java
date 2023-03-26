@@ -39,6 +39,8 @@ public final class KeyParams {
    *
    * <p>Chrome implementation for aggregation reports can be found at
    * https://source.chromium.org/chromium/chromium/src/+/main:content/browser/aggregation_service/aggregatable_report.cc;l=227-228;drc=a7cffd0302b213659cf4c1b10f7aeb7e3954bb0e
+   *
+   * <p>Refer to A.2. in RFC9180 for more details.
    */
   public static HpkeParams getHpkeParams() {
     return HpkeParams.newBuilder()

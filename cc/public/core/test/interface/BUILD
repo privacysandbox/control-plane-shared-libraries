@@ -17,6 +17,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "execution_result_test_lib",
     testonly = True,
+    srcs = ["execution_result_test_lib.cc"],
     hdrs = [
         "execution_result_test_lib.h",
     ],

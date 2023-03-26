@@ -28,18 +28,7 @@
 
 namespace google::scp::core::test {
 namespace internal {
-std::string ToString(ExecutionStatus status) {
-  switch (status) {
-    case ExecutionStatus::Success:
-      return "Success";
-    case ExecutionStatus::Failure:
-      return "Failure";
-    case ExecutionStatus::Retry:
-      return "Retry";
-    default:
-      return "UNKNOWN EXECUTIONSTATUS";
-  }
-}
+std::string ToString(ExecutionStatus status);
 }  // namespace internal
 
 // Matches arg with expected_result.

@@ -20,9 +20,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.scp.coordinator.privacy.budgeting.model.PrivacyBudgetUnit;
 import com.google.scp.operator.cpio.distributedprivacybudgetclient.PrivacyBudgetClient.PrivacyBudgetClientException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Transaction engine is responsible for running the transactions. */
 public class TransactionEngineImpl implements TransactionEngine {
+
+  private static final Logger logger = LoggerFactory.getLogger(TransactionEngineImpl.class);
   private final TransactionPhaseManager transactionPhaseManager;
   private final ImmutableList<PrivacyBudgetClient> privacyBudgetClients;
 
@@ -118,14 +122,36 @@ public class TransactionEngineImpl implements TransactionEngine {
   private void executeDistributedPhase(TransactionPhase currentPhase, Transaction transaction)
       throws TransactionEngineException {
     for (PrivacyBudgetClient privacyBudgetClient : this.privacyBudgetClients) {
+      String privacyBudgetServerIdentifier = privacyBudgetClient.getPrivacyBudgetServerIdentifier();
+      TransactionPhase lastSuccessfulTransactionPhase =
+          transaction.getLastCompletedTransactionPhaseOnPrivacyBudgetServer(
+              privacyBudgetServerIdentifier);
+      if ((lastSuccessfulTransactionPhase == TransactionPhase.NOTSTARTED
+              && currentPhase != TransactionPhase.BEGIN)
+          || lastSuccessfulTransactionPhase == TransactionPhase.END) {
+        continue;
+      }
+      logger.info(
+          "[{}] Executing phase '{}' against coordinator: '{}'",
+          transaction.getId(),
+          currentPhase,
+          privacyBudgetServerIdentifier);
       ExecutionResult executionResult =
           dispatchDistributedCommand(privacyBudgetClient, transaction);
       if (executionResult.executionStatus() != ExecutionStatus.SUCCESS) {
         // Only change if the current status was false.
         if (!transaction.isCurrentPhaseFailed()) {
+          logger.info(
+              "[{}] Phase '{}' against coordinator: '{}' failed",
+              transaction.getId(),
+              currentPhase,
+              privacyBudgetServerIdentifier);
           transaction.setCurrentPhaseFailed(true);
           transaction.setCurrentPhaseExecutionResult(executionResult);
         }
+      } else {
+        transaction.setLastCompletedTransactionPhaseOnPrivacyBudgetServer(
+            privacyBudgetServerIdentifier, currentPhase);
       }
     }
 
@@ -168,6 +194,10 @@ public class TransactionEngineImpl implements TransactionEngine {
               StatusCode.TRANSACTION_MANAGER_INVALID_TRANSACTION_PHASE.name());
       }
     } catch (PrivacyBudgetClientException e) {
+      logger.error(
+          "[{}] Failed to perform transaction phase action. Error is: ",
+          transaction.getId(),
+          e.getMessage());
       throw new TransactionEngineException(e.getMessage());
     }
   }

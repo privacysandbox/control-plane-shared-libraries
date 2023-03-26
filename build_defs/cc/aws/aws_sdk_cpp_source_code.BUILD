@@ -237,11 +237,29 @@ cc_library(
         "aws-cpp-sdk-sqs/source/model/*.cpp",  # MODEL SOURCE
     ]),
     hdrs = glob([
-        "aws-cpp-sdk-kms/include/aws/sqs/*.h",  # HEADERS
-        "aws-cpp-sdk-kms/include/aws/sqs/model/*.h",  # MODEL HEADERS
+        "aws-cpp-sdk-sqs/include/aws/sqs/*.h",  # HEADERS
+        "aws-cpp-sdk-sqs/include/aws/sqs/model/*.h",  # MODEL HEADERS
     ]),
     includes = [
         "aws-cpp-sdk-sqs/include",
+    ],
+    deps = [
+        ":core",
+    ],
+)
+
+cc_library(
+    name = "autoscaling",
+    srcs = glob([
+        "aws-cpp-sdk-autoscaling/source/*.cpp",  # SOURCE
+        "aws-cpp-sdk-autoscaling/source/model/*.cpp",  # MODEL SOURCE
+    ]),
+    hdrs = glob([
+        "aws-cpp-sdk-autoscaling/include/aws/autoscaling/*.h",  # HEADERS
+        "aws-cpp-sdk-autoscaling/include/aws/autoscaling/model/*.h",  # MODEL HEADERS
+    ]),
+    includes = [
+        "aws-cpp-sdk-autoscaling/include",
     ],
     deps = [
         ":core",

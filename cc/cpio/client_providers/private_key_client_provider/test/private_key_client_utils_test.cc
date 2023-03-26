@@ -23,10 +23,14 @@
 #include <utility>
 #include <vector>
 
+#include <google/protobuf/util/time_util.h>
+
 #include "core/interface/http_types.h"
+#include "core/test/utils/timestamp_test_utils.h"
 #include "public/core/interface/execution_result.h"
 
 using google::cmrt::sdk::private_key_service::v1::PrivateKey;
+using google::protobuf::util::TimeUtil;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
@@ -34,6 +38,7 @@ using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_KEY_DATA_NOT_FOUND;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_SECRET_PIECE_SIZE_UNMATCHED;
+using google::scp::core::test::ExpectTimestampEquals;
 using google::scp::cpio::client_providers::KeyData;
 using google::scp::cpio::client_providers::PrivateKeyFetchingResponse;
 using std::make_shared;
@@ -46,6 +51,7 @@ static constexpr char kTestResourceName[] = "encryptionKeys/name_test";
 static constexpr char kTestPublicKeysetHandle[] = "publicKeysetHandle";
 static constexpr char kTestPublicKeyMaterial[] = "publicKeyMaterial";
 static constexpr int kTestExpirationTime = 123456;
+static constexpr int kTestCreationTime = 111111;
 static constexpr char kTestPublicKeySignature[] = "publicKeySignature";
 static constexpr char kTestKeyEncryptionKeyUri[] = "keyEncryptionKeyUri";
 static constexpr char kTestKeyMaterial[] = "keyMaterial";
@@ -54,7 +60,8 @@ namespace google::scp::cpio::client_providers::test {
 void GetPrivateKeyFetchingResponse(
     shared_ptr<PrivateKeyFetchingResponse>& response) {
   response->resource_name = make_shared<string>(kTestResourceName);
-  response->expiration_time_ms = kTestExpirationTime;
+  response->expiration_time_in_ms = kTestExpirationTime;
+  response->creation_time_in_ms = kTestCreationTime;
   response->encryption_key_type =
       EncryptionKeyType::kMultiPartyHybridEvenKeysplit;
   response->public_key_material = make_shared<string>(kTestPublicKeyMaterial);
@@ -106,7 +113,10 @@ TEST(PrivateKeyClientUtilsTest, GetPrivateKeyInfo) {
   EXPECT_EQ(result, SuccessExecutionResult());
   EXPECT_EQ(private_key.key_id(), "name_test");
   EXPECT_EQ(private_key.public_key(), kTestPublicKeyMaterial);
-  EXPECT_EQ(private_key.expiration_time_in_ms(), kTestExpirationTime);
+  ExpectTimestampEquals(private_key.expiration_time(),
+                        TimeUtil::MillisecondsToTimestamp(kTestExpirationTime));
+  ExpectTimestampEquals(private_key.creation_time(),
+                        TimeUtil::MillisecondsToTimestamp(kTestCreationTime));
 }
 
 TEST(PrivateKeyClientUtilsTest, ReconstructXorKeysetHandle) {

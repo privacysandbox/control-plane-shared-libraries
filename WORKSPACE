@@ -290,20 +290,21 @@ import_aws_sdk_cpp()
 # latest as of 2022-06-09
 _RULES_BOOST_COMMIT = "789a047e61c0292c3b989514f5ca18a9945b0029"
 
-http_archive(
+git_repository(
     name = "com_github_nelhage_rules_boost",
-    sha256 = "c1298755d1e5f458a45c410c56fb7a8d2e44586413ef6e2d48dd83cc2eaf6a98",
-    strip_prefix = "rules_boost-%s" % _RULES_BOOST_COMMIT,
-    urls = [
-        "https://github.com/nelhage/rules_boost/archive/%s.tar.gz" % _RULES_BOOST_COMMIT,
-    ],
+    commit = _RULES_BOOST_COMMIT,
+    patch_args = ["-p1"],
+    patches = ["//build_defs/cc:rules_boost.patch"],
+    remote = "https://github.com/nelhage/rules_boost.git",
+    shallow_since = "1652895814 -0700",
 )
 
-http_archive(
+git_repository(
     name = "rules_foreign_cc",
-    sha256 = "6041f1374ff32ba711564374ad8e007aef77f71561a7ce784123b9b4b88614fc",
-    strip_prefix = "rules_foreign_cc-0.8.0",
-    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.8.0.tar.gz",
+    # version 0.8.0
+    commit = "e208deeae394c2aba5531d1f4edbba82d2e7430c",
+    remote = "https://github.com/bazelbuild/rules_foreign_cc.git",
+    shallow_since = "1650286188 -0700",
 )
 
 # nghttp2
@@ -327,13 +328,20 @@ http_archive(
     ],
 )
 
+# Bazel Skylib. Required by absl.
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728",
+    urls = ["https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz"],
+)
+
 http_archive(
     name = "com_google_absl",
-    # Committed on Nov 3, 2021.
-    sha256 = "a4567ff02faca671b95e31d315bab18b42b6c6f1a60e91c6ea84e5a2142112c2",
-    strip_prefix = "abseil-cpp-20211102.0",
+    sha256 = "81311c17599b3712069ded20cca09a62ab0bf2a89dfa16993786c8782b7ed145",
+    strip_prefix = "abseil-cpp-20230125.1",
+    # Committed on Jan 25, 2023.
     urls = [
-        "https://github.com/abseil/abseil-cpp/archive/refs/tags/20211102.0.zip",
+        "https://github.com/abseil/abseil-cpp/archive/20230125.1.tar.gz",
     ],
 )
 
@@ -353,9 +361,11 @@ git_repository(
 # to override the dependenices in @com_github_googleapis_google_cloud_cpp.
 http_archive(
     name = "com_github_grpc_grpc",
-    sha256 = "e18b16f7976aab9a36c14c38180f042bb0fd196b75c9fd6a20a2b5f934876ad6",
-    strip_prefix = "grpc-1.45.2",
-    urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.45.2.tar.gz"],
+    sha256 = "ec125d7fdb77ecc25b01050a0d5d32616594834d3fe163b016768e2ae42a2df6",
+    strip_prefix = "grpc-1.52.1",
+    urls = [
+        "https://github.com/grpc/grpc/archive/v1.52.1.tar.gz",
+    ],
 )
 
 # Builds Google cloud cpp
@@ -363,9 +373,9 @@ http_archive(
 # --> and after http_archive com_github_grpc_grpc
 http_archive(
     name = "com_github_googleapis_google_cloud_cpp",
-    sha256 = "02ea232bbac826e36ad1140a45cfe2f4552e7e1fbb8f86e839fa2fb3620cdd64",
-    strip_prefix = "google-cloud-cpp-1.41.0",
-    url = "https://github.com/googleapis/google-cloud-cpp/archive/v1.41.0.tar.gz",
+    sha256 = "21fb441b5a670a18bb16b6826be8e0530888d0b94320847c538d46f5a54dddbc",
+    strip_prefix = "google-cloud-cpp-2.8.0",
+    url = "https://github.com/googleapis/google-cloud-cpp/archive/v2.8.0.tar.gz",
 )
 
 ################################################################################
@@ -521,34 +531,6 @@ load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
 
 rules_pkg_dependencies()
 
-############
-# Go rules #
-############
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
-go_rules_dependencies()
-
-go_register_toolchains(version = "1.18")
-
-gazelle_dependencies()
-
-###################
-# Container rules #
-###################
-load(
-    "@io_bazel_rules_docker//repositories:repositories.bzl",
-    container_repositories = "repositories",
-)
-
-container_repositories()
-
-load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
-
-container_deps()
-
-load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
-
 #############
 # CPP Rules #
 #############
@@ -570,13 +552,6 @@ rules_proto_toolchains()
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
-
-###########################
-# Binary Dev Dependencies #
-###########################
-load("@com_github_google_rpmpack//:deps.bzl", "rpmpack_dependencies")
-
-rpmpack_dependencies()
 
 # Imports Tink git repo to this workspace as @tink_java. To be used only for
 # testing changes not yet published to Maven.
@@ -627,6 +602,40 @@ grpc_extra_deps()
 # Download Indirect Dependencies: End
 ################################################################################
 
+############
+# Go rules #
+############
+# Need to be after grpc_extra_deps to share go_register_toolchains.
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+
+go_rules_dependencies()
+
+gazelle_dependencies()
+
+###################
+# Container rules #
+###################
+load(
+    "@io_bazel_rules_docker//repositories:repositories.bzl",
+    container_repositories = "repositories",
+)
+
+container_repositories()
+
+load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
+
+container_deps()
+
+load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
+
+###########################
+# Binary Dev Dependencies #
+###########################
+load("@com_github_google_rpmpack//:deps.bzl", "rpmpack_dependencies")
+
+rpmpack_dependencies()
+
 ################################################################################
 # Download Containers: Begin
 ################################################################################
@@ -635,9 +644,9 @@ grpc_extra_deps()
 container_pull(
     name = "java_base",
     # Using SHA-256 for reproducibility.
-    digest = "sha256:1606422cc472612cb5bcd885684b4bf87b3813246c266df473357dce5a0fb4b4",
+    digest = "sha256:940d5d7c67553ea25ab03b9ac455a5c023ba973b32b1a58dd6e071f4dd770045",
     registry = "gcr.io",
-    repository = "distroless/java",
+    repository = "distroless/java11-debian11",
 )
 
 # Distroless image for running C++.
@@ -678,6 +687,10 @@ http_file(
     sha256 = "84e946ed8537eaaa4d540df338a593e373e70c5ddca9f2f49e1aaf3a04bdd6ca",
     urls = ["https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64"],
 )
+
+load("//build_defs/cc:v8.bzl", "import_v8")
+
+import_v8()
 
 ################################################################################
 # Download Containers: End

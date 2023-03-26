@@ -23,11 +23,12 @@
 #include <utility>
 
 #include <google/protobuf/map.h>
+#include <google/protobuf/util/time_util.h>
 
 #include "cpio/client_providers/metric_client_provider/interface/type_def.h"
 #include "cpio/client_providers/metric_client_provider/src/metric_client_utils.h"
-#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
 class MetricUtils {
@@ -38,9 +39,6 @@ class MetricUtils {
       const std::shared_ptr<MetricDefinition>& metric_info,
       const std::shared_ptr<MetricValue>& metric_value,
       const std::shared_ptr<MetricTag>& metric_tag = nullptr) noexcept {
-    auto current_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::system_clock::now().time_since_epoch())
-                            .count();
     auto metric = record_metric_request->add_metrics();
     metric->set_value(*metric_value);
     auto final_name = (metric_tag && metric_tag->update_name)
@@ -64,7 +62,7 @@ class MetricUtils {
         labels->insert(protobuf::MapPair(label.first, label.second));
       }
     }
-    metric->set_timestamp_in_ms(current_time);
+    *metric->mutable_timestamp() = protobuf::util::TimeUtil::GetCurrentTime();
   }
 };
 

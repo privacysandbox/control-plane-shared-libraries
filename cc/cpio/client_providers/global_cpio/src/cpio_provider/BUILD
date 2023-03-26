@@ -39,6 +39,7 @@ cc_library(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/src:core_async_executor_lib",
+        "//cc/core/curl_client/src:http1_curl_client_lib",
         "//cc/core/http2_client/src:http2_client_lib",
         "//cc/core/logger/src:logger_lib",
         "//cc/core/logger/src/log_providers:log_providers_lib",

@@ -31,6 +31,15 @@ java_library(
 )
 
 java_library(
+    name = "model",
+    srcs = glob(["model/*.java"]),
+    deps = [
+        "//java/external:autovalue",
+        "//java/external:autovalue_annotations",
+    ],
+)
+
+java_library(
     name = "aws",
     srcs = glob([
         "*.java",
@@ -49,14 +58,5 @@ java_library(
         "//java/external:guava",
         "//java/external:guice",
         "//java/external:javax_inject",
-    ],
-)
-
-java_library(
-    name = "model",
-    srcs = glob(["model/*.java"]),
-    deps = [
-        "//java/external:autovalue",
-        "//java/external:autovalue_annotations",
     ],
 )

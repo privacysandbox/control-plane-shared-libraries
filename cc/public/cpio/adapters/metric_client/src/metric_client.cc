@@ -21,6 +21,8 @@
 #include <string>
 #include <utility>
 
+#include <google/protobuf/util/time_util.h>
+
 #include "core/common/global_logger/src/global_logger.h"
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
@@ -34,6 +36,7 @@
 
 using google::cmrt::sdk::metric_service::v1::Metric;
 using google::protobuf::MapPair;
+using google::protobuf::util::TimeUtil;
 using google::scp::core::AsyncContext;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
@@ -60,20 +63,20 @@ using std::placeholders::_1;
 static constexpr char kMetricClient[] = "MetricClient";
 
 namespace google::scp::cpio {
-MetricClient::MetricClient(
-    const std::shared_ptr<MetricClientOptions>& options) {
+MetricClient::MetricClient(const std::shared_ptr<MetricClientOptions>& options)
+    : options_(options) {}
+
+ExecutionResult MetricClient::Init() noexcept {
   shared_ptr<AsyncExecutorInterface> async_executor;
-  if (options->enable_batch_recording) {
-    GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor);
-  }
+  GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor);
+  shared_ptr<AsyncExecutorInterface> io_async_executor;
+  GlobalCpio::GetGlobalCpio()->GetIOAsyncExecutor(io_async_executor);
   shared_ptr<InstanceClientProviderInterface> instance_client_provider;
   GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(
       instance_client_provider);
   metric_client_provider_ = MetricClientProviderFactory::Create(
-      options, instance_client_provider, async_executor);
-}
+      options_, instance_client_provider, async_executor, io_async_executor);
 
-ExecutionResult MetricClient::Init() noexcept {
   auto execution_result = metric_client_provider_->Init();
   if (!execution_result.Successful()) {
     ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
@@ -118,7 +121,7 @@ core::ExecutionResult MetricClient::PutMetrics(
     PutMetricsRequest request, Callback<PutMetricsResponse> callback) noexcept {
   auto record_metric_request =
       make_shared<cmrt::sdk::metric_service::v1::PutMetricsRequest>();
-  for (auto metric : request.metrics) {
+  for (const auto& metric : request.metrics) {
     auto metric_proto = record_metric_request->add_metrics();
     metric_proto->set_name(metric.name);
     metric_proto->set_value(metric.value);
@@ -130,7 +133,8 @@ core::ExecutionResult MetricClient::PutMetrics(
         labels->insert(MapPair<string, string>(label.first, label.second));
       }
     }
-    metric_proto->set_timestamp_in_ms(metric.timestamp_in_ms);
+    *metric_proto->mutable_timestamp() =
+        TimeUtil::MillisecondsToTimestamp(metric.timestamp_in_ms);
   }
 
   AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,

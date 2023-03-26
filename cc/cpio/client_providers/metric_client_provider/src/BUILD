@@ -31,14 +31,16 @@ cc_library(
         "//cc/public/cpio/interface:aws_cpio_lib": [
             "@aws_sdk_cpp//:monitoring",
             "//cc/cpio/common/src/aws:aws_utils_lib",
+            "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
         ],
         "//cc/public/cpio/interface:gcp_cpio_lib": [
-            "//cc/cpio/cloud_providers/gcp/interface:cpio_gcp_interface_lib",
+            "//cc/cpio/common/src/gcp:gcp_utils_lib",
             "@com_github_googleapis_google_cloud_cpp//:monitoring",
         ],
         "//conditions:default": [
             "@aws_sdk_cpp//:monitoring",
             "//cc/cpio/common/src/aws:aws_utils_lib",
+            "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
         ],
     }) + [
         "//cc:cc_base_include_dir",

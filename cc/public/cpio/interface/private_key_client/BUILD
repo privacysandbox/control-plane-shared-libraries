@@ -40,6 +40,7 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/core/utils/src:core_utils",
         "//cc/cpio/client_providers/private_key_client_provider/src:private_key_client_provider_lib",
+        "//cc/public/cpio/adapters/common:adapter_utils",
         "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/proto/private_key_service/v1:private_key_service_cc_proto",
     ],

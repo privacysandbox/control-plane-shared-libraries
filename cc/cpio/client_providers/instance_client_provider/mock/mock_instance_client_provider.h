@@ -78,12 +78,6 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  core::ExecutionResult GetCurrentInstancePublicIpv4Address(
-      std::string& instance_public_ipv4_address) noexcept override {
-    instance_public_ipv4_address = "1.1.1.1";
-    return core::SuccessExecutionResult();
-  }
-
   core::ExecutionResult GetCurrentInstancePrivateIpv4Address(
       std::string& instance_private_ipv4_address) noexcept override {
     instance_private_ipv4_address = "10.1.1.1";
@@ -94,26 +88,59 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
   core::ExecutionResult get_project_id_result_mock =
       core::SuccessExecutionResult();
 
-  core::ExecutionResult GetCurrentInstanceProjectId(
-      std::string& project_id) noexcept override {
-    if (get_project_id_result_mock != core::SuccessExecutionResult()) {
-      return get_project_id_result_mock;
-    }
-    project_id = project_id_mock;
-    return core::SuccessExecutionResult();
-  }
-
   std::string instance_zone_mock = "zone-a";
   core::ExecutionResult get_instance_zone_result_mock =
       core::SuccessExecutionResult();
 
-  core::ExecutionResult GetCurrentInstanceZone(
-      std::string& instance_zone) noexcept override {
-    if (get_instance_zone_result_mock != core::SuccessExecutionResult()) {
-      return get_instance_zone_result_mock;
+  core::ExecutionResult GetCurrentInstanceResourceName(
+      core::AsyncContext<cmrt::sdk::instance_service::v1::
+                             GetCurrentInstanceResourceNameRequest,
+                         cmrt::sdk::instance_service::v1::
+                             GetCurrentInstanceResourceNameResponse>&
+          context) noexcept override {
+    // Not implemented.
+    return core::FailureExecutionResult(SC_UNKNOWN);
+  }
+
+  core::ExecutionResult GetTagsByResourceName(
+      core::AsyncContext<
+          cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest,
+          cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&
+          context) noexcept override {
+    // Not implemented.
+    return core::FailureExecutionResult(SC_UNKNOWN);
+  }
+
+  core::ExecutionResult GetInstanceDetailsByResourceName(
+      core::AsyncContext<cmrt::sdk::instance_service::v1::
+                             GetInstanceDetailsByResourceNameRequest,
+                         cmrt::sdk::instance_service::v1::
+                             GetInstanceDetailsByResourceNameResponse>&
+          context) noexcept override {
+    // Not implemented.
+    return core::FailureExecutionResult(SC_UNKNOWN);
+  }
+
+  std::string instance_resource_name =
+      R"(//compute.googleapis.com/projects/123456789/zones/us-central1-c/instances/987654321)";
+  core::ExecutionResult get_instance_resource_name_mock =
+      core::SuccessExecutionResult();
+
+  core::ExecutionResult GetCurrentInstanceResourceNameSync(
+      std::string& resource_name) noexcept override {
+    if (get_instance_resource_name_mock != core::SuccessExecutionResult()) {
+      return get_instance_resource_name_mock;
     }
-    instance_zone = instance_zone_mock;
+    resource_name = instance_resource_name;
     return core::SuccessExecutionResult();
+  }
+
+  core::ExecutionResult GetInstanceDetailsByResourceNameSync(
+      const std::string& resource_name,
+      cmrt::sdk::instance_service::v1::InstanceDetails&
+          instance_details) noexcept override {
+    // Not implemented.
+    return core::FailureExecutionResult(SC_UNKNOWN);
   }
 };
 }  // namespace google::scp::cpio::client_providers::mock

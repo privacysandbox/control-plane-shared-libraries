@@ -23,6 +23,7 @@
 #include "core/interface/async_context.h"
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "google/protobuf/any.pb.h"
+#include "google/protobuf/timestamp.pb.h"
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio::client_providers::mock {
@@ -69,8 +70,7 @@ class MockMetricClientProvider : public MetricClientProviderInterface {
     if (differencer.Equals(
             record_metrics_request_mock,
             cmrt::sdk::metric_service::v1::PutMetricsRequest()) ||
-        differencer.Equals(record_metrics_request_mock,
-                           ZeroTimestampe(context.request))) {
+        differencer.Equals(record_metrics_request_mock, *context.request)) {
       context.result = record_metric_result_mock;
       if (record_metric_result_mock == core::SuccessExecutionResult()) {
         context.response = std::make_shared<
@@ -79,20 +79,6 @@ class MockMetricClientProvider : public MetricClientProviderInterface {
       context.Finish();
     }
     return record_metric_result_mock;
-  }
-
-  // TODO(b/253115895): figure out why IgnoreField doesn't work for
-  // MessageDifferencer.
-  cmrt::sdk::metric_service::v1::PutMetricsRequest ZeroTimestampe(
-      std::shared_ptr<cmrt::sdk::metric_service::v1::PutMetricsRequest>&
-          request) {
-    cmrt::sdk::metric_service::v1::PutMetricsRequest output;
-    output.CopyFrom(*request);
-    for (auto metric = output.mutable_metrics()->begin();
-         metric < output.mutable_metrics()->end(); metric++) {
-      metric->set_timestamp_in_ms(0);
-    }
-    return output;
   }
 };
 }  // namespace google::scp::cpio::client_providers::mock

@@ -26,23 +26,9 @@ proto_library(
         [
             "*.proto",
         ],
-        exclude = [
-            "cpio_service.proto",
-        ],
     ),
     deps = [
         "//cc/core/common/proto:core_common_proto",
-        "//cc/public/cpio/proto/private_key_service/v1:private_key_service_proto",
-        "//cc/public/cpio/proto/public_key_service/v1:public_key_service_proto",
-    ],
-)
-
-proto_library(
-    name = "cpio_service_proto",
-    srcs = ["cpio_service.proto"],
-    deps = [
-        "//cc/core/common/proto:core_common_proto",
-        "@com_google_protobuf//:any_proto",
     ],
 )
 
@@ -52,17 +38,4 @@ proto_library(
 cc_proto_library(
     name = "cc_proto",
     deps = [":proto"],
-)
-
-cc_proto_library(
-    name = "cpio_service_cc_proto",
-    deps = [":cpio_service_proto"],
-)
-
-cc_grpc_library(
-    name = "cpio_service_cc_grpc",
-    srcs = [":cpio_service_proto"],
-    generate_mocks = True,
-    grpc_only = True,
-    deps = [":cpio_service_cc_proto"],
 )

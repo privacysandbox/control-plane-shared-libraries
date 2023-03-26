@@ -91,6 +91,7 @@ class MetricClientTest : public ::testing::Test {
     request_metric.value = kValue;
     request_metric.unit = MetricUnit::kCount;
     request_metric.labels = kLabels;
+    request_metric.timestamp_in_ms = 0;
     request.metrics.push_back(request_metric);
   }
 
@@ -99,6 +100,8 @@ class MetricClientTest : public ::testing::Test {
     auto metric = request.add_metrics();
     metric->set_name(kName);
     metric->set_value(kValue);
+    metric->mutable_timestamp()->set_seconds(0);
+    metric->mutable_timestamp()->set_nanos(0);
     auto labels = metric->mutable_labels();
     for (const auto& label : kLabels) {
       labels->insert(MapPair<string, string>(label.first, label.second));
@@ -186,8 +189,7 @@ TEST_F(MetricClientTest, InitFailure) {
   auto expected_result =
       FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET);
   client_->GetMetricClientProvider()->init_result_mock = expected_result;
-  auto public_error = FailureExecutionResult(SC_CPIO_INVALID_REQUEST);
-  EXPECT_EQ(client_->Init(), public_error);
+  EXPECT_EQ(client_->Init(), expected_result);
 }
 
 TEST_F(MetricClientTest, RunFailure) {

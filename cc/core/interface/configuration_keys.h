@@ -28,5 +28,8 @@ static constexpr char kSpannerDatabase[] = "google_scp_spanner_database_name";
 static constexpr char kTransactionManagerSkipFailedLogsInRecovery[] =
     "google_scp_transaction_manager_skip_failed_logs_in_recovery";
 static constexpr char kPBSJournalServiceFlushIntervalInMilliseconds[] =
-    "google_scp_journal_service_flush_inteval_in_milliseconds";
+    "google_scp_journal_service_flush_interval_in_milliseconds";
+
+static constexpr char kAggregatedMetricIntervalMs[] =
+    "google_scp_aggregated_metric_interval_ms";
 }  // namespace google::scp::core

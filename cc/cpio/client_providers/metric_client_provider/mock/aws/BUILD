@@ -26,6 +26,7 @@ cc_library(
     ],
     deps = [
         "//cc:cc_base_include_dir",
+        "//cc/core/async_executor/mock:core_async_executor_mock",
         "//cc/core/interface:interface_lib",
         "//cc/core/message_router/src:message_router_lib",
         "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",

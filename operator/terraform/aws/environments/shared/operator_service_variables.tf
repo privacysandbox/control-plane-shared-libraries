@@ -175,6 +175,22 @@ variable "terminated_instance_handler_lambda" {
 }
 
 ################################################################################
+# MetadataDB Variables
+################################################################################
+
+variable "metadatadb_read_capacity" {
+  type        = number
+  description = "The read capacity units for the MetadataDB DynamoDB Table"
+  default     = 5
+}
+
+variable "metadatadb_write_capacity" {
+  type        = number
+  description = "The write capacity units for the MetadataDB DynamoDB Table"
+  default     = 5
+}
+
+################################################################################
 # Frontend Alarm Variables
 ################################################################################
 
@@ -354,6 +370,28 @@ variable "job_queue_alarm_eval_period_sec" {
   description = "Amount of time (in seconds) for alarm evaluation. Default 300s"
   type        = string
   default     = "300"
+}
+
+################################################################################
+# MetadataDB Alarm Variables
+################################################################################
+
+variable "metadatadb_alarm_eval_period_sec" {
+  type        = string
+  description = "Amount of time (in seconds) for alarm evaluation. Default 60"
+  default     = "60"
+}
+
+variable "metadatadb_read_capacity_usage_ratio_alarm_threshold" {
+  type        = string
+  description = "Read capacity usage ratio greater than this to send alarm. Value should be decimal. Example: 0.9"
+  default     = "0.9"
+}
+
+variable "metadatadb_write_capacity_usage_ratio_alarm_threshold" {
+  type        = string
+  description = "Write capacity usage ratio greater than this to send alarm. Value should be decimal. Example: 0.9"
+  default     = "0.9"
 }
 
 ################################################################################

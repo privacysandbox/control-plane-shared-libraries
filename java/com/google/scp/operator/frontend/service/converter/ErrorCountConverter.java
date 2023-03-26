@@ -41,6 +41,7 @@ public final class ErrorCountConverter
         // Downcasting Storage 64-bit error count to API 32-bit error count.
         .setCount((int) errorCount.getCount())
         .setCategory(errorCount.getCategory())
+        .setDescription(errorCount.getDescription())
         .build();
   }
 
@@ -52,6 +53,7 @@ public final class ErrorCountConverter
         // Upcasting API 32-bit error count to Storage 64-bit error count.
         .setCount((long) errorCount.getCount())
         .setCategory(errorCount.getCategory())
+        .setDescription(errorCount.getDescription())
         .build();
   }
 }

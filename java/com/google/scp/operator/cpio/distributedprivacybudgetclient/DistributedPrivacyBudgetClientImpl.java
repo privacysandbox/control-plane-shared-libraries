@@ -70,8 +70,7 @@ public final class DistributedPrivacyBudgetClientImpl implements DistributedPriv
           .exhaustedPrivacyBudgetUnits(exhaustedPrivacyBudgetUnits)
           .build();
     } catch (TransactionManagerException e) {
-      var message = "Failed to consume the privacy budget.";
-      throw new DistributedPrivacyBudgetServiceException(message, e);
+      throw new DistributedPrivacyBudgetServiceException(e.getMessage(), e);
     }
   }
 

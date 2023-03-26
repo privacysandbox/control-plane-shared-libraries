@@ -33,32 +33,6 @@ using std::make_shared;
 using std::string;
 
 namespace google::scp::cpio::client_providers::test {
-TEST(MetricUtilsTest, GetCurrentTime) {
-  auto metric_name = make_shared<MetricName>("FrontEndRequestCount");
-  auto metric_unit = make_shared<MetricUnit>(MetricUnit::kCount);
-  auto metric_info = make_shared<MetricDefinition>(metric_name, metric_unit);
-  metric_info->name_space = make_shared<MetricNamespace>("PBS");
-
-  auto metric_value = make_shared<MetricValue>("1234");
-  auto before_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
-  auto record_metric_request = make_shared<PutMetricsRequest>();
-  MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info,
-                                    metric_value);
-
-  auto after_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::system_clock::now().time_since_epoch())
-                        .count();
-  EXPECT_EQ(record_metric_request->metrics()[0].name(), *metric_name);
-  EXPECT_EQ(record_metric_request->metrics()[0].unit(),
-            cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_COUNT);
-  EXPECT_EQ(record_metric_request->metrics()[0].value(), *metric_value);
-  EXPECT_TRUE(
-      (record_metric_request->metrics()[0].timestamp_in_ms() >= before_time) &&
-      (record_metric_request->metrics()[0].timestamp_in_ms() <= after_time));
-}
-
 TEST(MetricUtilsTest, OverrideMetricName) {
   auto metric_name = make_shared<MetricName>("FrontEndRequestCount");
   auto metric_unit = make_shared<MetricUnit>(MetricUnit::kCount);

@@ -27,6 +27,7 @@ def java_enclave_image(
         enclave_cmd_override = [],
         enclave_env_variables = {},
         jar_args = [],
+        jvm_options = [],
         repo_name = ""):
     """Creates a target for a Docker container with the necessary files for
     doing attested decryptions and communicating over the proxy. Exposes
@@ -49,6 +50,7 @@ def java_enclave_image(
       enclave_env_variables: Dict (string-to-string) of environment variables to
         be added to the enclave.
       jar_args: CLI args passed to the JAR file inside the enclave.
+      jvm_options: Jvm options passed to control jvm inside the enclave.
       repo_name: Deprecated, left for compatibility purposes but unused and ignored.
     """
 
@@ -65,7 +67,8 @@ def java_enclave_image(
     for b in _PROXY_BINARY_FILES:
         container_files.append(b)
 
-    enclave_cmd = ["/proxify", "/usr/bin/java", "-jar", jar_filename] + jar_args
+    enclave_cmd = ["/proxify", "/usr/bin/java"] + jvm_options + \
+                  ["-jar", jar_filename] + jar_args
 
     if len(enclave_cmd_override) > 0:
         enclave_cmd = enclave_cmd_override

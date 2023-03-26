@@ -31,6 +31,7 @@ cc_test(
         "//cc/core/http2_client/src:http2_client_lib",
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_test_lib",
         "@com_github_nghttp2_nghttp2//:nghttp2",
         "@com_google_googletest//:gtest_main",
     ],

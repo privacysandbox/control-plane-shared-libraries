@@ -25,14 +25,16 @@
 #include <vector>
 
 #include <aws/core/Aws.h>
+#include <google/protobuf/util/time_util.h>
 
 #include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"
+#include "core/test/utils/timestamp_test_utils.h"
 #include "core/utils/src/base64.h"
 #include "cpio/client_providers/kms_client_provider/mock/mock_kms_client_provider.h"
 #include "cpio/client_providers/private_key_client_provider/mock/mock_private_key_client_provider_with_overrides.h"
 #include "cpio/client_providers/private_key_client_provider/src/private_key_client_utils.h"
-#include "cpio/client_providers/private_key_fetching_client_provider/mock/mock_private_key_fetching_client_provider.h"
+#include "cpio/client_providers/private_key_fetcher_provider/mock/mock_private_key_fetcher_provider.h"
 #include "public/core/interface/execution_result.h"
 #include "public/core/test/interface/execution_result_test_lib.h"
 #include "public/cpio/core/mock/mock_lib_cpio.h"
@@ -44,6 +46,7 @@ using Aws::ShutdownAPI;
 using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest;
 using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse;
 using google::protobuf::Any;
+using google::protobuf::util::TimeUtil;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -51,6 +54,7 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::GetErrorMessage;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA;
+using google::scp::core::test::ExpectTimestampEquals;
 using google::scp::core::test::IsSuccessful;
 using google::scp::core::test::ResultIs;
 using google::scp::core::test::WaitUntil;
@@ -58,8 +62,7 @@ using google::scp::core::utils::Base64Encode;
 using google::scp::cpio::client_providers::mock::MockKmsClientProvider;
 using google::scp::cpio::client_providers::mock::
     MockPrivateKeyClientProviderWithOverrides;
-using google::scp::cpio::client_providers::mock::
-    MockPrivateKeyFetchingClientProvider;
+using google::scp::cpio::client_providers::mock::MockPrivateKeyFetcherProvider;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
@@ -73,6 +76,9 @@ using std::vector;
 static constexpr char kTestAccountIdentity1[] = "Test1";
 static constexpr char kTestAccountIdentity2[] = "Test2";
 static constexpr char kTestAccountIdentity3[] = "Test3";
+static constexpr char kTestGcpWipProvider1[] = "Wip1";
+static constexpr char kTestGcpWipProvider2[] = "Wip2";
+static constexpr char kTestGcpWipProvider3[] = "Wip3";
 static constexpr char kTestEndpoint1[] = "endpoint1";
 static constexpr char kTestEndpoint2[] = "endpoint2";
 static constexpr char kTestEndpoint3[] = "endpoint3";
@@ -87,6 +93,7 @@ static constexpr char kTestResourceName[] = "encryptionKeys/key_id";
 static constexpr char kTestPublicKeysetHandle[] = "publicKeysetHandle";
 static constexpr char kTestPublicKeyMaterial[] = "publicKeyMaterial";
 static constexpr int kTestExpirationTime = 123456;
+static constexpr int kTestCreationTime = 111111;
 static constexpr char kTestPublicKeySignature[] = "publicKeySignature";
 static constexpr char kTestKeyEncryptionKeyUri[] = "keyEncryptionKeyUri";
 static const vector<string> kTestKeyMaterials = {
@@ -110,7 +117,8 @@ static void GetPrivateKeyFetchingResponse(PrivateKeyFetchingResponse& response,
                                           size_t splits_in_key_data = 3,
                                           bool bad_key_material = false) {
   response.resource_name = make_shared<string>(kTestResourceName);
-  response.expiration_time_ms = kTestExpirationTime;
+  response.expiration_time_in_ms = kTestExpirationTime;
+  response.creation_time_in_ms = kTestCreationTime;
   response.encryption_key_type =
       EncryptionKeyType::kMultiPartyHybridEvenKeysplit;
   response.public_key_material = make_shared<string>(kTestPublicKeyMaterial);
@@ -168,18 +176,21 @@ class PrivateKeyClientProviderTest : public ::testing::Test {
   }
 
   void SetUp() override {
-    PrivateKeyVendingEndpoint endpoint_1(
-        {.account_identity = kTestAccountIdentity1,
-         .service_region = kTestRegion1,
-         .private_key_vending_service_endpoint = kTestEndpoint1});
-    PrivateKeyVendingEndpoint endpoint_2(
-        {.account_identity = kTestAccountIdentity2,
-         .service_region = kTestRegion2,
-         .private_key_vending_service_endpoint = kTestEndpoint2});
-    PrivateKeyVendingEndpoint endpoint_3(
-        {.account_identity = kTestAccountIdentity3,
-         .service_region = kTestRegion3,
-         .private_key_vending_service_endpoint = kTestEndpoint3});
+    PrivateKeyVendingEndpoint endpoint_1;
+    endpoint_1.account_identity = kTestAccountIdentity1;
+    endpoint_1.gcp_wip_provider = kTestGcpWipProvider1;
+    endpoint_1.service_region = kTestRegion1;
+    endpoint_1.private_key_vending_service_endpoint = kTestEndpoint1;
+    PrivateKeyVendingEndpoint endpoint_2;
+    endpoint_2.account_identity = kTestAccountIdentity2;
+    endpoint_2.gcp_wip_provider = kTestGcpWipProvider2;
+    endpoint_2.service_region = kTestRegion2;
+    endpoint_2.private_key_vending_service_endpoint = kTestEndpoint2;
+    PrivateKeyVendingEndpoint endpoint_3;
+    endpoint_3.account_identity = kTestAccountIdentity3;
+    endpoint_3.gcp_wip_provider = kTestGcpWipProvider3;
+    endpoint_3.service_region = kTestRegion3;
+    endpoint_3.private_key_vending_service_endpoint = kTestEndpoint3;
 
     auto private_key_client_options = make_shared<PrivateKeyClientOptions>();
     private_key_client_options->primary_private_key_vending_endpoint =
@@ -192,8 +203,8 @@ class PrivateKeyClientProviderTest : public ::testing::Test {
     private_key_client_provider =
         make_shared<MockPrivateKeyClientProviderWithOverrides>(
             private_key_client_options);
-    mock_private_key_fetching_client =
-        private_key_client_provider->GetPrivateKeyFetchingClientProvider();
+    mock_private_key_fetcher =
+        private_key_client_provider->GetPrivateKeyFetcherProvider();
     mock_kms_client = private_key_client_provider->GetKmsClientProvider();
     EXPECT_THAT(private_key_client_provider->Init(), IsSuccessful());
     EXPECT_THAT(private_key_client_provider->Run(), IsSuccessful());
@@ -223,10 +234,11 @@ class PrivateKeyClientProviderTest : public ::testing::Test {
   void SetMockPrivateKeyFetchingClient(
       const map<string, ExecutionResult>& mock_results,
       const map<string, PrivateKeyFetchingResponse>& mock_responses) {
-    mock_private_key_fetching_client->fetch_private_key_mock =
+    mock_private_key_fetcher->fetch_private_key_mock =
         [&](AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>&
                 context) {
-          auto endpoint = *context.request->private_key_service_base_uri;
+          const auto& endpoint = context.request->key_vending_endpoint
+                                     ->private_key_vending_service_endpoint;
           context.result = mock_results.at(endpoint);
           if (context.result.Successful()) {
             context.response = make_shared<PrivateKeyFetchingResponse>(
@@ -239,8 +251,7 @@ class PrivateKeyClientProviderTest : public ::testing::Test {
 
   shared_ptr<MockPrivateKeyClientProviderWithOverrides>
       private_key_client_provider;
-  shared_ptr<MockPrivateKeyFetchingClientProvider>
-      mock_private_key_fetching_client;
+  shared_ptr<MockPrivateKeyFetcherProvider> mock_private_key_fetcher;
   shared_ptr<MockKmsClientProvider> mock_kms_client;
 };
 
@@ -268,7 +279,12 @@ TEST_F(PrivateKeyClientProviderTest, ListPrivateKeysByIdsSuccess) {
                   EXPECT_EQ(key.key_id(), kTestKeyId);
                   EXPECT_EQ(key.public_key(), kTestPublicKeyMaterial);
                   EXPECT_EQ(key.private_key(), encoded_private_key);
-                  EXPECT_EQ(key.expiration_time_in_ms(), kTestExpirationTime);
+                  ExpectTimestampEquals(
+                      key.expiration_time(),
+                      TimeUtil::MillisecondsToTimestamp(kTestExpirationTime));
+                  ExpectTimestampEquals(
+                      key.creation_time(),
+                      TimeUtil::MillisecondsToTimestamp(kTestCreationTime));
                 }
                 EXPECT_THAT(context.result, IsSuccessful());
               });
@@ -284,7 +300,7 @@ TEST_F(PrivateKeyClientProviderTest, ListPrivateKeysByIdsFailed) {
 
   PrivateKeyFetchingResponse mock_fetching_response;
   GetPrivateKeyFetchingResponse(mock_fetching_response, 0);
-  mock_private_key_fetching_client->fetch_private_key_mock =
+  mock_private_key_fetcher->fetch_private_key_mock =
       [&](core::AsyncContext<PrivateKeyFetchingRequest,
                              PrivateKeyFetchingResponse>& context) {
         if (*context.request->key_id == kTestKeyIdBad) {
@@ -424,7 +440,7 @@ TEST_F(PrivateKeyClientProviderTest, FailedWithOneKmsDecryptContext) {
   GetPrivateKeyFetchingResponse(mock_fetching_response, 0);
   PrivateKeyFetchingResponse mock_fetching_response_bad;
   GetPrivateKeyFetchingResponse(mock_fetching_response_bad, 1, 3, true);
-  mock_private_key_fetching_client->fetch_private_key_mock =
+  mock_private_key_fetcher->fetch_private_key_mock =
       [&](core::AsyncContext<PrivateKeyFetchingRequest,
                              PrivateKeyFetchingResponse>& context) {
         if (*context.request->key_id == kTestKeyIdBad) {

@@ -43,6 +43,9 @@ class MetricClientProvider : public MetricClientProviderInterface {
           instance_client_provider)
       : async_executor_(async_executor),
         metric_client_options_(metric_client_options),
+        is_batch_recording_enable(
+            metric_client_options_ &&
+            metric_client_options_->enable_batch_recording),
         instance_client_provider_(instance_client_provider),
         is_running_(false),
         active_push_count_(0),
@@ -104,10 +107,14 @@ class MetricClientProvider : public MetricClientProviderInterface {
   /// The configuration for metric client.
   std::shared_ptr<MetricClientOptions> metric_client_options_;
 
+  /// Whether metric client enables batch recording.
+  bool is_batch_recording_enable;
+
   /// Instance client provider to fetch cloud metadata.
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
 
-  /// The vector stores the metric record requests received.
+  /// The vector stores the metric record requests received. Any changes to this
+  /// vector should be thread-safe.
   std::vector<
       core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
                          cmrt::sdk::metric_service::v1::PutMetricsResponse>>
@@ -122,7 +129,8 @@ class MetricClientProvider : public MetricClientProviderInterface {
 
   /// The cancellation callback.
   std::function<bool()> current_cancellation_callback_;
-  /// Sync mutex
+
+  /// Sync mutex.
   std::mutex sync_mutex_;
 };
 }  // namespace google::scp::cpio::client_providers

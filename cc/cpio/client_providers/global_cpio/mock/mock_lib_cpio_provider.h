@@ -33,7 +33,8 @@ class MockLibCpioProvider : public LibCpioProvider {
     instance_client_provider_ = std::make_shared<MockInstanceClientProvider>();
     async_executor_ =
         std::make_shared<core::async_executor::mock::MockAsyncExecutor>();
-    http_client_ = std::make_shared<core::http2_client::mock::MockHttpClient>();
+    http2_client_ =
+        std::make_shared<core::http2_client::mock::MockHttpClient>();
     role_credentials_provider_ =
         std::make_shared<mock::MockRoleCredentialsProvider>();
   }

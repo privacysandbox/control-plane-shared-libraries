@@ -226,3 +226,22 @@ cc_library(
         "@curl",
     ],
 )
+
+cc_library(
+    name = "autoscaling",
+    srcs =
+        [
+            "lib/libaws-cpp-sdk-autoscaling.a",
+        ],
+    hdrs = glob(
+        [
+            "include/aws/autoscaling/*.h",
+            "include/aws/autoscaling/model/*.h",
+        ],
+    ),
+    strip_include_prefix = "include",
+    deps = [
+        ":core",
+        "@curl",
+    ],
+)

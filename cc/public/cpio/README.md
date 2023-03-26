@@ -44,7 +44,9 @@ Before using any CPIO clients, CPIO needs to be initialized by calling Cpio::Ini
 5. [cc/public/cpio/adapters](adapters), [cc/public/cpio/core](core/), [cc/cpio](/cc/cpio) and [cc/core](/cc/core): implementations. The targets there are not public visible.
 6. [build_defs/cc](/build_defs/cc), [WORKSPACE](/WORKSPACE): external dependencies.
 # Clients
-1. [ConfigClient](interface/config_client)
-2. [MetricClient](interface/metric_client)
-3. [PublicKeyClient](interface/public_key_client)
-4. [PrivateKeyClient](interface/private_key_client)
+1. [BlobStorageClient](interface/blob_storage_client)
+2. [ConfigClient](interface/config_client)
+3. [CryptoClient](interface/crypto_client)
+4. [MetricClient](interface/metric_client)
+5. [PrivateKeyClient](interface/private_key_client)
+6. [PublicKeyClient](interface/public_key_client)

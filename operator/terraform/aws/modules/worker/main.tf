@@ -106,6 +106,11 @@ resource "aws_launch_template" "worker_template" {
     }
   }
 
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
   vpc_security_group_ids = var.worker_security_group_ids
 }
 
@@ -165,6 +170,7 @@ data "aws_iam_policy_document" "enclave_policy_doc" {
       "ec2:DescribeTags",
       "autoscaling:CompleteLifecycleAction",
       "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:SetInstanceHealth",
     ]
     resources = ["*"]
   }

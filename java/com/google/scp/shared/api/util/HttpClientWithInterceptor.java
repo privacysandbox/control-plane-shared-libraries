@@ -27,7 +27,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
@@ -47,6 +46,7 @@ import org.apache.hc.core5.util.Timeout;
  * HttpClient in this wrapper is subject to be intercepted by an HttpRequestInterceptor.
  */
 public class HttpClientWithInterceptor {
+
   private static final RetryRegistry RETRY_REGISTRY =
       RetryRegistry.of(
           RetryConfig.custom()
@@ -56,7 +56,7 @@ public class HttpClientWithInterceptor {
                * Backoff interval increases exponentially between retries viz. 500ms, 1000ms, 2000ms respectively
                */
               .intervalFunction(IntervalFunction.ofExponentialBackoff(Duration.ofMillis(500), 2))
-              .retryExceptions(IOException.class)
+              .retryExceptions(Exception.class)
               .build());
   private static final long REQUEST_TIMEOUT_DURATION = Duration.ofSeconds(60).toMillis();
   private static final RequestConfig REQUEST_CONFIG =
@@ -144,36 +144,17 @@ public class HttpClientWithInterceptor {
       return Retry.decorateCheckedSupplier(
               retryConfig,
               () -> {
-                try {
-                  return httpClient.execute(httpRequest, null).get();
-                } catch (InterruptedException | ExecutionException e) {
-                  /*
-                   * Any IOException occurring as a result of the operation is wrapped inside an ExecutionException
-                   * This ExecutionException gets thrown by the above Future's `get()` method.
-                   * We want to retry the request only if the underlying cause of the ExecutionException was an IOException.
-                   * In such cases we throw the underlying IOException from this supplier and the
-                   * retryconfig is configured to retry on IOExceptions coming out of the supplier.
-                   */
-                  if (e.getCause() != null && e.getCause() instanceof IOException) {
-                    throw e.getCause();
-                  }
-                  throw e;
-                }
+                return httpClient.execute(httpRequest, null).get();
               })
           .apply();
     } catch (Throwable e) {
-      /*
-       * This throwable could either be an IOException which was bubbled up because retries were exhausted or it could be something we did not expect.
-       * If it was an IOException we want to propagate it as such. PrivacyBudgetClientImpl and TransactionEngineImpl
-       * make transaction level retry decisions based on this IOException. If it was anything other than IOException we wrap it as a RuntimeException and propagate it
+      /**
+       * We wrap all exceptions coming out of this operation into an IOException because we believe
+       * we should retry the transaction phase in such situations. PrivacyBudgetClientImpl and
+       * TransactionEngineImpl rely on IOException being thrown to decide if the phase should be
+       * retried.
        */
-      if (e instanceof IOException) {
-        throw ((IOException) e);
-      }
-      // let the unknown throwable bubble up as a RuntimeException as it is not expected to be
-      // handled
-      throw new RuntimeException(
-          "Unexpected exception or error thrown while performing http request.", e);
+      throw new IOException(e);
     }
   }
 

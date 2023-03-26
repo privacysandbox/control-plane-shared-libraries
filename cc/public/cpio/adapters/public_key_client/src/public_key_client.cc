@@ -28,8 +28,11 @@
 #include "core/utils/src/error_utils.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/adapters/common/adapter_utils.h"
 #include "public/cpio/proto/public_key_service/v1/public_key_service.pb.h"
 
+using google::cmrt::sdk::public_key_service::v1::ListPublicKeysRequest;
+using google::cmrt::sdk::public_key_service::v1::ListPublicKeysResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -38,10 +41,9 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::GetPublicErrorCode;
 using google::scp::core::utils::ConvertToPublicExecutionResult;
-using google::scp::cpio::ListPublicKeysRequest;
-using google::scp::cpio::ListPublicKeysResponse;
 using google::scp::cpio::client_providers::GlobalCpio;
 using google::scp::cpio::client_providers::PublicKeyClientProviderFactory;
+using google::scp::cpio::client_providers::PublicKeyClientProviderInterface;
 using std::bind;
 using std::make_shared;
 using std::make_unique;
@@ -101,46 +103,13 @@ ExecutionResult PublicKeyClient::Stop() noexcept {
   return ConvertToPublicExecutionResult(execution_result);
 }
 
-void PublicKeyClient::OnListPublicKeysCallback(
-    const ListPublicKeysRequest& request,
-    Callback<ListPublicKeysResponse>& callback,
-    AsyncContext<cmrt::sdk::public_key_service::v1::ListPublicKeysRequest,
-                 cmrt::sdk::public_key_service::v1::ListPublicKeysResponse>&
-        list_public_keys_context) noexcept {
-  if (!list_public_keys_context.result.Successful()) {
-    ERROR_CONTEXT(kPublicKeyClient, list_public_keys_context,
-                  list_public_keys_context.result,
-                  "Failed to list public keys.");
-  }
-  ListPublicKeysResponse response;
-  if (list_public_keys_context.response) {
-    for (auto public_key : list_public_keys_context.response->public_keys()) {
-      response.public_keys.emplace_back(
-          PublicKey({.key_id = public_key.key_id(),
-                     .public_key = public_key.public_key()}));
-    }
-    response.expiration_time_in_ms =
-        list_public_keys_context.response->expiration_time_in_ms();
-  }
-  callback(ConvertToPublicExecutionResult(list_public_keys_context.result),
-           move(response));
-}
-
 core::ExecutionResult PublicKeyClient::ListPublicKeys(
     ListPublicKeysRequest request,
     Callback<ListPublicKeysResponse> callback) noexcept {
-  auto proto_request =
-      make_shared<cmrt::sdk::public_key_service::v1::ListPublicKeysRequest>();
-
-  AsyncContext<cmrt::sdk::public_key_service::v1::ListPublicKeysRequest,
-               cmrt::sdk::public_key_service::v1::ListPublicKeysResponse>
-      list_public_keys_context(move(proto_request),
-                               bind(&PublicKeyClient::OnListPublicKeysCallback,
-                                    this, request, callback, _1),
-                               kZeroUuid);
-
-  return ConvertToPublicExecutionResult(
-      public_key_client_provider_->ListPublicKeys(list_public_keys_context));
+  return Execute<ListPublicKeysRequest, ListPublicKeysResponse>(
+      bind(&PublicKeyClientProviderInterface::ListPublicKeys,
+           public_key_client_provider_, _1),
+      request, callback);
 }
 
 std::unique_ptr<PublicKeyClientInterface> PublicKeyClientFactory::Create(

@@ -22,6 +22,7 @@
 #include <aws/core/Aws.h>
 #include <aws/monitoring/CloudWatchErrors.h>
 #include <aws/monitoring/model/PutMetricDataRequest.h>
+#include <google/protobuf/util/time_util.h>
 
 #include "core/interface/async_context.h"
 #include "cpio/client_providers/metric_client_provider/src/aws/error_codes.h"
@@ -40,6 +41,7 @@ using google::cmrt::sdk::metric_service::v1::MetricUnit;
 using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
 using google::cmrt::sdk::metric_service::v1::PutMetricsResponse;
 using google::protobuf::MapPair;
+using google::protobuf::util::TimeUtil;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -81,7 +83,7 @@ class AwsMetricClientUtilsTest : public ::testing::Test {
   void SetPutMetricsRequest(
       PutMetricsRequest& record_metric_request, const string& value = kValue,
       int metrics_num = 1,
-      int64_t timestamp =
+      int64_t timestamp_in_ms =
           duration_cast<milliseconds>(system_clock::now().time_since_epoch())
               .count()) {
     for (auto i = 0; i < metrics_num; i++) {
@@ -89,7 +91,8 @@ class AwsMetricClientUtilsTest : public ::testing::Test {
       metric->set_name(kName);
       metric->set_value(value);
       metric->set_unit(kUnit);
-      metric->set_timestamp_in_ms(timestamp);
+      *metric->mutable_timestamp() =
+          TimeUtil::MillisecondsToTimestamp(timestamp_in_ms);
     }
   }
 };

@@ -33,6 +33,10 @@ class MockMetricClientWithOverrides : public MetricClient {
         std::make_shared<client_providers::mock::MockMetricClientProvider>();
   }
 
+  core::ExecutionResult Init() noexcept override {
+    return metric_client_provider_->Init();
+  }
+
   std::shared_ptr<client_providers::mock::MockMetricClientProvider>
   GetMetricClientProvider() {
     return std::dynamic_pointer_cast<

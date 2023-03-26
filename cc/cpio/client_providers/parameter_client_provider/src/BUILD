@@ -18,6 +18,7 @@ cc_library(
     name = "parameter_client_provider_lib",
     srcs = select({
         "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs"],
+        "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/parameter_client_provider/src/gcp:gcp_parameter_client_provider_srcs"],
         "//conditions:default": ["//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs"],
     }) + [
         "//cc/cpio/client_providers/interface:parameter_client_provider_interface.h",
@@ -30,6 +31,9 @@ cc_library(
             "@aws_sdk_cpp//:core",
             "//cc/cpio/common/src/aws:aws_utils_lib",
             "@aws_sdk_cpp//:ssm",
+        ],
+        "//cc/public/cpio/interface:gcp_cpio_lib": [
+            "@com_github_googleapis_google_cloud_cpp//:secretmanager",
         ],
         "//conditions:default": [
             "@aws_sdk_cpp//:core",

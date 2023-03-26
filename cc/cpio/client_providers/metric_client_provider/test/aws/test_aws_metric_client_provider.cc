@@ -47,9 +47,10 @@ void TestAwsMetricClientProvider::CreateClientConfiguration(
 shared_ptr<MetricClientProviderInterface> MetricClientProviderFactory::Create(
     const shared_ptr<MetricClientOptions>& options,
     const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
-    const shared_ptr<AsyncExecutorInterface>& async_executor) {
+    const shared_ptr<AsyncExecutorInterface>& async_executor,
+    const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
   return make_shared<TestAwsMetricClientProvider>(
       std::dynamic_pointer_cast<TestAwsMetricClientOptions>(options),
-      instance_client_provider, async_executor);
+      instance_client_provider, async_executor, io_async_executor);
 }
 }  // namespace google::scp::cpio::client_providers

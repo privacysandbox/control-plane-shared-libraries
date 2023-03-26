@@ -33,4 +33,8 @@ namespace google::scp::core::utils {
 ExecutionResult CalculateMd5Hash(const BytesBuffer& buffer,
                                  std::string& checksum);
 
+// Same as above but accepts a string.
+ExecutionResult CalculateMd5Hash(const std::string& buffer,
+                                 std::string& checksum);
+
 }  // namespace google::scp::core::utils

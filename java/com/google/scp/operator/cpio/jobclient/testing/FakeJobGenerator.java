@@ -45,7 +45,7 @@ public final class FakeJobGenerator {
         .setRequestInfo(JobGenerator.createFakeRequestInfo(id))
         .setCreateTime(REQUEST_RECEIVED_AT)
         .setUpdateTime(REQUEST_UPDATED_AT)
-        .setJobWorkerStartTime(Optional.of(REQUEST_PROCESSING_STARTED_AT))
+        .setProcessingStartTime(Optional.of(REQUEST_PROCESSING_STARTED_AT))
         .setJobStatus(JobStatus.IN_PROGRESS)
         .setNumAttempts(0);
   }

@@ -43,6 +43,34 @@ class AwsInstanceClientProvider : public InstanceClientProviderInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
+  core::ExecutionResult GetCurrentInstanceResourceName(
+      core::AsyncContext<cmrt::sdk::instance_service::v1::
+                             GetCurrentInstanceResourceNameRequest,
+                         cmrt::sdk::instance_service::v1::
+                             GetCurrentInstanceResourceNameResponse>&
+          context) noexcept override;
+
+  core::ExecutionResult GetTagsByResourceName(
+      core::AsyncContext<
+          cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest,
+          cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&
+          context) noexcept override;
+
+  core::ExecutionResult GetInstanceDetailsByResourceName(
+      core::AsyncContext<cmrt::sdk::instance_service::v1::
+                             GetInstanceDetailsByResourceNameRequest,
+                         cmrt::sdk::instance_service::v1::
+                             GetInstanceDetailsByResourceNameResponse>&
+          context) noexcept override;
+
+  core::ExecutionResult GetCurrentInstanceResourceNameSync(
+      std::string& resource_name) noexcept override;
+
+  core::ExecutionResult GetInstanceDetailsByResourceNameSync(
+      const std::string& resource_name,
+      cmrt::sdk::instance_service::v1::InstanceDetails&
+          instance_details) noexcept override;
+
   core::ExecutionResult GetCurrentInstanceId(
       std::string& instance_id) noexcept override;
 
@@ -53,17 +81,8 @@ class AwsInstanceClientProvider : public InstanceClientProviderInterface {
       const std::vector<std::string>& tag_names, const std::string& instance_id,
       std::map<std::string, std::string>& tag_values_map) noexcept override;
 
-  core::ExecutionResult GetCurrentInstancePublicIpv4Address(
-      std::string& instance_public_ipv4_address) noexcept override;
-
   core::ExecutionResult GetCurrentInstancePrivateIpv4Address(
       std::string& instance_private_ipv4_address) noexcept override;
-
-  core::ExecutionResult GetCurrentInstanceProjectId(
-      std::string&) noexcept override;
-
-  core::ExecutionResult GetCurrentInstanceZone(
-      std::string&) noexcept override;
 
  protected:
   /**

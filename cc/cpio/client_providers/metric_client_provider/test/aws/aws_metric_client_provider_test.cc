@@ -23,6 +23,7 @@
 #include <aws/monitoring/CloudWatchClient.h>
 #include <aws/monitoring/CloudWatchErrors.h>
 #include <aws/monitoring/model/PutMetricDataRequest.h>
+#include <google/protobuf/util/time_util.h>
 
 #include "core/async_executor/mock/mock_async_executor.h"
 #include "core/interface/async_context.h"
@@ -46,6 +47,7 @@ using Aws::CloudWatch::Model::PutMetricDataRequest;
 using google::cmrt::sdk::metric_service::v1::MetricUnit;
 using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
 using google::cmrt::sdk::metric_service::v1::PutMetricsResponse;
+using google::protobuf::util::TimeUtil;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -91,18 +93,17 @@ class AwsMetricClientProviderTest : public ::testing::Test {
   }
 
   void SetUp() override {
-    auto mock_async_executor = make_shared<MockAsyncExecutor>();
     auto metric_client_options = make_shared<MetricClientOptions>();
     metric_client_options->metric_namespace = kNamespace;
 
     client_ = make_unique<MockAwsMetricClientProviderOverrides>(
-        metric_client_options, mock_async_executor);
+        metric_client_options);
   }
 
   void SetPutMetricsRequest(
       PutMetricsRequest& record_metric_request, const string& value = kValue,
       int metrics_num = 1,
-      const int64_t& timestamp =
+      const int64_t& timestamp_in_ms =
           duration_cast<milliseconds>(system_clock::now().time_since_epoch())
               .count()) {
     for (auto i = 0; i < metrics_num; i++) {
@@ -110,7 +111,8 @@ class AwsMetricClientProviderTest : public ::testing::Test {
       metric->set_name(kName);
       metric->set_value(value);
       metric->set_unit(kUnit);
-      metric->set_timestamp_in_ms(timestamp);
+      *metric->mutable_timestamp() =
+          TimeUtil::MillisecondsToTimestamp(timestamp_in_ms);
     }
   }
 
@@ -273,7 +275,7 @@ TEST_F(AwsMetricClientProviderTest, OnPutMetricDataAsyncCallbackWithSuccess) {
 
 TEST_F(AwsMetricClientProviderTest,
        MultipleMetricsWithoutOptionsSetShouldFail) {
-  client_ = make_unique<MockAwsMetricClientProviderOverrides>(nullptr, nullptr);
+  client_ = make_unique<MockAwsMetricClientProviderOverrides>(nullptr);
   client_->GetInstanceClientProvider()->region_mock = "us-east-1";
 
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
@@ -297,7 +299,7 @@ TEST_F(AwsMetricClientProviderTest,
 }
 
 TEST_F(AwsMetricClientProviderTest, OneMetricWithoutOptionsSetSucceed) {
-  client_ = make_unique<MockAwsMetricClientProviderOverrides>(nullptr, nullptr);
+  client_ = make_unique<MockAwsMetricClientProviderOverrides>(nullptr);
   client_->GetInstanceClientProvider()->region_mock = "us-east-1";
 
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());

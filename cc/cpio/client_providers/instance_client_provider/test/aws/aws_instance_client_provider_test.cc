@@ -67,7 +67,6 @@ using std::vector;
 
 static constexpr char kInstanceId[] = "instance_id";
 static constexpr char kRegion[] = "us-west-1";
-static constexpr char kPublicIp[] = "public_ip";
 static constexpr char kPrivateIp[] = "private_ip";
 
 static constexpr char kTagName1[] = "/service/tag_name_1";
@@ -185,33 +184,6 @@ TEST_F(AwsInstanceClientProviderTest, RegionNotFound) {
   string region;
   EXPECT_EQ(
       aws_instance_client_provider_mock_->GetCurrentInstanceRegion(region),
-      FailureExecutionResult(
-          SC_AWS_INSTANCE_CLIENT_PROVIDER_RESOURCE_NOT_FOUND));
-}
-
-TEST_F(AwsInstanceClientProviderTest, SucceededToFetchPublicIp) {
-  aws_instance_client_provider_mock_->GetEC2MetadataClient()
-      ->resource_path_mock = "/latest/meta-data/public-ipv4";
-  aws_instance_client_provider_mock_->GetEC2MetadataClient()->resource_mock =
-      string(kPublicIp);
-
-  string public_ip;
-  EXPECT_EQ(
-      aws_instance_client_provider_mock_->GetCurrentInstancePublicIpv4Address(
-          public_ip),
-      SuccessExecutionResult());
-  EXPECT_EQ(public_ip, string(kPublicIp));
-}
-
-TEST_F(AwsInstanceClientProviderTest, PublicIpNotFound) {
-  aws_instance_client_provider_mock_->GetEC2MetadataClient()
-      ->resource_path_mock = "/latest/meta-data/public-ipv4";
-  aws_instance_client_provider_mock_->GetEC2MetadataClient()->resource_mock =
-      "";
-  string public_ip;
-  EXPECT_EQ(
-      aws_instance_client_provider_mock_->GetCurrentInstancePublicIpv4Address(
-          public_ip),
       FailureExecutionResult(
           SC_AWS_INSTANCE_CLIENT_PROVIDER_RESOURCE_NOT_FOUND));
 }

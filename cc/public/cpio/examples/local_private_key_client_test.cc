@@ -19,7 +19,6 @@
 
 #include <aws/core/Aws.h>
 
-#include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
@@ -31,13 +30,12 @@
 using Aws::InitAPI;
 using Aws::SDKOptions;
 using Aws::ShutdownAPI;
-using google::scp::core::AsyncContext;
+using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest;
+using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse;
 using google::scp::core::ExecutionResult;
 using google::scp::core::GetErrorMessage;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::test::WaitUntil;
-using google::scp::cpio::ListPrivateKeysByIdsRequest;
-using google::scp::cpio::ListPrivateKeysByIdsResponse;
 using google::scp::cpio::LogOption;
 using google::scp::cpio::PrivateKeyClientFactory;
 using google::scp::cpio::PrivateKeyClientInterface;
@@ -118,7 +116,7 @@ int main(int argc, char* argv[]) {
   std::cout << "Run private key client successfully!" << std::endl;
 
   ListPrivateKeysByIdsRequest request;
-  request.key_ids.emplace_back(kKeyId1);
+  request.add_key_ids(kKeyId1);
   atomic<bool> finished = false;
   result = private_key_client->ListPrivateKeysByIds(
       move(request),

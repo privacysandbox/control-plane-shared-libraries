@@ -25,7 +25,7 @@ cc_test(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
-        "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_lib",
+        "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
         "//cc/cpio/common/src/aws:aws_utils_lib",
         "@com_google_googletest//:gtest_main",
     ],
@@ -46,6 +46,50 @@ cc_test(
         "//cc/cpio/client_providers/instance_client_provider/mock/aws:aws_instance_client_provider_mock",
         "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
         "//cc/cpio/common/src/aws:aws_utils_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "aws_instance_client_provider_new_test",
+    size = "small",
+    timeout = "long",
+    srcs =
+        ["aws_instance_client_provider_new_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/async_executor/mock:core_async_executor_mock",
+        "//cc/core/curl_client/mock:mock_curl_client",
+        "//cc/core/interface:interface_lib",
+        "//cc/core/test/utils:utils_lib",
+        "//cc/cpio/client_providers/auth_token_provider/mock:auth_token_provider_mock",
+        "//cc/cpio/client_providers/instance_client_provider/mock/aws:aws_instance_client_provider_mock",
+        "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib_new",
+        "//cc/cpio/common/src/aws:aws_utils_lib",
+        "//cc/public/core/test/interface:execution_result_test_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "aws_instance_client_utils_test",
+    size = "small",
+    timeout = "long",
+    srcs =
+        ["aws_instance_client_utils_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/curl_client/mock:mock_curl_client",
+        "//cc/core/interface:interface_lib",
+        "//cc/core/test/utils:utils_lib",
+        "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib_new",
+        "//cc/public/core/test/interface:execution_result_test_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )

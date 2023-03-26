@@ -33,9 +33,17 @@ module "metadata_db" {
   environment = var.environment
   table_name  = "${var.environment}-JobMetadata"
 
-  # Cost ~$2.91 per month
-  read_capacity  = 5
-  write_capacity = 5
+  read_capacity  = var.metadatadb_read_capacity
+  write_capacity = var.metadatadb_write_capacity
+
+  #Alarms
+  worker_alarms_enabled = var.worker_alarms_enabled
+
+  eval_period_sec = var.metadatadb_alarm_eval_period_sec
+  sns_topic_arn   = local.operator_alarm_sns_topic_enabled ? module.operator_alarm_sns_topic[0].operator_alarm_sns_topic_arn : ""
+
+  metadatadb_read_capacity_usage_ratio_alarm_threshold  = var.metadatadb_read_capacity_usage_ratio_alarm_threshold
+  metadatadb_write_capacity_usage_ratio_alarm_threshold = var.metadatadb_write_capacity_usage_ratio_alarm_threshold
 }
 
 module "job_queue" {
