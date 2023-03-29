@@ -63,6 +63,10 @@ module "operator_service" {
 
   alarm_notification_email = var.alarm_notification_email
 
+  # MetadataDB
+  metadatadb_read_capacity  = var.metadatadb_read_capacity
+  metadatadb_write_capacity = var.metadatadb_write_capacity
+
   # Frontend Alarms
   frontend_alarms_enabled                 = var.frontend_alarms_enabled
   frontend_alarm_eval_period_sec          = var.frontend_alarm_eval_period_sec
@@ -96,6 +100,11 @@ module "operator_service" {
   # Job Queue Alarms
   job_queue_old_message_threshold_sec = var.job_queue_old_message_threshold_sec
   job_queue_alarm_eval_period_sec     = var.job_queue_alarm_eval_period_sec
+
+  # MetadataDB Alarms
+  metadatadb_read_capacity_usage_ratio_alarm_threshold  = var.metadatadb_read_capacity_usage_ratio_alarm_threshold
+  metadatadb_write_capacity_usage_ratio_alarm_threshold = var.metadatadb_write_capacity_usage_ratio_alarm_threshold
+  metadatadb_alarm_eval_period_sec                      = var.metadatadb_alarm_eval_period_sec
 
   # VPC
   enable_user_provided_vpc             = var.enable_user_provided_vpc

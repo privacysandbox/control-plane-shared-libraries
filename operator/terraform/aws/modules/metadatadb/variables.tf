@@ -39,3 +39,28 @@ variable "enable_dynamo_point_in_time_recovery" {
   type        = bool
   default     = true
 }
+
+variable "worker_alarms_enabled" {
+  type        = string
+  description = "Enable alarms for worker"
+}
+
+variable "sns_topic_arn" {
+  type        = string
+  description = "SNS topic ARN to forward alerts to"
+}
+
+variable "eval_period_sec" {
+  type        = string
+  description = "Amount of time (in seconds) for alarm evaluation. Example: '60'."
+}
+
+variable "metadatadb_read_capacity_usage_ratio_alarm_threshold" {
+  type        = string
+  description = "The capacity limit of metadatadb table read processing unit"
+}
+
+variable "metadatadb_write_capacity_usage_ratio_alarm_threshold" {
+  description = "The capacity limit of metadatadb table write processing unit"
+  type        = string
+}

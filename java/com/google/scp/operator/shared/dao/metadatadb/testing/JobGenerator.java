@@ -65,14 +65,17 @@ public final class JobGenerator {
           ErrorCount.newBuilder()
               .setCategory(JobErrorCategory.DECRYPTION_ERROR.name())
               .setCount(5L)
+              .setDescription("Decryption error.")
               .build(),
           ErrorCount.newBuilder()
               .setCategory(JobErrorCategory.GENERAL_ERROR.name())
               .setCount(12L)
+              .setDescription("General error.")
               .build(),
           ErrorCount.newBuilder()
               .setCategory(JobErrorCategory.NUM_REPORTS_WITH_ERRORS.name())
-              .setCount(2L)
+              .setCount(17L)
+              .setDescription("Total number of reports with error.")
               .build());
   private static final com.google.scp.operator.protos.shared.backend.ErrorSummaryProto.ErrorSummary
       ERROR_SUMMARY_SHARED =
@@ -304,7 +307,10 @@ public final class JobGenerator {
                                                     .withS(i.getCategory().toString()),
                                                 "Count",
                                                 new AttributeValue()
-                                                    .withN(Long.toString(i.getCount())))))
+                                                    .withN(Long.toString(i.getCount())),
+                                                "Description",
+                                                new AttributeValue()
+                                                    .withS(i.getDescription().toString()))))
                             .collect(toImmutableList()))));
   }
 

@@ -25,4 +25,6 @@ message ErrorCount {
   string category = 1;
   /** The count of errors in the specified category. */
   int32 count = 2;
+  /** Description of the error. */
+  string description = 3;
 }

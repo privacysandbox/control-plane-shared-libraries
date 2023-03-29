@@ -33,6 +33,8 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
  */
 public final class ErrorCountsAttributeConverter implements AttributeConverter<List<ErrorCount>> {
 
+  private static final String DESCRIPTION_COLUMN_NAME = "Description";
+
   /** Creates a new instance of the {@code ErrorCountsAttributeConverter} class. */
   public static ErrorCountsAttributeConverter create() {
     return new ErrorCountsAttributeConverter();
@@ -54,7 +56,11 @@ public final class ErrorCountsAttributeConverter implements AttributeConverter<L
                                 "Count",
                                 AttributeValue.builder().n(Long.toString(entry.getCount())).build(),
                                 "Category",
-                                AttributeValue.builder().s(entry.getCategory().toString()).build()))
+                                AttributeValue.builder().s(entry.getCategory().toString()).build(),
+                                DESCRIPTION_COLUMN_NAME,
+                                AttributeValue.builder()
+                                    .s(entry.getDescription().toString())
+                                    .build()))
                         .build())
             .collect(ImmutableList.toImmutableList());
     return AttributeValue.builder().l(convertedList).build();
@@ -77,6 +83,12 @@ public final class ErrorCountsAttributeConverter implements AttributeConverter<L
                             ErrorCount.newBuilder()
                                 .setCategory(entry.m().get("Category").s())
                                 .setCount(Long.parseLong(entry.m().get("Count").n()))
+                                .setDescription(
+                                    entry
+                                        .m()
+                                        .getOrDefault(
+                                            DESCRIPTION_COLUMN_NAME, AttributeValue.fromS(""))
+                                        .s())
                                 .build())
                     .collect(ImmutableList.toImmutableList()))
         .orElse(ImmutableList.of());

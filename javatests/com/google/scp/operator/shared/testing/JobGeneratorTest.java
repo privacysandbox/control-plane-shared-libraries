@@ -86,16 +86,19 @@ public class JobGeneratorTest {
                                 .newBuilder()
                                 .setCategory(JobErrorCategory.DECRYPTION_ERROR.name())
                                 .setCount(5L)
+                                .setDescription("Decryption error.")
                                 .build(),
                             com.google.scp.operator.protos.shared.backend.ErrorCountProto.ErrorCount
                                 .newBuilder()
                                 .setCategory(JobErrorCategory.GENERAL_ERROR.name())
                                 .setCount(12L)
+                                .setDescription("General error.")
                                 .build(),
                             com.google.scp.operator.protos.shared.backend.ErrorCountProto.ErrorCount
                                 .newBuilder()
                                 .setCategory(JobErrorCategory.NUM_REPORTS_WITH_ERRORS.name())
-                                .setCount(2L)
+                                .setCount(17L)
+                                .setDescription("Total number of reports with error.")
                                 .build()))
                     .build())
             .setFinishedAt(ProtoUtil.toProtoTimestamp(Instant.parse("2019-10-01T13:25:24.00Z")))

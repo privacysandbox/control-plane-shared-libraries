@@ -50,14 +50,17 @@ public final class ServiceJobGenerator {
           ErrorCount.newBuilder()
               .setCategory(JobErrorCategory.DECRYPTION_ERROR.name())
               .setCount(5)
+              .setDescription("Decryption error.")
               .build(),
           ErrorCount.newBuilder()
               .setCategory(JobErrorCategory.GENERAL_ERROR.name())
+              .setDescription("General error.")
               .setCount(12)
               .build(),
           ErrorCount.newBuilder()
               .setCategory(JobErrorCategory.NUM_REPORTS_WITH_ERRORS.name())
-              .setCount(2)
+              .setCount(17)
+              .setDescription("Total number of reports with error.")
               .build());
   private static final ErrorSummary ERROR_SUMMARY =
       ErrorSummary.newBuilder().addAllErrorCounts(ERROR_COUNTS).build();

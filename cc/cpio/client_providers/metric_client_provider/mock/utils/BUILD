@@ -32,6 +32,7 @@ cc_library(
         "//cc/cpio/client_providers/metric_client_provider/src:metric_client_provider_lib",
         "//cc/cpio/proto:cc_proto",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_protobuf//:protobuf",
     ],
 )

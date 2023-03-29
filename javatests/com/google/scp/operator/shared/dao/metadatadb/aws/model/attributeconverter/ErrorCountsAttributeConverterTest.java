@@ -49,13 +49,24 @@ public class ErrorCountsAttributeConverterTest {
     // Create an errorCounts map the way its represented in our application
     errorCountsInApplication =
         new ImmutableList.Builder<ErrorCount>()
-            .add(ErrorCount.newBuilder().setCategory(DECRYPTION_ERROR.name()).setCount(5L).build())
+            .add(
+                ErrorCount.newBuilder()
+                    .setCategory(DECRYPTION_ERROR.name())
+                    .setCount(5L)
+                    .setDescription("Decryption Error.")
+                    .build())
             .add(
                 ErrorCount.newBuilder()
                     .setCategory(HYBRID_KEY_ID_MISSING.name())
                     .setCount(8L)
+                    .setDescription("Hybrid key is missing.")
                     .build())
-            .add(ErrorCount.newBuilder().setCategory(GENERAL_ERROR.name()).setCount(13L).build())
+            .add(
+                ErrorCount.newBuilder()
+                    .setCategory(GENERAL_ERROR.name())
+                    .setCount(13L)
+                    .setDescription("General Error.")
+                    .build())
             .build();
 
     // Create an errorCounts map the way that the data will come back from Dynamo
@@ -69,7 +80,10 @@ public class ErrorCountsAttributeConverterTest {
                                 "Category",
                                 AttributeValues.stringValue(errorCount.getCategory().toString()),
                                 "Count",
-                                AttributeValues.numberValue(errorCount.getCount())))
+                                AttributeValues.numberValue(errorCount.getCount()),
+                                "Description",
+                                AttributeValues.stringValue(
+                                    errorCount.getDescription().toString())))
                         .build())
             .collect(ImmutableList.toImmutableList());
     errorCountsInDynamo = AttributeValue.builder().l(dynamoList).build();
