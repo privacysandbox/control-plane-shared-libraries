@@ -201,8 +201,8 @@ http_archive(
 package(default_visibility = ["//visibility:public"])
 exports_files(["packer"])
 """,
-    sha256 = "8a94b84542d21b8785847f4cccc8a6da4c7be5e16d4b1a2d0a5f7ec5532faec0",
-    url = "https://releases.hashicorp.com/packer/1.7.8/packer_1.7.8_linux_amd64.zip",
+    sha256 = "57d0411e578aea62918d36ed186951139d5d49d44b76e5666d1fbf2427b385ae",
+    url = "https://releases.hashicorp.com/packer/1.8.6/packer_1.8.6_linux_amd64.zip",
 )
 
 http_archive(

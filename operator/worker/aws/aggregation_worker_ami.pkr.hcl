@@ -15,7 +15,7 @@
 packer {
   required_plugins {
     amazon = {
-      version = ">= 0.0.1"
+      version = ">= 1.2.1"
       source  = "github.com/hashicorp/amazon"
     }
   }
@@ -41,16 +41,18 @@ source "amazon-ebs" "sample-ami" {
   // Custom Base AMI
   source_ami_filter {
     filters = {
-      name                = "amzn2-ami-hvm-*-x86_64-ebs"
+      name                = "al2023-ami-minimal-*-x86_64"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
     most_recent = true
     owners = [
-      "amazon"]
+      "amazon"
+    ]
   }
   ssh_username = "ec2-user"
   ssh_timeout = "15m"
+  temporary_key_pair_type = "ed25519"
 }
 
 build {

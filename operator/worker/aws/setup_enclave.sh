@@ -13,16 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Setup SSM Agent
+sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+
 #
 # Builds enclave image inside the /home/ec2-user directory as part of automatic
 # AMI generation.
-sudo amazon-linux-extras install docker
+sudo yum install docker -y
 sudo systemctl enable docker
 sudo systemctl start docker
 
 sudo docker load --input /tmp/{container_file}
 
-sudo amazon-linux-extras install aws-nitro-enclaves-cli
+sudo yum install aws-nitro-enclaves-cli -y
+sudo yum install python -y
+sudo yum install python3-yaml -y
 
 sudo yum install aws-nitro-enclaves-cli-devel -y
 sudo systemctl enable nitro-enclaves-allocator.service
