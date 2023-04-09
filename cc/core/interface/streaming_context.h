@@ -19,8 +19,10 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <utility>
 
 #include "core/common/concurrent_queue/src/concurrent_queue.h"
+#include "core/common/streaming_context/src/error_codes.h"
 
 #include "async_context.h"
 
@@ -38,8 +40,23 @@ struct StreamingContext : public AsyncContext<TRequest, TResponse> {
   using BaseClass::BaseClass;
 
   StreamingContext(const StreamingContext& right) : BaseClass(right) {
+    is_marked_done = right.is_marked_done;
     is_cancelled = right.is_cancelled;
   }
+
+  /**
+   * @brief Marks the streaming context as done. This means that all the
+   * messages have been communicated (not necessarily processed) that need to
+   * be.
+   *
+   */
+  void MarkDone() noexcept { is_marked_done->store(true); }
+
+  /**
+   * @brief Returns true if this context is marked done.
+   *
+   */
+  bool IsMarkedDone() const noexcept { return is_marked_done->load(); }
 
   /**
    * @brief Attempts to cancel the current operation. This is a best effort
@@ -48,43 +65,48 @@ struct StreamingContext : public AsyncContext<TRequest, TResponse> {
    * guaranteed.
    *
    */
-  virtual void TryCancel() noexcept = 0;
+  void TryCancel() noexcept { is_cancelled->store(true); }
 
   bool IsCancelled() const noexcept { return is_cancelled->load(); }
 
  protected:
+  std::shared_ptr<std::atomic_bool> is_marked_done =
+      std::make_shared<std::atomic_bool>(false);
+
   std::shared_ptr<std::atomic_bool> is_cancelled =
       std::make_shared<std::atomic_bool>(false);
 };
 
 /**
- * @brief ServerStreamingContext is used to control the lifecycle of any
- * streaming operations. The caller will set the request, response, the
- * process_callback, and the response_queue and components will use it to
- * transition from one async state another. process_callback is now called once
- * for each new message placed in the queue and once more when the call has
- * completed. If response_queue IsDone, then it is the final call.
- * AsyncContext::callback is now unused.
+ * @brief ConsumerStreamingContext is used to control the lifecycle of
+ * server-side streaming operations. The caller will set the request and the
+ * process_callback. process_callback is now called once for each new message
+ * placed in the queue and once more when the call has completed. If the
+ * context.IsMarkedDone and no element can be acquired, then it is the final
+ * call. AsyncContext::callback is now unused.
  *
- * General form of process_callback:
+ * General form of process_callback, using a new TryGetNextResponse to acquire
+ * the next response:
  *
- * context.process_callback = [](auto& context) {
- *   // It is important that TryDequeue is called before checking IsDone
- *   // otherwise 2 threads may compete to get the last element and enter a bad
- *   // state.
- *   Element e;
- *   if (context.response_queue->TryDequeue(e).Successful()) {
- *     // Handle this Element.                                             // #1
- *   } else {
- *     if (!context.response_queue->IsDone()) {
+ * context.process_callback = [](auto& context, bool is_finish) {
+ *   if (is_finish) {
+ *     // capture context.result.
+ *   }
+ *   // It is important that TryGetNextResponse is called before checking
+ *   // IsMarkedDone otherwise 2 threads may compete to get the last element and
+ *   // enter a bad state.
+ *   auto response = context.TryGetNextResponse();
+ *   if (response == nullptr) {
+ *     if (!context.IsMarkedDone()) {
  *       // Generally, this should be impossible.
  *     }
- *     if (!context.result.Successful()) {     // #2
- *       // Handle unsuccess.
- *       return;
+ *     if (!context.result.Successful()) {
+ *       // Handle failure.
+ *     } else {
+ *       // Handle success.
  *     }
- *     // Handle success.
  *   }
+ *   // Handle successfully acquiring the next response.
  * };
  *
  * NOTE: There is an edge case where one thread is at #1 and another is at
@@ -96,41 +118,72 @@ struct StreamingContext : public AsyncContext<TRequest, TResponse> {
  * thread #2 proceeds.
  *
  * @tparam TRequest request template param
- * @tparam TResponse response template param. This is the type of request being
- * used in response_queue.
+ * @tparam TResponse response template param. This is the type of message being
+ * acquired with TryGetNextResponse.
  */
 template <typename TRequest, typename TResponse>
-struct ServerStreamingContext : public StreamingContext<TRequest, TResponse> {
+struct ConsumerStreamingContext : public StreamingContext<TRequest, TResponse> {
  private:
   using BaseClass = StreamingContext<TRequest, TResponse>;
 
  public:
-  using BaseClass::BaseClass;
+  /**
+   * @brief Construct a new Consumer Streaming Context object.
+   *
+   * @param max_num_outstanding_responses The maximum number of response objects
+   * allowed to not have been acquired by the consumer.
+   */
+  explicit ConsumerStreamingContext(
+      size_t max_num_outstanding_responses = 50000)
+      : response_queue(std::make_shared<common::ConcurrentQueue<TResponse>>(
+            max_num_outstanding_responses)) {}
 
-  ServerStreamingContext(const ServerStreamingContext& right)
+  ConsumerStreamingContext(const ConsumerStreamingContext& right)
       : BaseClass(right) {
     response_queue = right.response_queue;
     process_callback = right.process_callback;
   }
 
-  void TryCancel() noexcept override {
-    this->is_cancelled->store(true);
-    response_queue->MarkDone();
+  /**
+   * @brief Get the next message if available, nullptr otherwise. Messages are
+   * returned in the same order as they are placed into the context. NOTE: if
+   * nullptr is returned and this context is done, then all messages have been
+   * received.
+   */
+  std::unique_ptr<TResponse> TryGetNextResponse() noexcept {
+    TResponse resp;
+    if (!response_queue->TryDequeue(resp).Successful()) {
+      return nullptr;
+    }
+    return std::make_unique<TResponse>(std::move(resp));
+  }
+
+  /**
+   * @brief Attempts to enqueue resp into the context.
+   *
+   * @param resp The message to enqueue.
+   * @return ExecutionResult Failure if the context is cancelled or if
+   * enqueueing fails. Success otherwise.
+   */
+  ExecutionResult TryPushResponse(TResponse resp) noexcept {
+    if (this->IsMarkedDone()) {
+      return FailureExecutionResult(errors::SC_STREAMING_CONTEXT_DONE);
+    }
+    if (this->IsCancelled()) {
+      return FailureExecutionResult(errors::SC_STREAMING_CONTEXT_CANCELLED);
+    }
+    return response_queue->TryEnqueue(std::move(resp));
   }
 
   using ProcessCallback = typename std::function<void(
-      ServerStreamingContext<TRequest, TResponse>&, bool)>;
+      ConsumerStreamingContext<TRequest, TResponse>&, bool)>;
 
-  // Is called each time a new message is placed in response_queue AND when the
+  // Is called each time a new message is made available AND once more when the
   // async operation is completed. The first argument is *this. The second
   // argument is whether this->result contains the true result of the operation.
   // This is for users to differentiate between ProcessNextMessage calls which
   // do not have meaningful values in this->result, and Finish calls which do.
   ProcessCallback process_callback;
-
-  /// ConcurrentQueue used by the callee to communicate messages back to the
-  /// caller.
-  std::shared_ptr<common::ConcurrentQueue<TResponse>> response_queue;
 
   /// Processes the next message in the queue.
   void ProcessNextMessage() noexcept { this->process_callback(*this, false); }
@@ -150,39 +203,71 @@ struct ServerStreamingContext : public StreamingContext<TRequest, TResponse> {
       process_callback(*this, true);
     }
   }
+
+ private:
+  /// ConcurrentQueue used by the callee to communicate messages back to the
+  /// caller.
+  std::shared_ptr<common::ConcurrentQueue<TResponse>> response_queue;
 };
 
 /**
- * @brief ClientStreamingContext is used to control the lifecycle of any
- * streaming operations. The caller will set the request, response, the
- * callbacks, and the response_queue and components will use it to transition
- * from one async state another. AsyncContext's request field should contain the
+ * @brief ProducerStreamingContext is used to control the lifecycle of
+ * client-side streaming operations. The caller will set the request and the
+ * callback. AsyncContext's request field should contain the
  * initial request, all subsequent requests (not including the initial) should
- * be communicated via request_queue.
+ * be communicated via TryPushRequest.
  *
  * @tparam TRequest request template param. This is the type of request being
- * used in response_queue.
+ * used in TryPushRequest.
  * @tparam TResponse response template param
  */
 template <typename TRequest, typename TResponse>
-struct ClientStreamingContext : public StreamingContext<TRequest, TResponse> {
+struct ProducerStreamingContext : public StreamingContext<TRequest, TResponse> {
  private:
   using BaseClass = StreamingContext<TRequest, TResponse>;
 
  public:
-  using BaseClass::BaseClass;
+  /**
+   * @brief Construct a new Producer Streaming Context object
+   *
+   * @param max_num_outstanding_requests The maximum number of request objects
+   * allowed to not have been acquired by the consumer.
+   */
+  explicit ProducerStreamingContext(size_t max_num_outstanding_requests = 50000)
+      : request_queue(std::make_shared<common::ConcurrentQueue<TRequest>>(
+            max_num_outstanding_requests)) {}
 
-  ClientStreamingContext(const ClientStreamingContext& right)
+  ProducerStreamingContext(const ProducerStreamingContext& right)
       : BaseClass(right) {
     request_queue = right.request_queue;
   }
 
-  void TryCancel() noexcept override {
-    this->is_cancelled->store(true);
-    request_queue->MarkDone();
+  /**
+   * @brief Attempts to enqueue req for processing.
+   *
+   * @param req The message to enqueue
+   * @return ExecutionResult Whether enqueueing succeeded or not.
+   */
+  ExecutionResult TryPushRequest(TRequest req) noexcept {
+    if (this->IsMarkedDone()) {
+      return FailureExecutionResult(errors::SC_STREAMING_CONTEXT_DONE);
+    }
+    if (this->IsCancelled()) {
+      return FailureExecutionResult(errors::SC_STREAMING_CONTEXT_CANCELLED);
+    }
+    return request_queue->TryEnqueue(std::move(req));
   }
 
-  /// MessageQueue used by the caller to communicate messages to the
+  std::unique_ptr<TRequest> TryGetNextRequest() noexcept {
+    TRequest req;
+    if (!request_queue->TryDequeue(req).Successful()) {
+      return nullptr;
+    }
+    return std::make_unique<TRequest>(std::move(req));
+  }
+
+ private:
+  /// ConcurrentQueue used by the caller to communicate messages to the
   /// callee.
   std::shared_ptr<common::ConcurrentQueue<TRequest>> request_queue;
 };
@@ -192,38 +277,29 @@ struct ClientStreamingContext : public StreamingContext<TRequest, TResponse> {
  * Assigns the result to the context, schedules Finish(), and
  * returns the result. If the context cannot be finished async, it will be
  * finished synchronously on the current thread. Before finishing the context,
- * we mark the response_queue or request_queue as done if present.
+ * we mark the context as done.
  * @param result execution result of operation.
- * @param context the async context to be completed.
+ * @param context the streaming context to be completed.
  * @param async_executor the executor (thread pool) for the async context to
  * be completed on.
  * @param priority the priority for the executor. Defaults to High.
  */
-template <template <typename...> typename TContext, typename TRequest,
+template <template <typename, typename> typename TContext, typename TRequest,
           typename TResponse>
 void FinishStreamingContext(
     const ExecutionResult& result, TContext<TRequest, TResponse>& context,
     const std::shared_ptr<AsyncExecutorInterface>& async_executor,
     AsyncPriority priority = AsyncPriority::High) {
-  constexpr bool is_server_streaming =
-      std::is_base_of_v<ServerStreamingContext<TRequest, TResponse>,
+  constexpr bool is_consumer_streaming =
+      std::is_base_of_v<ConsumerStreamingContext<TRequest, TResponse>,
                         TContext<TRequest, TResponse>>;
-  constexpr bool is_client_streaming =
-      std::is_base_of_v<ClientStreamingContext<TRequest, TResponse>,
+  constexpr bool is_producer_streaming =
+      std::is_base_of_v<ProducerStreamingContext<TRequest, TResponse>,
                         TContext<TRequest, TResponse>>;
-  static_assert(is_server_streaming || is_client_streaming);
+  static_assert(is_consumer_streaming || is_producer_streaming);
 
   context.result = result;
-  if constexpr (is_server_streaming) {
-    if (context.response_queue) {
-      context.response_queue->MarkDone();
-    }
-  }
-  if constexpr (is_client_streaming) {
-    if (context.request_queue) {
-      context.request_queue->MarkDone();
-    }
-  }
+  context.MarkDone();
 
   // Make a copy of context - this way we know async_executor's handle will
   // never go out of scope.

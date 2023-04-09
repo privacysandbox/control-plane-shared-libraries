@@ -31,7 +31,6 @@ cc_library(
         "//cc/core/message_router/src:message_router_lib",
         "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
         "//cc/cpio/client_providers/metric_client_provider/src:metric_client_provider_lib",
-        "//cc/cpio/proto:cc_proto",
         "@aws_sdk_cpp//:monitoring",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_protobuf//:protobuf",

@@ -29,6 +29,7 @@
 #include "cc/core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
+#include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
 #include "cpio/common/src/aws/aws_utils.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/proto/parameter_service/v1/parameter_service.pb.h"
@@ -54,6 +55,7 @@ using google::scp::core::errors::
     SC_AWS_PARAMETER_CLIENT_PROVIDER_MULTIPLE_PARAMETERS_FOUND;
 using google::scp::core::errors::
     SC_AWS_PARAMETER_CLIENT_PROVIDER_PARAMETER_NOT_FOUND;
+using google::scp::cpio::client_providers::AwsInstanceClientUtils;
 using google::scp::cpio::common::CreateClientConfiguration;
 using std::make_shared;
 using std::map;
@@ -73,16 +75,17 @@ static constexpr char kAwsParameterClientProvider[] =
 namespace google::scp::cpio::client_providers {
 ExecutionResult AwsParameterClientProvider::CreateClientConfiguration(
     shared_ptr<ClientConfiguration>& client_config) noexcept {
-  auto region = make_shared<string>();
-  auto execution_result =
-      instance_client_provider_->GetCurrentInstanceRegion(*region);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsParameterClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get region");
-    return execution_result;
+  auto region_code_or =
+      AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
+  if (!region_code_or.Successful()) {
+    ERROR(kAwsParameterClientProvider, kZeroUuid, kZeroUuid,
+          region_code_or.result(),
+          "Failed to get region code for current instance");
+    return region_code_or.result();
   }
 
-  client_config = common::CreateClientConfiguration(region);
+  client_config = common::CreateClientConfiguration(
+      make_shared<string>(move(*region_code_or)));
   return SuccessExecutionResult();
 }
 

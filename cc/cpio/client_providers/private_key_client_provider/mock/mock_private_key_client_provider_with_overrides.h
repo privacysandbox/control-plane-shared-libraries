@@ -43,16 +43,16 @@ class MockPrivateKeyClientProviderWithOverrides
 
   std::function<core::ExecutionResult(
       core::AsyncContext<
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest,
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>&)>
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest,
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>&)>
       list_private_keys_by_ids_mock;
 
   core::ExecutionResult list_private_keys_by_ids_result_mock;
 
-  core::ExecutionResult ListPrivateKeysByIds(
+  core::ExecutionResult ListPrivateKeys(
       core::AsyncContext<
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest,
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>&
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest,
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>&
           context) noexcept override {
     if (list_private_keys_by_ids_mock) {
       return list_private_keys_by_ids_mock(context);
@@ -62,13 +62,13 @@ class MockPrivateKeyClientProviderWithOverrides
       if (list_private_keys_by_ids_result_mock ==
           core::SuccessExecutionResult()) {
         context.response = std::make_shared<
-            cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>();
+            cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>();
       }
       context.Finish();
       return list_private_keys_by_ids_result_mock;
     }
 
-    return PrivateKeyClientProvider::ListPrivateKeysByIds(context);
+    return PrivateKeyClientProvider::ListPrivateKeys(context);
   }
 
   std::shared_ptr<MockKmsClientProvider> GetKmsClientProvider() {
@@ -81,8 +81,6 @@ class MockPrivateKeyClientProviderWithOverrides
     return std::dynamic_pointer_cast<MockPrivateKeyFetcherProvider>(
         private_key_fetcher_);
   }
-
-  size_t GetEndpointNum() { return PrivateKeyClientProvider::endpoint_num_; }
 };
 
 }  // namespace google::scp::cpio::client_providers::mock

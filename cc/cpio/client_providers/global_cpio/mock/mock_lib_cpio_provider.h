@@ -29,7 +29,7 @@
 namespace google::scp::cpio::client_providers::mock {
 class MockLibCpioProvider : public LibCpioProvider {
  public:
-  MockLibCpioProvider() : LibCpioProvider() {
+  MockLibCpioProvider() : LibCpioProvider(std::make_shared<CpioOptions>()) {
     instance_client_provider_ = std::make_shared<MockInstanceClientProvider>();
     async_executor_ =
         std::make_shared<core::async_executor::mock::MockAsyncExecutor>();

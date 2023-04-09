@@ -32,7 +32,6 @@ cc_library(
         "//cc/cpio/client_providers/kms_client_provider/mock:kms_client_provider_mock",
         "//cc/cpio/client_providers/private_key_client_provider/src:private_key_client_provider_lib",
         "//cc/cpio/client_providers/private_key_fetcher_provider/mock:private_key_fetcher_provider_mock",
-        "//cc/cpio/proto:cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

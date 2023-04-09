@@ -29,9 +29,10 @@ cc_test(
         "//cc/core/test/utils/docker_helper:docker_helper_lib",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:cpio_errors",
-        "//cc/public/cpio/test/config_client:test_aws_config_client",
         "//cc/public/cpio/test/global_cpio:test_lib_cpio",
         "//cc/public/cpio/test/metric_client:test_aws_metric_client",
+        "//cc/public/cpio/test/parameter_client:test_aws_parameter_client",
+        "//cc/public/cpio/test/parameter_client:test_aws_parameter_client_options",
         "@com_google_googletest//:gtest_main",
     ],
 )

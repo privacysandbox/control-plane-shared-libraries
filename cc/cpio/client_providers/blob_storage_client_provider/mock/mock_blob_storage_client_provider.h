@@ -41,7 +41,7 @@ class MockBlobStorageClientProvider
 
   MOCK_METHOD(
       core::ExecutionResult, GetBlobStream,
-      ((core::ServerStreamingContext<
+      ((core::ConsumerStreamingContext<
           cmrt::sdk::blob_storage_service::v1::GetBlobStreamRequest,
           cmrt::sdk::blob_storage_service::v1::GetBlobStreamResponse>&)),
       (noexcept, override));
@@ -61,7 +61,7 @@ class MockBlobStorageClientProvider
 
   MOCK_METHOD(
       core::ExecutionResult, PutBlobStream,
-      ((core::ClientStreamingContext<
+      ((core::ProducerStreamingContext<
           cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
           cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&)),
       (noexcept, override));

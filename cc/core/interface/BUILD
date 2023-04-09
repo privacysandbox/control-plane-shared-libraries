@@ -41,6 +41,7 @@ cc_library(
         "//cc:cc_base_include_dir",
         "//cc/core/common/concurrent_map/src:concurrent_map_lib",
         "//cc/core/common/proto:core_common_proto_lib",
+        "//cc/core/common/streaming_context/src:streaming_context_errors_lib",
         "//cc/core/common/uuid/src:uuid_lib",
     ],
 )

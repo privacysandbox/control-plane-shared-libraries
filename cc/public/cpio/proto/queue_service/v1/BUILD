@@ -27,6 +27,7 @@ proto_library(
     srcs = ["queue_service.proto"],
     deps = [
         "//cc/core/common/proto:core_common_proto",
+        "@com_google_protobuf//:duration_proto",
     ],
 )
 

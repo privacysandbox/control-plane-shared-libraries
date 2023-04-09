@@ -40,10 +40,10 @@ class PrivateKeyClientProviderInterface : public core::ServiceInterface {
    * @param context context of the operation.
    * @return ExecutionResult result of the operation.
    */
-  virtual core::ExecutionResult ListPrivateKeysByIds(
+  virtual core::ExecutionResult ListPrivateKeys(
       core::AsyncContext<
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest,
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>&
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest,
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>&
           context) noexcept = 0;
 };
 

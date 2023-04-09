@@ -54,7 +54,7 @@ class BlobStorageClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult The execution result of the operation.
    */
   virtual core::ExecutionResult GetBlobStream(
-      core::ServerStreamingContext<
+      core::ConsumerStreamingContext<
           cmrt::sdk::blob_storage_service::v1::GetBlobStreamRequest,
           cmrt::sdk::blob_storage_service::v1::GetBlobStreamResponse>&
           get_blob_stream_context) noexcept = 0;
@@ -90,7 +90,7 @@ class BlobStorageClientProviderInterface : public core::ServiceInterface {
    * @return ExecutionResult The execution result of the operation.
    */
   virtual core::ExecutionResult PutBlobStream(
-      core::ClientStreamingContext<
+      core::ProducerStreamingContext<
           cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
           cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
           put_blob_stream_context) noexcept = 0;

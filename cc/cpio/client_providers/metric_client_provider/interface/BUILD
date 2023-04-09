@@ -27,7 +27,6 @@ cc_library(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
-        "//cc/cpio/proto:cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

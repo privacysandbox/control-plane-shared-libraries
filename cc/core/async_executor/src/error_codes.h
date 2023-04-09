@@ -45,7 +45,7 @@ DEFINE_ERROR_CODE(SC_ASYNC_EXECUTOR_ALREADY_RUNNING, SC_ASYNC_EXECUTOR, 0x0005,
 
 DEFINE_ERROR_CODE(SC_ASYNC_EXECUTOR_NOT_RUNNING, SC_ASYNC_EXECUTOR, 0x0006,
                   "The executor is not running yet",
-                  HttpStatusCode::BAD_REQUEST)
+                  HttpStatusCode::SERVICE_UNAVAILABLE)
 
 DEFINE_ERROR_CODE(SC_ASYNC_EXECUTOR_INVALID_PRIORITY_TYPE, SC_ASYNC_EXECUTOR,
                   0x0007, "Invalid priority type.", HttpStatusCode::BAD_REQUEST)

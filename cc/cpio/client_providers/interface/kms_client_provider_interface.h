@@ -24,30 +24,9 @@
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/type_def.h"
+#include "public/cpio/proto/kms_service/v1/kms_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
-/// Represents a KMS request object.
-struct KmsDecryptRequest {
-  /// AccountIdentity. For AWS, it would be the IAM role.
-  std::shared_ptr<AccountIdentity> account_identity;
-  /// The region where we want to use the KMS.
-  std::shared_ptr<std::string> kms_region;
-  /// The key Arn.
-  std::shared_ptr<std::string> key_arn;
-  /// The ciphertext.
-  std::shared_ptr<std::string> ciphertext;
-  /// Only for GCP. Pool to provide workload identity.
-  /// Refer to
-  /// https://cloud.google.com/iam/docs/workload-identity-federation#pools for
-  /// details.
-  std::shared_ptr<std::string> gcp_wip_provider;
-};
-
-/// Represents a KMS response object.
-struct KmsDecryptResponse {
-  /// The plaintext.
-  std::shared_ptr<std::string> plaintext;
-};
 
 /**
  * @brief Interface responsible for fetching KMS Aead.
@@ -62,7 +41,8 @@ class KmsClientProviderInterface : public core::ServiceInterface {
    * @return core::ExecutionResult execution result.
    */
   virtual core::ExecutionResult Decrypt(
-      core::AsyncContext<KmsDecryptRequest, KmsDecryptResponse>&
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept = 0;
 };
 

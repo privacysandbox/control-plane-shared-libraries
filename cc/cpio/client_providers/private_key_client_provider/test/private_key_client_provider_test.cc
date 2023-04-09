@@ -24,11 +24,11 @@
 #include <utility>
 #include <vector>
 
-#include <aws/core/Aws.h>
 #include <google/protobuf/util/time_util.h>
 
 #include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"
+#include "core/test/utils/proto_test_utils.h"
 #include "core/test/utils/timestamp_test_utils.h"
 #include "core/utils/src/base64.h"
 #include "cpio/client_providers/kms_client_provider/mock/mock_kms_client_provider.h"
@@ -37,14 +37,13 @@
 #include "cpio/client_providers/private_key_fetcher_provider/mock/mock_private_key_fetcher_provider.h"
 #include "public/core/interface/execution_result.h"
 #include "public/core/test/interface/execution_result_test_lib.h"
-#include "public/cpio/core/mock/mock_lib_cpio.h"
 #include "public/cpio/proto/private_key_service/v1/private_key_service.pb.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
-using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest;
-using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse;
+using google::cmrt::sdk::kms_service::v1::DecryptRequest;
+using google::cmrt::sdk::kms_service::v1::DecryptResponse;
+using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest;
+using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse;
+using google::cmrt::sdk::private_key_service::v1::PrivateKey;
 using google::protobuf::Any;
 using google::protobuf::util::TimeUtil;
 using google::scp::core::AsyncContext;
@@ -54,6 +53,7 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::GetErrorMessage;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA;
+using google::scp::core::test::EqualsProto;
 using google::scp::core::test::ExpectTimestampEquals;
 using google::scp::core::test::IsSuccessful;
 using google::scp::core::test::ResultIs;
@@ -64,14 +64,19 @@ using google::scp::cpio::client_providers::mock::
     MockPrivateKeyClientProviderWithOverrides;
 using google::scp::cpio::client_providers::mock::MockPrivateKeyFetcherProvider;
 using std::atomic;
+using std::make_pair;
 using std::make_shared;
 using std::make_unique;
 using std::map;
 using std::move;
+using std::pair;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
 using std::vector;
+using testing::Between;
+using testing::ElementsAre;
+using testing::Pointwise;
 
 static constexpr char kTestAccountIdentity1[] = "Test1";
 static constexpr char kTestAccountIdentity2[] = "Test2";
@@ -87,7 +92,7 @@ static const vector<string> kTestEndpoints = {kTestEndpoint1, kTestEndpoint2,
 static constexpr char kTestRegion1[] = "region1";
 static constexpr char kTestRegion2[] = "region2";
 static constexpr char kTestRegion3[] = "region3";
-static constexpr char kTestKeyId[] = "key_id";
+static const vector<string> kTestKeyIds = {"key_id_1", "key_id_2", "key_id_3"};
 static constexpr char kTestKeyIdBad[] = "bad_key_id";
 static constexpr char kTestResourceName[] = "encryptionKeys/key_id";
 static constexpr char kTestPublicKeysetHandle[] = "publicKeysetHandle";
@@ -107,74 +112,95 @@ static const map<string, string> kPlaintextMap = {
 
 namespace google::scp::cpio::client_providers::test {
 // Put them inside the namespace to use the type inside namespace easier.
-static const map<string, ExecutionResult> kMockSuccessKeyFetchingResults = {
-    {kTestEndpoint1, SuccessExecutionResult()},
-    {kTestEndpoint2, SuccessExecutionResult()},
-    {kTestEndpoint3, SuccessExecutionResult()}};
+static const map<string, ExecutionResult>
+    kMockSuccessKeyFetchingResultsForListByTime = {
+        {kTestEndpoint1, SuccessExecutionResult()},
+        {kTestEndpoint2, SuccessExecutionResult()},
+        {kTestEndpoint3, SuccessExecutionResult()}};
+
+static const map<string, map<string, ExecutionResult>>
+    kMockSuccessKeyFetchingResults = {
+        {kTestKeyIds[0],
+         {{kTestEndpoint1, SuccessExecutionResult()},
+          {kTestEndpoint2, SuccessExecutionResult()},
+          {kTestEndpoint3, SuccessExecutionResult()}}},
+        {kTestKeyIds[1],
+         {{kTestEndpoint1, SuccessExecutionResult()},
+          {kTestEndpoint2, SuccessExecutionResult()},
+          {kTestEndpoint3, SuccessExecutionResult()}}},
+        {kTestKeyIds[2],
+         {{kTestEndpoint1, SuccessExecutionResult()},
+          {kTestEndpoint2, SuccessExecutionResult()},
+          {kTestEndpoint3, SuccessExecutionResult()}}}};
 
 static void GetPrivateKeyFetchingResponse(PrivateKeyFetchingResponse& response,
-                                          int split_index,
+                                          int key_id_index, int uri_index,
                                           size_t splits_in_key_data = 3,
                                           bool bad_key_material = false) {
-  response.resource_name = make_shared<string>(kTestResourceName);
-  response.expiration_time_in_ms = kTestExpirationTime;
-  response.creation_time_in_ms = kTestCreationTime;
-  response.encryption_key_type =
+  auto encryption_key = make_shared<EncryptionKey>();
+  encryption_key->resource_name = make_shared<string>(kTestResourceName);
+  encryption_key->expiration_time_in_ms = kTestExpirationTime;
+  encryption_key->creation_time_in_ms = kTestCreationTime;
+  encryption_key->encryption_key_type =
       EncryptionKeyType::kMultiPartyHybridEvenKeysplit;
-  response.public_key_material = make_shared<string>(kTestPublicKeyMaterial);
-  response.public_keyset_handle = make_shared<string>(kTestPublicKeysetHandle);
+  encryption_key->public_key_material =
+      make_shared<string>(kTestPublicKeyMaterial);
+  encryption_key->public_keyset_handle =
+      make_shared<string>(kTestPublicKeysetHandle);
 
   for (auto i = 0; i < splits_in_key_data; ++i) {
     auto key_data = make_shared<KeyData>();
     key_data->key_encryption_key_uri =
         make_shared<string>(kTestKeyEncryptionKeyUri);
-    if (i == split_index) {
-      if (bad_key_material) {
-        key_data->key_material = make_shared<string>(kTestKeyMaterialBad);
-      } else {
-        key_data->key_material = make_shared<string>(kTestKeyMaterials[i]);
-      }
+    if (i == uri_index) {
+      key_data->key_material = make_shared<string>(
+          bad_key_material ? kTestKeyMaterialBad : kTestKeyMaterials[i]);
     }
 
     key_data->public_key_signature =
         make_shared<string>(kTestPublicKeySignature);
-    response.key_data.emplace_back(key_data);
+    encryption_key->key_data.emplace_back(key_data);
   }
+  encryption_key->key_id = make_shared<string>(
+      bad_key_material ? kTestKeyIdBad : kTestKeyIds[key_id_index]);
+  response.encryption_keys.emplace_back(encryption_key);
+}
+
+static map<string, map<string, PrivateKeyFetchingResponse>>
+CreateSuccessKeyFetchingResponseMap(size_t splits_in_key_data = 3,
+                                    size_t call_num = 3) {
+  map<string, map<string, PrivateKeyFetchingResponse>> responses;
+  for (int i = 0; i < call_num; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      PrivateKeyFetchingResponse mock_fetching_response;
+      GetPrivateKeyFetchingResponse(mock_fetching_response, i, j,
+                                    splits_in_key_data);
+      responses[kTestKeyIds[i]][kTestEndpoints[j]] = mock_fetching_response;
+    }
+  }
+
+  return responses;
 }
 
 static map<string, PrivateKeyFetchingResponse>
-CreateSuccessKeyFetchingResponseMap(size_t splits_in_key_data = 3,
-                                    size_t splits_num = 3) {
+CreateSuccessKeyFetchingResponseMapForListByTime() {
   map<string, PrivateKeyFetchingResponse> responses;
-  for (int i = 0; i < splits_num; ++i) {
+  for (int i = 0; i < 3; ++i) {
     PrivateKeyFetchingResponse mock_fetching_response;
-    GetPrivateKeyFetchingResponse(mock_fetching_response, i,
-                                  splits_in_key_data);
+    for (int j = 0; j < 3; ++j) {
+      GetPrivateKeyFetchingResponse(mock_fetching_response, j, i);
+    }
     responses[kTestEndpoints[i]] = mock_fetching_response;
   }
 
   return responses;
 }
 
-static const map<string, PrivateKeyFetchingResponse>
+static const map<string, map<string, PrivateKeyFetchingResponse>>
     kMockSuccessKeyFetchingResponses = CreateSuccessKeyFetchingResponseMap();
 
 class PrivateKeyClientProviderTest : public ::testing::Test {
  protected:
-  static void SetUpTestSuite() {
-    SDKOptions options;
-    InitAPI(options);
-
-    InitCpio();
-  }
-
-  static void TearDownTestSuite() {
-    SDKOptions options;
-    ShutdownAPI(options);
-
-    ShutdownCpio();
-  }
-
   void SetUp() override {
     PrivateKeyVendingEndpoint endpoint_1;
     endpoint_1.account_identity = kTestAccountIdentity1;
@@ -216,27 +242,50 @@ class PrivateKeyClientProviderTest : public ::testing::Test {
     }
   }
 
-  void SetMockKmsClient(const ExecutionResult& mock_result) {
-    mock_kms_client->decrypt_mock =
-        [mock_result](
-            AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& context) {
-          context.result = mock_result;
-          if (mock_result.Successful()) {
-            context.response = make_shared<KmsDecryptResponse>();
-            context.response->plaintext = make_shared<string>(
-                kPlaintextMap.at(*context.request->ciphertext));
-          }
-          context.Finish();
-          return mock_result;
-        };
+  void SetMockKmsClient(const ExecutionResult& mock_result, int8_t call_time) {
+    EXPECT_CALL(*mock_kms_client, Decrypt)
+        .Times(call_time)
+        .WillRepeatedly(
+            [=](AsyncContext<DecryptRequest, DecryptResponse>& context) {
+              context.response = make_shared<DecryptResponse>();
+              auto it = kPlaintextMap.find(context.request->ciphertext());
+              if (it != kPlaintextMap.end()) {
+                context.response->set_plaintext(it->second);
+              }
+              context.result = mock_result;
+              context.Finish();
+              return mock_result;
+            });
   }
 
   void SetMockPrivateKeyFetchingClient(
+      const map<string, map<string, ExecutionResult>>& mock_results,
+      const map<string, map<string, PrivateKeyFetchingResponse>>&
+          mock_responses) {
+    EXPECT_CALL(*mock_private_key_fetcher, FetchPrivateKey)
+        .Times(Between(1, 9))
+        .WillRepeatedly([=](AsyncContext<PrivateKeyFetchingRequest,
+                                         PrivateKeyFetchingResponse>& context) {
+          const auto& endpoint = context.request->key_vending_endpoint
+                                     ->private_key_vending_service_endpoint;
+          const auto& key_id = *context.request->key_id;
+          context.result = mock_results.at(key_id).at(endpoint);
+          if (context.result.Successful()) {
+            context.response = make_shared<PrivateKeyFetchingResponse>(
+                mock_responses.at(key_id).at(endpoint));
+          }
+          context.Finish();
+          return context.result;
+        });
+  }
+
+  void SetMockPrivateKeyFetchingClientForListByTime(
       const map<string, ExecutionResult>& mock_results,
       const map<string, PrivateKeyFetchingResponse>& mock_responses) {
-    mock_private_key_fetcher->fetch_private_key_mock =
-        [&](AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>&
-                context) {
+    EXPECT_CALL(*mock_private_key_fetcher, FetchPrivateKey)
+        .Times(Between(1, 9))
+        .WillRepeatedly([=](AsyncContext<PrivateKeyFetchingRequest,
+                                         PrivateKeyFetchingResponse>& context) {
           const auto& endpoint = context.request->key_vending_endpoint
                                      ->private_key_vending_service_endpoint;
           context.result = mock_results.at(endpoint);
@@ -246,7 +295,22 @@ class PrivateKeyClientProviderTest : public ::testing::Test {
           }
           context.Finish();
           return context.result;
-        };
+        });
+  }
+
+  vector<PrivateKey> BuildExpectedPrivateKeys(
+      const string& encoded_private_key) {
+    vector<PrivateKey> expected_keys(3);
+    for (auto i = 0; i < 3; ++i) {
+      expected_keys[i].set_key_id(kTestKeyIds[i]);
+      expected_keys[i].set_public_key(kTestPublicKeyMaterial);
+      expected_keys[i].set_private_key(encoded_private_key);
+      *expected_keys[i].mutable_expiration_time() =
+          TimeUtil::MillisecondsToTimestamp(kTestExpirationTime);
+      *expected_keys[i].mutable_creation_time() =
+          TimeUtil::MillisecondsToTimestamp(kTestCreationTime);
+    }
+    return expected_keys;
   }
 
   shared_ptr<MockPrivateKeyClientProviderWithOverrides>
@@ -257,52 +321,71 @@ class PrivateKeyClientProviderTest : public ::testing::Test {
 
 TEST_F(PrivateKeyClientProviderTest, ListPrivateKeysByIdsSuccess) {
   auto mock_result = SuccessExecutionResult();
-  SetMockKmsClient(mock_result);
+  SetMockKmsClient(mock_result, 9);
 
   SetMockPrivateKeyFetchingClient(kMockSuccessKeyFetchingResults,
                                   kMockSuccessKeyFetchingResponses);
-  ListPrivateKeysByIdsRequest request;
-  request.add_key_ids(kTestKeyId);
-  request.add_key_ids(kTestKeyId);
-  request.add_key_ids(kTestKeyId);
+  ListPrivateKeysRequest request;
+  request.add_key_ids(kTestKeyIds[0]);
+  request.add_key_ids(kTestKeyIds[1]);
+  request.add_key_ids(kTestKeyIds[2]);
 
   string encoded_private_key;
   Base64Encode(kTestPrivateKey, encoded_private_key);
   atomic<size_t> response_count = 0;
-  AsyncContext<ListPrivateKeysByIdsRequest, ListPrivateKeysByIdsResponse>
-      context(make_shared<ListPrivateKeysByIdsRequest>(request),
-              [&](AsyncContext<ListPrivateKeysByIdsRequest,
-                               ListPrivateKeysByIdsResponse>& context) {
-                response_count.fetch_add(1);
-                for (auto i = 0; i < 3; ++i) {
-                  auto key = context.response->private_keys()[i];
-                  EXPECT_EQ(key.key_id(), kTestKeyId);
-                  EXPECT_EQ(key.public_key(), kTestPublicKeyMaterial);
-                  EXPECT_EQ(key.private_key(), encoded_private_key);
-                  ExpectTimestampEquals(
-                      key.expiration_time(),
-                      TimeUtil::MillisecondsToTimestamp(kTestExpirationTime));
-                  ExpectTimestampEquals(
-                      key.creation_time(),
-                      TimeUtil::MillisecondsToTimestamp(kTestCreationTime));
-                }
-                EXPECT_THAT(context.result, IsSuccessful());
-              });
+  AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse> context(
+      make_shared<ListPrivateKeysRequest>(request),
+      [&](AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse>&
+              context) {
+        auto expected_keys = BuildExpectedPrivateKeys(encoded_private_key);
+        EXPECT_THAT(context.response->private_keys(),
+                    Pointwise(EqualsProto(), expected_keys));
+        EXPECT_THAT(context.result, IsSuccessful());
+        response_count.fetch_add(1);
+      });
 
-  auto result = private_key_client_provider->ListPrivateKeysByIds(context);
+  auto result = private_key_client_provider->ListPrivateKeys(context);
   EXPECT_THAT(result, IsSuccessful());
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
-TEST_F(PrivateKeyClientProviderTest, ListPrivateKeysByIdsFailed) {
+TEST_F(PrivateKeyClientProviderTest, ListPrivateKeysByTimeSuccess) {
   auto mock_result = SuccessExecutionResult();
-  SetMockKmsClient(mock_result);
+  SetMockKmsClient(mock_result, 9);
 
+  SetMockPrivateKeyFetchingClientForListByTime(
+      kMockSuccessKeyFetchingResultsForListByTime,
+      CreateSuccessKeyFetchingResponseMapForListByTime());
+  ListPrivateKeysRequest request;
+  request.set_max_age_seconds(kTestCreationTime);
+
+  string encoded_private_key;
+  Base64Encode(kTestPrivateKey, encoded_private_key);
+  atomic<size_t> response_count = 0;
+  AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse> context(
+      make_shared<ListPrivateKeysRequest>(request),
+      [&](AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse>&
+              context) {
+        auto expected_keys = BuildExpectedPrivateKeys(encoded_private_key);
+        EXPECT_THAT(context.response->private_keys(),
+                    Pointwise(EqualsProto(), expected_keys));
+        EXPECT_THAT(context.result, IsSuccessful());
+        response_count.fetch_add(1);
+      });
+
+  auto result = private_key_client_provider->ListPrivateKeys(context);
+  EXPECT_THAT(result, IsSuccessful());
+  WaitUntil([&]() { return response_count.load() == 1; });
+}
+
+TEST_F(PrivateKeyClientProviderTest, FetchingPrivateKeysFailed) {
   PrivateKeyFetchingResponse mock_fetching_response;
-  GetPrivateKeyFetchingResponse(mock_fetching_response, 0);
-  mock_private_key_fetcher->fetch_private_key_mock =
-      [&](core::AsyncContext<PrivateKeyFetchingRequest,
-                             PrivateKeyFetchingResponse>& context) {
+  GetPrivateKeyFetchingResponse(mock_fetching_response, 0, 0);
+
+  EXPECT_CALL(*mock_private_key_fetcher, FetchPrivateKey)
+      .Times(Between(1, 6))
+      .WillRepeatedly([=](AsyncContext<PrivateKeyFetchingRequest,
+                                       PrivateKeyFetchingResponse>& context) {
         if (*context.request->key_id == kTestKeyIdBad) {
           context.result = FailureExecutionResult(SC_UNKNOWN);
           context.Finish();
@@ -314,135 +397,96 @@ TEST_F(PrivateKeyClientProviderTest, ListPrivateKeysByIdsFailed) {
         context.result = SuccessExecutionResult();
         context.Finish();
         return context.result;
-      };
+      });
 
   // One private key obtain failed in the list will return failed
-  // ListPrivateKeysByIdsResponse.
-  ListPrivateKeysByIdsRequest request;
-  request.add_key_ids(kTestKeyId);
-  request.add_key_ids(kTestKeyId);
+  // ListPrivateKeysResponse.
+  ListPrivateKeysRequest request;
+  request.add_key_ids(kTestKeyIds[0]);
   request.add_key_ids(kTestKeyIdBad);
 
   atomic<size_t> response_count = 0;
-  AsyncContext<ListPrivateKeysByIdsRequest, ListPrivateKeysByIdsResponse>
-      context(make_shared<ListPrivateKeysByIdsRequest>(request),
-              [&](AsyncContext<ListPrivateKeysByIdsRequest,
-                               ListPrivateKeysByIdsResponse>& context) {
-                response_count.fetch_add(1);
+  AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse> context(
+      make_shared<ListPrivateKeysRequest>(request),
+      [&](AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse>&
+              context) {
+        response_count.fetch_add(1);
 
-                EXPECT_THAT(context.result,
-                            ResultIs(FailureExecutionResult(SC_UNKNOWN)));
-              });
+        EXPECT_THAT(context.result,
+                    ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+      });
 
-  auto result = private_key_client_provider->ListPrivateKeysByIds(context);
+  auto result = private_key_client_provider->ListPrivateKeys(context);
   EXPECT_THAT(result, IsSuccessful());
-  WaitUntil([&]() { return response_count.load() == 1; });
-}
-
-TEST_F(PrivateKeyClientProviderTest, FailedWithFetchPrivateKey) {
-  SetMockKmsClient(SuccessExecutionResult());
-  auto mock_failure_result = FailureExecutionResult(SC_UNKNOWN);
-  map<string, ExecutionResult> mock_fetching_result = {
-      {kTestEndpoint1, SuccessExecutionResult()},
-      {kTestEndpoint2, SuccessExecutionResult()},
-      {kTestEndpoint3, mock_failure_result}};
-  auto mock_fetching_responses = CreateSuccessKeyFetchingResponseMap(3, 2);
-  SetMockPrivateKeyFetchingClient(mock_fetching_result,
-                                  mock_fetching_responses);
-
-  ListPrivateKeysByIdsRequest request;
-  request.add_key_ids(kTestKeyId);
-
-  atomic<size_t> response_count = 0;
-  AsyncContext<ListPrivateKeysByIdsRequest, ListPrivateKeysByIdsResponse>
-      context(make_shared<ListPrivateKeysByIdsRequest>(request),
-              [&](AsyncContext<ListPrivateKeysByIdsRequest,
-                               ListPrivateKeysByIdsResponse>& context) {
-                response_count.fetch_add(1);
-                EXPECT_THAT(context.result, ResultIs(mock_failure_result));
-              });
-
-  auto result = private_key_client_provider->ListPrivateKeysByIds(context);
-  EXPECT_THAT(result, ResultIs(mock_failure_result));
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
 TEST_F(PrivateKeyClientProviderTest,
        FailedWithUnmatchedEndpointsAndKeyDataSplits) {
-  auto mock_result = SuccessExecutionResult();
-  SetMockKmsClient(mock_result);
   auto mock_fetching_responses = CreateSuccessKeyFetchingResponseMap(2);
   SetMockPrivateKeyFetchingClient(kMockSuccessKeyFetchingResults,
                                   mock_fetching_responses);
 
-  ListPrivateKeysByIdsRequest request;
-  request.add_key_ids(kTestKeyId);
+  ListPrivateKeysRequest request;
+  request.add_key_ids(kTestKeyIds[0]);
+  request.add_key_ids(kTestKeyIds[1]);
+  request.add_key_ids(kTestKeyIds[2]);
 
   auto expected_result = FailureExecutionResult(
       SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA);
   atomic<size_t> response_count = 0;
-  AsyncContext<ListPrivateKeysByIdsRequest, ListPrivateKeysByIdsResponse>
-      context(make_shared<ListPrivateKeysByIdsRequest>(request),
-              [&](AsyncContext<ListPrivateKeysByIdsRequest,
-                               ListPrivateKeysByIdsResponse>& context) {
-                response_count.fetch_add(1);
-                EXPECT_THAT(context.result, ResultIs(expected_result));
-              });
+  AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse> context(
+      make_shared<ListPrivateKeysRequest>(request),
+      [&](AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse>&
+              context) {
+        response_count.fetch_add(1);
+        EXPECT_THAT(context.result, ResultIs(expected_result));
+      });
 
-  auto result = private_key_client_provider->ListPrivateKeysByIds(context);
-  EXPECT_THAT(result, ResultIs(mock_result));
+  auto result = private_key_client_provider->ListPrivateKeys(context);
+  EXPECT_THAT(result, IsSuccessful());
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
 TEST_F(PrivateKeyClientProviderTest, FailedWithDecryptPrivateKey) {
   auto mock_result = FailureExecutionResult(SC_UNKNOWN);
-  SetMockKmsClient(mock_result);
+  SetMockKmsClient(mock_result, 1);
 
   SetMockPrivateKeyFetchingClient(kMockSuccessKeyFetchingResults,
                                   kMockSuccessKeyFetchingResponses);
 
-  ListPrivateKeysByIdsRequest request;
-  request.add_key_ids(kTestKeyId);
+  ListPrivateKeysRequest request;
+  request.add_key_ids(kTestKeyIds[0]);
+  request.add_key_ids(kTestKeyIds[1]);
+  request.add_key_ids(kTestKeyIds[2]);
 
   atomic<size_t> response_count = 0;
-  AsyncContext<ListPrivateKeysByIdsRequest, ListPrivateKeysByIdsResponse>
-      context(make_shared<ListPrivateKeysByIdsRequest>(request),
-              [&](AsyncContext<ListPrivateKeysByIdsRequest,
-                               ListPrivateKeysByIdsResponse>& context) {
-                response_count.fetch_add(1);
-                EXPECT_THAT(context.result, ResultIs(mock_result));
-              });
+  AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse> context(
+      make_shared<ListPrivateKeysRequest>(request),
+      [&](AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse>&
+              context) {
+        response_count.fetch_add(1);
+        EXPECT_THAT(context.result, ResultIs(mock_result));
+      });
 
-  auto result = private_key_client_provider->ListPrivateKeysByIds(context);
+  auto result = private_key_client_provider->ListPrivateKeys(context);
   EXPECT_THAT(result, IsSuccessful());
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
 TEST_F(PrivateKeyClientProviderTest, FailedWithOneKmsDecryptContext) {
   auto mock_result = FailureExecutionResult(SC_UNKNOWN);
-  mock_kms_client->decrypt_mock =
-      [&](AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& context) {
-        if (*context.request->ciphertext == kTestKeyMaterialBad) {
-          context.result = mock_result;
-          context.Finish();
-          return SuccessExecutionResult();
-        }
-        KmsDecryptResponse kms_response;
-        kms_response.plaintext =
-            make_shared<string>(kPlaintextMap.at(*context.request->ciphertext));
-        context.response = make_shared<KmsDecryptResponse>(kms_response);
-        context.result = SuccessExecutionResult();
-        context.Finish();
-        return SuccessExecutionResult();
-      };
+  SetMockKmsClient(mock_result, 1);
 
   PrivateKeyFetchingResponse mock_fetching_response;
-  GetPrivateKeyFetchingResponse(mock_fetching_response, 0);
+  GetPrivateKeyFetchingResponse(mock_fetching_response, 0, 0);
   PrivateKeyFetchingResponse mock_fetching_response_bad;
-  GetPrivateKeyFetchingResponse(mock_fetching_response_bad, 1, 3, true);
-  mock_private_key_fetcher->fetch_private_key_mock =
-      [&](core::AsyncContext<PrivateKeyFetchingRequest,
-                             PrivateKeyFetchingResponse>& context) {
+  GetPrivateKeyFetchingResponse(mock_fetching_response_bad, 1, 0, 3, true);
+
+  EXPECT_CALL(*mock_private_key_fetcher, FetchPrivateKey)
+      .Times(Between(1, 6))
+      .WillRepeatedly([=](AsyncContext<PrivateKeyFetchingRequest,
+                                       PrivateKeyFetchingResponse>& context) {
         if (*context.request->key_id == kTestKeyIdBad) {
           context.response = make_shared<PrivateKeyFetchingResponse>(
               mock_fetching_response_bad);
@@ -454,25 +498,23 @@ TEST_F(PrivateKeyClientProviderTest, FailedWithOneKmsDecryptContext) {
         context.result = SuccessExecutionResult();
         context.Finish();
         return SuccessExecutionResult();
-      };
+      });
 
-  ListPrivateKeysByIdsRequest request;
-  request.add_key_ids(kTestKeyId);
-  request.add_key_ids(kTestKeyId);
+  ListPrivateKeysRequest request;
+  request.add_key_ids(kTestKeyIds[0]);
   request.add_key_ids(kTestKeyIdBad);
 
   atomic<size_t> response_count = 0;
-  AsyncContext<ListPrivateKeysByIdsRequest, ListPrivateKeysByIdsResponse>
-      context(make_shared<ListPrivateKeysByIdsRequest>(request),
-              [&](AsyncContext<ListPrivateKeysByIdsRequest,
-                               ListPrivateKeysByIdsResponse>& context) {
-                response_count.fetch_add(1);
-                EXPECT_THAT(context.result, ResultIs(mock_result));
-              });
+  AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse> context(
+      make_shared<ListPrivateKeysRequest>(request),
+      [&](AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse>&
+              context) {
+        response_count.fetch_add(1);
+        EXPECT_THAT(context.result, ResultIs(mock_result));
+      });
 
-  auto result = private_key_client_provider->ListPrivateKeysByIds(context);
+  auto result = private_key_client_provider->ListPrivateKeys(context);
   EXPECT_THAT(result, IsSuccessful());
   WaitUntil([&]() { return response_count.load() == 1; });
 }
-
 }  // namespace google::scp::cpio::client_providers::test

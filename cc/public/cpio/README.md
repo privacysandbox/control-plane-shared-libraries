@@ -38,15 +38,18 @@ Before using any CPIO clients, CPIO needs to be initialized by calling Cpio::Ini
 # Layout
 
 1. [cc/public/cpio/interface](interface) and [cc/public/core/interface](/cc/public/core/interface): interfaces and all other public visible targets provided to users of this project.
-2. [cc/public/cpio/test](test): public visible targets to help testing CPIO.
-3. [cc/public/cpio/examples](examples): example codes for different clients.
-4. [cc/public/cpio/examples/deploy](examples/deploy): example script to deploy binary to Nitro Enclave.
-5. [cc/public/cpio/adapters](adapters), [cc/public/cpio/core](core/), [cc/cpio](/cc/cpio) and [cc/core](/cc/core): implementations. The targets there are not public visible.
-6. [build_defs/cc](/build_defs/cc), [WORKSPACE](/WORKSPACE): external dependencies.
+2. [cc/public/cpio/mock](mock): public visible targets to help with unit tests.
+3. [cc/public/cpio/test](test): public visible targets to help with integration tests.
+4. [cc/public/cpio/examples](examples): example codes for different clients.
+5. [cc/public/cpio/examples/deploy](examples/deploy): example script to deploy binary to Nitro Enclave.
+6. [cc/public/cpio/adapters](adapters), [cc/public/cpio/core](core/), [cc/cpio](/cc/cpio) and [cc/core](/cc/core): implementations. The targets there are not public visible.
+7. [build_defs/cc](/build_defs/cc), [WORKSPACE](/WORKSPACE): external dependencies.
 # Clients
 1. [BlobStorageClient](interface/blob_storage_client)
-2. [ConfigClient](interface/config_client)
-3. [CryptoClient](interface/crypto_client)
-4. [MetricClient](interface/metric_client)
-5. [PrivateKeyClient](interface/private_key_client)
-6. [PublicKeyClient](interface/public_key_client)
+2. [CryptoClient](interface/crypto_client)
+3. [InstanceClient](interface/instance_client)
+4. [KmsClient](interface/kms_client)
+5. [MetricClient](interface/metric_client)
+6. [ParameterClient](interface/parameter_client)
+7. [PrivateKeyClient](interface/private_key_client)
+8. [PublicKeyClient](interface/public_key_client)

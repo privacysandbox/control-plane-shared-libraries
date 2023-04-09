@@ -44,11 +44,11 @@ class ConcurrentQueue {
 
   /**
    * @brief Enqueues an element into the queue if possible. This function is
-   * thread-safe. If the queue is marked as done, this will fail.
+   * thread-safe.
    * @param element the element to be queued.
    */
   ExecutionResult TryEnqueue(const T& element) noexcept {
-    if (is_done_ || !queue_->try_push(element)) {
+    if (!queue_->try_push(element)) {
       return FailureExecutionResult(errors::SC_CONCURRENT_QUEUE_CANNOT_ENQUEUE);
     }
     return SuccessExecutionResult();
@@ -74,24 +74,8 @@ class ConcurrentQueue {
    */
   size_t Size() noexcept { return queue_->size(); }
 
-  /**
-   * @brief Returns true if this queue is empty AND is not eligible to have new
-   * elements pushed on.
-   */
-  bool IsDone() noexcept { return is_done_ && Size() == 0; }
-
-  /**
-   * @brief Marks this queue as not going to have any *additional* elements
-   * pushed on.
-   *
-   */
-  void MarkDone() noexcept { is_done_ = true; }
-
  private:
   /// queue implementation.
   std::unique_ptr<tbb::concurrent_bounded_queue<T>> queue_;
-
-  /// Whether the queue is eligible to have new elements pushed on.
-  std::atomic_bool is_done_{false};
 };
 }  // namespace google::scp::core::common

@@ -50,6 +50,9 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::test::AutoInitRunStop;
 using google::scp::core::test::IsSuccessful;
+using google::scp::core::test::ResultIs;
+using google::scp::core::test::WaitUntil;
+using std::atomic;
 using std::bind;
 using std::future;
 using std::make_shared;
@@ -161,20 +164,22 @@ TEST(HttpClientTest, FailedToConnect) {
   HttpClient http_client(async_executor);
   async_executor->Init();
   async_executor->Run();
-  AutoInitRunStop auto_init_run_stop(http_client);
+  http_client.Init();
+  http_client.Run();
 
-  promise<void> done;
+  atomic<bool> finished(false);
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-        EXPECT_EQ(
+        EXPECT_THAT(
             context.result,
-            FailureExecutionResult(
-                errors::SC_DISPATCHER_NOT_ENOUGH_TIME_REMAINED_FOR_OPERATION));
-        done.set_value();
+            ResultIs(FailureExecutionResult(
+                errors::SC_DISPATCHER_NOT_ENOUGH_TIME_REMAINED_FOR_OPERATION)));
+        finished.store(true);
       });
 
   EXPECT_EQ(http_client.PerformRequest(context), SuccessExecutionResult());
-  done.get_future().get();
+  WaitUntil([&]() { return finished.load(); });
+  http_client.Stop();
   async_executor->Stop();
 }
 
@@ -204,16 +209,6 @@ class HttpClientTestII : public ::testing::Test {
   shared_ptr<HttpClient> http_client;
 };
 
-void SubmitUntilSuccess(shared_ptr<HttpClient>& http_client,
-                        AsyncContext<HttpRequest, HttpResponse>& context) {
-  ExecutionResult execution_result = RetryExecutionResult(123);
-  while (execution_result.status == ExecutionStatus::Retry) {
-    execution_result = http_client->PerformRequest(context);
-    std::this_thread::sleep_for(milliseconds(50));
-  }
-  EXPECT_EQ(execution_result, SuccessExecutionResult());
-}
-
 TEST_F(HttpClientTestII, Success) {
   auto request = make_shared<HttpRequest>();
   request->method = HttpMethod::GET;
@@ -222,19 +217,18 @@ TEST_F(HttpClientTestII, Success) {
   promise<void> done;
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-        EXPECT_EQ(context.result, SuccessExecutionResult());
+        EXPECT_THAT(context.result, IsSuccessful());
         const auto& bytes = *context.response->body.bytes;
         EXPECT_EQ(string(bytes.begin(), bytes.end()), "hello, world\n");
         done.set_value();
       });
 
-  SubmitUntilSuccess(http_client, context);
+  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
 
   done.get_future().get();
 }
 
 TEST_F(HttpClientTestII, SingleQueryIsEscaped) {
-  GTEST_SKIP();
   auto request = make_shared<HttpRequest>();
   request->method = HttpMethod::GET;
   request->path = make_shared<Uri>(
@@ -242,18 +236,18 @@ TEST_F(HttpClientTestII, SingleQueryIsEscaped) {
       "/pingpong_query_param");
   request->query = make_shared<string>("foo=!@#$");
 
-  promise<void> done;
+  atomic<bool> finished(false);
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
         EXPECT_THAT(context.result, IsSuccessful());
         auto query_param_it = context.response->headers->find("query_param");
         EXPECT_NE(query_param_it, context.response->headers->end());
         EXPECT_EQ(query_param_it->second, "foo=%21%40%23%24");
-        done.set_value();
+        finished.store(true);
       });
 
-  SubmitUntilSuccess(http_client, context);
-  done.get_future().get();
+  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+  WaitUntil([&]() { return finished.load(); });
 }
 
 TEST_F(HttpClientTestII, MultiQueryIsEscaped) {
@@ -264,38 +258,35 @@ TEST_F(HttpClientTestII, MultiQueryIsEscaped) {
       "/pingpong_query_param");
   request->query = make_shared<string>("foo=!@#$&bar=%^()");
 
-  promise<void> done;
+  atomic<bool> finished(false);
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
         EXPECT_THAT(context.result, IsSuccessful());
         auto query_param_it = context.response->headers->find("query_param");
         EXPECT_NE(query_param_it, context.response->headers->end());
         EXPECT_EQ(query_param_it->second, "foo=%21%40%23%24&bar=%25%5E%28%29");
-        done.set_value();
+        finished.store(true);
       });
 
-  SubmitUntilSuccess(http_client, context);
-  done.get_future().get();
+  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+  WaitUntil([&]() { return finished.load(); });
 }
 
 TEST_F(HttpClientTestII, FailedToGetResponse) {
-  GTEST_SKIP();
   auto request = make_shared<HttpRequest>();
   // Get has no corresponding handler.
-  request->path = make_shared<string>("http://localhost:" +
-                                      std::to_string(server->PortInUse()));
+  request->path = make_shared<string>(
+      "http://localhost:" + std::to_string(server->PortInUse()) + "/wrong");
   promise<void> done;
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-        EXPECT_EQ(context.result,
-                  FailureExecutionResult(
-                      errors::SC_HTTP2_CLIENT_HTTP_STATUS_NOT_FOUND));
+        EXPECT_THAT(context.result,
+                    ResultIs(FailureExecutionResult(
+                        errors::SC_HTTP2_CLIENT_HTTP_STATUS_NOT_FOUND)));
         done.set_value();
       });
-  shared_ptr<AsyncExecutorInterface> async_executor =
-      make_shared<AsyncExecutor>(2, 1000);
 
-  SubmitUntilSuccess(http_client, context);
+  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
   done.get_future().get();
 }
 
@@ -304,19 +295,17 @@ TEST_F(HttpClientTestII, SequentialReuse) {
   request->method = HttpMethod::GET;
   request->path = make_shared<string>(
       "http://localhost:" + std::to_string(server->PortInUse()) + "/test");
-  shared_ptr<AsyncExecutorInterface> async_executor =
-      make_shared<AsyncExecutor>(2, 1000);
 
   for (int i = 0; i < 10; ++i) {
     promise<void> done;
     AsyncContext<HttpRequest, HttpResponse> context(
         move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-          EXPECT_EQ(context.result, SuccessExecutionResult());
+          EXPECT_THAT(context.result, IsSuccessful());
           const auto& bytes = *context.response->body.bytes;
           EXPECT_EQ(string(bytes.begin(), bytes.end()), "hello, world\n");
           done.set_value();
         });
-    SubmitUntilSuccess(http_client, context);
+    EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
     done.get_future().get();
   }
 }
@@ -330,17 +319,18 @@ TEST_F(HttpClientTestII, ConcurrentReuse) {
       make_shared<AsyncExecutor>(2, 1000);
 
   vector<promise<void>> done;
+  done.reserve(10);
   for (int i = 0; i < 10; ++i) {
     done.emplace_back();
     AsyncContext<HttpRequest, HttpResponse> context(
         move(request),
         [&, i](AsyncContext<HttpRequest, HttpResponse>& context) {
-          EXPECT_EQ(context.result, SuccessExecutionResult());
+          EXPECT_THAT(context.result, IsSuccessful());
           const auto& bytes = *context.response->body.bytes;
           EXPECT_EQ(string(bytes.begin(), bytes.end()), "hello, world\n");
           done[i].set_value();
         });
-    SubmitUntilSuccess(http_client, context);
+    EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
   }
   for (auto& p : done) {
     p.get_future().get();
@@ -354,10 +344,10 @@ TEST_F(HttpClientTestII, LargeData) {
   request->path = make_shared<string>(
       "http://localhost:" + std::to_string(server->PortInUse()) + "/random");
   request->query = make_shared<string>("length=" + std::to_string(to_generate));
-  promise<void> done;
+  atomic<bool> finished(false);
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-        EXPECT_EQ(context.result, SuccessExecutionResult());
+        EXPECT_THAT(context.result, IsSuccessful());
         EXPECT_EQ(context.response->body.length,
                   1048576 + SHA256_DIGEST_LENGTH);
         uint8_t hash[SHA256_DIGEST_LENGTH];
@@ -366,11 +356,11 @@ TEST_F(HttpClientTestII, LargeData) {
         SHA256(data, to_generate, hash);
         auto ret = memcmp(hash, data + to_generate, SHA256_DIGEST_LENGTH);
         EXPECT_EQ(ret, 0);
-        done.set_value();
+        finished.store(true);
       });
 
-  SubmitUntilSuccess(http_client, context);
-  done.get_future().get();
+  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+  WaitUntil([&]() { return finished.load(); });
 }
 
 }  // namespace google::scp::core

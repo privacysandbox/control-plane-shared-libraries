@@ -14,7 +14,6 @@
 
 #include <gtest/gtest.h>
 
-#include <aws/core/Aws.h>
 #include <gmock/gmock.h>
 
 #include "core/async_executor/src/error_codes.h"
@@ -28,9 +27,6 @@
 #include "public/cpio/test/global_cpio/test_cpio_options.h"
 #include "public/cpio/test/global_cpio/test_lib_cpio.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
@@ -44,20 +40,7 @@ using ::testing::NotNull;
 static constexpr char kRegion[] = "us-east-1";
 
 namespace google::scp::cpio::test {
-class LibCpioTest : public ::testing::Test {
- protected:
-  static void SetUpTestSuite() {
-    SDKOptions options;
-    InitAPI(options);
-  }
-
-  static void TearDownTestSuite() {
-    SDKOptions options;
-    ShutdownAPI(options);
-  }
-};
-
-TEST_F(LibCpioTest, NoLogTest) {
+TEST(LibCpioTest, NoLogTest) {
   TestCpioOptions options;
   options.log_option = LogOption::kNoLog;
   options.region = kRegion;
@@ -67,7 +50,7 @@ TEST_F(LibCpioTest, NoLogTest) {
   EXPECT_EQ(TestLibCpio::ShutdownCpio(options), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioTest, ConsoleLogTest) {
+TEST(LibCpioTest, ConsoleLogTest) {
   TestCpioOptions options;
   options.log_option = LogOption::kConsoleLog;
   options.region = kRegion;
@@ -77,7 +60,7 @@ TEST_F(LibCpioTest, ConsoleLogTest) {
   EXPECT_EQ(TestLibCpio::ShutdownCpio(options), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioTest, SysLogTest) {
+TEST(LibCpioTest, SysLogTest) {
   TestCpioOptions options;
   options.log_option = LogOption::kSysLog;
   options.region = kRegion;
@@ -87,7 +70,7 @@ TEST_F(LibCpioTest, SysLogTest) {
   EXPECT_EQ(TestLibCpio::ShutdownCpio(options), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioTest, StopSuccessfully) {
+TEST(LibCpioTest, StopSuccessfully) {
   TestCpioOptions options;
   options.log_option = LogOption::kSysLog;
   options.region = kRegion;

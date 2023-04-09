@@ -59,21 +59,28 @@ class MockCurlWrapper : public NiceMock<Http1CurlWrapper> {
 class Http1CurlClientTest : public ::testing::Test {
  protected:
   Http1CurlClientTest()
-      : async_executor_(
+      : cpu_async_executor_(
+            make_shared<AsyncExecutor>(/*thread_count=*/4, /*queue_cap=*/10)),
+        io_async_executor_(
             make_shared<AsyncExecutor>(/*thread_count=*/4, /*queue_cap=*/10)),
         wrapper_(make_shared<MockCurlWrapper>()),
         provider_(make_shared<MockCurlWrapperProvider>()),
-        subject_(async_executor_, provider_,
+        subject_(cpu_async_executor_, io_async_executor_, provider_,
                  common::RetryStrategyType::Exponential,
                  /*time_duration_ms=*/1UL, /*total_retries=*/10) {
-    assert(async_executor_->Init().Successful());
-    assert(async_executor_->Run().Successful());
+    assert(cpu_async_executor_->Init().Successful());
+    assert(io_async_executor_->Init().Successful());
+    assert(cpu_async_executor_->Run().Successful());
+    assert(io_async_executor_->Run().Successful());
     ON_CALL(*provider_, MakeWrapper).WillByDefault(Return(wrapper_));
   }
 
-  ~Http1CurlClientTest() { assert(async_executor_->Stop().Successful()); }
+  ~Http1CurlClientTest() {
+    assert(io_async_executor_->Stop().Successful());
+    assert(cpu_async_executor_->Stop().Successful());
+  }
 
-  shared_ptr<AsyncExecutorInterface> async_executor_;
+  shared_ptr<AsyncExecutorInterface> cpu_async_executor_, io_async_executor_;
 
   shared_ptr<MockCurlWrapper> wrapper_;
   shared_ptr<MockCurlWrapperProvider> provider_;

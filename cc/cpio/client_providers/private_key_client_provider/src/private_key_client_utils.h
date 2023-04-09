@@ -36,23 +36,23 @@ class PrivateKeyClientUtils {
   /**
    * @brief Get the Kms Decrypt Request object.
    *
-   * @param response PrivateKeyFetchingResponse response object.
+   * @param encryption_key EncryptionKey object.
    * @param[out] kms_decrypt_request KmsDecryptRequest object.
    * @return core::ExecutionResult
    */
   static core::ExecutionResult GetKmsDecryptRequest(
-      const std::shared_ptr<PrivateKeyFetchingResponse>& response,
-      KmsDecryptRequest& kms_decrypt_request) noexcept;
+      const std::shared_ptr<EncryptionKey>& encryption_key,
+      cmrt::sdk::kms_service::v1::DecryptRequest& kms_decrypt_request) noexcept;
 
   /**
    * @brief Get the Private Key object with unencrypt information.
    *
-   * @param response PrivateKeyFetchingResponse response object.
+   * @param encryption_key EncryptionKey object.
    * @param[out] private_key PrivateKey object for private key split.
    * @return core::ExecutionResult
    */
   static core::ExecutionResult GetPrivateKeyInfo(
-      const std::shared_ptr<PrivateKeyFetchingResponse>& response,
+      const std::shared_ptr<EncryptionKey>& encryption_key,
       cmrt::sdk::private_key_service::v1::PrivateKey& private_key) noexcept;
 
   /**

@@ -24,6 +24,7 @@
 #include "core/interface/message_router_interface.h"
 #include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/auth_token_provider_interface.h"
+#include "cpio/client_providers/interface/cloud_initializer_interface.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
@@ -36,6 +37,9 @@ namespace google::scp::cpio::client_providers {
  */
 class LibCpioProvider : public CpioProviderInterface {
  public:
+  explicit LibCpioProvider(const std::shared_ptr<CpioOptions>& options)
+      : cpio_options_(options), cloud_initializer_(nullptr) {}
+
   core::ExecutionResult Init() noexcept override;
 
   core::ExecutionResult Run() noexcept override;
@@ -71,6 +75,10 @@ class LibCpioProvider : public CpioProviderInterface {
       override;
 
  protected:
+  /// Global CPIO options.
+  std::shared_ptr<CpioOptions> cpio_options_;
+  /// Global cloud initializer.
+  std::shared_ptr<CloudInitializerInterface> cloud_initializer_;
   /// Global async executors.
   std::shared_ptr<core::AsyncExecutorInterface> async_executor_,
       io_async_executor_;

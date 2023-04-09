@@ -60,7 +60,7 @@ class AwsMetricClientProvider : public MetricClientProvider {
 
   AwsMetricClientProvider() = delete;
 
-  core::ExecutionResult Init() noexcept override;
+  core::ExecutionResult Run() noexcept override;
 
  protected:
   core::ExecutionResult MetricsBatchPush(
@@ -68,14 +68,6 @@ class AwsMetricClientProvider : public MetricClientProvider {
           cmrt::sdk::metric_service::v1::PutMetricsRequest,
           cmrt::sdk::metric_service::v1::PutMetricsResponse>>>&
           metric_requests_vector) noexcept override;
-
-  /**
-   * @brief Get the region of current instance.
-   *
-   * @param region returned region.
-   * @return core::ExecutionResult execution result.
-   */
-  core::ExecutionResult GetRegion(std::string& region) noexcept;
 
   /**
    * @brief Creates a Client Configuration object.

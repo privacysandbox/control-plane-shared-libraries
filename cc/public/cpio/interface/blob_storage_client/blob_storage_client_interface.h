@@ -23,6 +23,7 @@
 
 #include "core/common/concurrent_queue/src/concurrent_queue.h"
 #include "core/interface/async_context.h"
+#include "core/interface/streaming_context.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/type_def.h"
 #include "public/cpio/proto/blob_storage_service/v1/blob_storage_service.pb.h"
@@ -96,7 +97,7 @@ class BlobStorageClientInterface : public core::ServiceInterface {
    * @return core::ExecutionResult Scheduling result returned synchronously.
    */
   virtual core::ExecutionResult GetBlobStream(
-      core::ServerStreamingContext<
+      core::ConsumerStreamingContext<
           google::cmrt::sdk::blob_storage_service::v1::GetBlobStreamRequest,
           google::cmrt::sdk::blob_storage_service::v1::GetBlobStreamResponse>
           get_blob_stream_context) noexcept = 0;
@@ -108,7 +109,7 @@ class BlobStorageClientInterface : public core::ServiceInterface {
    * @return core::ExecutionResult Scheduling result returned synchronously.
    */
   virtual core::ExecutionResult PutBlobStream(
-      core::ClientStreamingContext<
+      core::ProducerStreamingContext<
           google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
           google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>
           put_blob_stream_context) noexcept = 0;

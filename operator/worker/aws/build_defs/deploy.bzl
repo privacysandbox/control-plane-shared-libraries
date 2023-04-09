@@ -38,7 +38,8 @@ def worker_aws_deployment(
         jar_args = [],
         jvm_options = [],
         licenses = "//licenses:licenses_tar",
-        enable_worker_debug_mode = False):
+        enable_worker_debug_mode = False,
+        uninstall_ssh_server = False):
     """Creates targets for AWS AMI generation and enclave Docker container.
 
     Assuming the name passed is 'worker', this macro instantiates multiple
@@ -88,6 +89,8 @@ def worker_aws_deployment(
       licenses: This should be a label of a tar file containing all the licenses
         of our distribution and all dependencies.
       enable_worker_debug_mode: Whether to run enclave in debug mode.
+      uninstall_ssh_server: Whether to uninstall SSH server from AMI once
+        provisioning is completed (SSH is used for provisioning).
     """
 
     additional_container_files = []
@@ -128,5 +131,6 @@ def worker_aws_deployment(
         enclave_memory_mib = enclave_memory_mib,
         aws_region = aws_region,
         enable_worker_debug_mode = enable_worker_debug_mode,
+        uninstall_ssh_server = uninstall_ssh_server,
         licenses = licenses,
     )

@@ -75,3 +75,18 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "tee_aws_kms_client_provider_utils_test",
+    size = "small",
+    srcs =
+        ["tee_aws_kms_client_provider_utils_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/cpio/client_providers/kms_client_provider/src/aws:tee_aws_kms_client_provider_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

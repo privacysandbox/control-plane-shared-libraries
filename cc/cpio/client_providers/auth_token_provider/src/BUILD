@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//cc:scp_internal_pkg"])
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "auth_token_provider_lib",
@@ -35,10 +35,10 @@ cc_library(
         ],
     }) + [
         "//cc:cc_base_include_dir",
-        "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/core/interface:interface_lib",
         "//cc/core/utils/src:core_utils",
-        "//cc/public/cpio/interface:type_def",
+        "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/public/cpio/interface:cpio_errors",
+        "//cc/public/cpio/interface:type_def",
     ],
 )

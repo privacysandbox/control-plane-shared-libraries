@@ -37,6 +37,7 @@
 #include "core/http2_client/mock/mock_http_connection.h"
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_test_lib.h"
 
 using namespace nghttp2::asio_http2;          // NOLINT
 using namespace nghttp2::asio_http2::server;  // NOLINT
@@ -48,6 +49,9 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::common::Uuid;
 using google::scp::core::http2_client::mock::MockHttpConnection;
+using google::scp::core::test::IsSuccessful;
+using google::scp::core::test::ResultIs;
+using google::scp::core::test::WaitUntil;
 using std::atomic;
 using std::bind;
 using std::future;
@@ -84,8 +88,8 @@ TEST(HttpConnectionTest, SimpleRequest) {
   MockHttpConnection connection(async_executor, "localhost",
                                 to_string(server.ports()[0]), false);
 
-  EXPECT_EQ(connection.Init(), SuccessExecutionResult());
-  EXPECT_EQ(connection.Run(), SuccessExecutionResult());
+  EXPECT_THAT(connection.Init(), IsSuccessful());
+  EXPECT_THAT(connection.Run(), IsSuccessful());
 
   vector<Uuid> keys;
   connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -95,6 +99,11 @@ TEST(HttpConnectionTest, SimpleRequest) {
   http_context.request = make_shared<HttpRequest>();
   http_context.request->path = make_shared<string>("http://localhost/test");
   http_context.request->method = HttpMethod::GET;
+  atomic<bool> is_called(false);
+  http_context.callback =
+      [&](AsyncContext<HttpRequest, HttpResponse>& context) {
+        is_called.store(true);
+      };
 
   ExecutionResult execution_result = RetryExecutionResult(123);
   while (execution_result.status == ExecutionStatus::Retry) {
@@ -114,11 +123,13 @@ TEST(HttpConnectionTest, SimpleRequest) {
     usleep(1000);
   }
 
+  WaitUntil([&]() { return is_called.load(); });
+  connection.Stop();
   connection.GetPendingNetworkCallbacks().Keys(keys);
   EXPECT_EQ(keys.size(), 0);
 
-  connection.Stop();
   server.stop();
+  server.join();
 }
 
 TEST(HttpConnectionTest, CancelCallbacks) {
@@ -140,8 +151,8 @@ TEST(HttpConnectionTest, CancelCallbacks) {
   MockHttpConnection connection(async_executor, "localhost",
                                 to_string(server.ports()[0]), false);
 
-  EXPECT_EQ(connection.Init(), SuccessExecutionResult());
-  EXPECT_EQ(connection.Run(), SuccessExecutionResult());
+  EXPECT_THAT(connection.Init(), IsSuccessful());
+  EXPECT_THAT(connection.Run(), IsSuccessful());
 
   vector<Uuid> keys;
   connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -155,9 +166,9 @@ TEST(HttpConnectionTest, CancelCallbacks) {
   http_context.callback =
       [&](AsyncContext<HttpRequest, HttpResponse>& context) {
         if (!is_called) {
-          EXPECT_EQ(
-              context.result,
-              RetryExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED));
+          EXPECT_EQ(context.result,
+                    FailureExecutionResult(
+                        errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED));
           is_called = true;
         }
       };
@@ -175,7 +186,7 @@ TEST(HttpConnectionTest, CancelCallbacks) {
     usleep(1000);
   }
 
-  connection.CancelPendingCallbacks();
+  connection.CancelPendingCallbacks(true);
   EXPECT_EQ(is_called, true);
 
   connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -184,6 +195,7 @@ TEST(HttpConnectionTest, CancelCallbacks) {
   release_response = true;
   connection.Stop();
   server.stop();
+  server.join();
 }
 
 TEST(HttpConnectionTest, StopRemovesCallback) {
@@ -205,8 +217,8 @@ TEST(HttpConnectionTest, StopRemovesCallback) {
   MockHttpConnection connection(async_executor, "localhost",
                                 to_string(server.ports()[0]), false);
 
-  EXPECT_EQ(connection.Init(), SuccessExecutionResult());
-  EXPECT_EQ(connection.Run(), SuccessExecutionResult());
+  EXPECT_THAT(connection.Init(), IsSuccessful());
+  EXPECT_THAT(connection.Run(), IsSuccessful());
 
   vector<Uuid> keys;
   connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -220,9 +232,9 @@ TEST(HttpConnectionTest, StopRemovesCallback) {
   http_context.callback =
       [&](AsyncContext<HttpRequest, HttpResponse>& context) {
         if (!is_called) {
-          EXPECT_EQ(
-              context.result,
-              RetryExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED));
+          EXPECT_THAT(context.result,
+                      ResultIs(FailureExecutionResult(
+                          errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED)));
           is_called = true;
         }
       };
@@ -233,7 +245,7 @@ TEST(HttpConnectionTest, StopRemovesCallback) {
     usleep(1000);
   }
 
-  EXPECT_EQ(execution_result, SuccessExecutionResult());
+  EXPECT_THAT(execution_result, IsSuccessful());
 
   while (keys.size() == 0) {
     connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -248,6 +260,7 @@ TEST(HttpConnectionTest, StopRemovesCallback) {
   release_response = true;
   connection.Stop();
   server.stop();
+  server.join();
 }
 
 }  // namespace google::scp::core

@@ -49,7 +49,8 @@ class TeeAwsKmsClientProvider : public KmsClientProviderInterface {
   core::ExecutionResult Stop() noexcept override;
 
   core::ExecutionResult Decrypt(
-      core::AsyncContext<KmsDecryptRequest, KmsDecryptResponse>&
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept override;
 
  protected:
@@ -62,7 +63,8 @@ class TeeAwsKmsClientProvider : public KmsClientProviderInterface {
    * @return core::ExecutionResult the creation results.
    */
   void GetSessionCredentialsCallbackToDecrypt(
-      core::AsyncContext<KmsDecryptRequest, KmsDecryptResponse>&
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context,
       core::AsyncContext<GetRoleCredentialsRequest, GetRoleCredentialsResponse>&
           get_session_credentials_context) noexcept;

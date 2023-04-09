@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "core/interface/async_context.h"
+#include "core/utils/src/error_utils.h"
 #include "public/core/interface/execution_result.h"
 
 static constexpr char kCpioClient[] = "CpioClient";

@@ -48,10 +48,6 @@ class AwsAuthTokenProvider : public AuthTokenProviderInterface {
                          GetSessionTokenResponse>& get_token_context) noexcept
       override;
 
-  core::ExecutionResult SignRequestWithSessionToken(
-      core::AsyncContext<core::HttpRequest, core::HttpRequest>&
-          sign_request_context) noexcept override;
-
  private:
   /**
    * @brief Is called when the get session token operation is completed.

@@ -60,7 +60,7 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
           get_blob_context) noexcept override;
 
   core::ExecutionResult GetBlobStream(
-      core::ServerStreamingContext<
+      core::ConsumerStreamingContext<
           cmrt::sdk::blob_storage_service::v1::GetBlobStreamRequest,
           cmrt::sdk::blob_storage_service::v1::GetBlobStreamResponse>&
           get_blob_stream_context) noexcept override;
@@ -77,7 +77,7 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
           put_blob_context) noexcept override;
 
   core::ExecutionResult PutBlobStream(
-      core::ClientStreamingContext<
+      core::ProducerStreamingContext<
           cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
           cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
           put_blob_stream_context) noexcept override;

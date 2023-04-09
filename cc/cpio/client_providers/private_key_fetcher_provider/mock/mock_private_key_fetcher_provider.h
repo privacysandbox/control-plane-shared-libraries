@@ -18,6 +18,7 @@
 #include <memory>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 
 #include "core/interface/async_context.h"
@@ -30,40 +31,22 @@ namespace google::scp::cpio::client_providers::mock {
 class MockPrivateKeyFetcherProvider
     : public PrivateKeyFetcherProviderInterface {
  public:
-  core::ExecutionResult init_result_mock = core::SuccessExecutionResult();
-
-  core::ExecutionResult Init() noexcept override { return init_result_mock; }
-
-  core::ExecutionResult run_result_mock = core::SuccessExecutionResult();
-
-  core::ExecutionResult Run() noexcept override { return run_result_mock; }
-
-  core::ExecutionResult stop_result_mock = core::SuccessExecutionResult();
-
-  core::ExecutionResult Stop() noexcept override { return stop_result_mock; }
-
-  std::function<core::ExecutionResult(
-      core::AsyncContext<PrivateKeyFetchingRequest,
-                         PrivateKeyFetchingResponse>&)>
-      fetch_private_key_mock;
-
-  core::ExecutionResult fetch_private_key_result_mock =
-      core::SuccessExecutionResult();
-  std::shared_ptr<PrivateKeyFetchingResponse> fetch_private_key_response_mock;
-
-  core::ExecutionResult FetchPrivateKey(
-      core::AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse>&
-          context) noexcept override {
-    if (fetch_private_key_mock) {
-      return fetch_private_key_mock(context);
-    }
-
-    if (fetch_private_key_response_mock) {
-      context.result = fetch_private_key_result_mock;
-      context.response = fetch_private_key_response_mock;
-      context.Finish();
-    }
-    return fetch_private_key_result_mock;
+  MockPrivateKeyFetcherProvider() {
+    ON_CALL(*this, Init)
+        .WillByDefault(testing::Return(core::SuccessExecutionResult()));
+    ON_CALL(*this, Run)
+        .WillByDefault(testing::Return(core::SuccessExecutionResult()));
+    ON_CALL(*this, Stop)
+        .WillByDefault(testing::Return(core::SuccessExecutionResult()));
   }
+
+  MOCK_METHOD(core::ExecutionResult, Init, (), (noexcept, override));
+  MOCK_METHOD(core::ExecutionResult, Run, (), (noexcept, override));
+  MOCK_METHOD(core::ExecutionResult, Stop, (), (noexcept, override));
+
+  MOCK_METHOD(core::ExecutionResult, FetchPrivateKey,
+              ((core::AsyncContext<PrivateKeyFetchingRequest,
+                                   PrivateKeyFetchingResponse>&)),
+              (noexcept, override));
 };
 }  // namespace google::scp::cpio::client_providers::mock

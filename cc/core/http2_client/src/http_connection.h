@@ -134,8 +134,10 @@ class HttpConnection : public ServiceInterface {
   /**
    * @brief Cancels all the pending callbacks. This is used during connection
    * drop or stop.
+   *
+   * @param is_stop is the call from Stop().
    */
-  void CancelPendingCallbacks() noexcept;
+  void CancelPendingCallbacks(bool is_stop) noexcept;
 
   /**
    * @brief Converts an http status code to execution result.

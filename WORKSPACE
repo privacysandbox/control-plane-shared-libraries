@@ -29,18 +29,6 @@ rules_jvm_external_setup()
 # Download all http_archives and git_repositories: Begin
 ################################################################################
 
-# Declare explicit protobuf version, to override any implicit dependencies.
-PROTOBUF_CORE_VERSION = "3.19.4"
-
-http_archive(
-    name = "com_google_protobuf",
-    sha256 = "3bd7828aa5af4b13b99c191e8b1e884ebfa9ad371b0ce264605d347f135d2568",
-    strip_prefix = "protobuf-%s" % PROTOBUF_CORE_VERSION,
-    urls = [
-        "https://github.com/protocolbuffers/protobuf/archive/v%s.tar.gz" % PROTOBUF_CORE_VERSION,
-    ],
-)
-
 http_archive(
     name = "rules_java",
     sha256 = "34b41ec683e67253043ab1a3d1e8b7c61e4e8edefbcad485381328c934d072fe",
@@ -63,81 +51,34 @@ git_repository(
     shallow_since = DIFFERENTIAL_PRIVACY_SHALLOW_SINCE,
 )
 
-#############
-# PKG Rules #
-#############
+################
+# SDK Dependencies Rules #
+################
 
-http_archive(
-    name = "rules_pkg",
-    sha256 = "a89e203d3cf264e564fcb96b6e06dd70bc0557356eb48400ce4b5d97c2c3720d",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.5.1/rules_pkg-0.5.1.tar.gz",
-        "https://github.com/bazelbuild/rules_pkg/releases/download/0.5.1/rules_pkg-0.5.1.tar.gz",
-    ],
-)
+# Declare explicit protobuf version and hash, to override any implicit dependencies.
+# Please update both while upgrading to new versions.
+PROTOBUF_CORE_VERSION = "3.19.4"
 
-############
-# Go rules #
-############
+PROTOBUF_SHA_256 = "3bd7828aa5af4b13b99c191e8b1e884ebfa9ad371b0ce264605d347f135d2568"
 
-# Note: Go build rules are an indirect dependency of "io_bazel_rules_docker" and
-# a direct dependency of rpmpack. These rules are not used for deploying go code
-# at the time of writing.
+load("//build_defs/cc:sdk.bzl", "sdk_dependencies")
 
-http_archive(
-    name = "io_bazel_rules_go",
-    sha256 = "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
-    ],
-)
-
-http_archive(
-    name = "bazel_gazelle",
-    sha256 = "de69a09dc70417580aabf20a28619bb3ef60d038470c7cf8442fafcf627c21cb",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.24.0/bazel-gazelle-v0.24.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.24.0/bazel-gazelle-v0.24.0.tar.gz",
-    ],
-)
-
-###################
-# Container rules #
-###################
-
-# Note: these rules add a dependency on the golang toolchain and must be ordered
-# after any `go_register_toolchains` calls in this file (or else the toolchain
-# defined in io_bazel_rules_docker are used for future go toolchains)
-http_archive(
-    name = "io_bazel_rules_docker",
-    sha256 = "59d5b42ac315e7eadffa944e86e90c2990110a1c8075f1cd145f487e999d22b3",
-    strip_prefix = "rules_docker-0.17.0",
-    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.17.0/rules_docker-v0.17.0.tar.gz"],
-)
+sdk_dependencies(PROTOBUF_CORE_VERSION, PROTOBUF_SHA_256)
 
 load(
     "@io_bazel_rules_docker//repositories:repositories.bzl",
     container_repositories = "repositories",
 )
 
-#############
-# CPP Rules #
-#############
+################
+# Tink Rules #
+################
 
-http_archive(
-    name = "com_google_googletest",
-    sha256 = "8daa1a71395892f7c1ec5f7cb5b099a02e606be720d62f1a6a98f8f8898ec826",
-    strip_prefix = "googletest-e2239ee6043f73722e7aa812a459f54a28552929",
-    urls = ["https://github.com/google/googletest/archive/e2239ee6043f73722e7aa812a459f54a28552929.zip"],
-)
+# Imports Tink git repo to this workspace as @tink_java. To be used only for
+# testing changes not yet published to Maven.
+load("//build_defs/tink:tink_defs.bzl", "import_tink_git")
 
-http_archive(
-    name = "rules_cc",
-    sha256 = "b295cad8c5899e371dde175079c0a2cdc0151f5127acc92366a8c986beb95c76",
-    strip_prefix = "rules_cc-daf6ace7cfeacd6a83e9ff2ed659f416537b6c74",
-    urls = ["https://github.com/bazelbuild/rules_cc/archive/daf6ace7cfeacd6a83e9ff2ed659f416537b6c74.zip"],
-)
+import_tink_git()
 
 ################
 # Python Rules #
@@ -164,33 +105,6 @@ http_archive(
     ],
 )
 
-###############################
-# Binary Runtime Dependencies #
-###############################
-
-# TODO: find a better way to host kmstool binaries, using a public S3 bucket for the time being.
-http_file(
-    name = "kmstool_enclave_cli",
-    downloaded_file_path = "kmstool_enclave_cli",
-    executable = True,
-    sha256 = "37dcd658328c5b57c0a6d8ea141156407de4e4fb5ac43f5906b171b2018352fc",
-    urls = ["https://storage.googleapis.com/scp-dependencies/aws/kmstool_enclave_cli"],
-)
-
-http_file(
-    name = "kmstool_enclave",
-    downloaded_file_path = "kmstool_enclave",
-    executable = True,
-    urls = ["https://storage.googleapis.com/scp-dependencies/aws/kmstool_enclave"],
-)
-
-http_file(
-    name = "libnsm",
-    downloaded_file_path = "libnsm.so",
-    executable = False,
-    urls = ["https://storage.googleapis.com/scp-dependencies/aws/libnsm.so"],
-)
-
 ###########################
 # Binary Dev Dependencies #
 ###########################
@@ -201,8 +115,8 @@ http_archive(
 package(default_visibility = ["//visibility:public"])
 exports_files(["packer"])
 """,
-    sha256 = "8a94b84542d21b8785847f4cccc8a6da4c7be5e16d4b1a2d0a5f7ec5532faec0",
-    url = "https://releases.hashicorp.com/packer/1.7.8/packer_1.7.8_linux_amd64.zip",
+    sha256 = "57d0411e578aea62918d36ed186951139d5d49d44b76e5666d1fbf2427b385ae",
+    url = "https://releases.hashicorp.com/packer/1.8.6/packer_1.8.6_linux_amd64.zip",
 )
 
 http_archive(
@@ -235,14 +149,6 @@ http_file(
     urls = ["https://github.com/google/google-java-format/releases/download/v1.15.0/google-java-format-1.15.0-all-deps.jar"],
 )
 
-git_repository(
-    name = "com_github_google_rpmpack",
-    # Lastest commit in main branch as of 2021-11-29
-    commit = "d0ed9b1b61b95992d3c4e83df3e997f3538a7b6c",
-    remote = "https://github.com/google/rpmpack.git",
-    shallow_since = "1637822718 +0200",
-)
-
 # Note: requires golang toolchain.
 http_archive(
     name = "com_github_bazelbuild_buildtools",
@@ -251,131 +157,6 @@ http_archive(
     urls = [
         "https://github.com/bazelbuild/buildtools/archive/refs/tags/4.2.2.tar.gz",
     ],
-)
-
-###################
-# CC Dependencies #
-###################
-
-new_git_repository(
-    name = "moodycamel_concurrent_queue",
-    build_file = "//build_defs/cc:moodycamel.BUILD",
-    # Commited Mar 20, 2022
-    commit = "22c78daf65d2c8cce9399a29171676054aa98807",
-    remote = "https://github.com/cameron314/concurrentqueue.git",
-    shallow_since = "1647803790 -0400",
-)
-
-new_git_repository(
-    name = "nlohmann_json",
-    build_file = "//build_defs/cc:nlohmann.BUILD",
-    # Commits on Apr 6, 2022
-    commit = "15fa6a342af7b51cb51a22599026e01f1d81957b",
-    remote = "https://github.com/nlohmann/json.git",
-)
-
-git_repository(
-    name = "oneTBB",
-    # Commits on Apr 18, 2022
-    commit = "9d2a3477ce276d437bf34b1582781e5b11f9b37a",
-    remote = "https://github.com/oneapi-src/oneTBB.git",
-    shallow_since = "1648820995 +0300",
-)
-
-load("//build_defs/cc/aws:aws_sdk_cpp_deps.bzl", "import_aws_sdk_cpp")
-
-import_aws_sdk_cpp()
-
-# Boost
-# latest as of 2022-06-09
-_RULES_BOOST_COMMIT = "789a047e61c0292c3b989514f5ca18a9945b0029"
-
-git_repository(
-    name = "com_github_nelhage_rules_boost",
-    commit = _RULES_BOOST_COMMIT,
-    patch_args = ["-p1"],
-    patches = ["//build_defs/cc:rules_boost.patch"],
-    remote = "https://github.com/nelhage/rules_boost.git",
-    shallow_since = "1652895814 -0700",
-)
-
-git_repository(
-    name = "rules_foreign_cc",
-    # version 0.8.0
-    commit = "e208deeae394c2aba5531d1f4edbba82d2e7430c",
-    remote = "https://github.com/bazelbuild/rules_foreign_cc.git",
-    shallow_since = "1650286188 -0700",
-)
-
-# nghttp2
-http_archive(
-    name = "com_github_nghttp2_nghttp2",
-    build_file = "//build_defs/cc:nghttp2.BUILD",
-    patch_args = ["-p1"],
-    patches = ["//build_defs/cc:nghttp2.patch"],
-    sha256 = "62f50f0e9fc479e48b34e1526df8dd2e94136de4c426b7680048181606832b7c",
-    strip_prefix = "nghttp2-1.47.0",
-    url = "https://github.com/nghttp2/nghttp2/releases/download/v1.47.0/nghttp2-1.47.0.tar.gz",
-)
-
-http_archive(
-    name = "curl",
-    build_file = "//build_defs/cc:curl.BUILD",
-    sha256 = "ff3e80c1ca6a068428726cd7dd19037a47cc538ce58ef61c59587191039b2ca6",
-    strip_prefix = "curl-7.49.1",
-    urls = [
-        "https://mirror.bazel.build/curl.haxx.se/download/curl-7.49.1.tar.gz",
-    ],
-)
-
-# Bazel Skylib. Required by absl.
-http_archive(
-    name = "bazel_skylib",
-    sha256 = "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728",
-    urls = ["https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz"],
-)
-
-http_archive(
-    name = "com_google_absl",
-    sha256 = "81311c17599b3712069ded20cca09a62ab0bf2a89dfa16993786c8782b7ed145",
-    strip_prefix = "abseil-cpp-20230125.1",
-    # Committed on Jan 25, 2023.
-    urls = [
-        "https://github.com/abseil/abseil-cpp/archive/20230125.1.tar.gz",
-    ],
-)
-
-git_repository(
-    name = "boringssl",
-    # Committed on Oct 3, 2022
-    # https://github.com/google/boringssl/commit/c2837229f381f5fcd8894f0cca792a94b557ac52
-    commit = "c2837229f381f5fcd8894f0cca792a94b557ac52",
-    remote = "https://github.com/google/boringssl.git",
-)
-
-#####################
-# GRPC C & GCP APIs #
-#####################
-# Loads com_github_grpc_grpc.
-# Defines @com_github_grpc_grpc before @com_github_googleapis_google_cloud_cpp
-# to override the dependenices in @com_github_googleapis_google_cloud_cpp.
-http_archive(
-    name = "com_github_grpc_grpc",
-    sha256 = "ec125d7fdb77ecc25b01050a0d5d32616594834d3fe163b016768e2ae42a2df6",
-    strip_prefix = "grpc-1.52.1",
-    urls = [
-        "https://github.com/grpc/grpc/archive/v1.52.1.tar.gz",
-    ],
-)
-
-# Builds Google cloud cpp
-# --> must be before grpc_deps() and grpc_extra_deps()
-# --> and after http_archive com_github_grpc_grpc
-http_archive(
-    name = "com_github_googleapis_google_cloud_cpp",
-    sha256 = "21fb441b5a670a18bb16b6826be8e0530888d0b94320847c538d46f5a54dddbc",
-    strip_prefix = "google-cloud-cpp-2.8.0",
-    url = "https://github.com/googleapis/google-cloud-cpp/archive/v2.8.0.tar.gz",
 )
 
 ################################################################################
@@ -553,12 +334,6 @@ load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
 
-# Imports Tink git repo to this workspace as @tink_java. To be used only for
-# testing changes not yet published to Maven.
-load("//build_defs/tink:tink_defs.bzl", "import_tink_git")
-
-import_tink_git()
-
 ###########################
 # CC Dependencies #
 ###########################
@@ -677,15 +452,6 @@ container_pull(
     registry = "index.docker.io",
     repository = "amazonlinux",
     tag = "2.0.20220805.0",
-)
-
-# Needed for build containers which must execute bazel commands (e.g. //cc/aws/proxy).
-http_file(
-    name = "bazelisk",
-    downloaded_file_path = "bazelisk",
-    executable = True,
-    sha256 = "84e946ed8537eaaa4d540df338a593e373e70c5ddca9f2f49e1aaf3a04bdd6ca",
-    urls = ["https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64"],
 )
 
 load("//build_defs/cc:v8.bzl", "import_v8")

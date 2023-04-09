@@ -76,16 +76,6 @@ class AuthTokenProviderInterface : public core::ServiceInterface {
       core::AsyncContext<GetSessionTokenForTargetAudienceRequest,
                          GetSessionTokenResponse>&
           get_token_context) noexcept = 0;
-
-  /**
-   * @brief Sign Http request with session token fetching from instance.
-   *
-   * @param sign_request_context request signing context
-   * @return core::ExecutionResult The execution result of the operation.
-   */
-  virtual core::ExecutionResult SignRequestWithSessionToken(
-      core::AsyncContext<core::HttpRequest, core::HttpRequest>&
-          sign_request_context) noexcept = 0;
 };
 
 class AuthTokenProviderFactory {

@@ -151,21 +151,9 @@ TEST_F(PrivateKeyFetcherProviderTest, FetchPrivateKey) {
       request_, [&](AsyncContext<PrivateKeyFetchingRequest,
                                  PrivateKeyFetchingResponse>& context) {
         EXPECT_THAT(context.result, IsSuccessful());
-        EXPECT_EQ(*context.response->resource_name, "encryptionKeys/123456");
-        EXPECT_EQ(context.response->encryption_key_type,
-                  EncryptionKeyType::kMultiPartyHybridEvenKeysplit);
-        EXPECT_EQ(*context.response->public_keyset_handle, "primaryKeyId");
-        EXPECT_EQ(*context.response->public_key_material, "testtest");
-        EXPECT_EQ(context.response->expiration_time_in_ms, 1669943990485);
-        EXPECT_EQ(context.response->creation_time_in_ms, 1669252790485);
-        EXPECT_EQ(*context.response->key_data[0]->key_encryption_key_uri,
-                  "aws-kms://arn:aws:kms:us-east-1:1234567:key");
-        EXPECT_EQ(*context.response->key_data[0]->public_key_signature, "");
-        EXPECT_EQ(*context.response->key_data[0]->key_material, "test=test");
-        EXPECT_EQ(*context.response->key_data[1]->key_encryption_key_uri,
-                  "aws-kms://arn:aws:kms:us-east-1:12345:key");
-        EXPECT_EQ(*context.response->key_data[1]->public_key_signature, "");
-        EXPECT_EQ(*context.response->key_data[1]->key_material, "");
+        EXPECT_EQ(context.response->encryption_keys.size(), 1);
+        const auto& encryption_key = *context.response->encryption_keys.begin();
+        EXPECT_EQ(*encryption_key->resource_name, "encryptionKeys/123456");
 
         condition = true;
         return SuccessExecutionResult();

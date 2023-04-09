@@ -34,6 +34,8 @@ using Aws::Auth::AWSCredentials;
 using Aws::Client::ClientConfiguration;
 using Aws::KMS::KMSClient;
 using crypto::tink::Aead;
+using google::cmrt::sdk::kms_service::v1::DecryptRequest;
+using google::cmrt::sdk::kms_service::v1::DecryptResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -86,10 +88,10 @@ ExecutionResult NonteeAwsKmsClientProvider::Stop() noexcept {
 }
 
 ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
-    core::AsyncContext<KmsDecryptRequest, KmsDecryptResponse>&
+    core::AsyncContext<DecryptRequest, DecryptResponse>&
         decrypt_context) noexcept {
-  shared_ptr<string> ciphertext = decrypt_context.request->ciphertext;
-  if (!ciphertext || ciphertext->empty()) {
+  const auto& ciphertext = decrypt_context.request->ciphertext();
+  if (ciphertext.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND);
     ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -99,8 +101,8 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
     return decrypt_context.result;
   }
 
-  shared_ptr<string> key_arn = decrypt_context.request->key_arn;
-  if (!key_arn || key_arn->empty() || key_arn->length() < kKeyArnPrefixSize) {
+  const auto& key_arn = decrypt_context.request->key_resource_name();
+  if (key_arn.empty() || key_arn.length() < kKeyArnPrefixSize) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND);
     ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -110,8 +112,8 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
     return decrypt_context.result;
   }
 
-  shared_ptr<string> kms_region = decrypt_context.request->kms_region;
-  if (!kms_region || kms_region->empty()) {
+  const auto& kms_region = decrypt_context.request->kms_region();
+  if (kms_region.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_REGION_NOT_FOUND);
     ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -121,9 +123,8 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
     return decrypt_context.result;
   }
 
-  shared_ptr<string> account_identity =
-      decrypt_context.request->account_identity;
-  if (!account_identity || account_identity->empty()) {
+  const auto& account_identity = decrypt_context.request->account_identity();
+  if (account_identity.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_KMS_CLIENT_PROVIDER_ASSUME_ROLE_NOT_FOUND);
     ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -133,7 +134,7 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
     return decrypt_context.result;
   }
 
-  AsyncContext<KmsDecryptRequest, Aead> get_aead_context(
+  AsyncContext<DecryptRequest, Aead> get_aead_context(
       decrypt_context.request,
       bind(&NonteeAwsKmsClientProvider::GetAeadCallbackToDecrypt, this,
            decrypt_context, _1));
@@ -141,8 +142,8 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
 }
 
 ExecutionResult NonteeAwsKmsClientProvider::GetAeadCallbackToDecrypt(
-    AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& decrypt_context,
-    AsyncContext<KmsDecryptRequest, Aead>& get_aead_context) noexcept {
+    AsyncContext<DecryptRequest, DecryptResponse>& decrypt_context,
+    AsyncContext<DecryptRequest, Aead>& get_aead_context) noexcept {
   auto execution_result = get_aead_context.result;
   if (!execution_result.Successful()) {
     ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -153,30 +154,30 @@ ExecutionResult NonteeAwsKmsClientProvider::GetAeadCallbackToDecrypt(
   }
 
   string decoded_ciphertext;
-  Base64Decode(*decrypt_context.request->ciphertext, decoded_ciphertext);
+  Base64Decode(decrypt_context.request->ciphertext(), decoded_ciphertext);
 
-  auto decrpyt_result =
-      (*get_aead_context.response).Decrypt(decoded_ciphertext, "");
-  if (!decrpyt_result.ok()) {
+  auto decrypt_result =
+      get_aead_context.response->Decrypt(decoded_ciphertext, "");
+  if (!decrypt_result.ok()) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_DECRYPTION_FAILED);
     ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
           "Aead Decryption failed with error %s.",
-          decrpyt_result.status().ToString().c_str());
+          decrypt_result.status().ToString().c_str());
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
   }
-  decrypt_context.response = make_shared<KmsDecryptResponse>();
-  decrypt_context.response->plaintext = make_shared<string>(*decrpyt_result);
+  decrypt_context.response = make_shared<DecryptResponse>();
+  decrypt_context.response->set_plaintext(move(*decrypt_result));
   decrypt_context.result = SuccessExecutionResult();
   decrypt_context.Finish();
   return SuccessExecutionResult();
 }
 
 ExecutionResult NonteeAwsKmsClientProvider::GetAead(
-    AsyncContext<KmsDecryptRequest, Aead>& get_aead_context) noexcept {
-  AsyncContext<KmsDecryptRequest, KMSClient> create_kms_context(
+    AsyncContext<DecryptRequest, Aead>& get_aead_context) noexcept {
+  AsyncContext<DecryptRequest, KMSClient> create_kms_context(
       get_aead_context.request,
       bind(&NonteeAwsKmsClientProvider::CreateKmsCallbackToCreateAead, this,
            get_aead_context, _1));
@@ -184,8 +185,8 @@ ExecutionResult NonteeAwsKmsClientProvider::GetAead(
 }
 
 void NonteeAwsKmsClientProvider::CreateKmsCallbackToCreateAead(
-    AsyncContext<KmsDecryptRequest, Aead>& get_aead_context,
-    AsyncContext<KmsDecryptRequest, KMSClient>& create_kms_context) noexcept {
+    AsyncContext<DecryptRequest, Aead>& get_aead_context,
+    AsyncContext<DecryptRequest, KMSClient>& create_kms_context) noexcept {
   auto execution_result = create_kms_context.result;
   if (!execution_result.Successful()) {
     ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -198,7 +199,7 @@ void NonteeAwsKmsClientProvider::CreateKmsCallbackToCreateAead(
   // The keyUri returned from KeyVendingService contains prefix "aws-kms://",
   // and we need to remove it before sending for decryption.
   auto aead_result = AwsKmsAead::New(
-      get_aead_context.request->key_arn->substr(kKeyArnPrefixSize),
+      get_aead_context.request->key_resource_name().substr(kKeyArnPrefixSize),
       move(create_kms_context.response));
   if (!aead_result.ok()) {
     auto execution_result =
@@ -215,9 +216,10 @@ void NonteeAwsKmsClientProvider::CreateKmsCallbackToCreateAead(
 }
 
 ExecutionResult NonteeAwsKmsClientProvider::CreateKmsClient(
-    AsyncContext<KmsDecryptRequest, KMSClient>& create_kms_context) noexcept {
+    AsyncContext<DecryptRequest, KMSClient>& create_kms_context) noexcept {
   auto request = make_shared<GetRoleCredentialsRequest>();
-  request->account_identity = create_kms_context.request->account_identity;
+  request->account_identity = make_shared<AccountIdentity>(
+      create_kms_context.request->account_identity());
   AsyncContext<GetRoleCredentialsRequest, GetRoleCredentialsResponse>
       get_role_credentials_context(
           move(request), bind(&NonteeAwsKmsClientProvider::
@@ -228,7 +230,7 @@ ExecutionResult NonteeAwsKmsClientProvider::CreateKmsClient(
 }
 
 void NonteeAwsKmsClientProvider::GetSessionCredentialsCallbackToCreateKms(
-    AsyncContext<KmsDecryptRequest, KMSClient>& create_kms_context,
+    AsyncContext<DecryptRequest, KMSClient>& create_kms_context,
     AsyncContext<GetRoleCredentialsRequest, GetRoleCredentialsResponse>&
         get_session_credentials_context) noexcept {
   auto execution_result = get_session_credentials_context.result;
@@ -240,14 +242,15 @@ void NonteeAwsKmsClientProvider::GetSessionCredentialsCallbackToCreateKms(
     return;
   }
 
-  GetRoleCredentialsResponse response =
+  const GetRoleCredentialsResponse& response =
       *get_session_credentials_context.response;
   auto aws_credentials = make_shared<AWSCredentials>(
       response.access_key_id->c_str(), response.access_key_secret->c_str(),
       response.security_token->c_str());
 
-  auto kms_client = GetKmsClient(move(aws_credentials),
-                                 create_kms_context.request->kms_region);
+  auto kms_client = GetKmsClient(
+      move(aws_credentials),
+      make_shared<string>(create_kms_context.request->kms_region()));
   create_kms_context.response = kms_client;
   create_kms_context.result = SuccessExecutionResult();
   create_kms_context.Finish();

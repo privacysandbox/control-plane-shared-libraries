@@ -30,7 +30,7 @@ def _generic_enclave_ami_pkr_script_impl(ctx):
         output = packer_file,
         substitutions = {
             "{ec2_instance}": ctx.attr.ec2_instance,
-            "{aws_region}": ctx.attr.aws_region_override[BuildSettingInfo].value if ctx.attr.aws_region_override != None else ctx.attr.aws_region,
+            "{aws_region}": ctx.attr.aws_region_override[BuildSettingInfo].value if ctx.attr.aws_region_override != None and ctx.attr.aws_region_override[BuildSettingInfo].value != "None" else ctx.attr.aws_region,
             "{container_path}": enclave_container_image.short_path,
             "{container_filename}": enclave_container_image.basename,
             "{proxy_rpm}": ctx.file.proxy_rpm.short_path,
@@ -39,6 +39,7 @@ def _generic_enclave_ami_pkr_script_impl(ctx):
             "{ami_name}": ctx.attr.ami_name[BuildSettingInfo].value,
             "{ami_groups}": ctx.attr.ami_groups,
             "{enable_enclave_debug_mode}": "true" if ctx.attr.enable_enclave_debug_mode else "false",
+            "{uninstall_ssh_server}": "true" if ctx.attr.uninstall_ssh_server else "false",
             "{licenses}": ctx.file.licenses.short_path,
             "{docker_repo}": ctx.attr.enclave_container_image.label.package,
             # Use the input container tag if specified or remove the .tar extension from the container_image name
@@ -111,6 +112,9 @@ generic_enclave_ami_pkr_script = rule(
             allow_single_file = True,
         ),
         "enable_enclave_debug_mode": attr.bool(
+            default = False,
+        ),
+        "uninstall_ssh_server": attr.bool(
             default = False,
         ),
         "packer_binary": attr.label(

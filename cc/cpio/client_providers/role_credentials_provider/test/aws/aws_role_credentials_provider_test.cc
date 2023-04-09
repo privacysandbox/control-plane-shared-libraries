@@ -61,8 +61,12 @@ using std::make_shared;
 using std::shared_ptr;
 using std::string;
 
-static constexpr char kAssumeRoleArn[] = "assume_role_arn";
-static constexpr char kSessionName[] = "session_name";
+namespace {
+constexpr char kResourceNameMock[] =
+    "arn:aws:ec2:us-east-1:123456789012:instance/i-0e9801d129EXAMPLE";
+constexpr char kAssumeRoleArn[] = "assume_role_arn";
+constexpr char kSessionName[] = "session_name";
+}  // namespace
 
 namespace google::scp::cpio::client_providers::test {
 class AwsRoleCredentialsProviderTest : public ::testing::Test {
@@ -80,6 +84,8 @@ class AwsRoleCredentialsProviderTest : public ::testing::Test {
   void SetUp() override {
     role_credentials_provider_ =
         make_shared<MockAwsRoleCredentialsProviderWithOverrides>();
+    role_credentials_provider_->GetInstanceClientProvider()
+        ->instance_resource_name = kResourceNameMock;
     EXPECT_EQ(role_credentials_provider_->Init(), SuccessExecutionResult());
     mock_sts_client_ = role_credentials_provider_->GetSTSClient();
     EXPECT_EQ(role_credentials_provider_->Run(), SuccessExecutionResult());

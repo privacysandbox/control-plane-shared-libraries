@@ -19,8 +19,6 @@
 #include <memory>
 #include <string>
 
-#include <aws/core/Aws.h>
-
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
@@ -29,9 +27,6 @@
 #include "public/cpio/interface/crypto_client/type_def.h"
 #include "public/cpio/interface/type_def.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
 using google::cmrt::sdk::crypto_service::v1::AeadDecryptRequest;
 using google::cmrt::sdk::crypto_service::v1::AeadDecryptResponse;
 using google::cmrt::sdk::crypto_service::v1::AeadEncryptRequest;
@@ -71,7 +66,7 @@ unique_ptr<CryptoClientInterface> crypto_client;
 void AeadDecryptCallback(atomic<bool>& finished, ExecutionResult result,
                          AeadDecryptResponse aead_decrypt_response) {
   finished = true;
-  if (result == SuccessExecutionResult()) {
+  if (result.Successful()) {
     std::cout << "Aead decrypt success! Decrytped response payload: "
               << aead_decrypt_response.payload() << std::endl;
   } else {
@@ -83,7 +78,7 @@ void AeadDecryptCallback(atomic<bool>& finished, ExecutionResult result,
 void AeadEncryptCallback(atomic<bool>& finished, string& secret,
                          ExecutionResult result,
                          AeadEncryptResponse aead_encrypt_response) {
-  if (result == SuccessExecutionResult()) {
+  if (result.Successful()) {
     std::cout << "Aead encrypt success!" << std::endl;
     AeadDecryptRequest aead_decrypt_request;
     aead_decrypt_request.set_shared_info(string(kSharedInfo));
@@ -103,7 +98,7 @@ void AeadEncryptCallback(atomic<bool>& finished, string& secret,
 void HpkeDecryptCallback(bool is_bidirectional, atomic<bool>& finished,
                          ExecutionResult result,
                          HpkeDecryptResponse hpke_decrypt_response) {
-  if (result == SuccessExecutionResult()) {
+  if (result.Successful()) {
     std::cout << "Hpke decrypt success! Decrypted request Payload: "
               << hpke_decrypt_response.payload() << std::endl;
     if (is_bidirectional) {
@@ -130,7 +125,7 @@ void HpkeDecryptCallback(bool is_bidirectional, atomic<bool>& finished,
 void HpkeEncryptCallback(bool is_bidirectional, atomic<bool>& finished,
                          ExecutionResult result,
                          HpkeEncryptResponse hpke_encrypt_response) {
-  if (result == SuccessExecutionResult()) {
+  if (result.Successful()) {
     std::cout << "Hpke encrypt success!" << std::endl;
     HpkeDecryptRequest hpke_decrypt_request;
     hpke_decrypt_request.mutable_private_key()->set_private_key(kPrivateKey);
@@ -155,8 +150,6 @@ int main(int argc, char* argv[]) {
     is_bidirectional = string(argv[1]) == "true";
   }
 
-  SDKOptions options;
-  InitAPI(options);
   CpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
   auto result = Cpio::InitCpio(cpio_options);
@@ -206,7 +199,6 @@ int main(int argc, char* argv[]) {
     std::cout << "Failed to shutdown CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;
   }
-  ShutdownAPI(options);
 
   return 0;
 }

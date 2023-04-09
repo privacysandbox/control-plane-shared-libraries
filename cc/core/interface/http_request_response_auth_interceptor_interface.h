@@ -33,12 +33,13 @@ class HttpRequestResponseAuthInterceptorInterface {
   virtual ~HttpRequestResponseAuthInterceptorInterface() = default;
 
   /**
-   * @brief Add authorization related headers to the headers map
+   * @brief Prepares the request for interacting with the cloud platform which
+   * may include adding authorization related headers to the headers map.
    *
    * @return ExecutionResult
    */
-  virtual ExecutionResult AddHeadersToRequest(const AuthorizationMetadata&,
-                                              HttpRequest&) = 0;
+  virtual ExecutionResult PrepareRequest(const AuthorizationMetadata&,
+                                         HttpRequest&) = 0;
 
   /**
    * @brief Parse response to obtain authorization related data

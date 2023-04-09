@@ -63,6 +63,7 @@ using std::make_shared;
 using std::make_unique;
 using std::shared_ptr;
 using std::string;
+using std::to_string;
 using std::vector;
 using std::placeholders::_1;
 using std::placeholders::_2;
@@ -136,21 +137,26 @@ ExecutionResult HttpConnection::Run() noexcept {
 
 ExecutionResult HttpConnection::Stop() noexcept {
   if (session_) {
-    session_->shutdown();
+    // Post session_->shutdown in io_service to make sure only one thread invoke
+    // the session.
+    post(*io_service_, [this]() { session_->shutdown(); });
   }
 
   is_ready_ = false;
   is_dropped_ = true;
 
-  CancelPendingCallbacks();
-
   try {
     work_guard_->reset();
-    io_service_->stop();
+    // Post io_service_->stop to make sure pervious tasks completed before
+    // stop io_service_.
+    post(*io_service_, [this]() { io_service_->stop(); });
 
     if (worker_->joinable()) {
       worker_->join();
     }
+
+    // Cancell all pending callbacks after stop io_service_.
+    CancelPendingCallbacks(true);
 
     return SuccessExecutionResult();
   } catch (...) {
@@ -170,11 +176,11 @@ void HttpConnection::OnConnectionError() noexcept {
     is_ready_ = false;
     is_dropped_ = true;
 
-    CancelPendingCallbacks();
+    CancelPendingCallbacks(false);
   });
 }
 
-void HttpConnection::CancelPendingCallbacks() noexcept {
+void HttpConnection::CancelPendingCallbacks(bool is_stop) noexcept {
   vector<Uuid> keys;
   auto execution_result = pending_network_calls_.Keys(keys);
   if (!execution_result.Successful()) {
@@ -194,9 +200,15 @@ void HttpConnection::CancelPendingCallbacks() noexcept {
     }
 
     pending_network_calls_.Erase(key);
+    if (is_stop) {
+      // If called by `Stop()`, no more retry.
+      http_context.result =
+          FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
+    } else {
+      http_context.result =
+          RetryExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
+    }
 
-    http_context.result =
-        RetryExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
     http_context.Finish();
   }
 }
@@ -213,6 +225,11 @@ bool HttpConnection::IsDropped() noexcept {
 
 ExecutionResult HttpConnection::Execute(
     AsyncContext<HttpRequest, HttpResponse>& http_context) noexcept {
+  if (!is_ready_) {
+    return RetryExecutionResult(
+        errors::SC_HTTP2_CLIENT_NO_CONNECTION_ESTABLISHED);
+  }
+
   // This call needs to pass, otherwise there will be orphaned context when
   // connection drop happens.
   auto request_id = Uuid::GenerateUuid();
@@ -222,11 +239,6 @@ ExecutionResult HttpConnection::Execute(
     return execution_result;
   }
 
-  if (!is_ready_.load()) {
-    pending_network_calls_.Erase(request_id);
-    return RetryExecutionResult(
-        errors::SC_HTTP2_CLIENT_NO_CONNECTION_ESTABLISHED);
-  }
   post(*io_service_, [this, http_context, request_id]() mutable {
     SendHttpRequest(request_id, http_context);
   });
@@ -306,6 +318,7 @@ void HttpConnection::SendHttpRequest(
     return;
   }
 
+  http_context.response = make_shared<HttpResponse>();
   http_request->on_response(
       bind(&HttpConnection::OnResponseCallback, this, http_context, _1));
   http_request->on_close(bind(&HttpConnection::OnRequestResponseClosed, this,
@@ -315,26 +328,43 @@ void HttpConnection::SendHttpRequest(
 void HttpConnection::OnRequestResponseClosed(
     Uuid& request_id, AsyncContext<HttpRequest, HttpResponse>& http_context,
     uint32_t error_code) noexcept {
-  // If erasing fails means we already responded.
-  if (!pending_network_calls_.Erase(request_id).Successful()) {
-    return;
+  pending_network_calls_.Erase(request_id);
+
+  auto result =
+      ConvertHttpStatusCodeToExecutionResult(http_context.response->code);
+
+  // `!error_code` means no error during on_close.
+  if (!error_code) {
+    http_context.result = result;
+    DEBUG_CONTEXT(kHttp2Client, http_context, "Response has status code: %d",
+                  static_cast<int>(http_context.response->code));
+  } else {
+    // `!result.Successful() && result != FailureExecutionResult(SC_UNKNOWN)`
+    // means http_context got failure response code.
+    if (!result.Successful() && result != FailureExecutionResult(SC_UNKNOWN)) {
+      http_context.result = result;
+    } else {
+      http_context.result = RetryExecutionResult(
+          errors::SC_HTTP2_CLIENT_HTTP_REQUEST_CLOSE_ERROR);
+    }
+    DEBUG_CONTEXT(kHttp2Client, http_context,
+                  "Http request failed request on_close with error code %s, "
+                  "and the context response has status code: %d",
+                  to_string(error_code).c_str(),
+                  static_cast<int>(http_context.response->code));
   }
 
-  if (error_code != 0) {
-    http_context.result = FailureExecutionResult(error_code);
-    if (!async_executor_
-             ->Schedule([http_context]() mutable { http_context.Finish(); },
-                        AsyncPriority::High)
-             .Successful()) {
-      http_context.Finish();
-    }
+  if (!async_executor_
+           ->Schedule([http_context]() mutable { http_context.Finish(); },
+                      AsyncPriority::High)
+           .Successful()) {
+    http_context.Finish();
   }
 }
 
 void HttpConnection::OnResponseCallback(
     AsyncContext<HttpRequest, HttpResponse>& http_context,
     const response& http_response) noexcept {
-  http_context.response = make_shared<HttpResponse>();
   http_context.response->headers = make_shared<HttpHeaders>();
   http_context.response->code =
       static_cast<errors::HttpStatusCode>(http_response.status_code());
@@ -379,31 +409,6 @@ void HttpConnection::OnResponseBodyCallback(
     }
     std::copy(data, data + chunk_length, std::back_inserter(body_buffer));
     http_context.response->body.length += chunk_length;
-    return;
-  }
-
-  if (http_context.response->code == errors::HttpStatusCode::OK) {
-    http_context.result = SuccessExecutionResult();
-    if (!async_executor_
-             ->Schedule([http_context]() mutable { http_context.Finish(); },
-                        AsyncPriority::High)
-             .Successful()) {
-      http_context.Finish();
-    }
-    return;
-  }
-
-  http_context.result =
-      ConvertHttpStatusCodeToExecutionResult(http_context.response->code);
-
-  DEBUG_CONTEXT(kHttp2Client, http_context,
-                "Response failed with status code: %d",
-                static_cast<int>(http_context.response->code));
-  if (!async_executor_
-           ->Schedule([http_context]() mutable { http_context.Finish(); },
-                      AsyncPriority::High)
-           .Successful()) {
-    http_context.Finish();
   }
 }
 
@@ -501,8 +506,11 @@ ExecutionResult HttpConnection::ConvertHttpStatusCodeToExecutionResult(
     case errors::HttpStatusCode::HTTP_VERSION_NOT_SUPPORTED:
       return RetryExecutionResult(
           errors::SC_HTTP2_CLIENT_HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED);
-    default:
+    case errors::HttpStatusCode::UNKNOWN:
       return FailureExecutionResult(SC_UNKNOWN);
+    default:
+      return FailureExecutionResult(
+          errors::SC_HTTP2_CLIENT_HTTP_REQUEST_RESPONSE_STATUS_UNKNOWN);
   }
 }
 }  // namespace google::scp::core

@@ -20,7 +20,7 @@ load(
     "java_grpc_library",
 )
 
-package(default_visibility = ["//cc:scp_internal_pkg"])
+package(default_visibility = ["//visibility:public"])
 
 proto_library(
     name = "crypto_service_proto",

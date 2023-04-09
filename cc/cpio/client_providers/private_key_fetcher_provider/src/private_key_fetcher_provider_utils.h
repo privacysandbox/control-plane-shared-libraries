@@ -32,6 +32,15 @@ namespace google::scp::cpio::client_providers {
 class PrivateKeyFetchingClientUtils {
  public:
   /**
+   * @brief Extract key ID from resource name
+   *
+   * @param resource_name the resource name.
+   * @return core::ExecutionResultOr<string> the extract result.
+   */
+  static core::ExecutionResultOr<std::string> ExtractKeyId(
+      const std::string& resource_name) noexcept;
+
+  /**
    * @brief Parse PrivateKey from BytesBuffer.
    *
    * @param[in] body BytesBuffer body from http response.
@@ -76,12 +85,22 @@ class PrivateKeyFetchingClientUtils {
   }
 
   /**
+   * @brief Parse EncryptionKey from json.
+   *
+   * @param json_key json object.
+   * @param[out] response response with parsed encryption key.
+   * @return core::ExecutionResult parse result.
+   */
+  static core::ExecutionResult ParseEncryptionKey(
+      const nlohmann::json& json_key,
+      PrivateKeyFetchingResponse& response) noexcept;
+  /**
    * @brief Parse EncryptionKeyType type from json response.
    *
    * @param json_response json object.
    * @param type_tag json tag.
    * @param[out] key_type EncryptionKeyType type.
-   * @return core::ExecutionResult
+   * @return core::ExecutionResult parse result.
    */
   static core::ExecutionResult ParseEncryptionKeyType(
       const nlohmann::json& json_response, const std::string& type_tag,
@@ -93,7 +112,7 @@ class PrivateKeyFetchingClientUtils {
    * @param json_response json object.
    * @param key_data_tag key_data json tag.
    * @param[out] key_data list of KeyData output object.
-   * @return core::ExecutionResult
+   * @return core::ExecutionResult parse result.
    */
   static core::ExecutionResult ParseKeyData(
       const nlohmann::json& json_response, const std::string& key_data_tag,

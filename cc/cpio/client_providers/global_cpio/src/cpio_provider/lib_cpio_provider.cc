@@ -29,6 +29,7 @@
 #include "core/interface/service_interface.h"
 #include "core/message_router/src/message_router.h"
 #include "cpio/client_providers/interface/auth_token_provider_interface.h"
+#include "cpio/client_providers/interface/cloud_initializer_interface.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "google/protobuf/any.pb.h"
@@ -57,10 +58,28 @@ static const size_t kIOThreadPoolQueueSize = 100000;
 
 namespace google::scp::cpio::client_providers {
 core::ExecutionResult LibCpioProvider::Init() noexcept {
+  if (cpio_options_->cloud_init_option == CloudInitOption::kInitInCpio) {
+    cloud_initializer_ = CloudInitializerFactory::Create();
+    auto execution_result = cloud_initializer_->Init();
+    if (!execution_result.Successful()) {
+      ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+            "Failed to init cloud initializer.");
+      return execution_result;
+    }
+  }
   return SuccessExecutionResult();
 }
 
 core::ExecutionResult LibCpioProvider::Run() noexcept {
+  if (cpio_options_->cloud_init_option == CloudInitOption::kInitInCpio) {
+    auto execution_result = cloud_initializer_->Run();
+    if (!execution_result.Successful()) {
+      ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+            "Failed to run cloud initializer.");
+      return execution_result;
+    }
+    cloud_initializer_->InitCloud();
+  }
   return SuccessExecutionResult();
 }
 
@@ -119,6 +138,16 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
     }
   }
 
+  if (cpio_options_->cloud_init_option == CloudInitOption::kInitInCpio) {
+    cloud_initializer_->ShutdownCloud();
+    auto execution_result = cloud_initializer_->Stop();
+    if (!execution_result.Successful()) {
+      ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+            "Failed to stop cloud initializer.");
+      return execution_result;
+    }
+  }
+
   return SuccessExecutionResult();
 }
 
@@ -162,16 +191,24 @@ ExecutionResult LibCpioProvider::GetHttp1Client(
     return SuccessExecutionResult();
   }
 
-  shared_ptr<AsyncExecutorInterface> io_async_executor;
-  auto execution_result =
-      LibCpioProvider::GetIOAsyncExecutor(io_async_executor);
+  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
+  auto execution_result = LibCpioProvider::GetAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get IO asynce executor.");
+          "Failed to get CPU async executor.");
     return execution_result;
   }
 
-  http1_client_ = make_shared<Http1CurlClient>(io_async_executor);
+  shared_ptr<AsyncExecutorInterface> io_async_executor;
+  execution_result = LibCpioProvider::GetIOAsyncExecutor(io_async_executor);
+  if (!execution_result.Successful()) {
+    ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+          "Failed to get IO async executor.");
+    return execution_result;
+  }
+
+  http1_client_ =
+      make_shared<Http1CurlClient>(cpu_async_executor, io_async_executor);
   execution_result = http1_client_->Init();
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -389,7 +426,7 @@ ExecutionResult LibCpioProvider::GetAuthTokenProvider(
 #ifndef TEST_CPIO
 unique_ptr<CpioProviderInterface> CpioProviderFactory::Create(
     const shared_ptr<CpioOptions>& options) {
-  return make_unique<LibCpioProvider>();
+  return make_unique<LibCpioProvider>(options);
 }
 #endif
 }  // namespace google::scp::cpio::client_providers

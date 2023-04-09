@@ -31,7 +31,7 @@ class CpioUtils {
   static core::ExecutionResult AsyncToSync(
       const std::function<core::ExecutionResult(
           core::AsyncContext<RequestT, ResponseT>&)>& func,
-      RequestT& request, ResponseT& response) {
+      RequestT& request, ResponseT& response) noexcept {
     std::promise<std::pair<core::ExecutionResult, std::shared_ptr<ResponseT>>>
         request_promise;
     core::AsyncContext<RequestT, ResponseT> context;

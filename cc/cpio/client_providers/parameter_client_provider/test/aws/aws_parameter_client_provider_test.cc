@@ -66,9 +66,12 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
-static constexpr char kRegion[] = "us-east-1";
-static constexpr char kParameterName[] = "name";
-static constexpr char kParameterValue[] = "value";
+namespace {
+constexpr char kResourceNameMock[] =
+    "arn:aws:ec2:us-east-1:123456789012:instance/i-0e9801d129EXAMPLE";
+constexpr char kParameterName[] = "name";
+constexpr char kParameterValue[] = "value";
+}  // namespace
 
 namespace google::scp::cpio::client_providers::test {
 class AwsParameterClientProviderTest : public ::testing::Test {
@@ -85,7 +88,8 @@ class AwsParameterClientProviderTest : public ::testing::Test {
 
   void SetUp() override {
     client_ = make_unique<MockAwsParameterClientProviderWithOverrides>();
-    client_->GetInstanceClientProvider()->region_mock = kRegion;
+    client_->GetInstanceClientProvider()->instance_resource_name =
+        kResourceNameMock;
   }
 
   void MockParameters() {
@@ -115,7 +119,8 @@ class AwsParameterClientProviderTest : public ::testing::Test {
 
 TEST_F(AwsParameterClientProviderTest, FailedToFetchRegion) {
   auto failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
-  client_->GetInstanceClientProvider()->get_region_result_mock = failure;
+  client_->GetInstanceClientProvider()->get_instance_resource_name_mock =
+      failure;
 
   EXPECT_EQ(client_->Init(), failure);
 }

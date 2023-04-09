@@ -47,15 +47,21 @@ import org.apache.hc.core5.util.Timeout;
  */
 public class HttpClientWithInterceptor {
 
+  private static final Duration INITIAL_BACKOFF_INTERVAL = Duration.ofSeconds(2);
+  private static final Duration MAX_BACKOFF_INTERVAL = Duration.ofSeconds(30);
+  private static final int BACKOFF_MULTIPLIER = 2;
+  private static final int MAX_ATTEMPTS = 6;
   private static final RetryRegistry RETRY_REGISTRY =
       RetryRegistry.of(
           RetryConfig.custom()
-              .maxAttempts(3)
+              .maxAttempts(MAX_ATTEMPTS)
               /*
-               * Retries 3 times (in addition to initial attempt) with initial interval of 500ms between calls.
-               * Backoff interval increases exponentially between retries viz. 500ms, 1000ms, 2000ms respectively
+               * Retries 5 times (in addition to initial attempt) with initial interval of 2s between calls.
+               * Backoff interval increases exponentially between retries viz. 2s, 4s, 8s, 16s, 30s respectively
                */
-              .intervalFunction(IntervalFunction.ofExponentialBackoff(Duration.ofMillis(500), 2))
+              .intervalFunction(
+                  IntervalFunction.ofExponentialBackoff(
+                      INITIAL_BACKOFF_INTERVAL, BACKOFF_MULTIPLIER, MAX_BACKOFF_INTERVAL))
               .retryExceptions(Exception.class)
               .build());
   private static final long REQUEST_TIMEOUT_DURATION = Duration.ofSeconds(60).toMillis();
@@ -85,17 +91,19 @@ public class HttpClientWithInterceptor {
   /**
    * This constructor is reserved specifically for unit tests pertaining to this class. This
    * constructor will not setup the request interceptor in the httpclient, thus rendering the object
-   * useless for actual client use-cases outside of unit testing
+   * useless for actual client use-cases outside of unit testing. It also accepts a retryregistry
+   * that allows for quicker testing. As of now the actual retry delay is in order of several
+   * seconds which would make the unit tests extremely slow
    *
    * @param httpClient
    */
   @VisibleForTesting
-  HttpClientWithInterceptor(CloseableHttpAsyncClient httpClient) {
+  HttpClientWithInterceptor(CloseableHttpAsyncClient httpClient, RetryRegistry retryRegistry) {
     this.httpClient = httpClient;
     if (!IOReactorStatus.ACTIVE.equals(httpClient.getStatus())) {
       httpClient.start();
     }
-    this.retryConfig = RETRY_REGISTRY.retry("awsHttpClientRetryConfig");
+    this.retryConfig = retryRegistry.retry("awsHttpClientRetryConfig");
   }
 
   /**

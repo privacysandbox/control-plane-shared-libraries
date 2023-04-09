@@ -39,6 +39,11 @@ message EncryptionKey {
   /** Key creation time in Unix epoch milliseconds. */
   int64 creation_time = 5;
   /**
+   * Timestamp, represented in epoch milliseconds, when keys are first made
+   * active and available through the API for encryption.
+   */
+  int64 activation_time = 9;
+  /**
    * Timestamp, represented in Unix epoch milliseconds, when clients are
    * expected to no longer use this key for encypting new payloads.
    *

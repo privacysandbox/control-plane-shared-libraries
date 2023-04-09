@@ -40,9 +40,9 @@ using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest;
 using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::AsyncExecutorInterface;
-using google::scp::core::ClientStreamingContext;
+using google::scp::core::ConsumerStreamingContext;
 using google::scp::core::ExecutionResult;
-using google::scp::core::ServerStreamingContext;
+using google::scp::core::ProducerStreamingContext;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
 using google::scp::cpio::client_providers::BlobStorageClientProviderFactory;
@@ -141,13 +141,13 @@ ExecutionResult BlobStorageClient::DeleteBlob(
 }
 
 ExecutionResult BlobStorageClient::GetBlobStream(
-    ServerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse>
+    ConsumerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse>
         get_blob_stream_context) noexcept {
   return blob_storage_client_provider_->GetBlobStream(get_blob_stream_context);
 }
 
 ExecutionResult BlobStorageClient::PutBlobStream(
-    ClientStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>
+    ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>
         put_blob_stream_context) noexcept {
   return blob_storage_client_provider_->PutBlobStream(put_blob_stream_context);
 }

@@ -22,7 +22,6 @@
 #include <string>
 #include <utility>
 
-#include <aws/core/Aws.h>
 #include <gmock/gmock.h>
 
 #include "core/interface/errors.h"
@@ -36,9 +35,6 @@
 #include "public/cpio/interface/metric_client/type_def.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
 using google::protobuf::MapPair;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -67,18 +63,6 @@ static constexpr char kNamespace[] = "name_space";
 namespace google::scp::cpio::test {
 class MetricClientTest : public ::testing::Test {
  protected:
-  static void SetUpTestSuite() {
-    SDKOptions options;
-    InitAPI(options);
-    InitCpio();
-  }
-
-  static void TearDownTestSuite() {
-    SDKOptions options;
-    ShutdownAPI(options);
-    ShutdownCpio();
-  }
-
   void SetUp() override {
     auto metric_client_options = make_shared<MetricClientOptions>();
     metric_client_options->metric_namespace = kNamespace;

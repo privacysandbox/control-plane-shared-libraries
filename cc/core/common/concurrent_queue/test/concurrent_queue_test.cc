@@ -22,8 +22,6 @@
 #include <thread>
 #include <vector>
 
-#include <gmock/gmock.h>
-
 #include "core/test/scp_test_base.h"
 
 using google::scp::core::ExecutionResult;
@@ -34,7 +32,6 @@ using std::atomic;
 using std::thread;
 using std::vector;
 using std::this_thread::yield;
-using testing::Optional;
 
 namespace google::scp::core::common::test {
 
@@ -64,18 +61,6 @@ TEST_F(ConcurrentQueueTests, ErrorOnNoElement) {
 
   EXPECT_EQ(result,
             FailureExecutionResult(errors::SC_CONCURRENT_QUEUE_CANNOT_DEQUEUE));
-}
-
-TEST_F(ConcurrentQueueTests, Doneness) {
-  ConcurrentQueue<int> queue(1);
-
-  queue.TryEnqueue(1);
-  EXPECT_FALSE(queue.IsDone());
-  queue.MarkDone();
-  EXPECT_FALSE(queue.IsDone());
-  int x;
-  queue.TryDequeue(x);
-  EXPECT_TRUE(queue.IsDone());
 }
 
 TEST_F(ConcurrentQueueTests, MultiThreadedEnqueue) {

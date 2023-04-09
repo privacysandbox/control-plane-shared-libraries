@@ -70,6 +70,8 @@ exports_files([
     "nontee_error_codes.h",
     "tee_aws_kms_client_provider.h",
     "tee_aws_kms_client_provider.cc",
+    "tee_aws_kms_client_provider_utils.h",
+    "tee_aws_kms_client_provider_utils.cc",
     "tee_error_codes.h",
 ])
 
@@ -89,6 +91,8 @@ filegroup(
     srcs = [
         ":tee_aws_kms_client_provider.cc",
         ":tee_aws_kms_client_provider.h",
+        ":tee_aws_kms_client_provider_utils.cc",
+        ":tee_aws_kms_client_provider_utils.h",
         ":tee_error_codes.h",
     ],
 )

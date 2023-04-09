@@ -32,8 +32,8 @@
 #include "public/cpio/interface/private_key_client/type_def.h"
 #include "public/cpio/proto/private_key_service/v1/private_key_service.pb.h"
 
-using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest;
-using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse;
+using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest;
+using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -69,47 +69,45 @@ class PrivateKeyClientTest : public ::testing::Test {
   unique_ptr<MockPrivateKeyClientWithOverrides> client_;
 };
 
-TEST_F(PrivateKeyClientTest, ListPrivateKeysByIdsSuccess) {
-  EXPECT_CALL(*client_->GetPrivateKeyClientProvider(), ListPrivateKeysByIds)
-      .WillOnce([=](AsyncContext<ListPrivateKeysByIdsRequest,
-                                 ListPrivateKeysByIdsResponse>& context) {
-        context.response = make_shared<ListPrivateKeysByIdsResponse>();
+TEST_F(PrivateKeyClientTest, ListPrivateKeysSuccess) {
+  EXPECT_CALL(*client_->GetPrivateKeyClientProvider(), ListPrivateKeys)
+      .WillOnce([=](AsyncContext<ListPrivateKeysRequest,
+                                 ListPrivateKeysResponse>& context) {
+        context.response = make_shared<ListPrivateKeysResponse>();
         context.result = SuccessExecutionResult();
         context.Finish();
         return SuccessExecutionResult();
       });
 
   atomic<bool> finished = false;
-  EXPECT_THAT(
-      client_->ListPrivateKeysByIds(ListPrivateKeysByIdsRequest(),
-                                    [&](const ExecutionResult result,
-                                        ListPrivateKeysByIdsResponse response) {
-                                      EXPECT_THAT(result, IsSuccessful());
-                                      finished = true;
-                                    }),
-      IsSuccessful());
+  EXPECT_THAT(client_->ListPrivateKeys(ListPrivateKeysRequest(),
+                                       [&](const ExecutionResult result,
+                                           ListPrivateKeysResponse response) {
+                                         EXPECT_THAT(result, IsSuccessful());
+                                         finished = true;
+                                       }),
+              IsSuccessful());
   WaitUntil([&]() { return finished.load(); });
 }
 
-TEST_F(PrivateKeyClientTest, ListPrivateKeysByIdsFailure) {
-  EXPECT_CALL(*client_->GetPrivateKeyClientProvider(), ListPrivateKeysByIds)
-      .WillOnce([=](AsyncContext<ListPrivateKeysByIdsRequest,
-                                 ListPrivateKeysByIdsResponse>& context) {
+TEST_F(PrivateKeyClientTest, ListPrivateKeysFailure) {
+  EXPECT_CALL(*client_->GetPrivateKeyClientProvider(), ListPrivateKeys)
+      .WillOnce([=](AsyncContext<ListPrivateKeysRequest,
+                                 ListPrivateKeysResponse>& context) {
         context.result = FailureExecutionResult(SC_UNKNOWN);
         context.Finish();
         return FailureExecutionResult(SC_UNKNOWN);
       });
 
   atomic<bool> finished = false;
-  EXPECT_THAT(client_->ListPrivateKeysByIds(
-                  ListPrivateKeysByIdsRequest(),
-                  [&](const ExecutionResult result,
-                      ListPrivateKeysByIdsResponse response) {
-                    EXPECT_THAT(result,
-                                ResultIs(FailureExecutionResult(SC_UNKNOWN)));
-                    finished = true;
-                  }),
-              ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+  EXPECT_THAT(
+      client_->ListPrivateKeys(
+          ListPrivateKeysRequest(),
+          [&](const ExecutionResult result, ListPrivateKeysResponse response) {
+            EXPECT_THAT(result, ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+            finished = true;
+          }),
+      ResultIs(FailureExecutionResult(SC_UNKNOWN)));
   WaitUntil([&]() { return finished.load(); });
 }
 

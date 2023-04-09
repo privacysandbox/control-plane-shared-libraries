@@ -26,6 +26,15 @@
 namespace google::scp::cpio::mock {
 class MockBlobStorageClient : public BlobStorageClientInterface {
  public:
+  MockBlobStorageClient() {
+    ON_CALL(*this, Init)
+        .WillByDefault(testing::Return(core::SuccessExecutionResult()));
+    ON_CALL(*this, Run)
+        .WillByDefault(testing::Return(core::SuccessExecutionResult()));
+    ON_CALL(*this, Stop)
+        .WillByDefault(testing::Return(core::SuccessExecutionResult()));
+  }
+
   MOCK_METHOD(core::ExecutionResult, Init, (), (noexcept, override));
   MOCK_METHOD(core::ExecutionResult, Run, (), (noexcept, override));
   MOCK_METHOD(core::ExecutionResult, Stop, (), (noexcept, override));
@@ -63,14 +72,14 @@ class MockBlobStorageClient : public BlobStorageClientInterface {
 
   MOCK_METHOD(
       core::ExecutionResult, GetBlobStream,
-      ((core::ServerStreamingContext<
+      ((core::ConsumerStreamingContext<
           google::cmrt::sdk::blob_storage_service::v1::GetBlobStreamRequest,
           google::cmrt::sdk::blob_storage_service::v1::GetBlobStreamResponse>)),
       (noexcept, override));
 
   MOCK_METHOD(
       core::ExecutionResult, PutBlobStream,
-      ((core::ClientStreamingContext<
+      ((core::ProducerStreamingContext<
           google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
           google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>)),
       (noexcept, override));

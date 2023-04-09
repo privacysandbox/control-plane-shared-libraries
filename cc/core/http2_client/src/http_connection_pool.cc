@@ -69,7 +69,7 @@ ExecutionResult HttpConnectionPool::Stop() noexcept {
     return execution_result;
   }
 
-  for (auto key : keys) {
+  for (const auto& key : keys) {
     shared_ptr<HttpConnectionPoolEntry> entry;
     execution_result = sessions_.Find(key, entry);
     if (!execution_result.Successful()) {

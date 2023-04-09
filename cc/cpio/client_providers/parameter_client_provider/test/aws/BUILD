@@ -35,6 +35,7 @@ cc_library(
         "//cc/cpio/common/src/aws:aws_utils_lib",
         "//cc/cpio/common/test/aws:test_aws_utils_lib",
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
+        "//cc/public/cpio/test/parameter_client:test_aws_parameter_client_options",
         "@aws_sdk_cpp//:ssm",
     ],
 )

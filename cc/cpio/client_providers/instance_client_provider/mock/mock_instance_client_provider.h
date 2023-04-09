@@ -22,6 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include <gmock/gmock.h>
+
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 
 namespace google::scp::cpio::client_providers::mock {
@@ -39,77 +41,20 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     return core::SuccessExecutionResult();
   }
 
-  std::string instance_id_mock = "instance_id";
-  core::ExecutionResult get_instance_id_result_mock =
-      core::SuccessExecutionResult();
+  MOCK_METHOD(
+      core::ExecutionResult, GetCurrentInstanceResourceName,
+      ((core::AsyncContext<cmrt::sdk::instance_service::v1::
+                               GetCurrentInstanceResourceNameRequest,
+                           cmrt::sdk::instance_service::v1::
+                               GetCurrentInstanceResourceNameResponse>&)),
+      (override, noexcept));
 
-  core::ExecutionResult GetCurrentInstanceId(
-      std::string& instance_id) noexcept override {
-    if (get_instance_id_result_mock != core::SuccessExecutionResult()) {
-      return get_instance_id_result_mock;
-    }
-    instance_id = instance_id_mock;
-    return core::SuccessExecutionResult();
-  }
-
-  std::string region_mock = "us-east-1";
-  core::ExecutionResult get_region_result_mock = core::SuccessExecutionResult();
-
-  core::ExecutionResult GetCurrentInstanceRegion(
-      std::string& region) noexcept override {
-    if (get_region_result_mock != core::SuccessExecutionResult()) {
-      return get_region_result_mock;
-    }
-    region = region_mock;
-    return core::SuccessExecutionResult();
-  }
-
-  std::map<std::string, std::string> tag_values_mock = {
-      std::make_pair("tag1", "value1")};
-  core::ExecutionResult get_tags_result_mock = core::SuccessExecutionResult();
-
-  core::ExecutionResult GetTagsOfInstance(
-      const std::vector<std::string>& tag_names, const std::string& instance_id,
-      std::map<std::string, std::string>& tag_values_map) noexcept override {
-    if (get_tags_result_mock != core::SuccessExecutionResult()) {
-      return get_tags_result_mock;
-    }
-    tag_values_map = tag_values_mock;
-    return core::SuccessExecutionResult();
-  }
-
-  core::ExecutionResult GetCurrentInstancePrivateIpv4Address(
-      std::string& instance_private_ipv4_address) noexcept override {
-    instance_private_ipv4_address = "10.1.1.1";
-    return core::SuccessExecutionResult();
-  }
-
-  std::string project_id_mock = "12345";
-  core::ExecutionResult get_project_id_result_mock =
-      core::SuccessExecutionResult();
-
-  std::string instance_zone_mock = "zone-a";
-  core::ExecutionResult get_instance_zone_result_mock =
-      core::SuccessExecutionResult();
-
-  core::ExecutionResult GetCurrentInstanceResourceName(
-      core::AsyncContext<cmrt::sdk::instance_service::v1::
-                             GetCurrentInstanceResourceNameRequest,
-                         cmrt::sdk::instance_service::v1::
-                             GetCurrentInstanceResourceNameResponse>&
-          context) noexcept override {
-    // Not implemented.
-    return core::FailureExecutionResult(SC_UNKNOWN);
-  }
-
-  core::ExecutionResult GetTagsByResourceName(
-      core::AsyncContext<
+  MOCK_METHOD(
+      core::ExecutionResult, GetTagsByResourceName,
+      ((core::AsyncContext<
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest,
-          cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&
-          context) noexcept override {
-    // Not implemented.
-    return core::FailureExecutionResult(SC_UNKNOWN);
-  }
+          cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&)),
+      (override, noexcept));
 
   core::ExecutionResult GetInstanceDetailsByResourceName(
       core::AsyncContext<cmrt::sdk::instance_service::v1::
@@ -122,7 +67,7 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
   }
 
   std::string instance_resource_name =
-      R"(//compute.googleapis.com/projects/123456789/zones/us-central1-c/instances/987654321)";
+      R"(arn:aws:ec2:us-east-1:123456789012:instance/i-0e9801d129EXAMPLE)";
   core::ExecutionResult get_instance_resource_name_mock =
       core::SuccessExecutionResult();
 

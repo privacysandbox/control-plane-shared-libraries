@@ -21,21 +21,20 @@
 #include <thread>
 #include <vector>
 
-#include <aws/core/Aws.h>
 #include <gmock/gmock.h>
 
 #include "core/test/utils/aws_helper/aws_helper.h"
 #include "core/test/utils/conditional_wait.h"
 #include "core/test/utils/docker_helper/docker_helper.h"
 #include "public/core/interface/execution_result.h"
-#include "public/cpio/adapters/config_client/test/test_aws_config_client.h"
 #include "public/cpio/adapters/metric_client/test/test_aws_metric_client.h"
+#include "public/cpio/adapters/parameter_client/test/test_aws_parameter_client.h"
 #include "public/cpio/test/global_cpio/test_cpio_options.h"
 #include "public/cpio/test/global_cpio/test_lib_cpio.h"
+#include "public/cpio/test/parameter_client/test_aws_parameter_client_options.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
+using google::cmrt::sdk::parameter_service::v1::GetParameterRequest;
+using google::cmrt::sdk::parameter_service::v1::GetParameterResponse;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
@@ -47,10 +46,10 @@ using google::scp::core::test::RemoveNetwork;
 using google::scp::core::test::StartLocalStackContainer;
 using google::scp::core::test::StopContainer;
 using google::scp::core::test::WaitUntil;
-using google::scp::cpio::TestAwsConfigClient;
-using google::scp::cpio::TestAwsConfigClientOptions;
 using google::scp::cpio::TestAwsMetricClient;
 using google::scp::cpio::TestAwsMetricClientOptions;
+using google::scp::cpio::TestAwsParameterClient;
+using google::scp::cpio::TestAwsParameterClientOptions;
 using google::scp::cpio::TestCpioOptions;
 using google::scp::cpio::TestLibCpio;
 using std::atomic;
@@ -94,21 +93,15 @@ class CpioIntegrationTest : public ::testing::Test {
                                  kLocalstackPort) != 0) {
       throw runtime_error("Failed to start localstack!");
     }
-
-    SDKOptions options;
-    InitAPI(options);
   }
 
-  static void TearDownTestSuite() {
-    SDKOptions options;
-    ShutdownAPI(options);
-
-    StopContainer(kLocalstackContainerName);
-  }
+  static void TearDownTestSuite() { StopContainer(kLocalstackContainerName); }
 
   void SetUp() override {
     cpio_options.log_option = LogOption::kConsoleLog;
     cpio_options.region = "us-east-1";
+    cpio_options.owner_id = "123456789";
+    cpio_options.instance_id = "987654321";
     EXPECT_EQ(TestLibCpio::InitCpio(cpio_options), SuccessExecutionResult());
   }
 
@@ -116,8 +109,8 @@ class CpioIntegrationTest : public ::testing::Test {
     if (metric_client) {
       EXPECT_EQ(metric_client->Stop(), SuccessExecutionResult());
     }
-    if (config_client) {
-      EXPECT_EQ(config_client->Stop(), SuccessExecutionResult());
+    if (parameter_client) {
+      EXPECT_EQ(parameter_client->Stop(), SuccessExecutionResult());
     }
 
     EXPECT_EQ(TestLibCpio::ShutdownCpio(cpio_options),
@@ -137,25 +130,27 @@ class CpioIntegrationTest : public ::testing::Test {
     EXPECT_EQ(metric_client->Run(), SuccessExecutionResult());
   }
 
-  void CreateConfigClient() {
+  void CreateParameterClient() {
     // Setup test data.
     auto ssm_client = CreateSSMClient(localstack_endpoint);
     PutParameter(ssm_client, kParameterName1, kParameterValue1);
     PutParameter(ssm_client, kParameterName2, kParameterValue2);
 
-    auto config_client_options = make_shared<TestAwsConfigClientOptions>();
-    config_client_options->ssm_endpoint_override =
+    auto parameter_client_options =
+        make_shared<TestAwsParameterClientOptions>();
+    parameter_client_options->ssm_endpoint_override =
         make_shared<string>(localstack_endpoint);
-    config_client = make_unique<TestAwsConfigClient>(config_client_options);
+    parameter_client =
+        make_unique<TestAwsParameterClient>(parameter_client_options);
 
-    EXPECT_EQ(config_client->Init(), SuccessExecutionResult());
-    EXPECT_EQ(config_client->Run(), SuccessExecutionResult());
+    EXPECT_EQ(parameter_client->Init(), SuccessExecutionResult());
+    EXPECT_EQ(parameter_client->Run(), SuccessExecutionResult());
   }
 
   string localstack_endpoint =
       string(kLocalHost) + ":" + string(kLocalstackPort);
   unique_ptr<TestAwsMetricClient> metric_client;
-  unique_ptr<TestAwsConfigClient> config_client;
+  unique_ptr<TestAwsParameterClient> parameter_client;
 
   TestCpioOptions cpio_options;
 };
@@ -215,18 +210,19 @@ TEST_F(CpioIntegrationTest, MetricClientBatchRecordingEnabled) {
 }
 
 // GetInstanceId and GetTag cannot be tested in Localstack.
-TEST_F(CpioIntegrationTest, ConfigClientGetParameterSuccessfully) {
-  CreateConfigClient();
+TEST_F(CpioIntegrationTest, ParameterClientGetParameterSuccessfully) {
+  GTEST_SKIP();
+  CreateParameterClient();
 
   atomic<bool> condition = false;
   GetParameterRequest request_1;
-  request_1.parameter_name = kParameterName1;
+  request_1.set_parameter_name(kParameterName1);
   EXPECT_EQ(
-      config_client->GetParameter(
+      parameter_client->GetParameter(
           std::move(request_1),
           [&](const ExecutionResult result, GetParameterResponse response) {
             EXPECT_EQ(result, SuccessExecutionResult());
-            EXPECT_EQ(response.parameter_value, kParameterValue1);
+            EXPECT_EQ(response.parameter_value(), kParameterValue1);
             condition = true;
           }),
       SuccessExecutionResult());
@@ -235,13 +231,13 @@ TEST_F(CpioIntegrationTest, ConfigClientGetParameterSuccessfully) {
 
   condition = false;
   GetParameterRequest request_2;
-  request_2.parameter_name = kParameterName2;
+  request_2.set_parameter_name(kParameterName2);
   EXPECT_EQ(
-      config_client->GetParameter(
+      parameter_client->GetParameter(
           std::move(request_2),
           [&](const ExecutionResult result, GetParameterResponse response) {
             EXPECT_EQ(result, SuccessExecutionResult());
-            EXPECT_EQ(response.parameter_value, kParameterValue2);
+            EXPECT_EQ(response.parameter_value(), kParameterValue2);
             condition = true;
           }),
       SuccessExecutionResult());

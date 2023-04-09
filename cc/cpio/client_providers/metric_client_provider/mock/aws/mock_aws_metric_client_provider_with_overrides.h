@@ -69,8 +69,8 @@ class MockAwsMetricClientProviderOverrides : public AwsMetricClientProvider {
     return AwsMetricClientProvider::MetricsBatchPush(metric_requests_vector);
   }
 
-  core::ExecutionResult Init() noexcept override {
-    auto execution_result = AwsMetricClientProvider::Init();
+  core::ExecutionResult Run() noexcept override {
+    auto execution_result = AwsMetricClientProvider::Run();
     if (execution_result != core::SuccessExecutionResult()) {
       return execution_result;
     }

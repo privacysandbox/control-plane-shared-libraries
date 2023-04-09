@@ -164,4 +164,11 @@ DEFINE_ERROR_CODE(SC_HTTP2_CLIENT_HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED,
                   SC_HTTP2_CLIENT, 0x0032,
                   "HttpStatus Code: HTTP_VERSION_NOT_SUPPORTED",
                   HttpStatusCode::HTTP_VERSION_NOT_SUPPORTED);
+DEFINE_ERROR_CODE(SC_HTTP2_CLIENT_HTTP_REQUEST_CLOSE_ERROR, SC_HTTP2_CLIENT,
+                  0x0033, "nghttp2 request on_close got error",
+                  HttpStatusCode::INTERNAL_SERVER_ERROR);
+DEFINE_ERROR_CODE(SC_HTTP2_CLIENT_HTTP_REQUEST_RESPONSE_STATUS_UNKNOWN,
+                  SC_HTTP2_CLIENT, 0x0034,
+                  "nghttp2 request response status unknown",
+                  HttpStatusCode::INTERNAL_SERVER_ERROR);
 }  // namespace google::scp::core::errors

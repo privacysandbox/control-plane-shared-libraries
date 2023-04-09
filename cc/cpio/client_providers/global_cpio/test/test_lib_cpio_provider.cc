@@ -31,7 +31,7 @@ using std::unique_ptr;
 namespace google::scp::cpio::client_providers {
 TestLibCpioProvider::TestLibCpioProvider(
     const shared_ptr<TestCpioOptions>& test_cpio_options)
-    : LibCpioProvider() {
+    : LibCpioProvider(test_cpio_options) {
   instance_client_provider_ = make_shared<TestInstanceClientProvider>(
       make_shared<TestInstanceClientOptions>(*test_cpio_options));
 }

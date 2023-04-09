@@ -74,10 +74,14 @@ using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::system_clock;
 
-static constexpr char kName[] = "test_name";
-static constexpr char kValue[] = "12346";
-static constexpr MetricUnit kUnit = MetricUnit::METRIC_UNIT_COUNT;
-static constexpr char kNamespace[] = "aws_name_space";
+namespace {
+constexpr char kResourceNameMock[] =
+    "arn:aws:ec2:us-east-1:123456789012:instance/i-0e9801d129EXAMPLE";
+constexpr char kName[] = "test_name";
+constexpr char kValue[] = "12346";
+constexpr MetricUnit kUnit = MetricUnit::METRIC_UNIT_COUNT;
+constexpr char kNamespace[] = "aws_name_space";
+}  // namespace
 
 namespace google::scp::cpio::client_providers::test {
 class AwsMetricClientProviderTest : public ::testing::Test {
@@ -120,7 +124,8 @@ class AwsMetricClientProviderTest : public ::testing::Test {
 };
 
 TEST_F(AwsMetricClientProviderTest, InitSuccess) {
-  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+  client_->GetInstanceClientProvider()->instance_resource_name =
+      kResourceNameMock;
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
   EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
@@ -128,12 +133,15 @@ TEST_F(AwsMetricClientProviderTest, InitSuccess) {
 
 TEST_F(AwsMetricClientProviderTest, FailedToGetRegion) {
   auto failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
-  client_->GetInstanceClientProvider()->get_region_result_mock = failure;
-  EXPECT_EQ(client_->Init(), failure);
+  client_->GetInstanceClientProvider()->get_instance_resource_name_mock =
+      failure;
+  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
+  EXPECT_EQ(client_->Run(), failure);
 }
 
 TEST_F(AwsMetricClientProviderTest, SplitsOversizeRequestsVector) {
-  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+  client_->GetInstanceClientProvider()->instance_resource_name =
+      kResourceNameMock;
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
@@ -172,7 +180,8 @@ TEST_F(AwsMetricClientProviderTest, SplitsOversizeRequestsVector) {
 }
 
 TEST_F(AwsMetricClientProviderTest, KeepMetricsInTheSameRequest) {
-  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+  client_->GetInstanceClientProvider()->instance_resource_name =
+      kResourceNameMock;
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
@@ -213,7 +222,8 @@ TEST_F(AwsMetricClientProviderTest, KeepMetricsInTheSameRequest) {
 }
 
 TEST_F(AwsMetricClientProviderTest, OnPutMetricDataAsyncCallbackWithError) {
-  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+  client_->GetInstanceClientProvider()->instance_resource_name =
+      kResourceNameMock;
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
@@ -244,7 +254,8 @@ TEST_F(AwsMetricClientProviderTest, OnPutMetricDataAsyncCallbackWithError) {
 }
 
 TEST_F(AwsMetricClientProviderTest, OnPutMetricDataAsyncCallbackWithSuccess) {
-  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+  client_->GetInstanceClientProvider()->instance_resource_name =
+      kResourceNameMock;
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
@@ -276,7 +287,8 @@ TEST_F(AwsMetricClientProviderTest, OnPutMetricDataAsyncCallbackWithSuccess) {
 TEST_F(AwsMetricClientProviderTest,
        MultipleMetricsWithoutOptionsSetShouldFail) {
   client_ = make_unique<MockAwsMetricClientProviderOverrides>(nullptr);
-  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+  client_->GetInstanceClientProvider()->instance_resource_name =
+      kResourceNameMock;
 
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
@@ -300,7 +312,8 @@ TEST_F(AwsMetricClientProviderTest,
 
 TEST_F(AwsMetricClientProviderTest, OneMetricWithoutOptionsSetSucceed) {
   client_ = make_unique<MockAwsMetricClientProviderOverrides>(nullptr);
-  client_->GetInstanceClientProvider()->region_mock = "us-east-1";
+  client_->GetInstanceClientProvider()->instance_resource_name =
+      kResourceNameMock;
 
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());

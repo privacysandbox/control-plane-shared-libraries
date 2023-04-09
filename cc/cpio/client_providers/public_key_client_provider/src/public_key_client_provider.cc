@@ -21,6 +21,8 @@
 #include <utility>
 #include <vector>
 
+#include <google/protobuf/util/time_util.h>
+
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
 #include "core/interface/http_client_interface.h"
@@ -40,6 +42,7 @@ using google::cmrt::sdk::public_key_service::v1::ListPublicKeysRequest;
 using google::cmrt::sdk::public_key_service::v1::ListPublicKeysResponse;
 using google::cmrt::sdk::public_key_service::v1::PublicKey;
 using google::protobuf::Any;
+using google::protobuf::util::TimeUtil;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -206,8 +209,8 @@ void PublicKeyClientProvider::OnPerformRequestCallback(
   if (got_success_result->compare_exchange_strong(got_result, true)) {
     public_key_fetching_context.response =
         make_shared<ListPublicKeysResponse>();
-    public_key_fetching_context.response->set_expiration_time_in_ms(
-        expired_time_in_s * kSToMsConversionBase);
+    *public_key_fetching_context.response->mutable_expiration_time() =
+        TimeUtil::SecondsToTimestamp(expired_time_in_s);
     public_key_fetching_context.response->mutable_public_keys()->Add(
         public_keys.begin(), public_keys.end());
     public_key_fetching_context.result = SuccessExecutionResult();

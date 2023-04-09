@@ -163,6 +163,7 @@ message UpdateJobVisibilityTimeoutRequest {
   string job_id = 1;
   // The duration of job visibility timeout to be updated.
   // The maximum duration is 600 seconds.
+  // Only seconds from the duration will be used.
   google.protobuf.Duration duration_to_update = 2;
   // The receipt info associated with the job.
   // This field can and only be retrieved from GetNextJobResponse.

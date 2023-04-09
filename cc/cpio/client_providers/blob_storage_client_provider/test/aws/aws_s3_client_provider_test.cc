@@ -86,6 +86,11 @@ using testing::ExplainMatchResult;
 using testing::NiceMock;
 using testing::Return;
 
+namespace {
+constexpr char kResourceNameMock[] =
+    "arn:aws:ec2:us-east-1:123456789012:instance/i-0e9801d129EXAMPLE";
+}
+
 namespace google::scp::cpio::client_providers {
 
 class MockAwsS3Factory : public AwsS3Factory {
@@ -105,7 +110,7 @@ class AwsS3ClientProviderTest : public ::testing::Test {
         provider_(instance_client_, make_shared<MockAsyncExecutor>(),
                   make_shared<MockAsyncExecutor>(), s3_factory_) {
     InitAPI(options_);
-
+    instance_client_->instance_resource_name = kResourceNameMock;
     s3_client_ = make_shared<NiceMock<MockS3Client>>();
 
     ON_CALL(*s3_factory_, CreateClient).WillByDefault(Return(s3_client_));

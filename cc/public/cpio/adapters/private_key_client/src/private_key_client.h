@@ -38,9 +38,9 @@ class PrivateKeyClient : public PrivateKeyClientInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
-  core::ExecutionResult ListPrivateKeysByIds(
-      cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest request,
-      Callback<cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>
+  core::ExecutionResult ListPrivateKeys(
+      cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest request,
+      Callback<cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>
           callback) noexcept override;
 
  protected:

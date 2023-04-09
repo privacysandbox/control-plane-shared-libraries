@@ -17,6 +17,7 @@ syntax = "proto3";
 package google.cmrt.sdk.queue_service.v1;
 
 import "cc/core/common/proto/common.proto";
+import "google/protobuf/duration.proto";
 
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
@@ -75,7 +76,8 @@ message UpdateMessageVisibilityTimeoutRequest {
   string receipt_info = 1;
   // New visibility timeout for the message.
   // The maximum timeout is 600 seconds.
-  int64 message_visibility_timeout_in_seconds = 2;
+  // Only seconds from the duration will be used.
+  google.protobuf.Duration message_visibility_timeout = 2;
 }
 
 // Response of updating the visibility timeout of a message.

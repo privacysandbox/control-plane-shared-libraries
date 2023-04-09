@@ -16,13 +16,16 @@
 
 #include "aws_instance_client_utils.h"
 
+#include <memory>
 #include <regex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
+#include "core/common/uuid/src/uuid.h"
 #include "core/interface/http_types.h"
 #include "public/core/interface/execution_result.h"
 
@@ -35,6 +38,7 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_AWS_INSTANCE_CLIENT_INVALID_INSTANCE_RESOURCE_NAME;
 using std::make_shared;
@@ -47,6 +51,8 @@ using std::to_string;
 using std::vector;
 
 namespace {
+constexpr char kAwsInstanceClientUtils[] = "AwsInstanceClientUtils";
+
 // Aws resource name format:
 //     arn:partition:service:region:account-id:resource-id
 //     arn:partition:service:region:account-id:resource-type/resource-id
@@ -60,6 +66,28 @@ constexpr char kResourceNameRegex[] =
 }  // namespace
 
 namespace google::scp::cpio::client_providers {
+ExecutionResultOr<string> AwsInstanceClientUtils::GetCurrentRegionCode(
+    const shared_ptr<InstanceClientProviderInterface>&
+        instance_client) noexcept {
+  string instance_resource_name;
+  if (auto result = instance_client->GetCurrentInstanceResourceNameSync(
+          instance_resource_name);
+      !result.Successful()) {
+    ERROR(kAwsInstanceClientUtils, kZeroUuid, kZeroUuid, result,
+          "Failed getting instance resource name.");
+    return result;
+  }
+
+  auto region_code_or = ParseRegionFromResourceName(instance_resource_name);
+  if (!region_code_or.Successful()) {
+    ERROR(kAwsInstanceClientUtils, kZeroUuid, kZeroUuid,
+          region_code_or.result(),
+          "Failed to parse instance resource name %s to get aws region code",
+          instance_resource_name.c_str());
+  }
+
+  return move(*region_code_or);
+}
 
 ExecutionResultOr<string> AwsInstanceClientUtils::ParseRegionFromResourceName(
     const string& resource_name) noexcept {
@@ -79,7 +107,7 @@ AwsInstanceClientUtils::ParseAccountIdFromResourceName(
 }
 
 ExecutionResultOr<string>
-AwsInstanceClientUtils::ParseResourceIdFromResourceName(
+AwsInstanceClientUtils::ParseInstanceIdFromInstanceResourceName(
     const string& resource_name) noexcept {
   AwsResourceNameDetails details;
   auto result = GetResourceNameDetails(resource_name, details);

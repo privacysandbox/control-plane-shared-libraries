@@ -17,8 +17,6 @@
 #include <memory>
 #include <string>
 
-#include <aws/core/Aws.h>
-
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
@@ -27,9 +25,6 @@
 #include "public/cpio/interface/type_def.h"
 #include "public/cpio/test/global_cpio/test_lib_cpio.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::GetErrorMessage;
@@ -59,8 +54,6 @@ using std::chrono::milliseconds;
 static constexpr char kRegion[] = "us-east-1";
 
 int main(int argc, char* argv[]) {
-  SDKOptions options;
-  InitAPI(options);
   TestCpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
   cpio_options.region = kRegion;
@@ -125,5 +118,4 @@ int main(int argc, char* argv[]) {
     std::cout << "Failed to shutdown CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;
   }
-  ShutdownAPI(options);
 }

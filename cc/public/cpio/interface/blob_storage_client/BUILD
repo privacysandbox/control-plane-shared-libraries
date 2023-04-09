@@ -28,8 +28,6 @@ cc_library(
         "//cc/core/utils/src:core_utils",
         "//cc/cpio/client_providers/blob_storage_client_provider/src:blob_storage_client_provider_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
-        "//cc/cpio/proto:cc_proto",
         "//cc/public/cpio/interface:type_def",
-        "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
     ],
 )

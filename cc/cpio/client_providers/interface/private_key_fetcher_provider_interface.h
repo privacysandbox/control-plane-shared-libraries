@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -39,7 +40,11 @@ struct PrivateKeyFetchingRequest {
   std::shared_ptr<PrivateKeyVendingEndpoint> key_vending_endpoint;
 
   /// The list of identifiers of the public and private key pair.
+  /// If set, do not honor the max_age_seconds.
   std::shared_ptr<std::string> key_id;
+
+  /// Return all keys generated newer than max_age_seconds.
+  int max_age_seconds;
 };
 
 /// Type of encryption key and how it is split.
@@ -75,8 +80,9 @@ struct KeyData {
   std::shared_ptr<std::string> key_material;
 };
 
-/// Response for fetching private key.
-struct PrivateKeyFetchingResponse {
+struct EncryptionKey {
+  /// Key ID.
+  std::shared_ptr<std::string> key_id;
   /**
    * @brief Resource name (see <a href="https://google.aip.dev/122">AIP-122</a>)
    * representing the encryptedPrivateKey. E.g. "privateKeys/{keyid}"
@@ -102,6 +108,11 @@ struct PrivateKeyFetchingResponse {
   /// List of key data. The size of key_data is matched with split parts of
   /// the private key.
   std::vector<std::shared_ptr<KeyData>> key_data;
+};
+
+/// Response for fetching private key.
+struct PrivateKeyFetchingResponse {
+  std::vector<std::shared_ptr<EncryptionKey>> encryption_keys;
 };
 
 /**

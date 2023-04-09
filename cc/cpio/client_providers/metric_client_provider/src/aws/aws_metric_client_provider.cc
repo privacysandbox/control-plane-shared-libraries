@@ -30,6 +30,7 @@
 #include "core/interface/async_context.h"
 #include "core/interface/async_executor_interface.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
+#include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"
 #include "public/core/interface/execution_result.h"
@@ -63,6 +64,7 @@ using google::scp::core::errors::
     SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET;
 using google::scp::core::errors::
     SC_AWS_METRIC_CLIENT_PROVIDER_REQUEST_PAYLOAD_OVERSIZE;
+using google::scp::cpio::client_providers::AwsInstanceClientUtils;
 using google::scp::cpio::common::CreateClientConfiguration;
 using std::bind;
 using std::make_shared;
@@ -83,10 +85,6 @@ static constexpr size_t kAwsPayloadSizeLimit = 1024 * 1024;
 static constexpr char kAwsMetricClientProvider[] = "AwsMetricClientProvider";
 
 namespace google::scp::cpio::client_providers {
-ExecutionResult AwsMetricClientProvider::GetRegion(string& region) noexcept {
-  return instance_client_provider_->GetCurrentInstanceRegion(region);
-}
-
 void AwsMetricClientProvider::CreateClientConfiguration(
     const shared_ptr<string>& region,
     shared_ptr<ClientConfiguration>& client_config) noexcept {
@@ -95,24 +93,30 @@ void AwsMetricClientProvider::CreateClientConfiguration(
   client_config->maxConnections = kCloudwatchMaxConcurrentConnections;
 }
 
-ExecutionResult AwsMetricClientProvider::Init() noexcept {
-  auto execution_result = MetricClientProvider::Init();
+ExecutionResult AwsMetricClientProvider::Run() noexcept {
+  auto execution_result = MetricClientProvider::Run();
   if (!execution_result.Successful()) {
     ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to initialize MetricClientProvider");
     return execution_result;
   }
 
-  auto region = make_shared<string>();
-  execution_result = GetRegion(*region);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get region");
-    return execution_result;
+  auto region_code_or =
+      AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
+
+  if (!region_code_or.Successful()) {
+    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
+          region_code_or.result(),
+          "Failed to get region code for current instance");
+    return region_code_or.result();
   }
 
+  INFO(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
+       "GetCurrentRegionCode: %s", region_code_or->c_str());
+
   shared_ptr<ClientConfiguration> client_config;
-  CreateClientConfiguration(region, client_config);
+  CreateClientConfiguration(make_shared<string>(move(*region_code_or)),
+                            client_config);
 
   cloud_watch_client_ = make_shared<CloudWatchClient>(*client_config);
 

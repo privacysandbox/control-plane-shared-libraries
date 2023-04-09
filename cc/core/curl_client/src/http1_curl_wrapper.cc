@@ -50,6 +50,7 @@ namespace google::scp::core {
 namespace {
 
 constexpr int64_t kTrueAsLong = 1L;
+constexpr int64_t kCurlOptTimeout = 60L;
 constexpr char kHttp1CurlWrapper[] = "Http1CurlWrapper";
 
 ExecutionResult GetExecutionResultFromCurlError(const string& err_buffer) {
@@ -219,7 +220,10 @@ ExecutionResultOr<shared_ptr<Http1CurlWrapper>>
 Http1CurlWrapper::MakeWrapper() {
   CURL* curl = curl_easy_init();
   if (!curl) {
-    return RetryExecutionResult(errors::SC_CURL_CLIENT_CURL_INIT_ERROR);
+    auto result = RetryExecutionResult(errors::SC_CURL_CLIENT_CURL_INIT_ERROR);
+    ERROR(kHttp1CurlWrapper, kZeroUuid, kZeroUuid, result,
+          "failed to make wrapper");
+    return result;
   }
   return make_shared<Http1CurlWrapper>(curl);
 }
@@ -264,10 +268,6 @@ void Http1CurlWrapper::SetUpPostData(const BytesBuffer& body) {
 }
 
 void Http1CurlWrapper::SetUpPutData(const BytesBuffer& body) {
-  if (body.length == 0) {
-    return;
-  }
-
   curl_easy_setopt(curl_.get(), CURLOPT_READFUNCTION, RequestReadHandler);
 
   curl_easy_setopt(curl_.get(), CURLOPT_READDATA, &body);
@@ -317,7 +317,7 @@ ExecutionResultOr<HttpResponse> Http1CurlWrapper::PerformRequest(
   // Add the handler indicating what to do with the returned HTTP response.
   curl_easy_setopt(curl_.get(), CURLOPT_WRITEFUNCTION, ResponsePayloadHandler);
   curl_easy_setopt(curl_.get(), CURLOPT_WRITEDATA, &response.body);
-
+  curl_easy_setopt(curl_.get(), CURLOPT_TIMEOUT, kCurlOptTimeout);
   curl_easy_setopt(curl_.get(), CURLOPT_FAILONERROR, kTrueAsLong);
   // Create a buffer to place any error messages in.
   string err_str(CURL_ERROR_SIZE, '\0');

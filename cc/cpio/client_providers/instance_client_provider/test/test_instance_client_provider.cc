@@ -44,9 +44,8 @@ using std::string;
 using std::vector;
 
 namespace {
-constexpr char kResourceNameFormat[] =
-    R"(//compute.googleapis.com/projects/%s/zones/%s/instances/%s)";
-}
+constexpr char kAwsResourceNameFormat[] = R"(arn:aws:ec2:%s:%s:instance/%s)";
+}  // namespace
 
 namespace google::scp::cpio::client_providers {
 ExecutionResult TestInstanceClientProvider::Init() noexcept {
@@ -66,8 +65,11 @@ TestInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
     const std::string& resource_name,
     cmrt::sdk::instance_service::v1::InstanceDetails&
         instance_details) noexcept {
-  // Not implemented.
-  return FailureExecutionResult(SC_UNKNOWN);
+  instance_details.set_instance_id(test_options_->instance_id);
+  auto* network = instance_details.add_networks();
+  network->set_private_ipv4_address(test_options_->private_ipv4_address);
+  network->set_public_ipv4_address(test_options_->public_ipv4_address);
+  return SuccessExecutionResult();
 }
 
 ExecutionResult TestInstanceClientProvider::GetCurrentInstanceResourceName(
@@ -92,33 +94,9 @@ ExecutionResult TestInstanceClientProvider::GetInstanceDetailsByResourceName(
 
 ExecutionResult TestInstanceClientProvider::GetCurrentInstanceResourceNameSync(
     std::string& resource_name) noexcept {
-  resource_name = StrFormat(kResourceNameFormat, test_options_->owner_id,
-                            test_options_->zone, test_options_->instance_id);
-  return SuccessExecutionResult();
-}
-
-ExecutionResult TestInstanceClientProvider::GetCurrentInstanceId(
-    string& instance_id) noexcept {
-  instance_id = test_options_->instance_id;
-  return SuccessExecutionResult();
-}
-
-ExecutionResult TestInstanceClientProvider::GetCurrentInstanceRegion(
-    string& region) noexcept {
-  region = test_options_->region;
-  return SuccessExecutionResult();
-}
-
-ExecutionResult
-TestInstanceClientProvider::GetCurrentInstancePrivateIpv4Address(
-    string& instance_private_ipv4_address) noexcept {
-  instance_private_ipv4_address = test_options_->private_ipv4_address;
-  return SuccessExecutionResult();
-}
-
-ExecutionResult TestInstanceClientProvider::GetTagsOfInstance(
-    const vector<string>& tag_names, const string& instance_id,
-    map<string, string>& tag_values_map) noexcept {
+  resource_name =
+      StrFormat(kAwsResourceNameFormat, test_options_->region,
+                test_options_->owner_id, test_options_->instance_id);
   return SuccessExecutionResult();
 }
 

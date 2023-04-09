@@ -46,7 +46,6 @@ cc_test(
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/cpio/client_providers/public_key_client_provider/src:public_key_client_provider_lib",
-        "//cc/cpio/proto:cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )

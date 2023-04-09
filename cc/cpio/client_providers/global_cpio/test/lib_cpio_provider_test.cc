@@ -14,7 +14,6 @@
 
 #include <gtest/gtest.h>
 
-#include <aws/core/Aws.h>
 #include <gmock/gmock.h>
 
 #include "core/async_executor/src/async_executor.h"
@@ -22,9 +21,6 @@
 #include "cpio/client_providers/global_cpio/mock/mock_lib_cpio_provider_with_overrides.h"
 #include "public/core/interface/execution_result.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
 using google::scp::core::AsyncExecutor;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::HttpClientInterface;
@@ -40,20 +36,7 @@ using ::testing::IsNull;
 using ::testing::NotNull;
 
 namespace google::scp::cpio::test {
-class LibCpioProviderTest : public ::testing::Test {
- protected:
-  static void SetUpTestSuite() {
-    SDKOptions options;
-    InitAPI(options);
-  }
-
-  static void TearDownTestSuite() {
-    SDKOptions options;
-    ShutdownAPI(options);
-  }
-};
-
-TEST_F(LibCpioProviderTest, InstanceClientProviderNotCreatedInInt) {
+TEST(LibCpioProviderTest, InstanceClientProviderNotCreatedInInt) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
@@ -67,7 +50,7 @@ TEST_F(LibCpioProviderTest, InstanceClientProviderNotCreatedInInt) {
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioProviderTest, AsyncExecutorNotCreatedInInit) {
+TEST(LibCpioProviderTest, AsyncExecutorNotCreatedInInit) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
@@ -81,7 +64,7 @@ TEST_F(LibCpioProviderTest, AsyncExecutorNotCreatedInInit) {
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioProviderTest, IOAsyncExecutorNotCreatedInInit) {
+TEST(LibCpioProviderTest, IOAsyncExecutorNotCreatedInInit) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
@@ -95,7 +78,7 @@ TEST_F(LibCpioProviderTest, IOAsyncExecutorNotCreatedInInit) {
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioProviderTest, Http2ClientNotCreatedInInit) {
+TEST(LibCpioProviderTest, Http2ClientNotCreatedInInit) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
@@ -109,7 +92,7 @@ TEST_F(LibCpioProviderTest, Http2ClientNotCreatedInInit) {
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioProviderTest, Http1ClientNotCreatedInInit) {
+TEST(LibCpioProviderTest, Http1ClientNotCreatedInInit) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
@@ -123,7 +106,7 @@ TEST_F(LibCpioProviderTest, Http1ClientNotCreatedInInit) {
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioProviderTest, RoleCredentialsProviderNotCreatedInInit) {
+TEST(LibCpioProviderTest, RoleCredentialsProviderNotCreatedInInit) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
@@ -138,7 +121,7 @@ TEST_F(LibCpioProviderTest, RoleCredentialsProviderNotCreatedInInit) {
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioProviderTest, AuthTokenProviderNotCreatedInInit) {
+TEST(LibCpioProviderTest, AuthTokenProviderNotCreatedInInit) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());

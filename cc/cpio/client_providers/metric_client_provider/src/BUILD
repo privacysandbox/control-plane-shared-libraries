@@ -48,7 +48,6 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:type_def",
-        "//cc/cpio/proto:cc_proto",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:cpio_errors",

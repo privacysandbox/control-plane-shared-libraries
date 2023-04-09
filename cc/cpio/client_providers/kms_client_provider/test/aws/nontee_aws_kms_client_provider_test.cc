@@ -42,10 +42,12 @@ using Aws::Client::AWSError;
 using Aws::KMS::KMSClient;
 using Aws::KMS::KMSErrors;
 using Aws::KMS::Model::DecryptOutcome;
-using Aws::KMS::Model::DecryptRequest;
+using AwsDecryptRequest = Aws::KMS::Model::DecryptRequest;
 using Aws::KMS::Model::DecryptResult;
 using Aws::Utils::ByteBuffer;
 using crypto::tink::Aead;
+using google::cmrt::sdk::kms_service::v1::DecryptRequest;
+using google::cmrt::sdk::kms_service::v1::DecryptResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
@@ -100,7 +102,7 @@ class TeeAwsKmsClientProviderTest : public ::testing::Test {
     mock_kms_client_ = make_shared<MockKMSClient>();
 
     // Mocks DecryptRequest.
-    DecryptRequest decrypt_request;
+    AwsDecryptRequest decrypt_request;
     decrypt_request.SetKeyId(kKeyArn);
     string ciphertext = string(kCiphertext);
     string decoded_ciphertext;
@@ -148,14 +150,14 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingAssumeRoleArn) {
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
-  auto kms_decrpyt_request = make_shared<KmsDecryptRequest>();
-  kms_decrpyt_request->kms_region = make_shared<string>(kRegion);
-  kms_decrpyt_request->key_arn = make_shared<string>(kKeyArnWithPrefix);
-  kms_decrpyt_request->ciphertext = make_shared<string>(kCiphertext);
+  auto kms_decrpyt_request = make_shared<DecryptRequest>();
+  kms_decrpyt_request->set_kms_region(kRegion);
+  kms_decrpyt_request->set_key_resource_name(kKeyArnWithPrefix);
+  kms_decrpyt_request->set_ciphertext(kCiphertext);
 
-  AsyncContext<KmsDecryptRequest, KmsDecryptResponse> context(
+  AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
-      [&](AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& context) {});
+      [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {});
 
   EXPECT_EQ(
       client_->Decrypt(context),
@@ -166,14 +168,14 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingRegion) {
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
-  auto kms_decrpyt_request = make_shared<KmsDecryptRequest>();
-  kms_decrpyt_request->account_identity = make_shared<string>(kAssumeRoleArn);
-  kms_decrpyt_request->key_arn = make_shared<string>(kKeyArnWithPrefix);
-  kms_decrpyt_request->ciphertext = make_shared<string>(kCiphertext);
+  auto kms_decrpyt_request = make_shared<DecryptRequest>();
+  kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
+  kms_decrpyt_request->set_key_resource_name(kKeyArnWithPrefix);
+  kms_decrpyt_request->set_ciphertext(kCiphertext);
 
-  AsyncContext<KmsDecryptRequest, KmsDecryptResponse> context(
+  AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
-      [&](AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& context) {});
+      [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {});
 
   EXPECT_EQ(
       client_->Decrypt(context),
@@ -185,18 +187,18 @@ TEST_F(TeeAwsKmsClientProviderTest, SuccessToDecrypt) {
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
-  auto kms_decrpyt_request = make_shared<KmsDecryptRequest>();
-  kms_decrpyt_request->kms_region = make_shared<string>(kRegion);
-  kms_decrpyt_request->account_identity = make_shared<string>(kAssumeRoleArn);
-  kms_decrpyt_request->key_arn = make_shared<string>(kKeyArnWithPrefix);
-  kms_decrpyt_request->ciphertext = make_shared<string>(kCiphertext);
+  auto kms_decrpyt_request = make_shared<DecryptRequest>();
+  kms_decrpyt_request->set_kms_region(kRegion);
+  kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
+  kms_decrpyt_request->set_key_resource_name(kKeyArnWithPrefix);
+  kms_decrpyt_request->set_ciphertext(kCiphertext);
   atomic<bool> condition = false;
 
-  AsyncContext<KmsDecryptRequest, KmsDecryptResponse> context(
+  AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
-      [&](AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& context) {
+      [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
         EXPECT_EQ(context.result, SuccessExecutionResult());
-        EXPECT_EQ(*context.response->plaintext.get(), kPlaintext);
+        EXPECT_EQ(context.response->plaintext(), kPlaintext);
         condition = true;
       });
 
@@ -208,15 +210,15 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingCipherText) {
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
-  auto kms_decrpyt_request = make_shared<KmsDecryptRequest>();
-  kms_decrpyt_request->kms_region = make_shared<string>(kRegion);
-  kms_decrpyt_request->account_identity = make_shared<string>(kAssumeRoleArn);
-  kms_decrpyt_request->key_arn = make_shared<string>(kKeyArnWithPrefix);
+  auto kms_decrpyt_request = make_shared<DecryptRequest>();
+  kms_decrpyt_request->set_kms_region(kRegion);
+  kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
+  kms_decrpyt_request->set_key_resource_name(kKeyArnWithPrefix);
   atomic<bool> condition = false;
 
-  AsyncContext<KmsDecryptRequest, KmsDecryptResponse> context(
+  AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
-      [&](AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& context) {
+      [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
         EXPECT_EQ(context.result.status_code,
                   SC_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND);
         condition = true;
@@ -230,15 +232,15 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingKeyArn) {
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
-  auto kms_decrpyt_request = make_shared<KmsDecryptRequest>();
-  kms_decrpyt_request->kms_region = make_shared<string>(kRegion);
-  kms_decrpyt_request->account_identity = make_shared<string>(kAssumeRoleArn);
-  kms_decrpyt_request->ciphertext = make_shared<string>(kCiphertext);
+  auto kms_decrpyt_request = make_shared<DecryptRequest>();
+  kms_decrpyt_request->set_kms_region(kRegion);
+  kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
+  kms_decrpyt_request->set_ciphertext(kCiphertext);
   atomic<bool> condition = false;
 
-  AsyncContext<KmsDecryptRequest, KmsDecryptResponse> context(
+  AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
-      [&](AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& context) {
+      [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
         condition = true;
         EXPECT_EQ(context.result.status_code,
                   SC_AWS_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND);
@@ -252,16 +254,16 @@ TEST_F(TeeAwsKmsClientProviderTest, FailedDecryption) {
   EXPECT_EQ(client_->Init(), SuccessExecutionResult());
   EXPECT_EQ(client_->Run(), SuccessExecutionResult());
 
-  auto kms_decrpyt_request = make_shared<KmsDecryptRequest>();
-  kms_decrpyt_request->kms_region = make_shared<string>(kRegion);
-  kms_decrpyt_request->account_identity = make_shared<string>(kAssumeRoleArn);
-  kms_decrpyt_request->key_arn = make_shared<string>(kWrongKeyArn);
-  kms_decrpyt_request->ciphertext = make_shared<string>(kCiphertext);
+  auto kms_decrpyt_request = make_shared<DecryptRequest>();
+  kms_decrpyt_request->set_kms_region(kRegion);
+  kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
+  kms_decrpyt_request->set_key_resource_name(kWrongKeyArn);
+  kms_decrpyt_request->set_ciphertext(kCiphertext);
   atomic<bool> condition = false;
 
-  AsyncContext<KmsDecryptRequest, KmsDecryptResponse> context(
+  AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
-      [&](AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& context) {
+      [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
         condition = true;
         EXPECT_EQ(context.result.status_code,
                   SC_AWS_KMS_CLIENT_PROVIDER_DECRYPTION_FAILED);

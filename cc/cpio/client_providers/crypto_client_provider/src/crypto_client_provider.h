@@ -18,10 +18,11 @@
 
 #include <memory>
 
+#include <tink/hybrid/internal/hpke_context.h>
+
 #include "core/interface/async_context.h"
 #include "core/interface/service_interface.h"
 #include "cpio/client_providers/interface/crypto_client_provider_interface.h"
-#include "external/tink_cc/hybrid/internal/hpke_context.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/crypto_client/type_def.h"

@@ -16,13 +16,11 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
     name = "test_lib_cpio_provider",
-    srcs = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/global_cpio/src/cpio_provider:lib_cpio_provider_srcs"],
-        "//conditions:default": ["//cc/cpio/client_providers/global_cpio/src/cpio_provider:lib_cpio_provider_srcs"],
-    }) + [
-        "//cc/cpio/client_providers/interface:cpio_provider_interface.h",
-        "test_lib_cpio_provider.h",
+    srcs = [
         "test_lib_cpio_provider.cc",
+        "test_lib_cpio_provider.h",
+        "//cc/cpio/client_providers/global_cpio/src/cpio_provider:lib_cpio_provider_srcs",
+        "//cc/cpio/client_providers/interface:cpio_provider_interface.h",
     ],
     copts = [
         "-DTEST_CPIO=1",
@@ -37,6 +35,7 @@ cc_library(
         "//cc/core/logger/src/log_providers:log_providers_lib",
         "//cc/core/logger/src/log_providers/syslog:syslog_lib",
         "//cc/core/message_router/src:message_router_lib",
+        "//cc/cpio/client_providers/cloud_initializer/src:cloud_initializer_lib",
         "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_lib",
         "//cc/cpio/client_providers/instance_client_provider/test:test_instance_client_provider_lib",
         "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_lib",
@@ -73,7 +72,6 @@ cc_test(
         "//cc/cpio/client_providers/global_cpio/mock:global_cpio_mock",
         "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_lib",
         "//cc/public/cpio/interface:cpio",
-        "@aws_sdk_cpp//:core",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -19,12 +19,14 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <aws/sts/model/AssumeRoleRequest.h>
 
 #include "cc/core/common/uuid/src/uuid.h"
 #include "core/async_executor/src/aws/aws_async_executor.h"
 #include "core/common/time_provider/src/time_provider.h"
+#include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
 #include "cpio/client_providers/role_credentials_provider/src/aws/sts_error_converter.h"
 #include "cpio/common/src/aws/aws_utils.h"
 
@@ -44,6 +46,7 @@ using google::scp::core::common::kZeroUuid;
 using google::scp::core::common::TimeProvider;
 using google::scp::core::errors::
     SC_AWS_ROLE_CREDENTIALS_PROVIDER_INITIALIZATION_FAILED;
+using google::scp::cpio::client_providers::AwsInstanceClientUtils;
 using std::make_shared;
 using std::shared_ptr;
 using std::string;
@@ -74,16 +77,17 @@ ExecutionResult AwsRoleCredentialsProvider::Init() noexcept {
     return execution_result;
   }
 
-  auto region = make_shared<string>();
-  auto execution_result =
-      instance_client_provider_->GetCurrentInstanceRegion(*region);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsRoleCredentialsProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get region");
-    return execution_result;
+  auto region_code_or =
+      AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
+  if (!region_code_or.Successful()) {
+    ERROR(kAwsRoleCredentialsProvider, kZeroUuid, kZeroUuid,
+          region_code_or.result(),
+          "Failed to get region code for current instance");
+    return region_code_or.result();
   }
 
-  auto client_config = common::CreateClientConfiguration(region);
+  auto client_config = common::CreateClientConfiguration(
+      make_shared<string>(move(*region_code_or)));
   sts_client_ = make_shared<STSClient>(*client_config);
 
   auto timestamp =

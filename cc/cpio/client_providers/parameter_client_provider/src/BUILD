@@ -45,7 +45,7 @@ cc_library(
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_lib",
         "//cc/cpio/client_providers/interface:type_def",
-        "//cc/cpio/proto:cc_proto",
+        "//cc/public/cpio/interface/parameter_client:type_def",
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
         "//cc/public/cpio/interface:cpio_errors",
     ],

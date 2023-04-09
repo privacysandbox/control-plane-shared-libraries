@@ -29,6 +29,7 @@
 #include "core/test/utils/timestamp_test_utils.h"
 #include "public/core/interface/execution_result.h"
 
+using google::cmrt::sdk::kms_service::v1::DecryptRequest;
 using google::cmrt::sdk::private_key_service::v1::PrivateKey;
 using google::protobuf::util::TimeUtil;
 using google::scp::core::ExecutionResult;
@@ -47,6 +48,7 @@ using std::string;
 using std::to_string;
 using std::vector;
 
+static constexpr char kTestKeyId[] = "name_test";
 static constexpr char kTestResourceName[] = "encryptionKeys/name_test";
 static constexpr char kTestPublicKeysetHandle[] = "publicKeysetHandle";
 static constexpr char kTestPublicKeyMaterial[] = "publicKeyMaterial";
@@ -57,59 +59,59 @@ static constexpr char kTestKeyEncryptionKeyUri[] = "keyEncryptionKeyUri";
 static constexpr char kTestKeyMaterial[] = "keyMaterial";
 
 namespace google::scp::cpio::client_providers::test {
-void GetPrivateKeyFetchingResponse(
-    shared_ptr<PrivateKeyFetchingResponse>& response) {
-  response->resource_name = make_shared<string>(kTestResourceName);
-  response->expiration_time_in_ms = kTestExpirationTime;
-  response->creation_time_in_ms = kTestCreationTime;
-  response->encryption_key_type =
+shared_ptr<EncryptionKey> CreateEncryptionKey() {
+  auto encryption_key = make_shared<EncryptionKey>();
+  encryption_key->key_id = make_shared<string>(kTestKeyId);
+  encryption_key->resource_name = make_shared<string>(kTestResourceName);
+  encryption_key->expiration_time_in_ms = kTestExpirationTime;
+  encryption_key->creation_time_in_ms = kTestCreationTime;
+  encryption_key->encryption_key_type =
       EncryptionKeyType::kMultiPartyHybridEvenKeysplit;
-  response->public_key_material = make_shared<string>(kTestPublicKeyMaterial);
-  response->public_keyset_handle = make_shared<string>(kTestPublicKeysetHandle);
+  encryption_key->public_key_material =
+      make_shared<string>(kTestPublicKeyMaterial);
+  encryption_key->public_keyset_handle =
+      make_shared<string>(kTestPublicKeysetHandle);
   auto key_data = make_shared<KeyData>();
   key_data->key_encryption_key_uri =
       make_shared<string>(kTestKeyEncryptionKeyUri);
   key_data->key_material = make_shared<string>(kTestKeyMaterial);
   key_data->public_key_signature = make_shared<string>(kTestPublicKeySignature);
-  response->key_data.emplace_back(key_data);
+  encryption_key->key_data.emplace_back(key_data);
+  return encryption_key;
 }
 
 TEST(PrivateKeyClientUtilsTest, GetKmsDecryptRequestSuccess) {
-  auto response = make_shared<PrivateKeyFetchingResponse>();
-  GetPrivateKeyFetchingResponse(response);
-
-  KmsDecryptRequest kms_decrypt_request;
+  auto encryption_key = CreateEncryptionKey();
+  DecryptRequest kms_decrypt_request;
   auto result = PrivateKeyClientUtils::GetKmsDecryptRequest(
-      response, kms_decrypt_request);
+      encryption_key, kms_decrypt_request);
   EXPECT_EQ(result, SuccessExecutionResult());
-  EXPECT_EQ(*kms_decrypt_request.ciphertext, kTestKeyMaterial);
-  EXPECT_EQ(*kms_decrypt_request.key_arn, kTestKeyEncryptionKeyUri);
+  EXPECT_EQ(kms_decrypt_request.ciphertext(), kTestKeyMaterial);
+  EXPECT_EQ(kms_decrypt_request.key_resource_name(), kTestKeyEncryptionKeyUri);
 }
 
 TEST(PrivateKeyClientUtilsTest, GetKmsDecryptRequestFailed) {
-  auto response = make_shared<PrivateKeyFetchingResponse>();
+  auto encryption_key = CreateEncryptionKey();
 
-  GetPrivateKeyFetchingResponse(response);
   auto key_data = make_shared<KeyData>();
   key_data->key_encryption_key_uri = make_shared<string>("");
   key_data->key_material = make_shared<string>("");
   key_data->public_key_signature = make_shared<string>("");
+  encryption_key->key_data = vector<shared_ptr<KeyData>>({key_data});
 
-  response->key_data = vector<shared_ptr<KeyData>>({key_data});
-
-  KmsDecryptRequest kms_decrypt_request;
+  DecryptRequest kms_decrypt_request;
   auto result = PrivateKeyClientUtils::GetKmsDecryptRequest(
-      response, kms_decrypt_request);
+      encryption_key, kms_decrypt_request);
   EXPECT_EQ(result, FailureExecutionResult(
                         SC_PRIVATE_KEY_CLIENT_PROVIDER_KEY_DATA_NOT_FOUND));
 }
 
 TEST(PrivateKeyClientUtilsTest, GetPrivateKeyInfo) {
-  auto response = make_shared<PrivateKeyFetchingResponse>();
-  GetPrivateKeyFetchingResponse(response);
+  auto encryption_key = CreateEncryptionKey();
 
   PrivateKey private_key;
-  auto result = PrivateKeyClientUtils::GetPrivateKeyInfo(response, private_key);
+  auto result =
+      PrivateKeyClientUtils::GetPrivateKeyInfo(encryption_key, private_key);
   EXPECT_EQ(result, SuccessExecutionResult());
   EXPECT_EQ(private_key.key_id(), "name_test");
   EXPECT_EQ(private_key.public_key(), kTestPublicKeyMaterial);

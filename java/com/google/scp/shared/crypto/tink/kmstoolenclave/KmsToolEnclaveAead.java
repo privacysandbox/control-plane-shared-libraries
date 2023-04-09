@@ -17,17 +17,20 @@
 package com.google.scp.shared.crypto.tink.kmstoolenclave;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Bytes;
 import com.google.crypto.tink.Aead;
 import com.google.scp.shared.aws.credsprovider.AwsSessionCredentialsProvider;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.security.GeneralSecurityException;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.regions.Region;
 
 /**
- * Tink Aead implmentation using the AWS KMS Tool Enclave. Only supports decryption and does not
+ * Tink Aead implementation using the AWS KMS Tool Enclave. Only supports decryption and does not
  * support associatedData. Only works inside a Nitro Enclave.
  *
  * <p>This class is a thin wrapper around the CLI tool and all cryptographic operations are handled
@@ -63,7 +66,7 @@ public final class KmsToolEnclaveAead implements Aead {
   public byte[] decrypt(byte[] ciphertext, byte[] associatedData) throws GeneralSecurityException {
     if (associatedData != null && associatedData.length != 0) {
       throw new IllegalArgumentException(
-          "kmstool_eclave_cli does not support associatedData:"
+          "kmstool_enclave_cli does not support associatedData:"
               + " https://github.com/aws/aws-nitro-enclaves-sdk-c/issues/35");
     }
 
@@ -73,6 +76,7 @@ public final class KmsToolEnclaveAead implements Aead {
     ImmutableList<String> command =
         new ImmutableList.Builder<String>()
             .add(CLI_PATH)
+            .add("decrypt")
             .add("--region", region.toString())
             .add("--aws-access-key-id", credentials.accessKeyId())
             .add("--aws-secret-access-key", credentials.secretAccessKey())
@@ -91,7 +95,17 @@ public final class KmsToolEnclaveAead implements Aead {
       if (exitCode != 0) {
         throw new GeneralSecurityException("Non-zero exit code from kmstool cli");
       }
-      return Base64.getDecoder().decode(process.getInputStream().readAllBytes());
+      // The kmstool_enclave_cli output format: 'PLAINTEXT: <decrypted_content>\n'
+      List<Byte> kmsToolOutput = Bytes.asList(process.getInputStream().readAllBytes());
+      List<Byte> outputPrefix = Bytes.asList("PLAINTEXT: ".getBytes());
+      if (!kmsToolOutput.isEmpty()
+          && Collections.indexOfSubList(kmsToolOutput, outputPrefix) == 0) {
+        kmsToolOutput = kmsToolOutput.subList(outputPrefix.size(), kmsToolOutput.size());
+      }
+      if (!kmsToolOutput.isEmpty() && kmsToolOutput.get(kmsToolOutput.size() - 1) == '\n') {
+        kmsToolOutput = kmsToolOutput.subList(0, kmsToolOutput.size() - 1);
+      }
+      return Base64.getDecoder().decode(Bytes.toArray(kmsToolOutput));
     } catch (IllegalArgumentException e) {
       // Base64.decode() will throw if not provided valid base64.
       throw new GeneralSecurityException("Failed to handle process output", e);

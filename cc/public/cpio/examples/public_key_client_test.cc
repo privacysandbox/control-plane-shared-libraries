@@ -17,8 +17,6 @@
 #include <memory>
 #include <string>
 
-#include <aws/core/Aws.h>
-
 #include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/errors.h"
@@ -29,9 +27,6 @@
 #include "public/cpio/interface/type_def.h"
 #include "public/cpio/proto/public_key_service/v1/public_key_service.pb.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
 using google::cmrt::sdk::public_key_service::v1::ListPublicKeysRequest;
 using google::cmrt::sdk::public_key_service::v1::ListPublicKeysResponse;
 using google::cmrt::sdk::public_key_service::v1::PublicKey;
@@ -60,8 +55,6 @@ using std::chrono::milliseconds;
 constexpr char kPublicKeyEndpoint[] = "https://test.publickey.com";
 
 int main(int argc, char* argv[]) {
-  SDKOptions options;
-  InitAPI(options);
   CpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
   auto result = Cpio::InitCpio(cpio_options);
@@ -122,5 +115,4 @@ int main(int argc, char* argv[]) {
     std::cout << "Failed to shutdown CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;
   }
-  ShutdownAPI(options);
 }

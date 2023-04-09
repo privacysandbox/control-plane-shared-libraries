@@ -37,8 +37,8 @@ using google::cmrt::sdk::blob_storage_service::v1::PutBlobResponse;
 using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest;
 using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse;
 using google::scp::core::AsyncContext;
-using google::scp::core::ClientStreamingContext;
-using google::scp::core::ServerStreamingContext;
+using google::scp::core::ConsumerStreamingContext;
+using google::scp::core::ProducerStreamingContext;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::test::IsSuccessful;
 using google::scp::cpio::mock::MockBlobStorageClientWithOverrides;
@@ -82,14 +82,14 @@ TEST_F(BlobStorageClientTest, DeleteBlobSuccess) {
 }
 
 TEST_F(BlobStorageClientTest, GetBlobStreamSuccess) {
-  ServerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse> context;
+  ConsumerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse> context;
   EXPECT_CALL(client_.GetBlobStorageClientProvider(), GetBlobStream)
       .WillOnce(Return(SuccessExecutionResult()));
   EXPECT_THAT(client_.GetBlobStream(context), IsSuccessful());
 }
 
 TEST_F(BlobStorageClientTest, PutBlobStreamSuccess) {
-  ClientStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse> context;
+  ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse> context;
   EXPECT_CALL(client_.GetBlobStorageClientProvider(), PutBlobStream)
       .WillOnce(Return(SuccessExecutionResult()));
   EXPECT_THAT(client_.PutBlobStream(context), IsSuccessful());

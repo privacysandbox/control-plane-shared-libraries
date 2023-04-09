@@ -35,6 +35,7 @@
 #include "core/utils/src/hashing.h"
 #include "cpio/client_providers/blob_storage_client_provider/src/aws/aws_s3_utils.h"
 #include "cpio/client_providers/blob_storage_client_provider/src/common/error_codes.h"
+#include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
 #include "cpio/common/src/aws/aws_utils.h"
 
 using Aws::MakeShared;
@@ -72,11 +73,11 @@ using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::AsyncPriority;
-using google::scp::core::ClientStreamingContext;
+using google::scp::core::ConsumerStreamingContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;
-using google::scp::core::ServerStreamingContext;
+using google::scp::core::ProducerStreamingContext;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
@@ -85,6 +86,7 @@ using google::scp::core::errors::SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS;
 using google::scp::core::errors::SC_BLOB_STORAGE_PROVIDER_RETRIABLE_ERROR;
 using google::scp::core::utils::Base64Encode;
 using google::scp::core::utils::CalculateMd5Hash;
+using google::scp::cpio::client_providers::AwsInstanceClientUtils;
 using std::bind;
 using std::make_shared;
 using std::move;
@@ -103,14 +105,16 @@ static constexpr size_t kListBlobsMetadataMaxResults = 1000;
 namespace google::scp::cpio::client_providers {
 
 ExecutionResult AwsS3ClientProvider::Init() noexcept {
-  string region;
-  auto result = instance_client_->GetCurrentInstanceRegion(region);
-  if (!result.Successful()) {
-    ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, result,
-          "Failed getting region.");
-    return result;
+  auto region_code_or =
+      AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_);
+  if (!region_code_or.Successful()) {
+    ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, region_code_or.result(),
+          "Failed to get region code for current instance");
+    return region_code_or.result();
   }
-  auto client_or = s3_factory_->CreateClient(region, io_async_executor_);
+
+  auto client_or =
+      s3_factory_->CreateClient(*region_code_or, io_async_executor_);
   if (!client_or.Successful()) {
     ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, client_or.result(),
           "Failed creating AWS S3 client.");
@@ -211,7 +215,7 @@ void AwsS3ClientProvider::OnGetObjectCallback(
 }
 
 ExecutionResult AwsS3ClientProvider::GetBlobStream(
-    ServerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse>&
+    ConsumerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse>&
         get_blob_stream_context) noexcept {
   // TODO implement.
   return FailureExecutionResult(SC_UNKNOWN);
@@ -390,7 +394,7 @@ void AwsS3ClientProvider::OnPutObjectCallback(
 }
 
 ExecutionResult AwsS3ClientProvider::PutBlobStream(
-    ClientStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
+    ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
         put_blob_stream_context) noexcept {
   return FailureExecutionResult(SC_UNKNOWN);
 }

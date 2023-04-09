@@ -49,6 +49,11 @@ class MockAwsRoleCredentialsProviderWithOverrides
     return core::SuccessExecutionResult();
   }
 
+  std::shared_ptr<MockInstanceClientProvider> GetInstanceClientProvider() {
+    return std::dynamic_pointer_cast<MockInstanceClientProvider>(
+        instance_client_provider_);
+  }
+
   std::shared_ptr<MockSTSClient> GetSTSClient() {
     return std::dynamic_pointer_cast<MockSTSClient>(sts_client_);
   }

@@ -61,7 +61,7 @@ static constexpr char kPrivateKeyBaseUri1[] = "http://public_key/publicKeys1";
 static constexpr char kPrivateKeyBaseUri2[] = "http://public_key/publicKeys2";
 static constexpr char kHeaderDateExample[] = "Wed, 16 Nov 2022 00:02:48 GMT";
 static constexpr char kCacheControlExample[] = "max-age=254838";
-static constexpr uint64_t kExpectedExpiredTimeMs = 1668811806000;
+static constexpr uint64_t kExpectedExpiredTimeInSeconds = 1668811806;
 
 namespace google::scp::cpio::client_providers::test {
 
@@ -156,8 +156,8 @@ TEST_F(PublicKeyClientProviderTestII, ListPublicKeysSuccess) {
         EXPECT_EQ(context.response->public_keys()[0].public_key(), "abcdefg");
         EXPECT_EQ(context.response->public_keys()[1].key_id(), "5678");
         EXPECT_EQ(context.response->public_keys()[1].public_key(), "hijklmn");
-        EXPECT_EQ(context.response->expiration_time_in_ms(),
-                  kExpectedExpiredTimeMs);
+        EXPECT_EQ(context.response->expiration_time().seconds(),
+                  kExpectedExpiredTimeInSeconds);
         success_callback++;
       });
 

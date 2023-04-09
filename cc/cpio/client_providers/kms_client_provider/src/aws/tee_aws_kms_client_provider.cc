@@ -29,10 +29,13 @@
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"
 
+#include "tee_aws_kms_client_provider_utils.h"
 #include "tee_error_codes.h"
 
 using Aws::Auth::AWSCredentials;
 using Aws::Client::ClientConfiguration;
+using google::cmrt::sdk::kms_service::v1::DecryptRequest;
+using google::cmrt::sdk::kms_service::v1::DecryptResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -93,7 +96,7 @@ static void BuildDecryptCmd(const string& region, const string& ciphertext,
     command += string(" --ciphertext ") + ciphertext;
   }
 
-  command = "/kmstool_enclave_cli" + command;
+  command = "/kmstool_enclave_cli decrypt" + command;
 }
 
 namespace google::scp::cpio::client_providers {
@@ -119,10 +122,10 @@ ExecutionResult TeeAwsKmsClientProvider::Stop() noexcept {
 }
 
 ExecutionResult TeeAwsKmsClientProvider::Decrypt(
-    core::AsyncContext<KmsDecryptRequest, KmsDecryptResponse>&
+    core::AsyncContext<DecryptRequest, DecryptResponse>&
         decrypt_context) noexcept {
-  shared_ptr<string> ciphertext = decrypt_context.request->ciphertext;
-  if (!ciphertext || ciphertext->empty()) {
+  const auto& ciphertext = decrypt_context.request->ciphertext();
+  if (ciphertext.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND);
     ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -132,9 +135,8 @@ ExecutionResult TeeAwsKmsClientProvider::Decrypt(
     return decrypt_context.result;
   }
 
-  shared_ptr<string> assume_role_arn =
-      decrypt_context.request->account_identity;
-  if (!assume_role_arn || assume_role_arn->empty()) {
+  const auto& assume_role_arn = decrypt_context.request->account_identity();
+  if (assume_role_arn.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_ASSUME_ROLE_NOT_FOUND);
     ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -144,8 +146,8 @@ ExecutionResult TeeAwsKmsClientProvider::Decrypt(
     return execution_result;
   }
 
-  shared_ptr<string> kms_region = decrypt_context.request->kms_region;
-  if (!kms_region || kms_region->empty()) {
+  const auto& kms_region = decrypt_context.request->kms_region();
+  if (kms_region.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_TEE_AWS_KMS_CLIENT_PROVIDER_REGION_NOT_FOUND);
     ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -156,7 +158,8 @@ ExecutionResult TeeAwsKmsClientProvider::Decrypt(
   }
 
   auto get_credentials_request = make_shared<GetRoleCredentialsRequest>();
-  get_credentials_request->account_identity = assume_role_arn;
+  get_credentials_request->account_identity =
+      make_shared<AccountIdentity>(assume_role_arn);
   AsyncContext<GetRoleCredentialsRequest, GetRoleCredentialsResponse>
       get_session_credentials_context(
           move(get_credentials_request),
@@ -167,7 +170,7 @@ ExecutionResult TeeAwsKmsClientProvider::Decrypt(
 }
 
 void TeeAwsKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
-    AsyncContext<KmsDecryptRequest, KmsDecryptResponse>& decrypt_context,
+    AsyncContext<DecryptRequest, DecryptResponse>& decrypt_context,
     AsyncContext<GetRoleCredentialsRequest, GetRoleCredentialsResponse>&
         get_session_credentials_context) noexcept {
   auto execution_result = get_session_credentials_context.result;
@@ -179,12 +182,12 @@ void TeeAwsKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     return;
   }
 
-  auto get_session_credentials_response =
+  const auto& get_session_credentials_response =
       *get_session_credentials_context.response;
 
   string command;
-  BuildDecryptCmd(*decrypt_context.request->kms_region,
-                  *decrypt_context.request->ciphertext,
+  BuildDecryptCmd(decrypt_context.request->kms_region(),
+                  decrypt_context.request->ciphertext(),
                   get_session_credentials_response.access_key_id->c_str(),
                   get_session_credentials_response.access_key_secret->c_str(),
                   get_session_credentials_response.security_token->c_str(),
@@ -200,8 +203,8 @@ void TeeAwsKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   }
 
   // Decode the plaintext.
-  auto decoded_plaintext = make_shared<string>();
-  execute_result = Base64Decode(plaintext, *decoded_plaintext);
+  string decoded_plaintext;
+  execute_result = Base64Decode(plaintext, decoded_plaintext);
   if (!execute_result.Successful()) {
     ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execute_result,
           "Failed to decode data.");
@@ -210,8 +213,8 @@ void TeeAwsKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
     return;
   }
 
-  auto kms_decrypt_response = make_shared<KmsDecryptResponse>();
-  kms_decrypt_response->plaintext = decoded_plaintext;
+  auto kms_decrypt_response = make_shared<DecryptResponse>();
+  kms_decrypt_response->set_plaintext(move(decoded_plaintext));
   decrypt_context.response = kms_decrypt_response;
   decrypt_context.result = SuccessExecutionResult();
   decrypt_context.Finish();
@@ -243,7 +246,7 @@ ExecutionResult TeeAwsKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
     return execution_result;
   }
 
-  plaintext = result;
+  TeeAwsKmsClientProviderUtils::ExtractPlaintext(result, plaintext);
   return SuccessExecutionResult();
 }
 

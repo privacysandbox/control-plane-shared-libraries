@@ -17,8 +17,6 @@
 #include <memory>
 #include <string>
 
-#include <aws/core/Aws.h>
-
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
@@ -27,13 +25,10 @@
 #include "public/cpio/interface/metric_client/type_def.h"
 #include "public/cpio/interface/type_def.h"
 
-using Aws::InitAPI;
-using Aws::SDKOptions;
-using Aws::ShutdownAPI;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
-using google::scp::core::SuccessExecutionResult;
 using google::scp::core::GetErrorMessage;
+using google::scp::core::SuccessExecutionResult;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::Cpio;
 using google::scp::cpio::CpioOptions;
@@ -58,8 +53,6 @@ using std::unique_ptr;
 using std::chrono::milliseconds;
 
 int main(int argc, char* argv[]) {
-  SDKOptions options;
-  InitAPI(options);
   CpioOptions cpio_options;
   cpio_options.log_option = LogOption::kConsoleLog;
   auto result = Cpio::InitCpio(cpio_options);
@@ -124,5 +117,4 @@ int main(int argc, char* argv[]) {
     std::cout << "Failed to shutdown CPIO: "
               << GetErrorMessage(result.status_code) << std::endl;
   }
-  ShutdownAPI(options);
 }

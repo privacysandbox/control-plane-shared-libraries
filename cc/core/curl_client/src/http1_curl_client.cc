@@ -25,17 +25,23 @@ using std::make_shared;
 using std::move;
 using std::shared_ptr;
 
+namespace {
+constexpr char kHttp1CurlClient[] = "Http1CurlClient";
+}
+
 namespace google::scp::core {
 
 Http1CurlClient::Http1CurlClient(
-    shared_ptr<AsyncExecutorInterface>& async_executor,
+    shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
+    shared_ptr<AsyncExecutorInterface>& io_async_executor,
     shared_ptr<Http1CurlWrapperProvider> curl_wrapper_provider,
     RetryStrategyType retry_strategy_type, TimeDuration time_duration_ms,
     size_t total_retries)
     : curl_wrapper_provider_(curl_wrapper_provider),
-      async_executor_(async_executor),
+      cpu_async_executor_(cpu_async_executor),
+      io_async_executor_(io_async_executor),
       operation_dispatcher_(
-          async_executor,
+          io_async_executor,
           RetryStrategy(retry_strategy_type, time_duration_ms, total_retries)) {
 }
 
@@ -58,12 +64,17 @@ ExecutionResult Http1CurlClient::PerformRequest(
   operation_dispatcher_.Dispatch<AsyncContext<HttpRequest, HttpResponse>>(
       http_context, [this, wrapper = *wrapper_or](auto& http_context) {
         auto response_or = wrapper->PerformRequest(*http_context.request);
-        http_context.result = response_or.result();
-        RETURN_IF_FAILURE(response_or.result());
+        if (!response_or.Successful()) {
+          http_context.result = response_or.result();
+          ERROR_CONTEXT(kHttp1CurlClient, http_context, http_context.result,
+                        "wrapper PerformRequest failed.");
+          return response_or.result();
+        }
 
         http_context.response = make_shared<HttpResponse>(move(*response_or));
 
-        FinishContext(SuccessExecutionResult(), http_context, async_executor_);
+        FinishContext(SuccessExecutionResult(), http_context,
+                      cpu_async_executor_);
 
         return SuccessExecutionResult();
       });

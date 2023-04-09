@@ -16,9 +16,11 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include "core/interface/http_types.h"
+#include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 
 #include "error_codes.h"
@@ -34,6 +36,17 @@ struct AwsResourceNameDetails {
 
 class AwsInstanceClientUtils {
  public:
+  /**
+   * @brief Get the Current aws region code object from instance client.
+   *
+   * @param instance_client the instance client instance used to retrieve the
+   * region code to which the current instance belongs.
+   * @return core::ExecutionResultOr<std::string> AWS region code if success.
+   */
+  static core::ExecutionResultOr<std::string> GetCurrentRegionCode(
+      const std::shared_ptr<InstanceClientProviderInterface>&
+          instance_client) noexcept;
+
   /**
    * @brief Parse region from the Instance Resource Name.
    *
@@ -58,7 +71,8 @@ class AwsInstanceClientUtils {
    * @param resource_name Instance resource name.
    * @return core::ExecutionResultOr<std::string> resource ID
    */
-  static core::ExecutionResultOr<std::string> ParseResourceIdFromResourceName(
+  static core::ExecutionResultOr<std::string>
+  ParseInstanceIdFromInstanceResourceName(
       const std::string& resource_name) noexcept;
 
   /**

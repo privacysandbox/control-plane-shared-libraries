@@ -25,15 +25,16 @@ cc_library(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
-        "//cc/cpio/proto:cc_proto",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/interface/metric_client:type_def",
+        "//cc/public/cpio/interface/parameter_client:type_def",
         "//cc/public/cpio/interface/private_key_client:type_def",
         "//cc/public/cpio/proto/blob_storage_service/v1:blob_storage_service_cc_proto",
         "//cc/public/cpio/proto/crypto_service/v1:crypto_service_cc_proto",
         "//cc/public/cpio/proto/instance_service/v1:instance_service_cc_proto",
         "//cc/public/cpio/proto/job_service/v1:job_service_cc_proto",
+        "//cc/public/cpio/proto/kms_service/v1:kms_service_cc_proto",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/proto/nosql_database_service/v1:nosql_database_service_cc_proto",
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
@@ -47,7 +48,6 @@ cc_library(
 exports_files([
     "auto_scaling_client_provider_interface.h",
     "blob_storage_client_provider_interface.h",
-    "config_client_provider_interface.h",
     "cpio_provider_interface.h",
     "crypto_client_provider_interface.h",
     "cloud_initializer_interface.h",
@@ -72,7 +72,6 @@ filegroup(
         ":auto_scaling_client_provider_interface.h",
         ":blob_storage_client_provider_interface.h",
         ":cloud_initializer_interface.h",
-        ":config_client_provider_interface.h",
         ":cpio_provider_interface.h",
         ":crypto_client_provider_interface.h",
         ":instance_client_provider_interface.h",
@@ -101,7 +100,6 @@ cc_library(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
-        "//cc/cpio/proto:cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

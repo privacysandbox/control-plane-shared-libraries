@@ -84,11 +84,6 @@ ExecutionResult AwsAuthTokenProvider::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult AwsAuthTokenProvider::SignRequestWithSessionToken(
-    AsyncContext<HttpRequest, HttpRequest>& sign_request_context) noexcept {
-  return FailureExecutionResult(SC_UNKNOWN);
-}
-
 ExecutionResult AwsAuthTokenProvider::GetSessionToken(
     AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
         get_token_context) noexcept {

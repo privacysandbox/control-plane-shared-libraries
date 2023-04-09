@@ -27,15 +27,16 @@ cc_library(
     deps = select({
         "//cc/public/cpio/interface:aws_cpio_lib": [
             "//cc/cpio/common/src/aws:aws_utils_lib",
+            "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
             "@aws_sdk_cpp//:core",
             "@aws_sdk_cpp//:ec2",
         ],
         "//cc/public/cpio/interface:gcp_cpio_lib": [
             "@com_google_absl//absl/strings:str_format",
-            "@nlohmann_json//:lib",
         ],
         "//conditions:default": [
             "//cc/cpio/common/src/aws:aws_utils_lib",
+            "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
             "@aws_sdk_cpp//:core",
             "@aws_sdk_cpp//:ec2",
         ],
@@ -50,5 +51,6 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/public/cpio/interface:cpio_errors",
         "@com_google_absl//absl/strings",
+        "@nlohmann_json//:lib",
     ],
 )

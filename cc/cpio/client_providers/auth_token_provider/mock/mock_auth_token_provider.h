@@ -40,10 +40,6 @@ class MockAuthTokenProvider : public AuthTokenProviderInterface {
               ((core::AsyncContext<GetSessionTokenForTargetAudienceRequest,
                                    GetSessionTokenResponse>&)),
               (override, noexcept));
-
-  MOCK_METHOD(core::ExecutionResult, SignRequestWithSessionToken,
-              ((core::AsyncContext<core::HttpRequest, core::HttpRequest>&)),
-              (override, noexcept));
 };
 
 }  // namespace google::scp::cpio::client_providers::mock

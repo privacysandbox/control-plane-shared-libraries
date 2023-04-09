@@ -39,10 +39,10 @@ class MockPrivateKeyClientProvider : public PrivateKeyClientProviderInterface {
   MOCK_METHOD(core::ExecutionResult, Stop, (), (override, noexcept));
 
   MOCK_METHOD(
-      core::ExecutionResult, ListPrivateKeysByIds,
+      core::ExecutionResult, ListPrivateKeys,
       ((core::AsyncContext<
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest,
-          cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse>&)),
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest,
+          cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse>&)),
       (override, noexcept));
 };
 }  // namespace google::scp::cpio::client_providers::mock

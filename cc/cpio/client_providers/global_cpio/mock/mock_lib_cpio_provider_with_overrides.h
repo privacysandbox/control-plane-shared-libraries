@@ -26,7 +26,8 @@
 namespace google::scp::cpio::client_providers::mock {
 class MockLibCpioProviderWithOverrides : public LibCpioProvider {
  public:
-  MockLibCpioProviderWithOverrides() : LibCpioProvider() {}
+  MockLibCpioProviderWithOverrides()
+      : LibCpioProvider(std::make_shared<CpioOptions>()) {}
 
   core::ExecutionResult GetInstanceClientProvider(
       std::shared_ptr<InstanceClientProviderInterface>&

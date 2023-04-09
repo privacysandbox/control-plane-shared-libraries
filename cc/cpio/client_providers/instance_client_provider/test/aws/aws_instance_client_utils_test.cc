@@ -21,6 +21,7 @@
 #include <gmock/gmock.h>
 
 #include "core/test/utils/conditional_wait.h"
+#include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
 #include "cpio/client_providers/instance_client_provider/src/aws/error_codes.h"
 #include "public/core/test/interface/execution_result_test_lib.h"
 
@@ -36,6 +37,7 @@ using google::scp::core::test::ResultIs;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::AwsInstanceClientUtils;
 using google::scp::cpio::client_providers::AwsResourceNameDetails;
+using google::scp::cpio::client_providers::mock::MockInstanceClientProvider;
 using std::atomic;
 using std::get;
 using std::make_shared;
@@ -69,17 +71,37 @@ constexpr char kAccountIdMock[] = "123456789012";
 
 namespace google::scp::cpio::client_providers::test {
 
+TEST(AwsInstanceClientUtilsTest, GetCurrentRegionCodeSuccess) {
+  auto instance_client = make_shared<MockInstanceClientProvider>();
+  instance_client->instance_resource_name = kResourceNameMock;
+
+  auto region_code =
+      AwsInstanceClientUtils::GetCurrentRegionCode(instance_client);
+  EXPECT_EQ(*region_code, kRegionMock);
+}
+
+TEST(AwsInstanceClientUtilsTest, GetCurrentRegionCodeFailedWithResourceName) {
+  auto instance_client = make_shared<MockInstanceClientProvider>();
+  instance_client->get_instance_resource_name_mock =
+      FailureExecutionResult(SC_UNKNOWN);
+
+  auto region_code =
+      AwsInstanceClientUtils::GetCurrentRegionCode(instance_client);
+  EXPECT_THAT(region_code.result(),
+              ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+}
+
 TEST(AwsInstanceClientUtilsTest, ValidateResourceNameFormat) {
   EXPECT_THAT(
       AwsInstanceClientUtils::ValidateResourceNameFormat(kResourceNameMock),
       IsSuccessful());
 }
 
-TEST(AwsInstanceClientUtilsTest, ParseResourceIdFromResourceName) {
-  EXPECT_THAT(AwsInstanceClientUtils::ParseResourceIdFromResourceName(
+TEST(AwsInstanceClientUtilsTest, ParseInstanceIdFromInstanceResourceName) {
+  EXPECT_THAT(AwsInstanceClientUtils::ParseInstanceIdFromInstanceResourceName(
                   kResourceNameMock),
               IsSuccessfulAndHolds(kInstanceIdMock));
-  EXPECT_THAT(AwsInstanceClientUtils::ParseResourceIdFromResourceName(
+  EXPECT_THAT(AwsInstanceClientUtils::ParseInstanceIdFromInstanceResourceName(
                   kResourceNameWithPathMock),
               IsSuccessfulAndHolds(kInstanceIdMock));
 }

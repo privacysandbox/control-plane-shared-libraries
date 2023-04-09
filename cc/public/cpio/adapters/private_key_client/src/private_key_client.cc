@@ -33,8 +33,8 @@
 #include "public/cpio/adapters/common/adapter_utils.h"
 #include "public/cpio/proto/private_key_service/v1/private_key_service.pb.h"
 
-using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsRequest;
-using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysByIdsResponse;
+using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest;
+using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -123,11 +123,11 @@ ExecutionResult PrivateKeyClient::Stop() noexcept {
   return ConvertToPublicExecutionResult(execution_result);
 }
 
-core::ExecutionResult PrivateKeyClient::ListPrivateKeysByIds(
-    ListPrivateKeysByIdsRequest request,
-    Callback<ListPrivateKeysByIdsResponse> callback) noexcept {
-  return Execute<ListPrivateKeysByIdsRequest, ListPrivateKeysByIdsResponse>(
-      bind(&PrivateKeyClientProviderInterface::ListPrivateKeysByIds,
+core::ExecutionResult PrivateKeyClient::ListPrivateKeys(
+    ListPrivateKeysRequest request,
+    Callback<ListPrivateKeysResponse> callback) noexcept {
+  return Execute<ListPrivateKeysRequest, ListPrivateKeysResponse>(
+      bind(&PrivateKeyClientProviderInterface::ListPrivateKeys,
            private_key_client_provider_, _1),
       request, callback);
 }

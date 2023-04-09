@@ -24,22 +24,10 @@ option cc_enable_arenas = true;
 
 // Service to fetch private keys.
 service PrivateKeyService {
-  // Fetches private keys from KeyService for the given Key Ids. These keys are
+  // Fetches private keys from KeyService. These keys are
   // already decrypted.
-  rpc ListPrivateKeysByIds(ListPrivateKeysByIdsRequest)
-      returns (ListPrivateKeysByIdsResponse) {}
-}
-
-// Request to list private keys.
-message ListPrivateKeysByIdsRequest {
-  repeated string key_ids = 1;
-}
-
-// Response of listing private keys
-message ListPrivateKeysByIdsResponse {
-  // The execution result.
-  scp.core.common.proto.ExecutionResult result = 1;
-  repeated PrivateKey private_keys = 2;
+  rpc ListPrivateKeys(ListPrivateKeysRequest)
+      returns (ListPrivateKeysResponse) {}
 }
 
 // Wrap of private key.
@@ -54,4 +42,20 @@ message PrivateKey {
   google.protobuf.Timestamp expiration_time = 4;
   // The creation time of the private key.
   google.protobuf.Timestamp creation_time = 5;
-};
+}
+
+// Request to list private keys by key IDs.
+message ListPrivateKeysRequest {
+  // Given key IDs. If set, don't honor the max_age_seconds filter.
+  repeated string key_ids = 1;
+  // Given age. TODO: document the cap and default value once it is determined in KeyService.
+  int64 max_age_seconds = 2;
+}
+
+// Response of listing private keys by key IDs.
+message ListPrivateKeysResponse {
+  // The execution result.
+  scp.core.common.proto.ExecutionResult result = 1;
+  // Returned private key list.
+  repeated PrivateKey private_keys = 2;
+}

@@ -58,7 +58,8 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
   core::ExecutionResult Stop() noexcept override;
 
   core::ExecutionResult Decrypt(
-      core::AsyncContext<KmsDecryptRequest, KmsDecryptResponse>&
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context) noexcept override;
 
  protected:
@@ -70,10 +71,11 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
    * @return core::ExecutionResult the creation results.
    */
   core::ExecutionResult GetAeadCallbackToDecrypt(
-      core::AsyncContext<KmsDecryptRequest, KmsDecryptResponse>&
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         cmrt::sdk::kms_service::v1::DecryptResponse>&
           decrypt_context,
-      core::AsyncContext<KmsDecryptRequest, crypto::tink::Aead>&
-          get_aead_context) noexcept;
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         crypto::tink::Aead>& get_aead_context) noexcept;
 
   /**
    * @brief Creates a KMS Client object.
@@ -82,8 +84,8 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
    * @return core::ExecutionResult the creation results.
    */
   core::ExecutionResult CreateKmsClient(
-      core::AsyncContext<KmsDecryptRequest, Aws::KMS::KMSClient>&
-          create_kms_context) noexcept;
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         Aws::KMS::KMSClient>& create_kms_context) noexcept;
 
   /**
    * @brief Callback to pass session credentials to create KMS Client.
@@ -94,8 +96,8 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
    * @return core::ExecutionResult the creation results.
    */
   void GetSessionCredentialsCallbackToCreateKms(
-      core::AsyncContext<KmsDecryptRequest, Aws::KMS::KMSClient>&
-          create_kms_context,
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         Aws::KMS::KMSClient>& create_kms_context,
       core::AsyncContext<GetRoleCredentialsRequest, GetRoleCredentialsResponse>&
           get_role_credentials_contexts) noexcept;
 
@@ -117,8 +119,8 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
    * @return core::ExecutionResult the creation results.
    */
   core::ExecutionResult GetAead(
-      core::AsyncContext<KmsDecryptRequest, crypto::tink::Aead>&
-          get_aead_context) noexcept;
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         crypto::tink::Aead>& get_aead_context) noexcept;
 
   /**
    * @brief Callback to pass KMS Client to create Aead.
@@ -128,10 +130,10 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
    * @return core::ExecutionResult the creation results.
    */
   void CreateKmsCallbackToCreateAead(
-      core::AsyncContext<KmsDecryptRequest, crypto::tink::Aead>&
-          get_aead_context,
-      core::AsyncContext<KmsDecryptRequest, Aws::KMS::KMSClient>&
-          create_kms_context) noexcept;
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         crypto::tink::Aead>& get_aead_context,
+      core::AsyncContext<cmrt::sdk::kms_service::v1::DecryptRequest,
+                         Aws::KMS::KMSClient>& create_kms_context) noexcept;
 
   /**
    * @brief Gets a KMS Client object.
