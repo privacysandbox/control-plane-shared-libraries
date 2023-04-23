@@ -53,6 +53,7 @@ cc_test(
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_lib",
         "//cc/cpio/common/src/aws:aws_utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -72,6 +73,7 @@ cc_test(
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/cpio/client_providers/parameter_client_provider/mock/aws:aws_parameter_client_provider_mock",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

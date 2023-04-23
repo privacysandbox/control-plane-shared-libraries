@@ -33,7 +33,7 @@ service JobService {
   // Gets a job by job id.
   rpc GetJobById(GetJobByIdRequest) returns (GetJobByIdResponse) {}
   // Updates job body of a job.
-  rpc UpdatJobBody(UpdateJobBodyRequest) returns (UpdateJobBodyResponse) {}
+  rpc UpdateJobBody(UpdateJobBodyRequest) returns (UpdateJobBodyResponse) {}
   // Updates status of a job.
   rpc UpdateJobStatus(UpdateJobStatusRequest)
       returns (UpdateJobStatusResponse) {}
@@ -129,12 +129,19 @@ message UpdateJobBodyRequest {
   // The new value for the job body.
   // Please note there is no validation performed against this field.
   google.protobuf.Any job_body = 2;
+  // The updated time from the most recent response.
+  // If this field is earlier than the updated time in the job item from the
+  // database, this means there is another request already updated the job body.
+  // This request then is staled and will not update the job in the database.
+  google.protobuf.Timestamp most_recent_updated_time = 3;
 }
 
 // Response of updating body of a job.
 message UpdateJobBodyResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;
+  // The time the job is updated.
+  google.protobuf.Timestamp updated_time = 2;
 }
 
 // Request to update job status.
@@ -144,17 +151,25 @@ message UpdateJobStatusRequest {
   // The new job status.
   // The status can not be updated to JOB_STATUS_UNKNOWN or JOB_STATUS_CREATED.
   JobStatus job_status = 2;
+  // The updated time from the most recent response.
+  // If this field is earlier than the updated time in the job item from the
+  // database, this means there is another request already updated the job
+  // status.
+  // This request then is staled and will not update the job in the database.
+  google.protobuf.Timestamp most_recent_updated_time = 3;
   // The receipt info associated with the job.
   // This field can and only be retrieved from GetNextJobResponse.
   // This is only required when update job status to JOB_STATUS_FAILURE or
   // JOB_STATUS_SUCCESS.
-  optional string receipt_info = 3;
+  optional string receipt_info = 4;
 }
 
 // Response of updating job status.
 message UpdateJobStatusResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;
+  // The time the job is updated.
+  google.protobuf.Timestamp updated_time = 2;
 }
 
 // Request to update visibility timeout of a job.
@@ -168,10 +183,18 @@ message UpdateJobVisibilityTimeoutRequest {
   // The receipt info associated with the job.
   // This field can and only be retrieved from GetNextJobResponse.
   string receipt_info = 3;
+  // The updated time from the most recent response.
+  // If this field is earlier than the updated time in the job item from the
+  // database, this means there is another request already updated the job
+  // visibility timeout.
+  // This request then is staled and will not update the job in the database.
+  google.protobuf.Timestamp most_recent_updated_time = 4;
 }
 
 // Response of updating visibility timeout of a job.
 message UpdateJobVisibilityTimeoutResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;
+  // The time the job is updated.
+  google.protobuf.Timestamp updated_time = 2;
 }

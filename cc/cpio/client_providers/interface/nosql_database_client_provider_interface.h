@@ -36,6 +36,32 @@ class NoSQLDatabaseClientProviderInterface : public core::ServiceInterface {
   virtual ~NoSQLDatabaseClientProviderInterface() = default;
 
   /**
+   * @brief Creates a table.
+   *
+   * @param create_table_context The context object for the database
+   * operation.
+   * @return ExecutionResult The execution result of the operation.
+   */
+  virtual core::ExecutionResult CreateTable(
+      core::AsyncContext<
+          cmrt::sdk::nosql_database_service::v1::CreateTableRequest,
+          cmrt::sdk::nosql_database_service::v1::CreateTableResponse>&
+          create_table_context) noexcept = 0;
+
+  /**
+   * @brief Deletes a table.
+   *
+   * @param delete_table_context The context object for the database
+   * operation.
+   * @return ExecutionResult The execution result of the operation.
+   */
+  virtual core::ExecutionResult DeleteTable(
+      core::AsyncContext<
+          cmrt::sdk::nosql_database_service::v1::DeleteTableRequest,
+          cmrt::sdk::nosql_database_service::v1::DeleteTableResponse>&
+          delete_table_context) noexcept = 0;
+
+  /**
    * @brief Gets a database record using provided metadta.
    *
    * @param get_database_item_context The context object for the database

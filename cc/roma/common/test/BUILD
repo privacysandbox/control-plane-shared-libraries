@@ -50,6 +50,7 @@ cc_test(
     ],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/common/src:roma_common_lib",
         "@com_google_googletest//:gtest_main",
     ],
@@ -78,6 +79,7 @@ cc_test(
     ],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/common/src:roma_common_lib",
         "@com_google_googletest//:gtest_main",
     ],
@@ -92,6 +94,7 @@ cc_test(
     ],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/common/src:roma_common_lib",
         "@com_google_googletest//:gtest_main",
     ],

@@ -28,6 +28,7 @@
 #include "cpio/client_providers/metric_client_provider/src/aws/error_codes.h"
 #include "cpio/common/src/aws/error_codes.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 using Aws::Client::AWSError;
@@ -60,6 +61,7 @@ using google::scp::core::errors::
     SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_LIMIT_REACHED_PER_REQUEST;
 using google::scp::core::errors::
     SC_AWS_METRIC_CLIENT_PROVIDER_OVERSIZE_DATUM_DIMENSIONS;
+using google::scp::core::test::ResultIs;
 using google::scp::cpio::client_providers::AwsMetricClientUtils;
 using std::make_shared;
 using std::map;
@@ -109,9 +111,8 @@ TEST_F(AwsMetricClientUtilsTest, ParseRequestToDatumSuccess) {
         parse_request_to_datum_is_called = true;
       });
   vector<MetricDatum> datum_list;
-  EXPECT_EQ(AwsMetricClientUtils::ParseRequestToDatum(context, datum_list,
-                                                      kAwsMetricDatumSizeLimit),
-            SuccessExecutionResult());
+  EXPECT_SUCCESS(AwsMetricClientUtils::ParseRequestToDatum(
+      context, datum_list, kAwsMetricDatumSizeLimit));
   EXPECT_TRUE(!parse_request_to_datum_is_called);
   EXPECT_EQ(datum_list.size(), 10);
   for (auto i = 0; i < 10; i++) {
@@ -130,11 +131,11 @@ TEST_F(AwsMetricClientUtilsTest, OversizeMetricsInRequest) {
       make_shared<PutMetricsRequest>(record_metric_request),
       [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
   vector<MetricDatum> datum_list;
-  EXPECT_EQ(
+  EXPECT_THAT(
       AwsMetricClientUtils::ParseRequestToDatum(context, datum_list,
                                                 kAwsMetricDatumSizeLimit),
-      FailureExecutionResult(
-          SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_LIMIT_REACHED_PER_REQUEST));
+      ResultIs(FailureExecutionResult(
+          SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_LIMIT_REACHED_PER_REQUEST)));
   EXPECT_EQ(datum_list.size(), 0);
 }
 
@@ -149,10 +150,10 @@ TEST_F(AwsMetricClientUtilsTest, ParseRequestToDatumInvalidValue) {
         parse_request_to_datum_is_called = true;
       });
   vector<MetricDatum> datum_list;
-  EXPECT_EQ(AwsMetricClientUtils::ParseRequestToDatum(context, datum_list,
-                                                      kAwsMetricDatumSizeLimit),
-            FailureExecutionResult(
-                SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_METRIC_VALUE));
+  EXPECT_THAT(AwsMetricClientUtils::ParseRequestToDatum(
+                  context, datum_list, kAwsMetricDatumSizeLimit),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_METRIC_VALUE)));
   EXPECT_TRUE(datum_list.empty());
   EXPECT_TRUE(parse_request_to_datum_is_called);
 }
@@ -179,10 +180,10 @@ TEST_F(AwsMetricClientUtilsTest, ParseRequestToDatumInvalidTimestamp) {
           parse_request_to_datum_is_called = true;
         });
     vector<MetricDatum> datum_list;
-    EXPECT_EQ(AwsMetricClientUtils::ParseRequestToDatum(
-                  context, datum_list, kAwsMetricDatumSizeLimit),
-              FailureExecutionResult(
-                  SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_TIMESTAMP));
+    EXPECT_THAT(AwsMetricClientUtils::ParseRequestToDatum(
+                    context, datum_list, kAwsMetricDatumSizeLimit),
+                ResultIs(FailureExecutionResult(
+                    SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_TIMESTAMP)));
     EXPECT_TRUE(datum_list.empty());
     EXPECT_TRUE(parse_request_to_datum_is_called);
   }
@@ -208,10 +209,10 @@ TEST_F(AwsMetricClientUtilsTest, ParseRequestToDatumOversizeDimensions) {
         parse_request_to_datum_is_called = true;
       });
   vector<MetricDatum> datum_list;
-  EXPECT_EQ(AwsMetricClientUtils::ParseRequestToDatum(context, datum_list,
-                                                      kAwsMetricDatumSizeLimit),
-            FailureExecutionResult(
-                SC_AWS_METRIC_CLIENT_PROVIDER_OVERSIZE_DATUM_DIMENSIONS));
+  EXPECT_THAT(AwsMetricClientUtils::ParseRequestToDatum(
+                  context, datum_list, kAwsMetricDatumSizeLimit),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_METRIC_CLIENT_PROVIDER_OVERSIZE_DATUM_DIMENSIONS)));
   EXPECT_TRUE(datum_list.empty());
   EXPECT_TRUE(parse_request_to_datum_is_called);
 }
@@ -232,8 +233,8 @@ TEST_F(AwsMetricClientUtilsTest, ParseRequestToDatumInvalidUnit) {
   vector<MetricDatum> datum_list;
   auto result = AwsMetricClientUtils::ParseRequestToDatum(
       context, datum_list, kAwsMetricDatumSizeLimit);
-  EXPECT_EQ(result, FailureExecutionResult(
-                        SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_METRIC_UNIT));
+  EXPECT_THAT(result, ResultIs(FailureExecutionResult(
+                          SC_AWS_METRIC_CLIENT_PROVIDER_INVALID_METRIC_UNIT)));
   EXPECT_TRUE(datum_list.empty());
   EXPECT_TRUE(parse_request_to_datum_is_called);
 }

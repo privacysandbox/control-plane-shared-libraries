@@ -66,6 +66,7 @@ using std::move;
 using std::mutex;
 using std::scoped_lock;
 using std::shared_ptr;
+using std::unique_ptr;
 
 namespace {
 constexpr char kBucketName[] = "blob-storage-service-test-bucket";
@@ -226,12 +227,13 @@ int main(int argc, char* argv[]) {
     put_blob_stream_request->mutable_blob_portion()->set_data("some");
 
     ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>
-        put_blob_stream_context(move(put_blob_stream_request),
-                                [&result, &finished](auto& context) {
-                                  result = context.result;
-                                  // No other contents in PutBlobStreamResponse.
-                                  finished = true;
-                                });
+        put_blob_stream_context;
+    put_blob_stream_context.request = move(put_blob_stream_request);
+    put_blob_stream_context.callback = [&result, &finished](auto& context) {
+      result = context.result;
+      // No other contents in PutBlobStreamResponse.
+      finished = true;
+    };
 
     auto put_blob_stream_result =
         blob_storage_client->PutBlobStream(put_blob_stream_context);

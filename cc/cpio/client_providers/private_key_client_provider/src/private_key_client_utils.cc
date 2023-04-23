@@ -42,6 +42,8 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::HttpHeaders;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
+    SC_PRIVATE_KEY_CLIENT_PROVIDER_INVALID_KEY_RESOURCE_NAME;
+using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_KEY_DATA_NOT_FOUND;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_SECRET_PIECE_SIZE_UNMATCHED;
@@ -52,14 +54,24 @@ using std::shared_ptr;
 using std::string;
 using std::vector;
 
+namespace {
+// The keyUri returned from KeyVendingService contains prefix "gcp-kms://" or
+// "aws-kms://", and we need to remove it before sending for decryption.
+constexpr int kKeyArnPrefixSize = 10;
+}  // namespace
+
 namespace google::scp::cpio::client_providers {
 ExecutionResult PrivateKeyClientUtils::GetKmsDecryptRequest(
     const shared_ptr<EncryptionKey>& encryption_key,
     DecryptRequest& kms_decrypt_request) noexcept {
   for (auto key_data : encryption_key->key_data) {
     if (key_data->key_material && !key_data->key_material->empty()) {
+      if (key_data->key_encryption_key_uri->size() < kKeyArnPrefixSize) {
+        return FailureExecutionResult(
+            SC_PRIVATE_KEY_CLIENT_PROVIDER_INVALID_KEY_RESOURCE_NAME);
+      }
       kms_decrypt_request.set_key_resource_name(
-          *key_data->key_encryption_key_uri);
+          key_data->key_encryption_key_uri->substr(kKeyArnPrefixSize));
       kms_decrypt_request.set_ciphertext(*key_data->key_material);
       return SuccessExecutionResult();
     }

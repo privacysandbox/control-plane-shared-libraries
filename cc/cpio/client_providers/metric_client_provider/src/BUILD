@@ -21,26 +21,26 @@ cc_library(
         "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/metric_client_provider/src/gcp:gcp_metric_client_provider_srcs"],
         "//conditions:default": ["//cc/cpio/client_providers/metric_client_provider/src/aws:aws_metric_client_provider_srcs"],
     }) + [
-        "//cc/cpio/client_providers/interface:metric_client_provider_interface.h",
         ":metric_client_provider_srcs",
+        "//cc/cpio/client_providers/interface:metric_client_provider_interface.h",
     ],
     copts = [
         "-std=c++17",
     ],
     deps = select({
         "//cc/public/cpio/interface:aws_cpio_lib": [
-            "@aws_sdk_cpp//:monitoring",
-            "//cc/cpio/common/src/aws:aws_utils_lib",
             "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
+            "//cc/cpio/common/src/aws:aws_utils_lib",
+            "@aws_sdk_cpp//:monitoring",
         ],
         "//cc/public/cpio/interface:gcp_cpio_lib": [
             "//cc/cpio/common/src/gcp:gcp_utils_lib",
             "@com_github_googleapis_google_cloud_cpp//:monitoring",
         ],
         "//conditions:default": [
-            "@aws_sdk_cpp//:monitoring",
-            "//cc/cpio/common/src/aws:aws_utils_lib",
             "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
+            "//cc/cpio/common/src/aws:aws_utils_lib",
+            "@aws_sdk_cpp//:monitoring",
         ],
     }) + [
         "//cc:cc_base_include_dir",
@@ -48,10 +48,10 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:type_def",
-        "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:cpio_errors",
         "//cc/public/cpio/interface/metric_client:type_def",
+        "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

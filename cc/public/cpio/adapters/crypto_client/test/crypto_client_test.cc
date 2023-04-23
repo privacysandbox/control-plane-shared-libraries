@@ -25,7 +25,7 @@
 #include "core/interface/errors.h"
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/adapters/crypto_client/mock/mock_crypto_client_with_overrides.h"
 #include "public/cpio/interface/crypto_client/crypto_client_interface.h"
 #include "public/cpio/interface/crypto_client/type_def.h"

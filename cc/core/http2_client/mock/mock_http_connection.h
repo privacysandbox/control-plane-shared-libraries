@@ -29,8 +29,8 @@ class MockHttpConnection : public HttpConnection {
       const std::string& host, const std::string& service, bool https)
       : HttpConnection(async_executor, host, service, https) {}
 
-  void CancelPendingCallbacks(bool is_stop) noexcept {
-    HttpConnection::CancelPendingCallbacks(is_stop);
+  void CancelPendingCallbacks() noexcept {
+    HttpConnection::CancelPendingCallbacks();
   }
 
   auto& GetPendingNetworkCallbacks() { return pending_network_calls_; }

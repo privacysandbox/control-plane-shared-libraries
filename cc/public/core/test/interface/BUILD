@@ -15,11 +15,11 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "execution_result_test_lib",
+    name = "execution_result_matchers",
     testonly = True,
-    srcs = ["execution_result_test_lib.cc"],
+    srcs = ["execution_result_matchers.cc"],
     hdrs = [
-        "execution_result_test_lib.h",
+        "execution_result_matchers.h",
     ],
     deps = [
         "//cc:cc_base_include_dir",

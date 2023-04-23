@@ -21,8 +21,8 @@
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
 
-#include "socket_vendor_protocol.h"
 #include "logging.h"
+#include "socket_vendor_protocol.h"
 
 using boost::bind;
 using boost::asio::async_read;

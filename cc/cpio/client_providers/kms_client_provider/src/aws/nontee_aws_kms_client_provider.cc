@@ -63,7 +63,6 @@ using std::placeholders::_1;
 /// Filename for logging errors
 static constexpr char kNonteeAwsKmsClientProvider[] =
     "NonteeAwsKmsClientProvider";
-static constexpr int kKeyArnPrefixSize = 10;
 
 namespace google::scp::cpio::client_providers {
 
@@ -102,7 +101,7 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
   }
 
   const auto& key_arn = decrypt_context.request->key_resource_name();
-  if (key_arn.empty() || key_arn.length() < kKeyArnPrefixSize) {
+  if (key_arn.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND);
     ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -196,11 +195,9 @@ void NonteeAwsKmsClientProvider::CreateKmsCallbackToCreateAead(
     return;
   }
 
-  // The keyUri returned from KeyVendingService contains prefix "aws-kms://",
-  // and we need to remove it before sending for decryption.
-  auto aead_result = AwsKmsAead::New(
-      get_aead_context.request->key_resource_name().substr(kKeyArnPrefixSize),
-      move(create_kms_context.response));
+  auto aead_result =
+      AwsKmsAead::New(get_aead_context.request->key_resource_name(),
+                      move(create_kms_context.response));
   if (!aead_result.ok()) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_CREATE_AEAD_FAILED);

@@ -29,7 +29,7 @@ cc_test(
         "//cc/core/test/utils:utils_lib",
         "//cc/cpio/client_providers/private_key_fetcher_provider/mock:private_key_fetcher_provider_mock",
         "//cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_lib",
-        "//cc/public/core/test/interface:execution_result_test_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -49,7 +49,7 @@ cc_test(
         "//cc/core/test/utils:utils_lib",
         "//cc/cpio/client_providers/private_key_fetcher_provider/mock:private_key_fetcher_provider_mock",
         "//cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_lib",
-        "//cc/public/core/test/interface:execution_result_test_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

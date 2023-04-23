@@ -23,6 +23,7 @@ cc_test(
     ],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/dispatcher/src:roma_dispatcher_lib",
         "@com_google_googletest//:gtest_main",
     ],

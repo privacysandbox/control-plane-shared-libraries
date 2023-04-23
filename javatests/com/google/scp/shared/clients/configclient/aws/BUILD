@@ -15,18 +15,6 @@
 package(default_visibility = ["//visibility:public"])
 
 java_test(
-    name = "HttpClientRetryTest",
-    srcs = ["HttpClientRetryTest.java"],
-    deps = [
-        "//java/com/google/scp/shared/clients/configclient:aws",
-        "//java/external:apache_httpclient",
-        "//java/external:apache_httpcore",
-        "//java/external:google_truth",
-        "//java/external:guice",
-    ],
-)
-
-java_test(
     name = "AwsParameterClientTest",
     srcs = [
         "AwsParameterClientTest.java",

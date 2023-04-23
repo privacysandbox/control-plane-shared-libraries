@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.scp.shared.clients.configclient.aws;
+package com.google.scp.shared.clients;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -32,7 +32,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public final class HttpClientRetryTest {
+public final class DefaultHttpClientRetryStrategyTest {
   private TestHandler testHandler;
 
   @Test
@@ -42,7 +42,7 @@ public final class HttpClientRetryTest {
     callServer(server);
 
     assertThat(testHandler.calledCount)
-        .isEqualTo(AwsClientConfigModule.HTTP_CLIENT_MAX_RETRY_COUNT);
+        .isEqualTo(DefaultHttpClientRetryStrategy.HTTP_CLIENT_MAX_RETRY_COUNT);
   }
 
   @Test
@@ -55,7 +55,7 @@ public final class HttpClientRetryTest {
   }
 
   private void callServer(HttpServer server) throws Exception {
-    new Thread(() -> server.start()).start();
+    new Thread(server::start).start();
     HttpClient client = provideClient();
     var uri =
         URI.create(
@@ -79,7 +79,7 @@ public final class HttpClientRetryTest {
 
   private HttpClient provideClient() {
     return HttpClients.custom()
-        .setServiceUnavailableRetryStrategy(AwsClientConfigModule.HTTP_CLIENT_RETRY_STRATEGY)
+        .setServiceUnavailableRetryStrategy(DefaultHttpClientRetryStrategy.getInstance())
         .build();
   }
 

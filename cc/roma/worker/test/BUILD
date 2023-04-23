@@ -24,6 +24,7 @@ cc_test(
     tags = ["exclusive"],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/worker/src:roma_worker_lib",
         "@com_google_googletest//:gtest_main",
     ],
@@ -44,6 +45,7 @@ cc_test(
     ],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/wasm/src:roma_wasm_lib",
         "//cc/roma/wasm/test:roma_wasm_testing_lib",
         "//cc/roma/worker/src:roma_worker_lib",
@@ -60,6 +62,7 @@ cc_test(
     ],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/worker/src:roma_worker_lib",
         "@com_google_googletest//:gtest_main",
     ],
@@ -75,6 +78,7 @@ cc_test(
     tags = ["exclusive"],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/worker/src:roma_worker_lib",
         "@com_google_googletest//:gtest_main",
     ],

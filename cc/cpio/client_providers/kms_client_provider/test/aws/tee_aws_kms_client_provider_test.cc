@@ -32,7 +32,7 @@
 #include "cpio/client_providers/role_credentials_provider/mock/mock_role_credentials_provider.h"
 #include "cpio/common/src/aws/error_codes.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -43,7 +43,6 @@ using google::cmrt::sdk::kms_service::v1::DecryptResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
-using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_CORE_UTILS_INVALID_BASE64_ENCODING_LENGTH;
 using google::scp::core::errors::
     SC_TEE_AWS_KMS_CLIENT_PROVIDER_ASSUME_ROLE_NOT_FOUND;
@@ -97,7 +96,7 @@ class TeeAwsKmsClientProviderTest : public ::testing::Test {
         mock_credentials_provider_);
   }
 
-  void TearDown() override { EXPECT_THAT(client_->Stop(), IsSuccessful()); }
+  void TearDown() override { EXPECT_SUCCESS(client_->Stop()); }
 
   unique_ptr<MockTeeAwsKmsClientProviderWithOverrides> client_;
   shared_ptr<RoleCredentialsProviderInterface> mock_credentials_provider_;
@@ -113,8 +112,8 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingCredentialsProvider) {
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, SuccessToDecrypt) {
-  EXPECT_THAT(client_->Init(), IsSuccessful());
-  EXPECT_THAT(client_->Run(), IsSuccessful());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
@@ -137,18 +136,18 @@ TEST_F(TeeAwsKmsClientProviderTest, SuccessToDecrypt) {
   AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
       [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         EXPECT_EQ(context.response->plaintext(), expect_command);
         condition = true;
       });
 
-  EXPECT_THAT(client_->Decrypt(context), IsSuccessful());
+  EXPECT_SUCCESS(client_->Decrypt(context));
   WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, FailedToDecode) {
-  EXPECT_THAT(client_->Init(), IsSuccessful());
-  EXPECT_THAT(client_->Run(), IsSuccessful());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
@@ -167,13 +166,13 @@ TEST_F(TeeAwsKmsClientProviderTest, FailedToDecode) {
         condition = true;
       });
 
-  EXPECT_THAT(client_->Decrypt(context), IsSuccessful());
+  EXPECT_SUCCESS(client_->Decrypt(context));
   WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, MissingCipherText) {
-  EXPECT_THAT(client_->Init(), IsSuccessful());
-  EXPECT_THAT(client_->Run(), IsSuccessful());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
@@ -195,8 +194,8 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingCipherText) {
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, MissingAssumeRoleArn) {
-  EXPECT_THAT(client_->Init(), IsSuccessful());
-  EXPECT_THAT(client_->Run(), IsSuccessful());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_kms_region(kRegion);
@@ -218,8 +217,8 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingAssumeRoleArn) {
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, MissingRegion) {
-  EXPECT_THAT(client_->Init(), IsSuccessful());
-  EXPECT_THAT(client_->Run(), IsSuccessful());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_account_identity(kAssumeRoleArn);

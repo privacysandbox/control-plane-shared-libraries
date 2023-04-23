@@ -25,7 +25,7 @@ def boost():
         name = "com_github_nelhage_rules_boost",
         commit = RULES_BOOST_COMMIT,
         patch_args = ["-p1"],
-        patches = [Label("//build_defs/cc/build_targets:rules_boost.patch")],
+        patches = [Label("//build_defs/cc/shared:rules_boost.patch")],
         remote = "https://github.com/nelhage/rules_boost.git",
         shallow_since = "1652895814 -0700",
     )

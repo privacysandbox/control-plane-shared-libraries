@@ -465,14 +465,14 @@ EXPORT int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
   int sock_domain = 0;
   socklen_t sock_domain_len = sizeof(sock_domain);
   ret = libc_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN,
-                       static_cast<void*>(&sock_domain), &sock_domain_len);
+                        static_cast<void*>(&sock_domain), &sock_domain_len);
   // If the application calls epoll_ctl first and bind later, we may be dealing
   // with a VSOCK socket. So here it is either IP/IPv6 or VSOCK, otherwise
   // fallback.
   if (ret != 0 || (sock_domain != AF_VSOCK && sock_domain != AF_INET &&
-                      sock_domain != AF_INET6)) {
+                   sock_domain != AF_INET6)) {
     return libc_bind(sockfd, addr, addrlen);
-    }
+  }
   uint16_t port = 0;
   if (addr->sa_family == AF_INET) {
     // If the socket family does not match the address to bind, return EINVAL.

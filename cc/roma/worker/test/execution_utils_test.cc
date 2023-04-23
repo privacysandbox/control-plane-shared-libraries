@@ -30,6 +30,7 @@
 #include "core/test/utils/auto_init_run_stop.h"
 #include "core/test/utils/conditional_wait.h"
 #include "include/libplatform/libplatform.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/ipc/src/ipc_manager.h"
 #include "roma/wasm/src/deserializer.h"
 #include "roma/wasm/src/wasm_types.h"
@@ -47,6 +48,7 @@ using google::scp::core::errors::SC_ROMA_V8_WORKER_HANDLER_INVALID_FUNCTION;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_RESULT_PARSE_FAILURE;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_WASM_COMPILE_FAILURE;
 using google::scp::core::test::AutoInitRunStop;
+using google::scp::core::test::ResultIs;
 using google::scp::roma::WasmDataType;
 using google::scp::roma::common::RoleId;
 using google::scp::roma::common::RomaVector;
@@ -336,7 +338,9 @@ TEST_F(ExecutionUtilsTest, RunCodeObjWithBadInput) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS));
+  EXPECT_THAT(
+      result,
+      ResultIs(FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS)));
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInput) {
@@ -355,7 +359,7 @@ TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInput) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(output, "3");
 }
 
@@ -375,7 +379,9 @@ TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInputMissKey) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS));
+  EXPECT_THAT(
+      result,
+      ResultIs(FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS)));
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInputMissValue) {
@@ -394,7 +400,9 @@ TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInputMissValue) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS));
+  EXPECT_THAT(
+      result,
+      ResultIs(FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS)));
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjRunWithLessArgs) {
@@ -414,7 +422,7 @@ TEST_F(ExecutionUtilsTest, RunCodeObjRunWithLessArgs) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(output, "null");
 }
 
@@ -450,7 +458,9 @@ TEST_F(ExecutionUtilsTest, NoHandlerName) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_HANDLER_NAME));
+  EXPECT_THAT(
+      result,
+      ResultIs(FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_HANDLER_NAME)));
 }
 
 TEST_F(ExecutionUtilsTest, UnmatchedHandlerName) {
@@ -503,7 +513,7 @@ TEST_F(ExecutionUtilsTest, SuccessWithUnNeedArgs) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
 }
 
 TEST_F(ExecutionUtilsTest, CodeExecutionFailure) {
@@ -545,7 +555,7 @@ TEST_F(ExecutionUtilsTest, WasmSourceCode) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(output, "3");
 }
 
@@ -617,7 +627,7 @@ TEST_F(ExecutionUtilsTest, CppWasmWithStringInputAndStringOutput) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(output, "\"Input String :) Hello World from WASM\"");
 }
 
@@ -642,7 +652,7 @@ TEST_F(ExecutionUtilsTest, RustWasmWithStringInputAndStringOutput) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(output, "\"Input String :) Hello from rust!\"");
 }
 
@@ -668,7 +678,7 @@ TEST_F(ExecutionUtilsTest, CppWasmWithListOfStringInputAndListOfStringOutput) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(std::string(output.c_str(), output.length()),
             "[\"Input String One\",\"Input String Two\",\"String from "
             "Cpp1\",\"String from Cpp2\"]");
@@ -697,7 +707,7 @@ TEST_F(ExecutionUtilsTest, RustWasmWithListOfStringInputAndListOfStringOutput) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(std::string(output.c_str(), output.length()),
             "[\"Input String One\",\"Input String Two\",\"Hello from "
             "rust1\",\"Hello from rust2\"]");
@@ -730,7 +740,7 @@ TEST_F(ExecutionUtilsTest, JsEmebbedGlobalWasmCompileRunExecute) {
   RomaString output;
   RomaString err_msg;
   auto result = RunCode(code_obj, output, err_msg);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(output, to_string(3).c_str());
 }
 }  // namespace google::scp::roma::worker::test

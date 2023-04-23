@@ -26,7 +26,7 @@
 #include "core/test/utils/conditional_wait.h"
 #include "cpio/client_providers/private_key_client_provider/mock/mock_private_key_client_provider_with_overrides.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/adapters/private_key_client/mock/mock_private_key_client_with_overrides.h"
 #include "public/cpio/interface/private_key_client/private_key_client_interface.h"
 #include "public/cpio/interface/private_key_client/type_def.h"

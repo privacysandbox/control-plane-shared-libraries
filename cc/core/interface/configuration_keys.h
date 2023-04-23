@@ -29,7 +29,8 @@ static constexpr char kTransactionManagerSkipFailedLogsInRecovery[] =
     "google_scp_transaction_manager_skip_failed_logs_in_recovery";
 static constexpr char kPBSJournalServiceFlushIntervalInMilliseconds[] =
     "google_scp_journal_service_flush_interval_in_milliseconds";
-
+static constexpr char kTransactionTimeoutInSecondsConfigName[] =
+    "google_scp_pbs_transaction_timeout_in_seconds";
 static constexpr char kAggregatedMetricIntervalMs[] =
     "google_scp_aggregated_metric_interval_ms";
 }  // namespace google::scp::core

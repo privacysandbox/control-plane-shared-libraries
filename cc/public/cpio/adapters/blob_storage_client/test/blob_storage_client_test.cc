@@ -18,7 +18,7 @@
 
 #include "core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/adapters/blob_storage_client/mock/mock_blob_storage_client_with_overrides.h"
 #include "public/cpio/interface/blob_storage_client/blob_storage_client_interface.h"
 #include "public/cpio/proto/blob_storage_service/v1/blob_storage_service.pb.h"

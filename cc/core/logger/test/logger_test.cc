@@ -56,8 +56,6 @@ class LoggerTests : public ScpTestBase {
   string parent_uuid_str;
   string location;
   const string component_name = "LoggerTest";
-  const string machine_name = "Machine";
-  const string cluster_name = "Cluster";
 };
 
 TEST_F(LoggerTests, LogDebug) {
@@ -65,9 +63,16 @@ TEST_F(LoggerTests, LogDebug) {
   logger.Info(component_name, parent_uuid, uuid, location, "Message");
 
   auto logs = logger.GetMessages();
-  EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
-                         "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|32: Message");
+  EXPECT_EQ(logs.size(), 1);
+
+  auto first_delim = logs[0].find("|");
+  auto timestamp_string = logs[0].substr(0, first_delim);
+  auto after_timestamp_string = logs[0].substr(first_delim);
+
+  EXPECT_NO_THROW(std::stod(timestamp_string));
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
+                                        uuid_str + "|" + location +
+                                        "|32: Message");
 }
 
 TEST_F(LoggerTests, LogInfo) {
@@ -75,9 +80,16 @@ TEST_F(LoggerTests, LogInfo) {
   logger.Debug(component_name, parent_uuid, uuid, location, "Message");
 
   auto logs = logger.GetMessages();
-  EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
-                         "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|16: Message");
+  EXPECT_EQ(logs.size(), 1);
+
+  auto first_delim = logs[0].find("|");
+  auto timestamp_string = logs[0].substr(0, first_delim);
+  auto after_timestamp_string = logs[0].substr(first_delim);
+
+  EXPECT_NO_THROW(std::stod(timestamp_string));
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
+                                        uuid_str + "|" + location +
+                                        "|16: Message");
 }
 
 TEST_F(LoggerTests, LogError) {
@@ -85,9 +97,16 @@ TEST_F(LoggerTests, LogError) {
   logger.Error(component_name, parent_uuid, uuid, location, "Message");
 
   auto logs = logger.GetMessages();
-  EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
-                         "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|4: Message");
+  EXPECT_EQ(logs.size(), 1);
+
+  auto first_delim = logs[0].find("|");
+  auto timestamp_string = logs[0].substr(0, first_delim);
+  auto after_timestamp_string = logs[0].substr(first_delim);
+
+  EXPECT_NO_THROW(std::stod(timestamp_string));
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
+                                        uuid_str + "|" + location +
+                                        "|4: Message");
 }
 
 TEST_F(LoggerTests, LogWarning) {
@@ -96,9 +115,16 @@ TEST_F(LoggerTests, LogWarning) {
   logger.Warning(component_name, parent_uuid, uuid, location, "Message");
 
   auto logs = logger.GetMessages();
-  EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
-                         "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|8: Message");
+  EXPECT_EQ(logs.size(), 1);
+
+  auto first_delim = logs[0].find("|");
+  auto timestamp_string = logs[0].substr(0, first_delim);
+  auto after_timestamp_string = logs[0].substr(first_delim);
+
+  EXPECT_NO_THROW(std::stod(timestamp_string));
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
+                                        uuid_str + "|" + location +
+                                        "|8: Message");
 }
 
 TEST_F(LoggerTests, LogWithArgs) {
@@ -108,9 +134,15 @@ TEST_F(LoggerTests, LogWithArgs) {
                  1, "error");
 
   auto logs = logger.GetMessages();
-  EXPECT_EQ(logs[0], parent_uuid_str + "|" + uuid_str +
-                         "|LoggerTest|MACHINE|CLUSTER|" + location +
-                         "|8: Message 1 error");
+  EXPECT_EQ(logs.size(), 1);
+
+  auto first_delim = logs[0].find("|");
+  auto timestamp_string = logs[0].substr(0, first_delim);
+  auto after_timestamp_string = logs[0].substr(first_delim);
+
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
+                                        uuid_str + "|" + location +
+                                        "|8: Message 1 error");
 }
 
 TEST_F(LoggerTests, LogLevelToAndFromString) {

@@ -59,7 +59,7 @@ resource "aws_lambda_permission" "get_job_api_gateway_permission" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.get_job_lambda.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.frontend_api_gateway.execution_arn}/*/**"
+  source_arn    = "${aws_apigatewayv2_api.frontend_api_gateway.execution_arn}/*"
   qualifier     = var.get_job_lambda_provisioned_concurrency_enabled ? aws_lambda_function.get_job_lambda.version : null
 }
 
@@ -68,7 +68,7 @@ resource "aws_lambda_permission" "create_job_api_gateway_permission" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.create_job_lambda.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.frontend_api_gateway.execution_arn}/*/**"
+  source_arn    = "${aws_apigatewayv2_api.frontend_api_gateway.execution_arn}/*"
   qualifier     = var.create_job_lambda_provisioned_concurrency_enabled ? aws_lambda_function.create_job_lambda.version : null
 }
 

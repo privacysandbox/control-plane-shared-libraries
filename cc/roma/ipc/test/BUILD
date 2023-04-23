@@ -51,6 +51,7 @@ cc_test(
     ],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/ipc/src:roma_ipc_lib",
         "@com_google_googletest//:gtest_main",
     ],
@@ -65,6 +66,7 @@ cc_test(
     ],
     deps = [
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/ipc/src:roma_ipc_lib",
         "@com_google_googletest//:gtest_main",
     ],

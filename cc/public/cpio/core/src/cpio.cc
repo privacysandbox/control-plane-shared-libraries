@@ -67,7 +67,7 @@ static ExecutionResult SetLogger(const CpioOptions& options) {
     if (!execution_result.Successful()) {
       return execution_result;
     }
-    GlobalLogger::SetGlobalLogger(logger_ptr);
+    GlobalLogger::SetGlobalLogger(std::move(logger_ptr));
   }
 
   return SuccessExecutionResult();

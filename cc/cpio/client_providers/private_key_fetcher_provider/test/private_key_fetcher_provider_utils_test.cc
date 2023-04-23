@@ -24,7 +24,7 @@
 
 #include "core/interface/http_types.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using google::scp::core::BytesBuffer;
 using google::scp::core::ExecutionResult;
@@ -32,7 +32,6 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::HttpMethod;
 using google::scp::core::HttpRequest;
 using google::scp::core::HttpResponse;
-using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::GetErrorMessage;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_INVALID_RESOURCE_NAME;
@@ -98,7 +97,7 @@ TEST(PrivateKeyFetchingClientUtilsTest, ParsePrivateKeySuccess) {
   auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(
       BytesBuffer(bytes_str), response);
 
-  EXPECT_THAT(result, IsSuccessful());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(response.encryption_keys.size(), 1);
   const auto& encryption_key = *response.encryption_keys.begin();
   EXPECT_EQ(*encryption_key->key_id, "123456");
@@ -368,7 +367,7 @@ TEST(PrivateKeyFetchingClientUtilsTest, ParseMultiplePrivateKeysSuccess) {
   auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(
       BytesBuffer(bytes_str), response);
 
-  EXPECT_THAT(result, IsSuccessful());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(response.encryption_keys.size(), 2);
   EXPECT_EQ(*response.encryption_keys[0]->key_id, "111111");
   EXPECT_EQ(*response.encryption_keys[1]->key_id, "222222");

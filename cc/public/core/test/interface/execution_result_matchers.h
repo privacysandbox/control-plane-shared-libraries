@@ -31,6 +31,11 @@ namespace internal {
 std::string ToString(ExecutionStatus status);
 }  // namespace internal
 
+// Macro for shortening this pattern:
+// EXPECT_THAT(execution_result, IsSuccessful())
+#define EXPECT_SUCCESS(expression) \
+  EXPECT_THAT(expression, ::google::scp::core::test::IsSuccessful())
+
 // Matches arg with expected_result.
 // Example usage:
 // ExecutionResult result = foo();
@@ -51,7 +56,7 @@ MATCHER_P(ResultIs, expected_result, "") {
         internal::ToString(result.status), result.status_code,
         GetErrorMessage(result.status_code));
   };
-  if constexpr (std::is_same_v<
+  if constexpr (std::is_base_of_v<
                     google::scp::core::ExecutionResult,
                     std::remove_cv_t<std::remove_reference_t<decltype(arg)>>>) {
     // If arg is an ExecutionResult - directly compare.

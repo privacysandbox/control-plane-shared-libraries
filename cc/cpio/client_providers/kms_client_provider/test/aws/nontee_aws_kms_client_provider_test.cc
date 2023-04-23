@@ -34,6 +34,7 @@
 #include "cpio/client_providers/role_credentials_provider/mock/mock_role_credentials_provider.h"
 #include "cpio/common/src/aws/error_codes.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -51,7 +52,7 @@ using google::cmrt::sdk::kms_service::v1::DecryptResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
-using google::scp::core::SuccessExecutionResult;
+using google::scp::core::test::ResultIs;
 using google::scp::core::utils::Base64Decode;
 
 using google::scp::core::errors::
@@ -78,9 +79,8 @@ using std::unique_ptr;
 using std::vector;
 
 static constexpr char kAssumeRoleArn[] = "assumeRoleArn";
-static constexpr char kKeyArnWithPrefix[] = "aws-kms://keyArn";
 static constexpr char kKeyArn[] = "keyArn";
-static constexpr char kWrongKeyArn[] = "aws-kms://wrongkeyArn";
+static constexpr char kWrongKeyArn[] = "wrongkeyArn";
 static constexpr char kCiphertext[] = "ciphertext";
 static constexpr char kPlaintext[] = "plaintext";
 static constexpr char kRegion[] = "us-east-1";
@@ -129,9 +129,7 @@ class TeeAwsKmsClientProviderTest : public ::testing::Test {
         mock_credentials_provider_, mock_kms_client_);
   }
 
-  void TearDown() override {
-    EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
-  }
+  void TearDown() override { EXPECT_SUCCESS(client_->Stop()); }
 
   unique_ptr<MockNonteeAwsKmsClientProviderWithOverrides> client_;
   shared_ptr<MockKMSClient> mock_kms_client_;
@@ -142,95 +140,97 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingCredentialsProvider) {
   client_ = make_unique<MockNonteeAwsKmsClientProviderWithOverrides>(
       nullptr, mock_kms_client_);
 
-  EXPECT_EQ(client_->Init().status_code,
-            SC_AWS_KMS_CLIENT_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND);
+  EXPECT_THAT(client_->Init(),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_KMS_CLIENT_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND)));
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, MissingAssumeRoleArn) {
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_kms_region(kRegion);
-  kms_decrpyt_request->set_key_resource_name(kKeyArnWithPrefix);
+  kms_decrpyt_request->set_key_resource_name(kKeyArn);
   kms_decrpyt_request->set_ciphertext(kCiphertext);
 
   AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
       [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {});
 
-  EXPECT_EQ(
-      client_->Decrypt(context),
-      FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_ASSUME_ROLE_NOT_FOUND));
+  EXPECT_THAT(client_->Decrypt(context),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_KMS_CLIENT_PROVIDER_ASSUME_ROLE_NOT_FOUND)));
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, MissingRegion) {
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
-  kms_decrpyt_request->set_key_resource_name(kKeyArnWithPrefix);
+  kms_decrpyt_request->set_key_resource_name(kKeyArn);
   kms_decrpyt_request->set_ciphertext(kCiphertext);
 
   AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
       [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {});
 
-  EXPECT_EQ(
-      client_->Decrypt(context),
-
-      FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_REGION_NOT_FOUND));
+  EXPECT_THAT(client_->Decrypt(context),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_KMS_CLIENT_PROVIDER_REGION_NOT_FOUND)));
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, SuccessToDecrypt) {
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_kms_region(kRegion);
   kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
-  kms_decrpyt_request->set_key_resource_name(kKeyArnWithPrefix);
+  kms_decrpyt_request->set_key_resource_name(kKeyArn);
   kms_decrpyt_request->set_ciphertext(kCiphertext);
   atomic<bool> condition = false;
 
   AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
       [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
-        EXPECT_EQ(context.result, SuccessExecutionResult());
+        EXPECT_SUCCESS(context.result);
         EXPECT_EQ(context.response->plaintext(), kPlaintext);
         condition = true;
       });
 
-  EXPECT_EQ(client_->Decrypt(context), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Decrypt(context));
   WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, MissingCipherText) {
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_kms_region(kRegion);
   kms_decrpyt_request->set_account_identity(kAssumeRoleArn);
-  kms_decrpyt_request->set_key_resource_name(kKeyArnWithPrefix);
+  kms_decrpyt_request->set_key_resource_name(kKeyArn);
   atomic<bool> condition = false;
 
   AsyncContext<DecryptRequest, DecryptResponse> context(
       kms_decrpyt_request,
       [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
-        EXPECT_EQ(context.result.status_code,
-                  SC_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND);
+        EXPECT_THAT(context.result,
+                    ResultIs(FailureExecutionResult(
+                        SC_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND)));
         condition = true;
       });
-  EXPECT_EQ(client_->Decrypt(context).status_code,
-            SC_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND);
+  EXPECT_THAT(client_->Decrypt(context),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND)));
   WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, MissingKeyArn) {
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_kms_region(kRegion);
@@ -242,17 +242,19 @@ TEST_F(TeeAwsKmsClientProviderTest, MissingKeyArn) {
       kms_decrpyt_request,
       [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
         condition = true;
-        EXPECT_EQ(context.result.status_code,
-                  SC_AWS_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND);
+        EXPECT_THAT(context.result,
+                    ResultIs(FailureExecutionResult(
+                        SC_AWS_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND)));
       });
-  EXPECT_EQ(client_->Decrypt(context).status_code,
-            SC_AWS_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND);
+  EXPECT_THAT(client_->Decrypt(context),
+              ResultIs(FailureExecutionResult(
+                  SC_AWS_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND)));
   WaitUntil([&]() { return condition.load(); });
 }
 
 TEST_F(TeeAwsKmsClientProviderTest, FailedDecryption) {
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
 
   auto kms_decrpyt_request = make_shared<DecryptRequest>();
   kms_decrpyt_request->set_kms_region(kRegion);
@@ -265,10 +267,11 @@ TEST_F(TeeAwsKmsClientProviderTest, FailedDecryption) {
       kms_decrpyt_request,
       [&](AsyncContext<DecryptRequest, DecryptResponse>& context) {
         condition = true;
-        EXPECT_EQ(context.result.status_code,
-                  SC_AWS_KMS_CLIENT_PROVIDER_DECRYPTION_FAILED);
+        EXPECT_THAT(context.result,
+                    ResultIs(FailureExecutionResult(
+                        SC_AWS_KMS_CLIENT_PROVIDER_DECRYPTION_FAILED)));
       });
-  EXPECT_EQ(client_->Decrypt(context), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Decrypt(context));
   WaitUntil([&]() { return condition.load(); });
 }
 }  // namespace google::scp::cpio::client_providers::test

@@ -78,6 +78,8 @@ struct TransactionRequest {
   /// Vector of all the commands for a transaction.
   std::vector<std::shared_ptr<TransactionCommand>> commands;
   /// Timestamp of when the transaction expires.
+  /// NOTE: This is unused, see Transaction Engine.cc for the transaction
+  /// lifetime.
   Timestamp timeout_time;
   /// Indicates whether the transaction is coordinated by a remote transaction
   /// manager.

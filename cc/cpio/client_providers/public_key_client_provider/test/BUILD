@@ -28,6 +28,7 @@ cc_test(
         "//cc/core/message_router/src:message_router_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/cpio/client_providers/public_key_client_provider/src:public_key_client_provider_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/public/cpio/proto/public_key_service/v1:public_key_service_cc_proto",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
@@ -46,6 +47,7 @@ cc_test(
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/cpio/client_providers/public_key_client_provider/src:public_key_client_provider_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

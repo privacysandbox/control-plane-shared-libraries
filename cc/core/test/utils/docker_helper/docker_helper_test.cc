@@ -75,6 +75,6 @@ TEST(DockerHelper, BuildRemoveNetworkCmd) {
 
 TEST(DockerHelper, BuildStopContainerCmd) {
   EXPECT_EQ(BuildStopContainerCmd("container_name"),
-            "docker stop container_name");
+            "docker rm -f container_name");
 }
 }  // namespace google::scp::core::test

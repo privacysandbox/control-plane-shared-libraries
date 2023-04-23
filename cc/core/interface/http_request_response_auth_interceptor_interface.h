@@ -47,6 +47,7 @@ class HttpRequestResponseAuthInterceptorInterface {
    * @return ExecutionResultOr<AuthorizedMetadata>
    */
   virtual ExecutionResultOr<AuthorizedMetadata>
-  ObtainAuthorizedMetadataFromResponse(const HttpResponse&) = 0;
+  ObtainAuthorizedMetadataFromResponse(const AuthorizationMetadata&,
+                                       const HttpResponse&) = 0;
 };
 }  // namespace google::scp::core

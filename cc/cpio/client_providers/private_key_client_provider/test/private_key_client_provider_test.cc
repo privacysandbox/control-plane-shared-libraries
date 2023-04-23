@@ -36,7 +36,7 @@
 #include "cpio/client_providers/private_key_client_provider/src/private_key_client_utils.h"
 #include "cpio/client_providers/private_key_fetcher_provider/mock/mock_private_key_fetcher_provider.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/proto/private_key_service/v1/private_key_service.pb.h"
 
 using google::cmrt::sdk::kms_service::v1::DecryptRequest;
@@ -232,13 +232,13 @@ class PrivateKeyClientProviderTest : public ::testing::Test {
     mock_private_key_fetcher =
         private_key_client_provider->GetPrivateKeyFetcherProvider();
     mock_kms_client = private_key_client_provider->GetKmsClientProvider();
-    EXPECT_THAT(private_key_client_provider->Init(), IsSuccessful());
-    EXPECT_THAT(private_key_client_provider->Run(), IsSuccessful());
+    EXPECT_SUCCESS(private_key_client_provider->Init());
+    EXPECT_SUCCESS(private_key_client_provider->Run());
   }
 
   void TearDown() override {
     if (private_key_client_provider) {
-      EXPECT_THAT(private_key_client_provider->Stop(), IsSuccessful());
+      EXPECT_SUCCESS(private_key_client_provider->Stop());
     }
   }
 
@@ -340,12 +340,12 @@ TEST_F(PrivateKeyClientProviderTest, ListPrivateKeysByIdsSuccess) {
         auto expected_keys = BuildExpectedPrivateKeys(encoded_private_key);
         EXPECT_THAT(context.response->private_keys(),
                     Pointwise(EqualsProto(), expected_keys));
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         response_count.fetch_add(1);
       });
 
   auto result = private_key_client_provider->ListPrivateKeys(context);
-  EXPECT_THAT(result, IsSuccessful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
@@ -369,12 +369,12 @@ TEST_F(PrivateKeyClientProviderTest, ListPrivateKeysByTimeSuccess) {
         auto expected_keys = BuildExpectedPrivateKeys(encoded_private_key);
         EXPECT_THAT(context.response->private_keys(),
                     Pointwise(EqualsProto(), expected_keys));
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         response_count.fetch_add(1);
       });
 
   auto result = private_key_client_provider->ListPrivateKeys(context);
-  EXPECT_THAT(result, IsSuccessful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
@@ -417,7 +417,7 @@ TEST_F(PrivateKeyClientProviderTest, FetchingPrivateKeysFailed) {
       });
 
   auto result = private_key_client_provider->ListPrivateKeys(context);
-  EXPECT_THAT(result, IsSuccessful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
@@ -444,7 +444,7 @@ TEST_F(PrivateKeyClientProviderTest,
       });
 
   auto result = private_key_client_provider->ListPrivateKeys(context);
-  EXPECT_THAT(result, IsSuccessful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
@@ -470,7 +470,7 @@ TEST_F(PrivateKeyClientProviderTest, FailedWithDecryptPrivateKey) {
       });
 
   auto result = private_key_client_provider->ListPrivateKeys(context);
-  EXPECT_THAT(result, IsSuccessful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
@@ -514,7 +514,7 @@ TEST_F(PrivateKeyClientProviderTest, FailedWithOneKmsDecryptContext) {
       });
 
   auto result = private_key_client_provider->ListPrivateKeys(context);
-  EXPECT_THAT(result, IsSuccessful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 }  // namespace google::scp::cpio::client_providers::test

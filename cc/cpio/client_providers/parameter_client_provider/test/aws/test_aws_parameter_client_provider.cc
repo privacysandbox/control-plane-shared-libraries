@@ -30,6 +30,7 @@ using Aws::Client::ClientConfiguration;
 using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::cpio::common::test::CreateTestClientConfiguration;
+using std::dynamic_pointer_cast;
 using std::make_shared;
 using std::shared_ptr;
 using std::string;
@@ -41,13 +42,14 @@ ExecutionResult TestAwsParameterClientProvider::CreateClientConfiguration(
   return SuccessExecutionResult();
 }
 
-std::shared_ptr<ParameterClientProviderInterface>
+shared_ptr<ParameterClientProviderInterface>
 ParameterClientProviderFactory::Create(
-    const std::shared_ptr<ParameterClientOptions>& options,
-    const std::shared_ptr<InstanceClientProviderInterface>&
-        instance_client_provider) {
+    const shared_ptr<ParameterClientOptions>& options,
+    const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
+    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
   return make_shared<TestAwsParameterClientProvider>(
-      std::dynamic_pointer_cast<TestAwsParameterClientOptions>(options),
+      dynamic_pointer_cast<TestAwsParameterClientOptions>(options),
       instance_client_provider);
 }
 }  // namespace google::scp::cpio::client_providers

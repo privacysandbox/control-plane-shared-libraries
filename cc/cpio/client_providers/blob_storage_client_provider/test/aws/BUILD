@@ -33,7 +33,7 @@ cc_test(
         "//cc/core/utils/src:core_utils",
         "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_provider_lib",
         "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
-        "//cc/public/core/test/interface:execution_result_test_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@aws_sdk_cpp//:core",
         "@aws_sdk_cpp//:s3",
         "@com_google_googletest//:gtest_main",

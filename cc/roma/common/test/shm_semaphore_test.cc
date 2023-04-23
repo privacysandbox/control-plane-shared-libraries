@@ -22,6 +22,7 @@
 #include <thread>
 #include <vector>
 
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/common/src/process.h"
 #include "roma/common/src/shm_allocator.h"
 
@@ -50,7 +51,7 @@ TEST(ShmSemaphoreTest, MultiProcessWaitAndSignal) {
     auto ctx = SharedMemoryPool::SwitchTo(*pool);
 
     auto result = sem->WaitOne();
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
 
     return SuccessExecutionResult();
   };
@@ -60,7 +61,7 @@ TEST(ShmSemaphoreTest, MultiProcessWaitAndSignal) {
     auto ctx = SharedMemoryPool::SwitchTo(*pool);
 
     auto result = sem->Signal();
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
 
     return SuccessExecutionResult();
   };
@@ -72,8 +73,8 @@ TEST(ShmSemaphoreTest, MultiProcessWaitAndSignal) {
   auto result1 = Process::Create(wait_process, pid1);
   auto result2 = Process::Create(signal_process, pid2);
 
-  EXPECT_EQ(result1, SuccessExecutionResult());
-  EXPECT_EQ(result2, SuccessExecutionResult());
+  EXPECT_SUCCESS(result1);
+  EXPECT_SUCCESS(result2);
   waitpid(pid1, &child_status1, 0);
   waitpid(pid2, &child_status2, 0);
   EXPECT_EQ(WEXITSTATUS(child_status1), 0);
@@ -88,12 +89,12 @@ TEST(ShmSemaphoreTest, MultiThreadWaitAndSignal) {
   for (auto i = 0; i < 100; ++i) {
     threads.push_back(thread([&sem]() {
       auto result = sem.WaitOne();
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
     }));
 
     threads.push_back(thread([&sem]() {
       auto result = sem.Signal();
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
     }));
   }
 
@@ -109,7 +110,7 @@ TEST(ShmSemaphoreTest, TryWaitShouldFailWhenSemaphoreIsTaken) {
   sem.Signal();
 
   // It was signaled so we should be able to take it
-  EXPECT_TRUE(sem.TryWait().Successful());
+  EXPECT_SUCCESS(sem.TryWait());
   // It was taken so we should not be able to take it
   EXPECT_FALSE(sem.TryWait().Successful());
 }

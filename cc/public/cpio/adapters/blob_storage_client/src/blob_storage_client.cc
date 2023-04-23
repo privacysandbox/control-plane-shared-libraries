@@ -53,8 +53,6 @@ using std::shared_ptr;
 
 namespace {
 constexpr char kBlobStorageClient[] = "BlobStorageClient";
-
-constexpr size_t kConcurrentQueueDefaultSize = 500;
 }  // namespace
 
 namespace google::scp::cpio {

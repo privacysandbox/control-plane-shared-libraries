@@ -18,6 +18,7 @@ cc_library(
     name = "role_credentials_provider_lib",
     srcs = select({
         "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/role_credentials_provider/src/aws:aws_role_credentials_provider_srcs"],
+        "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/role_credentials_provider/src/gcp:gcp_role_credentials_provider_srcs"],
         "//conditions:default": ["//cc/cpio/client_providers/role_credentials_provider/src/aws:aws_role_credentials_provider_srcs"],
     }) + ["//cc/cpio/client_providers/interface:role_credentials_provider_interface.h"],
     copts = [
@@ -25,11 +26,16 @@ cc_library(
     ],
     deps = select({
         "//cc/public/cpio/interface:aws_cpio_lib": [
+            "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
             "//cc/cpio/common/src/aws:aws_utils_lib",
             "@aws_sdk_cpp//:core",
             "@aws_sdk_cpp//:sts",
         ],
+        "//cc/public/cpio/interface:gcp_cpio_lib": [
+            "//cc/cpio/client_providers/instance_client_provider/src/gcp:gcp_instance_client_provider",
+        ],
         "//conditions:default": [
+            "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
             "//cc/cpio/common/src/aws:aws_utils_lib",
             "@aws_sdk_cpp//:core",
             "@aws_sdk_cpp//:sts",
@@ -38,7 +44,7 @@ cc_library(
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
         "//cc/core/interface:interface_lib",
-        "//cc/public/cpio/interface:type_def",
         "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_lib",
+        "//cc/public/cpio/interface:type_def",
     ],
 )

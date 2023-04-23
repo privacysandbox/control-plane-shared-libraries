@@ -12,27 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 # Note: these rules add a dependency on the golang toolchain and must be ordered
 # after any `go_register_toolchains` calls in this file (or else the toolchain
 # defined in io_bazel_rules_docker are used for future go toolchains)
 
-def bazel_container_rules():
-    # Needed for build containers which must execute bazel commands (e.g. //cc/aws/proxy).
-    maybe(
-        http_file,
-        name = "bazelisk",
-        downloaded_file_path = "bazelisk",
-        executable = True,
-        sha256 = "84e946ed8537eaaa4d540df338a593e373e70c5ddca9f2f49e1aaf3a04bdd6ca",
-        urls = ["https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64"],
-    )
+def absl():
+    # Bazel Skylib. Required by absl.
     maybe(
         http_archive,
-        name = "io_bazel_rules_docker",
-        sha256 = "59d5b42ac315e7eadffa944e86e90c2990110a1c8075f1cd145f487e999d22b3",
-        strip_prefix = "rules_docker-0.17.0",
-        urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.17.0/rules_docker-v0.17.0.tar.gz"],
+        name = "bazel_skylib",
+        sha256 = "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728",
+        urls = ["https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz"],
+    )
+
+    maybe(
+        http_archive,
+        name = "com_google_absl",
+        sha256 = "81311c17599b3712069ded20cca09a62ab0bf2a89dfa16993786c8782b7ed145",
+        strip_prefix = "abseil-cpp-20230125.1",
+        # Committed on Jan 25, 2023.
+        urls = [
+            "https://github.com/abseil/abseil-cpp/archive/20230125.1.tar.gz",
+        ],
     )

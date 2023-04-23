@@ -32,6 +32,7 @@ java_library(
         "//java/com/google/scp/operator/cpio/configclient",
         "//java/com/google/scp/shared/aws/credsprovider",
         "//java/com/google/scp/shared/aws/util",
+        "//java/com/google/scp/shared/clients",
         "//java/com/google/scp/shared/clients/configclient:aws",
         "//java/com/google/scp/shared/clients/configclient:model",
         "//java/external:apache_httpclient",

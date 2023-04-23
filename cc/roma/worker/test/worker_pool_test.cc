@@ -25,6 +25,7 @@
 
 #include "core/test/utils/auto_init_run_stop.h"
 #include "include/libplatform/libplatform.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/ipc/src/ipc_manager.h"
 
 using google::scp::core::SuccessExecutionResult;
@@ -65,9 +66,9 @@ TEST_F(WorkerPoolTest, InitRunStopTrueV8) {
   AutoInitRunStop auto_init_run_stop(*manager);
 
   WorkerPool worker_pool;
-  EXPECT_EQ(worker_pool.Init(), SuccessExecutionResult());
-  EXPECT_EQ(worker_pool.Run(), SuccessExecutionResult());
-  EXPECT_EQ(worker_pool.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(worker_pool.Init());
+  EXPECT_SUCCESS(worker_pool.Run());
+  EXPECT_SUCCESS(worker_pool.Stop());
   IpcManager::Instance()->ReleaseLocks();
   int child_exit_status;
   waitpid(-1, &child_exit_status, 0);
@@ -79,8 +80,8 @@ TEST_F(WorkerPoolTest, InitRunStop) {
   AutoInitRunStop auto_init_run_stop(*manager);
 
   WorkerPool worker_pool;
-  EXPECT_EQ(worker_pool.Init(), SuccessExecutionResult());
-  EXPECT_EQ(worker_pool.Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(worker_pool.Init());
+  EXPECT_SUCCESS(worker_pool.Run());
 
   // Make sure worker processes are started. Wait until the given worker PID is
   // not -1
@@ -90,7 +91,7 @@ TEST_F(WorkerPoolTest, InitRunStop) {
     }
   }
 
-  EXPECT_EQ(worker_pool.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(worker_pool.Stop());
   manager->ReleaseLocks();
 
   int child_exit_status;

@@ -32,6 +32,7 @@ namespace google::scp::core {
 //
 // This is useful if the callsite doesn't need to use the ExecutionResult
 // anymore than just returning it upon failure.
+//
 // Example 1:
 // ExecutionResult result = foo();
 // RETURN_IF_FAILURE(result);
@@ -42,6 +43,30 @@ namespace google::scp::core {
 // // If we reach this point, foo() was Successful.
 #define RETURN_IF_FAILURE(execution_result)                            \
   if (ExecutionResult __res = execution_result; !__res.Successful()) { \
+    return __res;                                                      \
+  }
+
+// Same as above but logs an error before returning upon failure.
+// The other arguments would be the same as those used in ERROR(...).
+// "__res" can be used to access the ExecutionResult that would be returned.
+//
+// Example:
+// RETURN_AND_LOG_IF_FAILURE(foo(), kComponentName, parent_activity_id,
+//     activity_id, __res, "some message %s", str.c_str()));
+// // If we reach this point, foo() was Successful and ERROR_CONTEXT was not
+// // called.
+#define RETURN_AND_LOG_IF_FAILURE(execution_result, ...) \
+  __RETURN_IF_FAILURE_LOG(execution_result, ERROR, __VA_ARGS__)
+// Same as above but logs an error using the supplied context upon failure.
+// The other arguments would be the same as those used in ERROR_CONTEXT(...).
+// RETURN_AND_LOG_IF_FAILURE_CONTEXT(foo(), kComponentName, context,
+//     __res, "some message %s", str.c_str()));
+#define RETURN_AND_LOG_IF_FAILURE_CONTEXT(execution_result, ...) \
+  __RETURN_IF_FAILURE_LOG(execution_result, ERROR_CONTEXT, __VA_ARGS__)
+
+#define __RETURN_IF_FAILURE_LOG(execution_result, error_level, ...)    \
+  if (ExecutionResult __res = execution_result; !__res.Successful()) { \
+    error_level(__VA_ARGS__);                                          \
     return __res;                                                      \
   }
 
@@ -80,17 +105,50 @@ namespace google::scp::core {
 // // value.
 #define ASSIGN_OR_RETURN(lhs, execution_result_or)            \
   __ASSIGN_OR_RETURN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__), \
-                            execution_result_or)
+                            execution_result_or, )
+
+// Same as above but logs the error before returning it.
+// The other arguments would be the same as those used in ERROR(...).
+// "__res" can be used to access the ExecutionResult that would be returned.
+//
+// Example:
+// ExecutionResultOr<Foo> result_or = foo();
+// ASSIGN_OR_LOG_AND_RETURN(auto val, result_or, kComponentName,
+//     parent_activity_id, activity_id, __res, "some message %s", str.c_str());
+// // If we reach this point, foo() was Successful and val is of type Foo.
+#define ASSIGN_OR_LOG_AND_RETURN(lhs, execution_result_or, ...) \
+  __ASSIGN_OR_RETURN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__),   \
+                            execution_result_or, ERROR(__VA_ARGS__))
+
+// Same as above but logs the error using the supplied context before returning
+// it.
+// The other arguments would be the same as those used in ERROR_CONTEXT(...).
+// "__res" can be used to access the ExecutionResult that would be returned.
+//
+// Example:
+// ExecutionResultOr<Foo> result_or = foo();
+// ASSIGN_OR_LOG_AND_RETURN_CONTEXT(auto val, result_or, kComponentName,
+//     context, __res, "some message %s", str.c_str());
+// // If we reach this point, foo() was Successful and val is of type Foo.
+#define ASSIGN_OR_LOG_AND_RETURN_CONTEXT(lhs, execution_result_or, ...) \
+  __ASSIGN_OR_RETURN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__),           \
+                            execution_result_or, ERROR_CONTEXT(__VA_ARGS__))
+
+#define __ASSIGN_OR_RETURN_W_LOG(lhs, execution_result_or, failure_statement) \
+  __ASSIGN_OR_RETURN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__),                 \
+                            execution_result_or, failure_statement)
 
 #define __UNIQUE_VAR_NAME_HELPER(x, y) x##y
 #define __UNIQUE_VAR_NAME(x) __UNIQUE_VAR_NAME_HELPER(__var, x)
 
-#define __ASSIGN_OR_RETURN_HELPER(lhs, result_or_temp_var_name, \
-                                  execution_result_or)          \
-  auto result_or_temp_var_name = execution_result_or;           \
-  if (!result_or_temp_var_name.Successful()) {                  \
-    return result_or_temp_var_name.result();                    \
-  }                                                             \
+#define __ASSIGN_OR_RETURN_HELPER(lhs, result_or_temp_var_name,           \
+                                  execution_result_or, failure_statement) \
+  auto result_or_temp_var_name = execution_result_or;                     \
+  if (!result_or_temp_var_name.Successful()) {                            \
+    auto __res = result_or_temp_var_name.result();                        \
+    failure_statement;                                                    \
+    return __res;                                                         \
+  }                                                                       \
   lhs = result_or_temp_var_name.release();
 
 /// Operation's execution status.

@@ -37,7 +37,7 @@
 #include "core/http2_client/mock/mock_http_connection.h"
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using namespace nghttp2::asio_http2;          // NOLINT
 using namespace nghttp2::asio_http2::server;  // NOLINT
@@ -88,8 +88,8 @@ TEST(HttpConnectionTest, SimpleRequest) {
   MockHttpConnection connection(async_executor, "localhost",
                                 to_string(server.ports()[0]), false);
 
-  EXPECT_THAT(connection.Init(), IsSuccessful());
-  EXPECT_THAT(connection.Run(), IsSuccessful());
+  EXPECT_SUCCESS(connection.Init());
+  EXPECT_SUCCESS(connection.Run());
 
   vector<Uuid> keys;
   connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -111,7 +111,7 @@ TEST(HttpConnectionTest, SimpleRequest) {
     usleep(1000);
   }
 
-  EXPECT_EQ(execution_result, SuccessExecutionResult());
+  EXPECT_SUCCESS(execution_result);
 
   while (keys.size() == 0) {
     connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -151,8 +151,8 @@ TEST(HttpConnectionTest, CancelCallbacks) {
   MockHttpConnection connection(async_executor, "localhost",
                                 to_string(server.ports()[0]), false);
 
-  EXPECT_THAT(connection.Init(), IsSuccessful());
-  EXPECT_THAT(connection.Run(), IsSuccessful());
+  EXPECT_SUCCESS(connection.Init());
+  EXPECT_SUCCESS(connection.Run());
 
   vector<Uuid> keys;
   connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -166,9 +166,9 @@ TEST(HttpConnectionTest, CancelCallbacks) {
   http_context.callback =
       [&](AsyncContext<HttpRequest, HttpResponse>& context) {
         if (!is_called) {
-          EXPECT_EQ(context.result,
-                    FailureExecutionResult(
-                        errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED));
+          EXPECT_THAT(context.result,
+                      ResultIs(FailureExecutionResult(
+                          errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED)));
           is_called = true;
         }
       };
@@ -179,14 +179,14 @@ TEST(HttpConnectionTest, CancelCallbacks) {
     usleep(1000);
   }
 
-  EXPECT_EQ(execution_result, SuccessExecutionResult());
+  EXPECT_SUCCESS(execution_result);
 
   while (keys.size() == 0) {
     connection.GetPendingNetworkCallbacks().Keys(keys);
     usleep(1000);
   }
 
-  connection.CancelPendingCallbacks(true);
+  connection.CancelPendingCallbacks();
   EXPECT_EQ(is_called, true);
 
   connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -217,8 +217,8 @@ TEST(HttpConnectionTest, StopRemovesCallback) {
   MockHttpConnection connection(async_executor, "localhost",
                                 to_string(server.ports()[0]), false);
 
-  EXPECT_THAT(connection.Init(), IsSuccessful());
-  EXPECT_THAT(connection.Run(), IsSuccessful());
+  EXPECT_SUCCESS(connection.Init());
+  EXPECT_SUCCESS(connection.Run());
 
   vector<Uuid> keys;
   connection.GetPendingNetworkCallbacks().Keys(keys);
@@ -245,7 +245,7 @@ TEST(HttpConnectionTest, StopRemovesCallback) {
     usleep(1000);
   }
 
-  EXPECT_THAT(execution_result, IsSuccessful());
+  EXPECT_SUCCESS(execution_result);
 
   while (keys.size() == 0) {
     connection.GetPendingNetworkCallbacks().Keys(keys);

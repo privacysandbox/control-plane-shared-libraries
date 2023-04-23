@@ -22,6 +22,7 @@ LINK_OPTS = [
 
 cc_binary(
     name = "blob_storage_client_test",
+    testonly = True,
     srcs = ["blob_storage_client_test.cc"],
     copts = select({
         "//cc/public/cpio/interface:gcp_cpio_lib": [
@@ -43,6 +44,7 @@ cc_binary(
 
 cc_binary(
     name = "metric_client_test",
+    testonly = True,
     srcs = ["metric_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -51,12 +53,12 @@ cc_binary(
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface:cpio",
         "//cc/public/cpio/interface/metric_client",
-        "@aws_sdk_cpp//:core",
     ],
 )
 
 cc_binary(
     name = "local_metric_client_test",
+    testonly = True,
     srcs = ["local_metric_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -65,12 +67,12 @@ cc_binary(
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface/metric_client",
         "//cc/public/cpio/test/global_cpio:test_lib_cpio",
-        "@aws_sdk_cpp//:core",
     ],
 )
 
 cc_binary(
     name = "public_key_client_test",
+    testonly = True,
     srcs = ["public_key_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -79,12 +81,26 @@ cc_binary(
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface:cpio",
         "//cc/public/cpio/interface/public_key_client",
-        "@aws_sdk_cpp//:core",
+    ],
+)
+
+cc_binary(
+    name = "kms_client_test",
+    testonly = True,
+    srcs = ["kms_client_test.cc"],
+    linkopts = LINK_OPTS,
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/interface:errors",
+        "//cc/public/cpio/interface:cpio",
+        "//cc/public/cpio/interface/kms_client",
     ],
 )
 
 cc_binary(
     name = "local_private_key_client_test",
+    testonly = True,
     srcs = ["local_private_key_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -93,12 +109,12 @@ cc_binary(
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/test/global_cpio:test_lib_cpio",
         "//cc/public/cpio/test/private_key_client:test_private_key_client",
-        "@aws_sdk_cpp//:core",
     ],
 )
 
 cc_binary(
     name = "private_key_client_test",
+    testonly = True,
     srcs = ["private_key_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -107,12 +123,12 @@ cc_binary(
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface:cpio",
         "//cc/public/cpio/interface/private_key_client",
-        "@aws_sdk_cpp//:core",
     ],
 )
 
 cc_binary(
     name = "crypto_client_test",
+    testonly = True,
     srcs = ["crypto_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -121,12 +137,12 @@ cc_binary(
         "//cc/public/core/interface:errors",
         "//cc/public/cpio/interface:cpio",
         "//cc/public/cpio/interface/crypto_client",
-        "@aws_sdk_cpp//:core",
     ],
 )
 
 cc_binary(
     name = "parameter_client_test",
+    testonly = True,
     srcs = ["parameter_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -136,12 +152,12 @@ cc_binary(
         "//cc/public/cpio/interface:cpio",
         "//cc/public/cpio/interface/parameter_client",
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
-        "@aws_sdk_cpp//:core",
     ],
 )
 
 cc_binary(
     name = "local_parameter_client_test",
+    testonly = True,
     srcs = ["local_parameter_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -151,12 +167,12 @@ cc_binary(
         "//cc/public/cpio/interface/parameter_client",
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
         "//cc/public/cpio/test/global_cpio:test_lib_cpio",
-        "@aws_sdk_cpp//:core",
     ],
 )
 
 cc_binary(
     name = "instance_client_test",
+    testonly = True,
     srcs = ["instance_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -166,12 +182,12 @@ cc_binary(
         "//cc/public/cpio/interface:cpio",
         "//cc/public/cpio/interface/instance_client",
         "//cc/public/cpio/proto/instance_service/v1:instance_service_cc_proto",
-        "@aws_sdk_cpp//:core",
     ],
 )
 
 cc_binary(
     name = "local_instance_client_test",
+    testonly = True,
     srcs = ["local_instance_client_test.cc"],
     linkopts = LINK_OPTS,
     deps = [
@@ -181,6 +197,5 @@ cc_binary(
         "//cc/public/cpio/interface/instance_client",
         "//cc/public/cpio/proto/instance_service/v1:instance_service_cc_proto",
         "//cc/public/cpio/test/global_cpio:test_lib_cpio",
-        "@aws_sdk_cpp//:core",
     ],
 )

@@ -24,6 +24,8 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/proto/queue_service/v1/queue_service.pb.h"
 
+#include "instance_client_provider_interface.h"
+
 namespace google::scp::cpio::client_providers {
 
 /**

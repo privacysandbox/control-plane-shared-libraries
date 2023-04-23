@@ -19,9 +19,14 @@
 #include <memory>
 
 #include "cpio/client_providers/global_cpio/src/cpio_provider/lib_cpio_provider.h"
-#include "cpio/client_providers/instance_client_provider/test/test_instance_client_provider.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "public/cpio/interface/type_def.h"
+
+#if defined(AWS_TEST)
+#include "cpio/client_providers/instance_client_provider/test/aws/test_aws_instance_client_provider.h"
+#elif defined(GCP_TEST)
+#include "cpio/client_providers/instance_client_provider/test/gcp/test_gcp_instance_client_provider.h"
+#endif
 
 using std::make_shared;
 using std::make_unique;
@@ -32,8 +37,13 @@ namespace google::scp::cpio::client_providers {
 TestLibCpioProvider::TestLibCpioProvider(
     const shared_ptr<TestCpioOptions>& test_cpio_options)
     : LibCpioProvider(test_cpio_options) {
-  instance_client_provider_ = make_shared<TestInstanceClientProvider>(
+#if defined(AWS_TEST)
+  instance_client_provider_ = make_shared<TestAwsInstanceClientProvider>(
       make_shared<TestInstanceClientOptions>(*test_cpio_options));
+#elif defined(GCP_TEST)
+  instance_client_provider_ = make_shared<TestGcpInstanceClientProvider>(
+      make_shared<TestInstanceClientOptions>(*test_cpio_options));
+#endif
 }
 
 unique_ptr<CpioProviderInterface> CpioProviderFactory::Create(

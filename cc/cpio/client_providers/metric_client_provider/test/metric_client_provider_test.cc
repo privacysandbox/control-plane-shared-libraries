@@ -32,6 +32,7 @@
 #include "cpio/client_providers/metric_client_provider/src/error_codes.h"
 #include "cpio/common/src/aws/error_codes.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 using Aws::InitAPI;
@@ -53,6 +54,7 @@ using google::scp::core::errors::
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET;
+using google::scp::core::test::ResultIs;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::mock::
     MockMetricClientProviderWithOverrides;
@@ -106,9 +108,9 @@ class MetricClientProviderTest : public ::testing::Test {
 TEST_F(MetricClientProviderTest, EmptyAsyncExecutorIsNotOKWithBatchRecording) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
       nullptr, CreateMetricClientOptions(true));
-  EXPECT_EQ(
-      client->Init(),
-      FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_EXECUTOR_NOT_AVAILABLE));
+  EXPECT_THAT(client->Init(),
+              ResultIs(FailureExecutionResult(
+                  SC_METRIC_CLIENT_PROVIDER_EXECUTOR_NOT_AVAILABLE)));
 }
 
 TEST_F(MetricClientProviderTest, EmptyAsyncExecutorIsOKWithoutBatchRecording) {
@@ -130,11 +132,11 @@ TEST_F(MetricClientProviderTest, EmptyAsyncExecutorIsOKWithoutBatchRecording) {
         return SuccessExecutionResult();
       };
 
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->Run(), SuccessExecutionResult());
-  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_SUCCESS(client->Run());
+  EXPECT_SUCCESS(client->PutMetrics(context));
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
-  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+  EXPECT_SUCCESS(client->PutMetrics(context));
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
   WaitUntil([&]() { return batch_push_called_count == 2; });
 }
@@ -143,8 +145,8 @@ TEST_F(MetricClientProviderTest, EmptyNamespaceFailsInit) {
   auto client = make_unique<MockMetricClientProviderWithOverrides>(
       mock_async_executor_, CreateMetricClientOptions(false, ""));
   auto result = client->Init();
-  EXPECT_EQ(result, FailureExecutionResult(
-                        SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET));
+  EXPECT_THAT(result, ResultIs(FailureExecutionResult(
+                          SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET)));
 }
 
 TEST_F(MetricClientProviderTest, InvalidMetric) {
@@ -155,11 +157,12 @@ TEST_F(MetricClientProviderTest, InvalidMetric) {
       make_shared<PutMetricsRequest>(),
       [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->Run(), SuccessExecutionResult());
-  EXPECT_EQ(client->PutMetrics(context),
-            FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET));
-  EXPECT_EQ(client->Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_SUCCESS(client->Run());
+  EXPECT_THAT(client->PutMetrics(context),
+              ResultIs(FailureExecutionResult(
+                  SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET)));
+  EXPECT_SUCCESS(client->Stop());
 }
 
 TEST_F(MetricClientProviderTest, FailedWithoutRunning) {
@@ -170,11 +173,13 @@ TEST_F(MetricClientProviderTest, FailedWithoutRunning) {
       make_shared<PutMetricsRequest>(),
       [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->ScheduleMetricsBatchPush(),
-            FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING));
-  EXPECT_EQ(client->PutMetrics(context),
-            FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING));
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_THAT(client->ScheduleMetricsBatchPush(),
+              ResultIs(FailureExecutionResult(
+                  SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING)));
+  EXPECT_THAT(client->PutMetrics(context),
+              ResultIs(FailureExecutionResult(
+                  SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING)));
 }
 
 TEST_F(MetricClientProviderTest, LaunchScheduleMetricsBatchPushWithRun) {
@@ -189,8 +194,8 @@ TEST_F(MetricClientProviderTest, LaunchScheduleMetricsBatchPushWithRun) {
         return FailureExecutionResult(SC_UNKNOWN);
       };
 
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->Run(), FailureExecutionResult(SC_UNKNOWN));
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_THAT(client->Run(), ResultIs(FailureExecutionResult(SC_UNKNOWN)));
   WaitUntil([&]() { return schedule_for_is_called; });
 }
 
@@ -213,11 +218,11 @@ TEST_F(MetricClientProviderTest, RecordMetricWithoutBatch) {
         return SuccessExecutionResult();
       };
 
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->Run(), SuccessExecutionResult());
-  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_SUCCESS(client->Run());
+  EXPECT_SUCCESS(client->PutMetrics(context));
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
-  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+  EXPECT_SUCCESS(client->PutMetrics(context));
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
   WaitUntil([&]() { return batch_push_called_count == 2; });
 }
@@ -249,11 +254,11 @@ TEST_F(MetricClientProviderTest, RecordMetricWithBatch) {
         return SuccessExecutionResult();
       };
 
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_SUCCESS(client->Run());
 
   for (int i = 0; i <= 2001; i++) {
-    EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+    EXPECT_SUCCESS(client->PutMetrics(context));
   }
 
   WaitUntil([&]() { return schedule_for_is_called.load(); });
@@ -286,11 +291,11 @@ TEST_F(MetricClientProviderTest, RunMetricsBatchPush) {
         return SuccessExecutionResult();
       };
 
-  EXPECT_EQ(client->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_SUCCESS(client->Run());
 
-  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
-  EXPECT_EQ(client->PutMetrics(context), SuccessExecutionResult());
+  EXPECT_SUCCESS(client->PutMetrics(context));
+  EXPECT_SUCCESS(client->PutMetrics(context));
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 2);
   client->RunMetricsBatchPush();
   EXPECT_EQ(client->GetSizeMetricRequestsVector(), 0);
@@ -303,13 +308,11 @@ class MetricClientProviderWithoutOptionsTest : public MetricClientProviderTest {
   void SetUp() override {
     client_ =
         make_unique<MockMetricClientProviderWithOverrides>(nullptr, nullptr);
-    EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-    EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+    EXPECT_SUCCESS(client_->Init());
+    EXPECT_SUCCESS(client_->Run());
   }
 
-  void TearDown() override {
-    EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
-  }
+  void TearDown() override { EXPECT_SUCCESS(client_->Stop()); }
 
   shared_ptr<MockMetricClientProviderWithOverrides> client_;
 };
@@ -333,9 +336,8 @@ TEST_F(MetricClientProviderWithoutOptionsTest,
       };
   vector<thread> threads;
   for (auto i = 0; i < 100; ++i) {
-    threads.push_back(thread([&]() {
-      EXPECT_EQ(client_->PutMetrics(context), SuccessExecutionResult());
-    }));
+    threads.push_back(
+        thread([&]() { EXPECT_SUCCESS(client_->PutMetrics(context)); }));
   }
 
   for (auto& thread : threads) {
@@ -351,8 +353,8 @@ TEST_F(MetricClientProviderWithoutOptionsTest, EmptyNamespaceShouldFail) {
       CreatePutMetricsRequest(),
       [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
-  EXPECT_EQ(
-      client_->PutMetrics(context),
-      FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET));
+  EXPECT_THAT(client_->PutMetrics(context),
+              ResultIs(FailureExecutionResult(
+                  SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET)));
 }
 }  // namespace google::scp::cpio::client_providers::test

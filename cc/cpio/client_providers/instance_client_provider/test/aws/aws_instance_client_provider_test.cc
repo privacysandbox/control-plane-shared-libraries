@@ -36,7 +36,7 @@
 #include "cpio/client_providers/instance_client_provider/src/aws/error_codes.h"
 #include "cpio/common/src/aws/error_codes.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -166,12 +166,12 @@ class AwsInstanceClientProviderTest : public TestWithParam<string> {
 
     ON_CALL(*ec2_factory_, CreateClient).WillByDefault(Return(ec2_client_));
 
-    EXPECT_THAT(instance_provider_->Init(), IsSuccessful());
-    EXPECT_THAT(instance_provider_->Run(), IsSuccessful());
+    EXPECT_SUCCESS(instance_provider_->Init());
+    EXPECT_SUCCESS(instance_provider_->Run());
   }
 
   ~AwsInstanceClientProviderTest() {
-    EXPECT_THAT(instance_provider_->Stop(), IsSuccessful());
+    EXPECT_SUCCESS(instance_provider_->Stop());
     ShutdownAPI(options_);
   }
 
@@ -243,7 +243,7 @@ TEST_F(AwsInstanceClientProviderTest, GetCurrentInstanceResourceNameSuccess) {
           make_shared<GetCurrentInstanceResourceNameRequest>(),
           [&](AsyncContext<GetCurrentInstanceResourceNameRequest,
                            GetCurrentInstanceResourceNameResponse>& context) {
-            EXPECT_THAT(context.result, IsSuccessful());
+            EXPECT_SUCCESS(context.result);
             EXPECT_EQ(
                 context.response->instance_resource_name(),
                 absl::StrFormat(kAwsInstanceResourceNameFormat, "us-east-1",
@@ -560,7 +560,7 @@ TEST_F(AwsInstanceClientProviderTest, GetInstanceDetailsByResourceName) {
           move(request),
           [&](AsyncContext<GetInstanceDetailsByResourceNameRequest,
                            GetInstanceDetailsByResourceNameResponse>& context) {
-            EXPECT_THAT(context.result, IsSuccessful());
+            EXPECT_SUCCESS(context.result);
             const auto& details = context.response->instance_details();
             EXPECT_EQ(details.instance_id(), kInstanceIdMock);
             EXPECT_EQ(details.networks(0).public_ipv4_address(), kPublicIpMock);
@@ -670,7 +670,7 @@ TEST_F(AwsInstanceClientProviderTest, GetTagsByResourceNameSucceed) {
       context(move(request),
               [&](AsyncContext<GetTagsByResourceNameRequest,
                                GetTagsByResourceNameResponse>& context) {
-                EXPECT_THAT(context.result, IsSuccessful());
+                EXPECT_SUCCESS(context.result);
                 EXPECT_THAT(context.response->tags(),
                             UnorderedElementsAre(
                                 Pair(string(kTagName1), string(kTagValue1)),
@@ -777,7 +777,7 @@ TEST_F(AwsInstanceClientProviderTest, GetTagsByResourceNameEC2ClientCached) {
           move(request_empty_region),
           [&](AsyncContext<GetTagsByResourceNameRequest,
                            GetTagsByResourceNameResponse>& context) {
-            EXPECT_THAT(context.result, IsSuccessful());
+            EXPECT_SUCCESS(context.result);
             condition++;
           });
 
@@ -788,7 +788,7 @@ TEST_F(AwsInstanceClientProviderTest, GetTagsByResourceNameEC2ClientCached) {
           move(request_us_west),
           [&](AsyncContext<GetTagsByResourceNameRequest,
                            GetTagsByResourceNameResponse>& context) {
-            EXPECT_THAT(context.result, IsSuccessful());
+            EXPECT_SUCCESS(context.result);
             condition++;
           });
 

@@ -54,7 +54,6 @@ struct StreamingContext : public AsyncContext<TRequest, TResponse> {
 
   /**
    * @brief Returns true if this context is marked done.
-   *
    */
   bool IsMarkedDone() const noexcept { return is_marked_done->load(); }
 
@@ -62,11 +61,15 @@ struct StreamingContext : public AsyncContext<TRequest, TResponse> {
    * @brief Attempts to cancel the current operation. This is a best effort
    * cancellation. If cancellation succeeds, it is expected that the callee will
    * still end up calling Finish on this context, although this is not
-   * guaranteed.
+   * guaranteed. Currently, this is only for users of the SDK/the caller to
+   * communicate to the SDK/callee to cancel.
    *
    */
   void TryCancel() noexcept { is_cancelled->store(true); }
 
+  /**
+   * @brief Returns true if this context has been tried to be cancelled.
+   */
   bool IsCancelled() const noexcept { return is_cancelled->load(); }
 
  protected:
@@ -149,6 +152,8 @@ struct ConsumerStreamingContext : public StreamingContext<TRequest, TResponse> {
    * returned in the same order as they are placed into the context. NOTE: if
    * nullptr is returned and this context is done, then all messages have been
    * received.
+   *
+   * Generally, the user of the SDK/caller uses this function.
    */
   std::unique_ptr<TResponse> TryGetNextResponse() noexcept {
     TResponse resp;
@@ -160,6 +165,8 @@ struct ConsumerStreamingContext : public StreamingContext<TRequest, TResponse> {
 
   /**
    * @brief Attempts to enqueue resp into the context.
+   *
+   * Generally, the SDK/callee uses this function.
    *
    * @param resp The message to enqueue.
    * @return ExecutionResult Failure if the context is cancelled or if
@@ -245,6 +252,8 @@ struct ProducerStreamingContext : public StreamingContext<TRequest, TResponse> {
   /**
    * @brief Attempts to enqueue req for processing.
    *
+   * Generally, the user of the SDK/caller uses this function.
+   *
    * @param req The message to enqueue
    * @return ExecutionResult Whether enqueueing succeeded or not.
    */
@@ -258,6 +267,12 @@ struct ProducerStreamingContext : public StreamingContext<TRequest, TResponse> {
     return request_queue->TryEnqueue(std::move(req));
   }
 
+  /**
+   * @brief Acquires the next request on the context or nullptr if none is
+   * available.
+   *
+   * Generally, the SDK/callee uses this function.
+   */
   std::unique_ptr<TRequest> TryGetNextRequest() noexcept {
     TRequest req;
     if (!request_queue->TryDequeue(req).Successful()) {

@@ -34,6 +34,10 @@ using google::cmrt::sdk::instance_service::v1::
     GetCurrentInstanceResourceNameRequest;
 using google::cmrt::sdk::instance_service::v1::
     GetCurrentInstanceResourceNameResponse;
+using google::cmrt::sdk::instance_service::v1::
+    GetInstanceDetailsByResourceNameRequest;
+using google::cmrt::sdk::instance_service::v1::
+    GetInstanceDetailsByResourceNameResponse;
 using google::cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest;
 using google::cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse;
 using google::scp::core::AsyncContext;
@@ -104,6 +108,16 @@ core::ExecutionResult InstanceClient::GetTagsByResourceName(
     Callback<GetTagsByResourceNameResponse> callback) noexcept {
   return Execute<GetTagsByResourceNameRequest, GetTagsByResourceNameResponse>(
       bind(&InstanceClientProviderInterface::GetTagsByResourceName,
+           instance_client_provider_, _1),
+      request, callback);
+}
+
+core::ExecutionResult InstanceClient::GetInstanceDetailsByResourceName(
+    GetInstanceDetailsByResourceNameRequest request,
+    Callback<GetInstanceDetailsByResourceNameResponse> callback) noexcept {
+  return Execute<GetInstanceDetailsByResourceNameRequest,
+                 GetInstanceDetailsByResourceNameResponse>(
+      bind(&InstanceClientProviderInterface::GetInstanceDetailsByResourceName,
            instance_client_provider_, _1),
       request, callback);
 }

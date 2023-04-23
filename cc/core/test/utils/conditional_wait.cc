@@ -33,7 +33,7 @@ void WaitUntil(function<bool()> condition, DurationMs timeout) {
     auto now_time = TimeProvider::GetSteadyTimestampInNanoseconds();
     auto duration = now_time - start_time;
     if (duration > timeout) {
-      throw std::runtime_error("test timeout");
+      throw TestTimeoutException();
     }
     yield();
   }

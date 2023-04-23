@@ -25,7 +25,7 @@
 #include "core/interface/errors.h"
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/adapters/public_key_client/mock/mock_public_key_client_with_overrides.h"
 #include "public/cpio/interface/public_key_client/public_key_client_interface.h"
 #include "public/cpio/interface/public_key_client/type_def.h"

@@ -23,7 +23,7 @@
 #include "core/test/utils/conditional_wait.h"
 #include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
 #include "cpio/client_providers/instance_client_provider/src/aws/error_codes.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using absl::StrFormat;
 using google::scp::core::ExecutionResult;

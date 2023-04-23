@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "core/test/utils/conditional_wait.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/common/src/error_codes.h"
 #include "roma/common/src/process.h"
 #include "roma/common/src/shm_allocator.h"
@@ -32,6 +33,7 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_ROMA_WORK_QUEUE_POP_FAILURE;
+using google::scp::core::test::ResultIs;
 using std::atomic;
 using std::function;
 using std::make_shared;
@@ -80,8 +82,8 @@ TEST(WorkQueueTest, PushAndPopFunction) {
   queue.Push(callback);
   EXPECT_EQ(queue.Size(), 1);
   function<ExecutionResult()> func;
-  EXPECT_EQ(queue.Pop(func), core::SuccessExecutionResult());
-  EXPECT_EQ(func(), FailureExecutionResult(SC_UNKNOWN));
+  EXPECT_SUCCESS(queue.Pop(func));
+  EXPECT_THAT(func(), ResultIs(FailureExecutionResult(SC_UNKNOWN)));
   EXPECT_EQ(queue.Size(), 0);
 }
 

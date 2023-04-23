@@ -38,7 +38,7 @@
 #include "core/test/utils/auto_init_run_stop.h"
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using namespace nghttp2::asio_http2;          // NOLINT
 using namespace nghttp2::asio_http2::server;  // NOLINT
@@ -97,10 +97,15 @@ class HttpServer {
   HttpServer(string address, string port, size_t num_threads)
       : address_(address), port_(port), num_threads_(num_threads) {}
 
+  ~HttpServer() { server.join(); }
+
   void Run() {
     boost::system::error_code ec;
 
     server.num_threads(num_threads_);
+
+    server.handle("/stop",
+                  [this](const request& req, const response& res) { Stop(); });
 
     server.handle("/test", [](const request& req, const response& res) {
       res.write_head(200, {{"foo", {"bar"}}});
@@ -143,6 +148,15 @@ class HttpServer {
     });
 
     server.listen_and_serve(ec, address_, port_, true);
+
+    is_running_ = true;
+  }
+
+  void Stop() {
+    if (is_running_) {
+      is_running_ = false;
+      server.stop();
+    }
   }
 
   int PortInUse() { return server.ports()[0]; }
@@ -150,6 +164,7 @@ class HttpServer {
   http2 server;
 
  private:
+  atomic<bool> is_running_{false};
   string address_;
   string port_;
   size_t num_threads_;
@@ -177,7 +192,7 @@ TEST(HttpClientTest, FailedToConnect) {
         finished.store(true);
       });
 
-  EXPECT_EQ(http_client.PerformRequest(context), SuccessExecutionResult());
+  EXPECT_SUCCESS(http_client.PerformRequest(context));
   WaitUntil([&]() { return finished.load(); });
   http_client.Stop();
   async_executor->Stop();
@@ -193,15 +208,14 @@ class HttpClientTestII : public ::testing::Test {
     async_executor->Run();
 
     http_client = make_shared<HttpClient>(async_executor);
-    EXPECT_EQ(http_client->Init(), SuccessExecutionResult());
-    EXPECT_EQ(http_client->Run(), SuccessExecutionResult());
+    EXPECT_SUCCESS(http_client->Init());
+    EXPECT_SUCCESS(http_client->Run());
   }
 
   void TearDown() override {
-    EXPECT_EQ(http_client->Stop(), SuccessExecutionResult());
-    server->server.stop();
-    server->server.join();
+    EXPECT_SUCCESS(http_client->Stop());
     async_executor->Stop();
+    server->Stop();
   }
 
   shared_ptr<HttpServer> server;
@@ -217,13 +231,13 @@ TEST_F(HttpClientTestII, Success) {
   promise<void> done;
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         const auto& bytes = *context.response->body.bytes;
         EXPECT_EQ(string(bytes.begin(), bytes.end()), "hello, world\n");
         done.set_value();
       });
 
-  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+  EXPECT_SUCCESS(http_client->PerformRequest(context));
 
   done.get_future().get();
 }
@@ -239,14 +253,14 @@ TEST_F(HttpClientTestII, SingleQueryIsEscaped) {
   atomic<bool> finished(false);
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         auto query_param_it = context.response->headers->find("query_param");
         EXPECT_NE(query_param_it, context.response->headers->end());
         EXPECT_EQ(query_param_it->second, "foo=%21%40%23%24");
         finished.store(true);
       });
 
-  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+  EXPECT_SUCCESS(http_client->PerformRequest(context));
   WaitUntil([&]() { return finished.load(); });
 }
 
@@ -261,14 +275,14 @@ TEST_F(HttpClientTestII, MultiQueryIsEscaped) {
   atomic<bool> finished(false);
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         auto query_param_it = context.response->headers->find("query_param");
         EXPECT_NE(query_param_it, context.response->headers->end());
         EXPECT_EQ(query_param_it->second, "foo=%21%40%23%24&bar=%25%5E%28%29");
         finished.store(true);
       });
 
-  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+  EXPECT_SUCCESS(http_client->PerformRequest(context));
   WaitUntil([&]() { return finished.load(); });
 }
 
@@ -286,7 +300,7 @@ TEST_F(HttpClientTestII, FailedToGetResponse) {
         done.set_value();
       });
 
-  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+  EXPECT_SUCCESS(http_client->PerformRequest(context));
   done.get_future().get();
 }
 
@@ -300,12 +314,12 @@ TEST_F(HttpClientTestII, SequentialReuse) {
     promise<void> done;
     AsyncContext<HttpRequest, HttpResponse> context(
         move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-          EXPECT_THAT(context.result, IsSuccessful());
+          EXPECT_SUCCESS(context.result);
           const auto& bytes = *context.response->body.bytes;
           EXPECT_EQ(string(bytes.begin(), bytes.end()), "hello, world\n");
           done.set_value();
         });
-    EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+    EXPECT_SUCCESS(http_client->PerformRequest(context));
     done.get_future().get();
   }
 }
@@ -325,12 +339,12 @@ TEST_F(HttpClientTestII, ConcurrentReuse) {
     AsyncContext<HttpRequest, HttpResponse> context(
         move(request),
         [&, i](AsyncContext<HttpRequest, HttpResponse>& context) {
-          EXPECT_THAT(context.result, IsSuccessful());
+          EXPECT_SUCCESS(context.result);
           const auto& bytes = *context.response->body.bytes;
           EXPECT_EQ(string(bytes.begin(), bytes.end()), "hello, world\n");
           done[i].set_value();
         });
-    EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+    EXPECT_SUCCESS(http_client->PerformRequest(context));
   }
   for (auto& p : done) {
     p.get_future().get();
@@ -347,7 +361,7 @@ TEST_F(HttpClientTestII, LargeData) {
   atomic<bool> finished(false);
   AsyncContext<HttpRequest, HttpResponse> context(
       move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         EXPECT_EQ(context.response->body.length,
                   1048576 + SHA256_DIGEST_LENGTH);
         uint8_t hash[SHA256_DIGEST_LENGTH];
@@ -359,8 +373,49 @@ TEST_F(HttpClientTestII, LargeData) {
         finished.store(true);
       });
 
-  EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+  EXPECT_SUCCESS(http_client->PerformRequest(context));
   WaitUntil([&]() { return finished.load(); });
+}
+
+TEST_F(HttpClientTestII, ClientFinishesContextWhenServerIsStopped) {
+  auto request = make_shared<HttpRequest>();
+  request->method = HttpMethod::GET;
+
+  // Make success http request.
+  {
+    request->path = make_shared<string>(
+        "http://localhost:" + std::to_string(server->PortInUse()) + "/test");
+    promise<void> done;
+    AsyncContext<HttpRequest, HttpResponse> context(
+        move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
+          EXPECT_THAT(context.result, IsSuccessful());
+          const auto& bytes = *context.response->body.bytes;
+          EXPECT_EQ(string(bytes.begin(), bytes.end()), "hello, world\n");
+          done.set_value();
+        });
+
+    EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+    done.get_future().get();
+  }
+
+  // Http context will be finished correctly even the http server stopped.
+  {
+    request->path = make_shared<string>(
+        "http://localhost:" + std::to_string(server->PortInUse()) + "/stop");
+
+    promise<void> done;
+    AsyncContext<HttpRequest, HttpResponse> context(
+        move(request), [&](AsyncContext<HttpRequest, HttpResponse>& context) {
+          EXPECT_THAT(
+              context.result,
+              ResultIs(FailureExecutionResult(
+                  errors::
+                      SC_DISPATCHER_NOT_ENOUGH_TIME_REMAINED_FOR_OPERATION)));
+          done.set_value();
+        });
+    EXPECT_THAT(http_client->PerformRequest(context), IsSuccessful());
+    done.get_future().get();
+  }
 }
 
 }  // namespace google::scp::core

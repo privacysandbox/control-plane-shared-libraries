@@ -181,11 +181,12 @@ void AwsParameterClientProvider::OnGetParametersCallback(
 }
 
 #ifndef TEST_CPIO
-std::shared_ptr<ParameterClientProviderInterface>
+shared_ptr<ParameterClientProviderInterface>
 ParameterClientProviderFactory::Create(
     const shared_ptr<ParameterClientOptions>& options,
-    const shared_ptr<InstanceClientProviderInterface>&
-        instance_client_provider) {
+    const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
+    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
   return make_shared<AwsParameterClientProvider>(options,
                                                  instance_client_provider);
 }

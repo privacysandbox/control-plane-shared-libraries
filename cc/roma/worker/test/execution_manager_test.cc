@@ -30,6 +30,7 @@
 #include "core/test/utils/auto_init_run_stop.h"
 #include "core/test/utils/conditional_wait.h"
 #include "include/libplatform/libplatform.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/ipc/src/ipc_manager.h"
 
 using google::scp::core::FailureExecutionResult;
@@ -42,6 +43,7 @@ using google::scp::core::errors::SC_ROMA_V8_WORKER_UNMATCHED_CODE_VERSION_NUM;
 using google::scp::core::errors::
     SC_ROMA_V8_WORKER_UNSET_ISOLATE_WITH_PRELOADED_CODE;
 using google::scp::core::test::AutoInitRunStop;
+using google::scp::core::test::ResultIs;
 using google::scp::roma::common::RoleId;
 using google::scp::roma::ipc::IpcManager;
 using google::scp::roma::ipc::RomaCodeObj;
@@ -136,8 +138,7 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeMixedWithGlobalWebAssembly) {
     intptr_t external_refs[] = {0};
     auto result =
         helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
-    EXPECT_EQ(result, SuccessExecutionResult())
-        << GetErrorMessage(result.status_code);
+    EXPECT_SUCCESS(result) << GetErrorMessage(result.status_code);
     EXPECT_EQ(err_msg, WasmUnCompilableError);
   }
 
@@ -155,14 +156,13 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeMixedWithGlobalWebAssembly) {
       RomaString output;
       RomaString err_msg;
       auto result = helper.Process(roma_code_obj, output, err_msg);
-      EXPECT_EQ(result, SuccessExecutionResult())
-          << GetErrorMessage(result.status_code);
+      EXPECT_SUCCESS(result) << GetErrorMessage(result.status_code);
       auto expected = to_string(i + 1);
       EXPECT_EQ(output, expected.c_str());
     }
   }
 
-  EXPECT_EQ(helper.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(helper.Stop());
 }
 
 TEST_F(ExecutionManagerTest, CreateAndProcessWasmCode) {
@@ -192,7 +192,7 @@ TEST_F(ExecutionManagerTest, CreateAndProcessWasmCode) {
     intptr_t external_refs[] = {0};
     auto result =
         helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
   }
 
   // Process the code.
@@ -208,13 +208,13 @@ TEST_F(ExecutionManagerTest, CreateAndProcessWasmCode) {
       RomaString output;
       RomaString err_msg;
       auto result = helper.Process(roma_code_obj, output, err_msg);
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
       auto expected = to_string(i * 2);
       EXPECT_EQ(output, expected.c_str());
     }
   }
 
-  EXPECT_EQ(helper.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(helper.Stop());
 }
 
 TEST_F(ExecutionManagerTest, UnknownWasmReturnType) {
@@ -244,7 +244,7 @@ TEST_F(ExecutionManagerTest, UnknownWasmReturnType) {
     intptr_t external_refs[] = {0};
     auto result =
         helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
   }
 
   // Process the code.
@@ -268,7 +268,7 @@ TEST_F(ExecutionManagerTest, UnknownWasmReturnType) {
       auto result = helper.Process(roma_code_obj, output, err_msg);
       auto expected = to_string(i * 2);
       if (i % 2 == 0) {
-        EXPECT_EQ(result, SuccessExecutionResult());
+        EXPECT_SUCCESS(result);
         EXPECT_EQ(output, expected.c_str());
       } else {
         EXPECT_EQ(result, FailureExecutionResult(
@@ -278,7 +278,7 @@ TEST_F(ExecutionManagerTest, UnknownWasmReturnType) {
     }
   }
 
-  EXPECT_EQ(helper.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(helper.Stop());
 }
 
 TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsMixedWithLocalWebAssembly) {
@@ -314,7 +314,7 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsMixedWithLocalWebAssembly) {
     intptr_t external_refs[] = {0};
     auto result =
         helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
   }
 
   // Process the code.
@@ -328,13 +328,13 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsMixedWithLocalWebAssembly) {
       RomaString output;
       RomaString err_msg;
       auto result = helper.Process(roma_code_obj, output, err_msg);
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
       auto expected = to_string(i * 2);
       EXPECT_EQ(output, expected.c_str());
     }
   }
 
-  EXPECT_EQ(helper.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(helper.Stop());
 }
 
 TEST_F(ExecutionManagerTest, DescribeThrowError) {
@@ -359,7 +359,7 @@ TEST_F(ExecutionManagerTest, DescribeThrowError) {
     intptr_t external_refs[] = {0};
     auto result =
         helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
   }
 
   // Process the code with error throw.
@@ -379,7 +379,7 @@ TEST_F(ExecutionManagerTest, DescribeThrowError) {
     }
   }
 
-  EXPECT_EQ(helper.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(helper.Stop());
 }
 
 TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCode) {
@@ -406,7 +406,7 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCode) {
     intptr_t external_refs[] = {0};
     auto result =
         helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
   }
 
   // Process the code.
@@ -420,13 +420,13 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCode) {
       RomaString output;
       RomaString err_msg;
       auto result = helper.Process(roma_code_obj, output, err_msg);
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
       auto expected = to_string(i * 2);
       EXPECT_EQ(output, expected.c_str());
     }
   }
 
-  EXPECT_EQ(helper.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(helper.Stop());
 }
 
 TEST_F(ExecutionManagerTest, ProcessJsCodeWithInvalidInput) {
@@ -453,7 +453,7 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeWithInvalidInput) {
     intptr_t external_refs[] = {0};
     auto result =
         helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
   }
 
   // Unit test for invalid input. If there is invalid string in input, the input
@@ -468,7 +468,9 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeWithInvalidInput) {
     RomaString output;
     RomaString err_msg;
     auto result = helper.Process(roma_code_obj, output, err_msg);
-    EXPECT_EQ(result, FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS));
+    EXPECT_THAT(
+        result,
+        ResultIs(FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS)));
   }
 
   // Unit test for empty input. JavaScript function can run with unmatched
@@ -482,11 +484,11 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeWithInvalidInput) {
     RomaString output;
     RomaString err_msg;
     auto result = helper.Process(roma_code_obj, output, err_msg);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
     EXPECT_EQ(output, "null");
   }
 
-  EXPECT_EQ(helper.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(helper.Stop());
 }
 
 TEST_F(ExecutionManagerTest, UnSetIsolate) {
@@ -532,7 +534,7 @@ TEST_F(ExecutionManagerTest, UnmatchedCodeVersionNum) {
     intptr_t external_refs[] = {0};
     auto result =
         helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
   }
 
   // Process the code.
@@ -547,7 +549,7 @@ TEST_F(ExecutionManagerTest, UnmatchedCodeVersionNum) {
       RomaString err_msg;
       auto result = helper.Process(roma_code_obj, output, err_msg);
       if (i == 1) {
-        EXPECT_EQ(result, SuccessExecutionResult());
+        EXPECT_SUCCESS(result);
         auto expected = to_string(i * 2);
         EXPECT_EQ(output, expected.c_str());
       } else {
@@ -557,7 +559,7 @@ TEST_F(ExecutionManagerTest, UnmatchedCodeVersionNum) {
     }
   }
 
-  EXPECT_EQ(helper.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(helper.Stop());
 }
 
 }  // namespace google::scp::roma::worker::test

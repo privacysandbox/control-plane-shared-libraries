@@ -26,7 +26,6 @@ cc_library(
         "-std=c++17",
     ],
     deps = [
-        ":tink_cc_proto",
         "//cc:cc_base_include_dir",
         "//cc/core/interface:async_context_lib",
         "//cc/core/interface:interface_lib",
@@ -40,14 +39,8 @@ cc_library(
         "@tink_cc//:binary_keyset_reader",
         "@tink_cc//:cleartext_keyset_handle",
         "@tink_cc//hybrid/internal:hpke_context",
+        "@tink_cc//proto:hpke_cc_proto",
         "@tink_cc//subtle",
         "@tink_cc//util:secret_data",
-    ],
-)
-
-cc_proto_library(
-    name = "tink_cc_proto",
-    deps = [
-        "@tink_cc//proto:tink_proto",
     ],
 )

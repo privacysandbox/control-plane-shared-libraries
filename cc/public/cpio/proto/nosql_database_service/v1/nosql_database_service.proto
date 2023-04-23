@@ -23,6 +23,13 @@ option cc_enable_arenas = true;
 
 // Provides NoSQL Database functionalities.
 service NoSqlDatabaseService {
+  // Creates a table in the database.
+  rpc CreateTable(CreateTableRequest)
+      returns (CreateTableResponse) {}
+  // Deletes a table from the database.
+  rpc DeleteTable(DeleteTableRequest)
+      returns (DeleteTableResponse) {}
+
   // Gets an item from the database.
   rpc GetDatabaseItem(GetDatabaseItemRequest)
       returns (GetDatabaseItemResponse) {}
@@ -63,6 +70,35 @@ message ItemKey {
   // (Optional) The sort key for the item. If no sort_key is used for this
   // table, set as the empty string.
   optional ItemAttribute sort_key = 3;
+}
+
+// Request object for creating a table in the database.
+message CreateTableRequest {
+  // Contains the details for the table to be created.
+  // table_name -> name of the table.
+  // partition_key -> name of the partition key column and the type
+  // (value is unimportant) for that column.
+  // (optional) sort_key -> name of the sort key column and the type
+  // (value is unimportant) for that column.
+  ItemKey key = 1;
+}
+
+// Response object of creating a table in the database.
+message CreateTableResponse {
+  // The execution result.
+  scp.core.common.proto.ExecutionResult result = 1;
+}
+
+// Request object for deleting a table from the database.
+message DeleteTableRequest {
+  // Name of the table to delete.
+  string table_name = 1;
+}
+
+// Response object of deleting a table from the database.
+message DeleteTableResponse {
+  // The execution result.
+  scp.core.common.proto.ExecutionResult result = 1;
 }
 
 // Describes an item - table name, keys, and attributes.

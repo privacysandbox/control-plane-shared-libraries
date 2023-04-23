@@ -27,6 +27,7 @@
 #include <iostream>
 
 #include "core/test/utils/conditional_wait.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/common/src/shared_memory_pool.h"
 
 using google::scp::core::ExecutionResult;
@@ -48,7 +49,7 @@ TEST(ProcessTest, CreateProcessSuccessChildProcess) {
     i->store(1);
     return SuccessExecutionResult();
   };
-  EXPECT_EQ(Process::Create(func, pid), SuccessExecutionResult());
+  EXPECT_SUCCESS(Process::Create(func, pid));
   EXPECT_GT(pid, 0);
 
   int child_exit_status;
@@ -69,7 +70,7 @@ TEST(ProcessTest, CreateProcessFailedChildProcess) {
     return FailureExecutionResult(SC_UNKNOWN);
   };
 
-  EXPECT_EQ(Process::Create(func, pid), SuccessExecutionResult());
+  EXPECT_SUCCESS(Process::Create(func, pid));
   EXPECT_GT(pid, 0);
 
   int child_exit_status;

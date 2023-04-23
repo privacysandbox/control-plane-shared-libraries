@@ -29,9 +29,11 @@
 #include "core/interface/async_context.h"
 #include "core/interface/streaming_context.h"
 #include "core/test/utils/conditional_wait.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using google::scp::core::AsyncContext;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
+using google::scp::core::test::ResultIs;
 using google::scp::core::test::WaitUntil;
 using std::atomic;
 using std::function;
@@ -49,7 +51,7 @@ TEST(OperationDispatcherTests, SuccessfulOperation) {
   atomic<bool> condition(false);
   AsyncContext<string, string> context;
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(context.result, SuccessExecutionResult());
+    EXPECT_SUCCESS(context.result);
     condition = true;
   };
 
@@ -73,7 +75,7 @@ TEST(OperationDispatcherTests, SuccessfulOperationProducerStreaming) {
   atomic<bool> condition(false);
   ProducerStreamingContext<string, string> context;
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(context.result, SuccessExecutionResult());
+    EXPECT_SUCCESS(context.result);
     condition = true;
   };
 
@@ -101,7 +103,7 @@ TEST(OperationDispatcherTests, SuccessfulOperationConsumerStreaming) {
   context.process_callback =
       [&](ConsumerStreamingContext<string, string>& context, bool is_finish) {
         if (is_finish) {
-          EXPECT_EQ(context.result, SuccessExecutionResult());
+          EXPECT_SUCCESS(context.result);
           condition = true;
         } else {
           process_call_count++;
@@ -133,7 +135,7 @@ TEST(OperationDispatcherTests, FailedOperation) {
   atomic<bool> condition(false);
   AsyncContext<string, string> context;
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(context.result, FailureExecutionResult(1));
+    EXPECT_THAT(context.result, ResultIs(FailureExecutionResult(1)));
     condition = true;
   };
 
@@ -157,7 +159,7 @@ TEST(OperationDispatcherTests, FailedOperationProducerStreaming) {
   atomic<bool> condition(false);
   ProducerStreamingContext<string, string> context;
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(context.result, FailureExecutionResult(1));
+    EXPECT_THAT(context.result, ResultIs(FailureExecutionResult(1)));
     condition = true;
   };
 
@@ -185,7 +187,7 @@ TEST(OperationDispatcherTests, FailedOperationConsumerStreaming) {
   context.process_callback =
       [&](ConsumerStreamingContext<string, string>& context, bool is_finish) {
         if (is_finish) {
-          EXPECT_EQ(context.result, FailureExecutionResult(1));
+          EXPECT_THAT(context.result, ResultIs(FailureExecutionResult(1)));
           condition = true;
         } else {
           process_call_count++;
@@ -217,9 +219,9 @@ TEST(OperationDispatcherTests, RetryOperation) {
   atomic<bool> condition(false);
   AsyncContext<string, string> context;
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(
-        context.result,
-        FailureExecutionResult(core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES));
+    EXPECT_THAT(context.result,
+                ResultIs(FailureExecutionResult(
+                    core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES)));
     EXPECT_EQ(context.retry_count, 5);
     condition = true;
   };
@@ -244,9 +246,9 @@ TEST(OperationDispatcherTests, RetryOperationProducerStreaming) {
   atomic<bool> condition(false);
   ProducerStreamingContext<string, string> context;
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(
-        context.result,
-        FailureExecutionResult(core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES));
+    EXPECT_THAT(context.result,
+                ResultIs(FailureExecutionResult(
+                    core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES)));
     EXPECT_EQ(context.retry_count, 5);
     condition = true;
   };
@@ -275,9 +277,9 @@ TEST(OperationDispatcherTests, RetryOperationConsumerStreaming) {
   context.process_callback =
       [&](ConsumerStreamingContext<string, string>& context, bool is_finish) {
         if (is_finish) {
-          EXPECT_EQ(context.result,
-                    FailureExecutionResult(
-                        core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES));
+          EXPECT_THAT(context.result,
+                      ResultIs(FailureExecutionResult(
+                          core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES)));
           EXPECT_EQ(context.retry_count, 5);
           condition = true;
         } else {
@@ -313,9 +315,9 @@ TEST(OperationDispatcherTests, OperationExpiration) {
   context.expiration_time = UINT64_MAX;
 
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(
-        context.result,
-        FailureExecutionResult(core::errors::SC_DISPATCHER_OPERATION_EXPIRED));
+    EXPECT_THAT(context.result,
+                ResultIs(FailureExecutionResult(
+                    core::errors::SC_DISPATCHER_OPERATION_EXPIRED)));
     EXPECT_EQ(context.retry_count, 4);
     condition = true;
   };
@@ -344,7 +346,7 @@ TEST(OperationDispatcherTests, FailedOnAcceptance) {
   atomic<bool> condition(false);
   AsyncContext<string, string> context;
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(context.result, FailureExecutionResult(1234));
+    EXPECT_THAT(context.result, ResultIs(FailureExecutionResult(1234)));
     condition = true;
   };
 
@@ -366,9 +368,9 @@ TEST(OperationDispatcherTests, RetryOnAcceptance) {
   atomic<bool> condition(false);
   AsyncContext<string, string> context;
   context.callback = [&](AsyncContext<string, string>& context) {
-    EXPECT_EQ(
-        context.result,
-        FailureExecutionResult(core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES));
+    EXPECT_THAT(context.result,
+                ResultIs(FailureExecutionResult(
+                    core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES)));
     condition = true;
   };
 

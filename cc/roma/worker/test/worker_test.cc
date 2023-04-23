@@ -34,6 +34,7 @@
 #include "core/test/utils/auto_init_run_stop.h"
 #include "core/test/utils/conditional_wait.h"
 #include "include/libplatform/libplatform.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/common/src/process.h"
 #include "roma/ipc/src/ipc_manager.h"
 #include "roma/worker/src/error_codes.h"
@@ -151,7 +152,7 @@ TEST_F(WorkerTest, ExecuteJsOrWasmOrJsMixedWithWasmCode) {
             make_unique<Request>(make_unique<InvocationRequestSharedInput>(obj),
                                  callback, RequestType::kExecute);
       }
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
 
@@ -178,7 +179,7 @@ TEST_F(WorkerTest, ExecuteJsOrWasmOrJsMixedWithWasmCode) {
             make_unique<Request>(make_unique<InvocationRequestSharedInput>(obj),
                                  callback, RequestType::kExecute);
       }
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
 
@@ -206,13 +207,13 @@ TEST_F(WorkerTest, ExecuteJsOrWasmOrJsMixedWithWasmCode) {
             make_unique<Request>(make_unique<InvocationRequestSharedInput>(obj),
                                  callback, RequestType::kExecute);
       }
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
   }
 
   Worker v8_worker(role_id);
-  EXPECT_EQ(v8_worker.Init(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
     IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -223,8 +224,8 @@ TEST_F(WorkerTest, ExecuteJsOrWasmOrJsMixedWithWasmCode) {
 
   unique_ptr<Response> response;
   for (auto i = 0; i < 15; i++) {
-    EXPECT_EQ(ipc.PopResponse(response), SuccessExecutionResult());
-    EXPECT_EQ(response->result, SuccessExecutionResult());
+    EXPECT_SUCCESS(ipc.PopResponse(response));
+    EXPECT_SUCCESS(response->result);
     EXPECT_EQ(string(response->response->id), to_string(i));
 
     // Only check the responses for execution requests. When i equals to 0/5/10,
@@ -234,7 +235,7 @@ TEST_F(WorkerTest, ExecuteJsOrWasmOrJsMixedWithWasmCode) {
     }
   }
 
-  EXPECT_EQ(v8_worker.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Stop());
   ipc.ReleaseLocks();
   int child_exit_status;
   waitpid(child_pid, &child_exit_status, 0);
@@ -280,7 +281,7 @@ TEST_F(WorkerTest, CleanCompiledDefaultContext) {
             make_unique<InvocationRequestSharedInput>(ext_obj), callback,
             RequestType::kExecute);
       }
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
 
@@ -308,13 +309,13 @@ TEST_F(WorkerTest, CleanCompiledDefaultContext) {
             make_unique<InvocationRequestSharedInput>(ext_obj), callback,
             RequestType::kExecute);
       }
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
   }
 
   Worker v8_worker(role_id);
-  EXPECT_EQ(v8_worker.Init(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
     IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -325,8 +326,8 @@ TEST_F(WorkerTest, CleanCompiledDefaultContext) {
 
   unique_ptr<Response> response;
   for (auto i = 0; i < 6; i++) {
-    EXPECT_EQ(ipc.PopResponse(response), SuccessExecutionResult());
-    EXPECT_EQ(response->result, SuccessExecutionResult())
+    EXPECT_SUCCESS(ipc.PopResponse(response));
+    EXPECT_SUCCESS(response->result)
         << GetErrorMessage(response->result.status_code);
     EXPECT_EQ(string(response->response->id), to_string(i));
 
@@ -341,7 +342,7 @@ TEST_F(WorkerTest, CleanCompiledDefaultContext) {
     }
   }
 
-  EXPECT_EQ(v8_worker.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Stop());
   ipc.ReleaseLocks();
   int child_exit_status;
   waitpid(child_pid, &child_exit_status, 0);
@@ -388,7 +389,7 @@ TEST_F(WorkerTest, TimeoutTrueInfiniteLoop) {
   }
 
   Worker v8_worker(role_id);
-  EXPECT_EQ(v8_worker.Init(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
     IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -400,7 +401,7 @@ TEST_F(WorkerTest, TimeoutTrueInfiniteLoop) {
   unique_ptr<Response> response;
 
   while (ipc.PopResponse(response) != SuccessExecutionResult()) {}
-  EXPECT_EQ(response->result, SuccessExecutionResult());
+  EXPECT_SUCCESS(response->result);
 
   // Pop out the response for code update request.
   while (ipc.PopResponse(response) != SuccessExecutionResult()) {}
@@ -408,7 +409,7 @@ TEST_F(WorkerTest, TimeoutTrueInfiniteLoop) {
             FailureExecutionResult(SC_ROMA_V8_WORKER_SCRIPT_EXECUTION_TIMEOUT));
   EXPECT_EQ(string(response->response->resp), "");
 
-  EXPECT_EQ(v8_worker.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Stop());
   manager->ReleaseLocks();
   int child_exit_status;
   waitpid(child_pid, &child_exit_status, 0);
@@ -438,7 +439,7 @@ TEST_F(WorkerTest, DefaultExecutionTimeout) {
           "return a;}";
       auto request =
           make_unique<Request>(make_unique<CodeObject>(obj), callback);
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
 
@@ -450,13 +451,13 @@ TEST_F(WorkerTest, DefaultExecutionTimeout) {
       obj.input.push_back(make_shared<string>(to_string(i)));
       auto request = make_unique<Request>(
           make_unique<InvocationRequestSharedInput>(obj), callback);
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
   }
 
   Worker v8_worker(role_id);
-  EXPECT_EQ(v8_worker.Init(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
     IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -468,7 +469,7 @@ TEST_F(WorkerTest, DefaultExecutionTimeout) {
 
   // Pop out the response for code update request.
   while (!ipc.PopResponse(response).Successful()) {}
-  EXPECT_EQ(response->result, SuccessExecutionResult());
+  EXPECT_SUCCESS(response->result);
 
   for (auto i = 0; i < 2; i++) {
     while (!ipc.PopResponse(response).Successful()) {}
@@ -478,13 +479,13 @@ TEST_F(WorkerTest, DefaultExecutionTimeout) {
           FailureExecutionResult(SC_ROMA_V8_WORKER_SCRIPT_EXECUTION_TIMEOUT));
       EXPECT_EQ(string(response->response->resp), "");
     } else {
-      EXPECT_EQ(response->result, SuccessExecutionResult());
+      EXPECT_SUCCESS(response->result);
       EXPECT_EQ(string(response->response->id), "id");
       EXPECT_EQ(string(response->response->resp), to_string(i));
     }
   }
 
-  EXPECT_EQ(v8_worker.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Stop());
   manager->ReleaseLocks();
   int child_exit_status;
   waitpid(child_pid, &child_exit_status, 0);
@@ -517,7 +518,7 @@ TEST_F(WorkerTest, CustomizedExecuteTimeout) {
           "return a;}";
       auto request =
           make_unique<Request>(make_unique<CodeObject>(obj), callback);
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
 
@@ -538,13 +539,13 @@ TEST_F(WorkerTest, CustomizedExecuteTimeout) {
       }
       auto request = make_unique<Request>(
           make_unique<InvocationRequestSharedInput>(obj), callback);
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
   }
 
   Worker v8_worker(role_id);
-  EXPECT_EQ(v8_worker.Init(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
     IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -557,7 +558,7 @@ TEST_F(WorkerTest, CustomizedExecuteTimeout) {
 
   // Pop out the response for code update request.
   while (!ipc.PopResponse(response).Successful()) {}
-  EXPECT_EQ(response->result, SuccessExecutionResult());
+  EXPECT_SUCCESS(response->result);
 
   for (auto i = 0; i < 5; i++) {
     while (!ipc.PopResponse(response).Successful()) {}
@@ -569,13 +570,13 @@ TEST_F(WorkerTest, CustomizedExecuteTimeout) {
           FailureExecutionResult(SC_ROMA_V8_WORKER_SCRIPT_EXECUTION_TIMEOUT));
       EXPECT_EQ(string(response->response->resp), "");
     } else {
-      EXPECT_EQ(response->result, SuccessExecutionResult());
+      EXPECT_SUCCESS(response->result);
       EXPECT_EQ(string(response->response->id), "id");
       EXPECT_EQ(string(response->response->resp), to_string(i));
     }
   }
 
-  EXPECT_EQ(v8_worker.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Stop());
   manager->ReleaseLocks();
   int child_exit_status;
   waitpid(child_pid, &child_exit_status, 0);
@@ -601,7 +602,7 @@ TEST_F(WorkerTest, FailedWithUnmatchVersionNum) {
           "var match = a + b+ increase -1; return match; }";
       auto request =
           make_unique<Request>(make_unique<CodeObject>(obj), callback);
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
 
@@ -615,13 +616,13 @@ TEST_F(WorkerTest, FailedWithUnmatchVersionNum) {
            make_shared<string>(to_string(i).c_str())});
       auto request = make_unique<Request>(
           make_unique<InvocationRequestSharedInput>(obj), callback);
-      EXPECT_TRUE(ipc.TryAcquirePushRequest().Successful());
+      EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
       ipc.PushRequest(move(request));
     }
   }
 
   Worker v8_worker(role_id);
-  EXPECT_EQ(v8_worker.Init(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
     IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -634,7 +635,7 @@ TEST_F(WorkerTest, FailedWithUnmatchVersionNum) {
 
   // Pop out the response for code update request.
   while (!ipc.PopResponse(response).Successful()) {}
-  EXPECT_EQ(response->result, SuccessExecutionResult());
+  EXPECT_SUCCESS(response->result);
 
   for (auto i = 0; i < 3; i++) {
     while (!ipc.PopResponse(response).Successful()) {}
@@ -647,13 +648,13 @@ TEST_F(WorkerTest, FailedWithUnmatchVersionNum) {
           FailureExecutionResult(SC_ROMA_V8_WORKER_UNMATCHED_CODE_VERSION_NUM));
       EXPECT_EQ(string(response->response->resp), "");
     } else {
-      EXPECT_EQ(response->result, SuccessExecutionResult());
+      EXPECT_SUCCESS(response->result);
       EXPECT_EQ(string(response->response->id), "id");
       EXPECT_EQ(string(response->response->resp), to_string(i * 2));
     }
   }
 
-  EXPECT_EQ(v8_worker.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(v8_worker.Stop());
   manager->ReleaseLocks();
   int child_exit_status;
   waitpid(child_pid, &child_exit_status, 0);

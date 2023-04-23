@@ -75,10 +75,7 @@ build {
   }
 
   provisioner "file" {
-    sources     = [
-      "{proxy_rpm}",
-      "{worker_watcher_rpm}",
-    ]
+    sources     = {rpms}
     destination = "/tmp/rpms/"
   }
 
@@ -105,7 +102,7 @@ build {
     inline = [
       "sudo mkdir /etc/systemd/system/aggregate-worker.service.d/",
       "sudo mv /tmp/aggregate-worker_override.conf /etc/systemd/system/aggregate-worker.service.d/override.conf",
-      # Clean up files used by provision_script 
+      # Clean up files used by provision_script
       "sudo rm -rf /tmp/rpms",
       "sudo rm -f /tmp/{container_filename}",
       "sudo rm -f /tmp/allocator.yaml",

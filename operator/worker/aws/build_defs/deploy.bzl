@@ -39,7 +39,8 @@ def worker_aws_deployment(
         jvm_options = [],
         licenses = "//licenses:licenses_tar",
         enable_worker_debug_mode = False,
-        uninstall_ssh_server = False):
+        uninstall_ssh_server = False,
+        user_rpms = []):
     """Creates targets for AWS AMI generation and enclave Docker container.
 
     Assuming the name passed is 'worker', this macro instantiates multiple
@@ -133,4 +134,5 @@ def worker_aws_deployment(
         enable_worker_debug_mode = enable_worker_debug_mode,
         uninstall_ssh_server = uninstall_ssh_server,
         licenses = licenses,
+        user_rpms = user_rpms,
     )

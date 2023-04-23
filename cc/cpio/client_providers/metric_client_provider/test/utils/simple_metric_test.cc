@@ -33,6 +33,7 @@
 #include "cpio/client_providers/metric_client_provider/mock/mock_metric_client_provider.h"
 #include "cpio/client_providers/metric_client_provider/mock/utils/mock_simple_metric_with_overrides.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 using google::cmrt::sdk::metric_service::v1::Metric;
@@ -75,9 +76,9 @@ TEST(SimpleMetricTest, Push) {
   auto simple_metric = MockSimpleMetricOverrides(
       async_executor, mock_metric_client, metric_info);
 
-  EXPECT_EQ(simple_metric.Init(), SuccessExecutionResult());
-  EXPECT_EQ(simple_metric.Run(), SuccessExecutionResult());
-  EXPECT_EQ(simple_metric.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(simple_metric.Init());
+  EXPECT_SUCCESS(simple_metric.Run());
+  EXPECT_SUCCESS(simple_metric.Stop());
 
   Metric metric_received;
   bool schedule_is_called = false;

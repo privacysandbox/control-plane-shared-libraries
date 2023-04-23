@@ -28,6 +28,9 @@
 #include "retry_strategy.h"
 
 namespace google::scp::core::common {
+
+static constexpr char kOperationDispatcher[] = "OperationDispatcher";
+
 /**
  * @brief Provides dispatching mechanism for the callers to automatically retry
  * on the Retry status code.
@@ -173,6 +176,9 @@ class OperationDispatcher {
 
     if (async_context.retry_count >=
         retry_strategy_.GetMaximumAllowedRetryCount()) {
+      ERROR_CONTEXT(kOperationDispatcher, async_context, async_context.result,
+                    "Max retries exceeded. Total retries: %lld",
+                    async_context.retry_count);
       async_context.result =
           FailureExecutionResult(core::errors::SC_DISPATCHER_EXHAUSTED_RETRIES);
       async_context.Finish();
@@ -183,6 +189,10 @@ class OperationDispatcher {
         TimeProvider::GetSteadyTimestampInNanosecondsAsClockTicks();
 
     if (async_context.expiration_time <= current_time) {
+      ERROR_CONTEXT(
+          kOperationDispatcher, async_context, async_context.result,
+          "Async Context expired. Total retries: %lld, Expiration time: %lld",
+          async_context.retry_count, async_context.expiration_time);
       async_context.result =
           FailureExecutionResult(core::errors::SC_DISPATCHER_OPERATION_EXPIRED);
       async_context.Finish();
@@ -195,6 +205,10 @@ class OperationDispatcher {
             .count();
 
     if (async_context.expiration_time - current_time <= back_off_duration_ns) {
+      ERROR_CONTEXT(kOperationDispatcher, async_context, async_context.result,
+                    "Not enough time available for a retry in Async Context. "
+                    "Total retries: %lld, Expiration time: %lld",
+                    async_context.retry_count, async_context.expiration_time);
       async_context.result = FailureExecutionResult(
           core::errors::SC_DISPATCHER_NOT_ENOUGH_TIME_REMAINED_FOR_OPERATION);
       async_context.Finish();

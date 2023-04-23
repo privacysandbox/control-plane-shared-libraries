@@ -15,15 +15,11 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
-# Builds Google cloud cpp
-# --> must be before grpc_deps() and grpc_extra_deps()
-# --> and after http_archive com_github_grpc_grpc
-
-def import_google_cloud_cpp():
+def bazel_rules_python():
     maybe(
         http_archive,
-        name = "com_github_googleapis_google_cloud_cpp",
-        sha256 = "21fb441b5a670a18bb16b6826be8e0530888d0b94320847c538d46f5a54dddbc",
-        strip_prefix = "google-cloud-cpp-2.8.0",
-        url = "https://github.com/googleapis/google-cloud-cpp/archive/v2.8.0.tar.gz",
+        name = "rules_python",
+        sha256 = "a30abdfc7126d497a7698c29c46ea9901c6392d6ed315171a6df5ce433aa4502",
+        strip_prefix = "rules_python-0.6.0",
+        url = "https://github.com/bazelbuild/rules_python/archive/0.6.0.tar.gz",
     )

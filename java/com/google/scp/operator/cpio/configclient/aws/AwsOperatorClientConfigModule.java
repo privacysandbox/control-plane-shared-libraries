@@ -32,6 +32,7 @@ import com.google.scp.operator.cpio.configclient.aws.Annotations.CoordinatorBRol
 import com.google.scp.shared.aws.credsprovider.AwsSessionCredentialsProvider;
 import com.google.scp.shared.aws.credsprovider.StsAwsSessionCredentialsProvider;
 import com.google.scp.shared.aws.util.AwsRequestSigner;
+import com.google.scp.shared.clients.DefaultHttpClientRetryStrategy;
 import com.google.scp.shared.clients.configclient.ParameterClient;
 import com.google.scp.shared.clients.configclient.ParameterClient.ParameterClientException;
 import com.google.scp.shared.clients.configclient.aws.AwsClientConfigModule;
@@ -76,7 +77,7 @@ public final class AwsOperatorClientConfigModule extends AbstractModule {
           .addInterceptorFirst(
               AwsRequestSigner.createRequestSignerInterceptor(
                   coordinatorRegion, credentialsProvider))
-          .setServiceUnavailableRetryStrategy(AwsClientConfigModule.HTTP_CLIENT_RETRY_STRATEGY)
+          .setServiceUnavailableRetryStrategy(DefaultHttpClientRetryStrategy.getInstance())
           .build();
     }
   }
@@ -99,7 +100,7 @@ public final class AwsOperatorClientConfigModule extends AbstractModule {
           .addInterceptorFirst(
               AwsRequestSigner.createRequestSignerInterceptor(
                   coordinatorRegion, credentialsProvider))
-          .setServiceUnavailableRetryStrategy(AwsClientConfigModule.HTTP_CLIENT_RETRY_STRATEGY)
+          .setServiceUnavailableRetryStrategy(DefaultHttpClientRetryStrategy.getInstance())
           .build();
     }
   }

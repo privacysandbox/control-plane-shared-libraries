@@ -72,7 +72,7 @@ static constexpr char kContentLengthHeader[] = "content-length";
 static constexpr char kHttp2Client[] = "Http2Client";
 static constexpr char kHttpMethodGetTag[] = "GET";
 static constexpr char kHttpMethodPostTag[] = "POST";
-static constexpr size_t kHttp2ReadTimeoutSeconds = 60;
+static constexpr size_t kHttp2ReadTimeoutSeconds = 10;
 
 namespace google::scp::core {
 HttpConnection::HttpConnection(
@@ -139,24 +139,29 @@ ExecutionResult HttpConnection::Stop() noexcept {
   if (session_) {
     // Post session_->shutdown in io_service to make sure only one thread invoke
     // the session.
-    post(*io_service_, [this]() { session_->shutdown(); });
+    post(*io_service_, [this]() {
+      session_->shutdown();
+      INFO(kHttp2Client, kZeroUuid, kZeroUuid, "Session is being shutdown.");
+    });
   }
 
   is_ready_ = false;
-  is_dropped_ = true;
 
   try {
     work_guard_->reset();
     // Post io_service_->stop to make sure pervious tasks completed before
     // stop io_service_.
-    post(*io_service_, [this]() { io_service_->stop(); });
+    post(*io_service_, [this]() {
+      io_service_->stop();
+      INFO(kHttp2Client, kZeroUuid, kZeroUuid, "IO service is stopping.");
+    });
 
     if (worker_->joinable()) {
       worker_->join();
     }
 
     // Cancell all pending callbacks after stop io_service_.
-    CancelPendingCallbacks(true);
+    CancelPendingCallbacks();
 
     return SuccessExecutionResult();
   } catch (...) {
@@ -168,19 +173,26 @@ ExecutionResult HttpConnection::Stop() noexcept {
 }
 
 void HttpConnection::OnConnectionCreated(tcp::resolver::iterator) noexcept {
-  post(*io_service_, [this]() mutable { is_ready_ = true; });
+  post(*io_service_, [this]() mutable {
+    INFO(kHttp2Client, kZeroUuid, kZeroUuid, "Connection is created.");
+    is_ready_ = true;
+  });
 }
 
 void HttpConnection::OnConnectionError() noexcept {
   post(*io_service_, [this]() mutable {
+    auto failure =
+        FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
+    ERROR(kHttp2Client, kZeroUuid, kZeroUuid, failure, "Connection got error.");
+
     is_ready_ = false;
     is_dropped_ = true;
 
-    CancelPendingCallbacks(false);
+    CancelPendingCallbacks();
   });
 }
 
-void HttpConnection::CancelPendingCallbacks(bool is_stop) noexcept {
+void HttpConnection::CancelPendingCallbacks() noexcept {
   vector<Uuid> keys;
   auto execution_result = pending_network_calls_.Keys(keys);
   if (!execution_result.Successful()) {
@@ -199,16 +211,22 @@ void HttpConnection::CancelPendingCallbacks(bool is_stop) noexcept {
       continue;
     }
 
-    pending_network_calls_.Erase(key);
-    if (is_stop) {
-      // If called by `Stop()`, no more retry.
-      http_context.result =
-          FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
-    } else {
-      http_context.result =
-          RetryExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
+    // If Erase() failed, which means the context has being Finished.
+    if (!pending_network_calls_.Erase(key).Successful()) {
+      continue;
     }
 
+    // The http_context should retry if the connection is dropped causing the
+    // connection to be recycled.
+    if (is_dropped_) {
+      http_context.result =
+          RetryExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
+    } else {
+      http_context.result =
+          FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
+    }
+    ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
+                  "Pending callback context is dropped.");
     http_context.Finish();
   }
 }
@@ -226,8 +244,11 @@ bool HttpConnection::IsDropped() noexcept {
 ExecutionResult HttpConnection::Execute(
     AsyncContext<HttpRequest, HttpResponse>& http_context) noexcept {
   if (!is_ready_) {
-    return RetryExecutionResult(
-        errors::SC_HTTP2_CLIENT_NO_CONNECTION_ESTABLISHED);
+    auto failure =
+        RetryExecutionResult(errors::SC_HTTP2_CLIENT_NO_CONNECTION_ESTABLISHED);
+    ERROR_CONTEXT(kHttp2Client, http_context, failure,
+                  "The connection isn't ready.");
+    return failure;
   }
 
   // This call needs to pass, otherwise there will be orphaned context when
@@ -254,17 +275,15 @@ void HttpConnection::SendHttpRequest(
   } else if (http_context.request->method == HttpMethod::POST) {
     method = kHttpMethodPostTag;
   } else {
-    pending_network_calls_.Erase(request_id);
+    if (!pending_network_calls_.Erase(request_id).Successful()) {
+      return;
+    }
+
     http_context.result = FailureExecutionResult(
         errors::SC_HTTP2_CLIENT_HTTP_METHOD_NOT_SUPPORTED);
     ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
                   "Failed as request method not supported.");
-    if (!async_executor_
-             ->Schedule([http_context]() mutable { http_context.Finish(); },
-                        AsyncPriority::High)
-             .Successful()) {
-      http_context.Finish();
-    }
+    FinishContext(http_context.result, http_context, async_executor_);
     return;
   }
 
@@ -290,7 +309,10 @@ void HttpConnection::SendHttpRequest(
 
   auto uri = GetEscapedUriWithQuery(*http_context.request);
   if (!uri.Successful()) {
-    pending_network_calls_.Erase(request_id);
+    if (!pending_network_calls_.Erase(request_id).Successful()) {
+      return;
+    }
+
     ERROR_CONTEXT(kHttp2Client, http_context, uri.result(),
                   "Failed escaping URI.");
     FinishContext(uri.result(), http_context, async_executor_);
@@ -300,19 +322,17 @@ void HttpConnection::SendHttpRequest(
   error_code ec;
   auto http_request = session_->submit(ec, method, uri.value(), body, headers);
   if (ec) {
-    pending_network_calls_.Erase(request_id);
+    if (!pending_network_calls_.Erase(request_id).Successful()) {
+      return;
+    }
+
     http_context.result = RetryExecutionResult(
         errors::SC_HTTP2_CLIENT_FAILED_TO_ISSUE_HTTP_REQUEST);
     ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
                   "Http request failed for the client with error code %s!",
                   ec.message().c_str());
 
-    if (!async_executor_
-             ->Schedule([http_context]() mutable { http_context.Finish(); },
-                        AsyncPriority::High)
-             .Successful()) {
-      http_context.Finish();
-    }
+    FinishContext(http_context.result, http_context, async_executor_);
 
     OnConnectionError();
     return;
@@ -328,7 +348,9 @@ void HttpConnection::SendHttpRequest(
 void HttpConnection::OnRequestResponseClosed(
     Uuid& request_id, AsyncContext<HttpRequest, HttpResponse>& http_context,
     uint32_t error_code) noexcept {
-  pending_network_calls_.Erase(request_id);
+  if (!pending_network_calls_.Erase(request_id).Successful()) {
+    return;
+  }
 
   auto result =
       ConvertHttpStatusCodeToExecutionResult(http_context.response->code);
@@ -354,12 +376,7 @@ void HttpConnection::OnRequestResponseClosed(
                   static_cast<int>(http_context.response->code));
   }
 
-  if (!async_executor_
-           ->Schedule([http_context]() mutable { http_context.Finish(); },
-                      AsyncPriority::High)
-           .Successful()) {
-    http_context.Finish();
-  }
+  FinishContext(http_context.result, http_context, async_executor_);
 }
 
 void HttpConnection::OnResponseCallback(

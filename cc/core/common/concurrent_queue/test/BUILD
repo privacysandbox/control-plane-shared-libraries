@@ -26,6 +26,7 @@ cc_test(
         "//cc/core/common/concurrent_queue/src:concurrent_queue_lib",
         "//cc/core/interface:type_def_lib",
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

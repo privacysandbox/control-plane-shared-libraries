@@ -18,9 +18,17 @@
 
 #include <utility>
 
-#include "core/common/proto/common.pb.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include <gmock/gmock.h>
 
+#include "core/common/global_logger/src/global_logger.h"
+#include "core/common/proto/common.pb.h"
+#include "core/interface/async_context.h"
+#include "core/logger/mock/mock_logger.h"
+#include "core/logger/src/log_providers/console_log_provider.h"
+#include "public/core/test/interface/execution_result_matchers.h"
+
+using google::scp::core::common::GlobalLogger;
+using google::scp::core::logger::mock::MockLogger;
 using std::function;
 using std::make_unique;
 using std::move;
@@ -29,8 +37,11 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 using testing::_;
+using testing::ElementsAre;
 using testing::Eq;
 using testing::FieldsAre;
+using testing::HasSubstr;
+using testing::IsEmpty;
 using testing::Not;
 using testing::Pointee;
 using testing::UnorderedPointwise;
@@ -159,6 +170,55 @@ TEST(MacroTest, RETURN_IF_FAILURETest) {
   }
 }
 
+class MacroLogTest : public testing::Test {
+ protected:
+  MacroLogTest() {
+    auto mock_logger = make_unique<MockLogger>();
+    logger_ = mock_logger.get();
+    unique_ptr<LoggerInterface> logger = move(mock_logger);
+    logger->Init();
+    logger->Run();
+    GlobalLogger::SetGlobalLogger(std::move(logger));
+  }
+
+  ~MacroLogTest() { GlobalLogger::GetGlobalLogger()->Stop(); }
+
+  MockLogger* logger_;
+};
+
+TEST_F(MacroLogTest, RETURN_IF_FAILURELogTest) {
+  auto helper1 = [](ExecutionResult result) -> ExecutionResult {
+    string some_str = "s";
+    AsyncContext<int, int> ctx;
+    RETURN_AND_LOG_IF_FAILURE_CONTEXT(result, "component", ctx, __res, "msg %s",
+                                      some_str.c_str());
+    return SuccessExecutionResult();
+  };
+  // Doesn't log with context.
+  EXPECT_THAT(helper1(SuccessExecutionResult()), IsSuccessful());
+  EXPECT_THAT(logger_->GetMessages(), IsEmpty());
+  // Logs with context.
+  EXPECT_THAT(helper1(FailureExecutionResult(SC_UNKNOWN)),
+              ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+  EXPECT_THAT(logger_->GetMessages(), ElementsAre(HasSubstr("msg s")));
+
+  auto helper2 = [](ExecutionResult result) -> ExecutionResult {
+    string some_str = "s";
+    RETURN_AND_LOG_IF_FAILURE(result, "component", common::kZeroUuid,
+                              common::kZeroUuid, __res, "msg %s",
+                              some_str.c_str());
+    return SuccessExecutionResult();
+  };
+  // Doesn't log without context.
+  EXPECT_THAT(helper2(SuccessExecutionResult()), IsSuccessful());
+  EXPECT_THAT(logger_->GetMessages(), ElementsAre(HasSubstr("msg s")));
+  // Logs without context.
+  EXPECT_THAT(helper2(FailureExecutionResult(SC_UNKNOWN)),
+              ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+  EXPECT_THAT(logger_->GetMessages(),
+              ElementsAre(HasSubstr("msg s"), HasSubstr("msg s")));
+}
+
 TEST(MacroTest, ASSIGN_OR_RETURNBasicTest) {
   auto helper = [](ExecutionResultOr<int> result_or,
                    int& val) -> ExecutionResult {
@@ -179,6 +239,51 @@ TEST(MacroTest, ASSIGN_OR_RETURNBasicTest) {
   result_or = ExecutionResult(ExecutionStatus::Failure, 1);
   EXPECT_THAT(helper(result_or, val),
               ResultIs(ExecutionResult(ExecutionStatus::Failure, 1)));
+  EXPECT_EQ(val, 0);
+}
+
+TEST_F(MacroLogTest, ASSIGN_OR_RETURNLogTest) {
+  auto helper1 = [](ExecutionResultOr<int> result_or,
+                    int& val) -> ExecutionResult {
+    AsyncContext<int, int> ctx;
+    ASSIGN_OR_LOG_AND_RETURN_CONTEXT(val, result_or, "component", ctx, __res,
+                                     "msg %d", val);
+    val++;
+    return SuccessExecutionResult();
+  };
+
+  int val;
+  ExecutionResultOr<int> result_or(5);
+  EXPECT_THAT(helper1(result_or, val), IsSuccessful());
+  EXPECT_THAT(logger_->GetMessages(), IsEmpty());
+  EXPECT_EQ(val, 6);
+
+  val = 0;
+  result_or = ExecutionResult(ExecutionStatus::Failure, 1);
+  EXPECT_THAT(helper1(result_or, val),
+              ResultIs(ExecutionResult(ExecutionStatus::Failure, 1)));
+  EXPECT_THAT(logger_->GetMessages(), ElementsAre(HasSubstr("msg 0")));
+  EXPECT_EQ(val, 0);
+
+  auto helper2 = [](ExecutionResultOr<int> result_or,
+                    int& val) -> ExecutionResult {
+    ASSIGN_OR_LOG_AND_RETURN(val, result_or, "component", common::kZeroUuid,
+                             common::kZeroUuid, __res, "msg %d", val);
+    val++;
+    return SuccessExecutionResult();
+  };
+
+  result_or = 5;
+  EXPECT_THAT(helper2(result_or, val), IsSuccessful());
+  EXPECT_THAT(logger_->GetMessages(), ElementsAre(HasSubstr("msg 0")));
+  EXPECT_EQ(val, 6);
+
+  val = 0;
+  result_or = ExecutionResult(ExecutionStatus::Failure, 1);
+  EXPECT_THAT(helper2(result_or, val),
+              ResultIs(ExecutionResult(ExecutionStatus::Failure, 1)));
+  EXPECT_THAT(logger_->GetMessages(),
+              ElementsAre(HasSubstr("msg 0"), HasSubstr("msg 0")));
   EXPECT_EQ(val, 0);
 }
 
@@ -297,6 +402,12 @@ TEST(ExecutionResultTest, MatcherTest) {
   expected_results.push_back(ExecutionResult(ExecutionStatus::Retry, 2));
   expected_results.push_back(ExecutionResult(ExecutionStatus::Failure, 1));
   EXPECT_THAT(results, UnorderedPointwise(ResultIs(), expected_results));
+
+  EXPECT_SUCCESS(SuccessExecutionResult());
+  ExecutionResult result = SuccessExecutionResult();
+  EXPECT_SUCCESS(result);
+  result_or = 1;
+  EXPECT_SUCCESS(result_or);
 }
 
 TEST(ExecutionResultOrTest, Constructor) {

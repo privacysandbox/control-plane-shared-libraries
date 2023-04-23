@@ -125,6 +125,6 @@ int StopContainer(const std::string& container_name) {
 }
 
 std::string BuildStopContainerCmd(const std::string& container_name) {
-  return absl::StrFormat("docker stop %s", container_name);
+  return absl::StrFormat("docker rm -f %s", container_name);
 }
 }  // namespace google::scp::core::test

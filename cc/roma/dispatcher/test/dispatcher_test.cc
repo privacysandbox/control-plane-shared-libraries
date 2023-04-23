@@ -26,6 +26,7 @@
 
 #include "core/test/utils/auto_init_run_stop.h"
 #include "core/test/utils/conditional_wait.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using absl::Status;
 using absl::StatusOr;
@@ -62,7 +63,7 @@ TEST(DispatcherTest, testDispatch) {
     Request* req;
 
     auto result = ipc_channel.PopRequest(req);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
     EXPECT_EQ(req->code_obj->input[0], "test");
 
     auto resp = make_unique<Response>();
@@ -70,7 +71,7 @@ TEST(DispatcherTest, testDispatch) {
     resp->response = make_unique<RomaCodeResponse>();
 
     result = ipc_channel.PushResponse(move(resp));
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
 
     exit(0);
   }
@@ -83,7 +84,7 @@ TEST(DispatcherTest, testDispatch) {
   auto result = dispatcher.Dispatch(
       move(code_obj),
       [&](unique_ptr<StatusOr<ResponseObject>>) { finished.store(true); });
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
 
   WaitUntil([&]() { return finished.load(); });
 
@@ -106,7 +107,7 @@ TEST(DispatcherTest, testDispatchSharedInput) {
     Request* req;
 
     auto result = ipc_channel.PopRequest(req);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
     EXPECT_EQ(req->code_obj->input[0], "test");
 
     auto resp = make_unique<Response>();
@@ -114,7 +115,7 @@ TEST(DispatcherTest, testDispatchSharedInput) {
     resp->response = make_unique<RomaCodeResponse>();
 
     result = ipc_channel.PushResponse(move(resp));
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
 
     exit(0);
   }
@@ -127,7 +128,7 @@ TEST(DispatcherTest, testDispatchSharedInput) {
   auto result = dispatcher.Dispatch(
       move(code_obj),
       [&](unique_ptr<StatusOr<ResponseObject>>) { finished.store(true); });
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
 
   WaitUntil([&]() { return finished.load(); });
 
@@ -150,7 +151,7 @@ TEST(DispatcherTest, testRoundRobin) {
     Request* req;
 
     auto result = ipc_channel.PopRequest(req);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
 
     auto resp = make_unique<Response>();
     resp->result = SuccessExecutionResult();
@@ -168,7 +169,7 @@ TEST(DispatcherTest, testRoundRobin) {
     Request* req;
 
     auto result = ipc_channel.PopRequest(req);
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
 
     auto resp = make_unique<Response>();
     resp->result = SuccessExecutionResult();
@@ -176,7 +177,7 @@ TEST(DispatcherTest, testRoundRobin) {
     resp->response->id = "1";
 
     result = ipc_channel.PushResponse(move(resp));
-    EXPECT_EQ(result, SuccessExecutionResult());
+    EXPECT_SUCCESS(result);
 
     exit(0);
   }
@@ -227,7 +228,7 @@ TEST(DispatcherTest, testDispatchBatch) {
       Request* req;
 
       auto result = ipc_channel.PopRequest(req);
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
 
       EXPECT_EQ(req->code_obj->input[0], "test");
 
@@ -237,7 +238,7 @@ TEST(DispatcherTest, testDispatchBatch) {
       resp->response->id = static_cast<char>(idx);
 
       result = ipc_channel.PushResponse(move(resp));
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
 
       exit(0);
     }
@@ -253,7 +254,7 @@ TEST(DispatcherTest, testDispatchBatch) {
         finished.store(true);
       });
 
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return finished.load(); });
   EXPECT_TRUE(finished.load());
   ipc_manager->ReleaseLocks();
@@ -276,7 +277,7 @@ TEST(DispatcherTest, testDispatchBatchSharedInput) {
       Request* req;
 
       auto result = ipc_channel.PopRequest(req);
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
       EXPECT_EQ(req->code_obj->input[0], "test");
 
       auto resp = make_unique<Response>();
@@ -285,7 +286,7 @@ TEST(DispatcherTest, testDispatchBatchSharedInput) {
       resp->response->id = static_cast<char>(idx);
 
       result = ipc_channel.PushResponse(move(resp));
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
 
       exit(0);
     }
@@ -301,7 +302,7 @@ TEST(DispatcherTest, testDispatchBatchSharedInput) {
         finished.store(true);
       });
 
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return finished.load(); });
   EXPECT_TRUE(finished.load());
   ipc_manager->ReleaseLocks();
@@ -324,7 +325,7 @@ TEST(DispatcherTest, testBroadcastSuccess) {
       Request* req;
 
       auto result = ipc_channel.PopRequest(req);
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
       EXPECT_EQ(req->type, RequestType::kUpdate);
 
       auto resp = make_unique<Response>();
@@ -333,7 +334,7 @@ TEST(DispatcherTest, testBroadcastSuccess) {
       resp->response->id = static_cast<char>(idx);
 
       result = ipc_channel.PushResponse(move(resp));
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
 
       exit(0);
     }
@@ -347,7 +348,7 @@ TEST(DispatcherTest, testBroadcastSuccess) {
         finished.store(true);
       });
 
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return finished.load(); });
   EXPECT_TRUE(finished.load());
   ipc_manager->ReleaseLocks();
@@ -376,7 +377,7 @@ TEST(DispatcherTest, testBroadcastFailed) {
         exit(0);
       }
 
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
       EXPECT_EQ(req->type, RequestType::kUpdate);
 
       auto resp = make_unique<Response>();
@@ -390,7 +391,7 @@ TEST(DispatcherTest, testBroadcastFailed) {
       resp->response->id = static_cast<char>(idx);
 
       result = ipc_channel.PushResponse(move(resp));
-      EXPECT_EQ(result, SuccessExecutionResult());
+      EXPECT_SUCCESS(result);
 
       exit(0);
     }
@@ -403,7 +404,7 @@ TEST(DispatcherTest, testBroadcastFailed) {
         finished.store(true);
       });
 
-  EXPECT_TRUE(result.Successful());
+  EXPECT_SUCCESS(result);
   WaitUntil([&]() { return finished.load(); });
   EXPECT_TRUE(finished.load());
   ipc_manager->ReleaseLocks();

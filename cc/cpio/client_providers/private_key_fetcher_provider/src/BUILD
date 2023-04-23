@@ -40,11 +40,11 @@ cc_library(
             "@com_github_nghttp2_nghttp2//:nghttp2",
         ],
     }) + [
-        "//cc/public/cpio/interface/private_key_client:type_def",
         "//cc:cc_base_include_dir",
         "//cc/core/http2_client/src:http2_client_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:type_def",
+        "//cc/public/cpio/interface/private_key_client:type_def",
     ],
 )
 

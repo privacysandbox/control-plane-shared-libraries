@@ -28,6 +28,7 @@ cc_test(
         "//cc/core/test/utils/aws_helper:aws_helper_lib",
         "//cc/core/test/utils/docker_helper:docker_helper_lib",
         "//cc/public/core/interface:execution_result",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/public/cpio/interface:cpio_errors",
         "//cc/public/cpio/test/global_cpio:test_lib_cpio",
         "//cc/public/cpio/test/metric_client:test_aws_metric_client",

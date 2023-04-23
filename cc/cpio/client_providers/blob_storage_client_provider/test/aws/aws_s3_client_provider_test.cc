@@ -33,7 +33,7 @@
 #include "cpio/client_providers/blob_storage_client_provider/test/aws/mock_s3_client.h"
 #include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
 #include "cpio/common/src/aws/error_codes.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using Aws::InitAPI;
 using Aws::SDKOptions;
@@ -130,8 +130,8 @@ class AwsS3ClientProviderTest : public ::testing::Test {
     delete_blob_context_.request = make_shared<DeleteBlobRequest>();
     delete_blob_context_.callback = [this](auto) { finish_called_ = true; };
 
-    EXPECT_THAT(provider_.Init(), IsSuccessful());
-    EXPECT_THAT(provider_.Run(), IsSuccessful());
+    EXPECT_SUCCESS(provider_.Init());
+    EXPECT_SUCCESS(provider_.Run());
   }
 
   ~AwsS3ClientProviderTest() { ShutdownAPI(options_); }
@@ -185,7 +185,7 @@ TEST_F(AwsS3ClientProviderTest, GetBlobFailure) {
                  move(get_object_outcome), nullptr /*async_context*/);
       });
 
-  EXPECT_THAT(provider_.GetBlob(get_blob_context_), IsSuccessful());
+  EXPECT_SUCCESS(provider_.GetBlob(get_blob_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
 }
@@ -200,7 +200,7 @@ TEST_F(AwsS3ClientProviderTest, GetBlobSuccess) {
   get_blob_context_.callback =
       [this, &bucket_name, &blob_name, &blob_data](
           AsyncContext<GetBlobRequest, GetBlobResponse>& get_blob_context) {
-        EXPECT_THAT(get_blob_context.result, IsSuccessful());
+        EXPECT_SUCCESS(get_blob_context.result);
         EXPECT_EQ(get_blob_context.response->blob().metadata().bucket_name(),
                   bucket_name);
         EXPECT_EQ(get_blob_context.response->blob().metadata().blob_name(),
@@ -225,7 +225,7 @@ TEST_F(AwsS3ClientProviderTest, GetBlobSuccess) {
                  move(get_object_outcome), nullptr /*async_context*/);
       });
 
-  EXPECT_THAT(provider_.GetBlob(get_blob_context_), IsSuccessful());
+  EXPECT_SUCCESS(provider_.GetBlob(get_blob_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
 }
@@ -248,7 +248,7 @@ TEST_F(AwsS3ClientProviderTest, GetBlobWithByteRange) {
   get_blob_context_.callback =
       [this, &bucket_name, &blob_name, &blob_data](
           AsyncContext<GetBlobRequest, GetBlobResponse>& get_blob_context) {
-        EXPECT_THAT(get_blob_context.result, IsSuccessful());
+        EXPECT_SUCCESS(get_blob_context.result);
         EXPECT_EQ(get_blob_context.response->blob().metadata().bucket_name(),
                   bucket_name);
         EXPECT_EQ(get_blob_context.response->blob().metadata().blob_name(),
@@ -275,7 +275,7 @@ TEST_F(AwsS3ClientProviderTest, GetBlobWithByteRange) {
                  move(get_object_outcome), nullptr /*async_context*/);
       });
 
-  EXPECT_THAT(provider_.GetBlob(get_blob_context_), IsSuccessful());
+  EXPECT_SUCCESS(provider_.GetBlob(get_blob_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
 }
@@ -387,7 +387,7 @@ TEST_F(AwsS3ClientProviderTest, ListBlobsSuccess) {
       [this, &bucket_name](
           AsyncContext<ListBlobsMetadataRequest, ListBlobsMetadataResponse>&
               list_blobs_metadata_context) {
-        EXPECT_THAT(list_blobs_metadata_context.result, IsSuccessful());
+        EXPECT_SUCCESS(list_blobs_metadata_context.result);
         EXPECT_THAT(list_blobs_metadata_context.response->blob_metadatas(),
                     ElementsAre(BlobHasBucketAndName(bucket_name, "object_1"),
                                 BlobHasBucketAndName(bucket_name, "object_2")));
@@ -454,7 +454,7 @@ TEST_F(AwsS3ClientProviderTest, PutBlobFailure) {
                  move(put_object_outcome), nullptr /*async_context*/);
       });
 
-  EXPECT_THAT(provider_.PutBlob(put_blob_context_), IsSuccessful());
+  EXPECT_SUCCESS(provider_.PutBlob(put_blob_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
 }
@@ -473,7 +473,7 @@ TEST_F(AwsS3ClientProviderTest, PutBlobSuccess) {
   put_blob_context_.request->mutable_blob()->set_data(body_str);
   put_blob_context_.callback =
       [this](AsyncContext<PutBlobRequest, PutBlobResponse>& put_blob_context) {
-        EXPECT_THAT(put_blob_context.result, IsSuccessful());
+        EXPECT_SUCCESS(put_blob_context.result);
         finish_called_ = true;
       };
 
@@ -488,7 +488,7 @@ TEST_F(AwsS3ClientProviderTest, PutBlobSuccess) {
                  move(put_object_outcome), nullptr /*async_context*/);
       });
 
-  EXPECT_THAT(provider_.PutBlob(put_blob_context_), IsSuccessful());
+  EXPECT_SUCCESS(provider_.PutBlob(put_blob_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
 }
@@ -520,7 +520,7 @@ TEST_F(AwsS3ClientProviderTest, DeleteBlobFailure) {
                  move(delete_object_outcome), nullptr /*async_context*/);
       });
 
-  EXPECT_THAT(provider_.DeleteBlob(delete_blob_context_), IsSuccessful());
+  EXPECT_SUCCESS(provider_.DeleteBlob(delete_blob_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
 }
@@ -536,7 +536,7 @@ TEST_F(AwsS3ClientProviderTest, DeleteBlobSuccess) {
   delete_blob_context_.callback =
       [this](AsyncContext<DeleteBlobRequest, DeleteBlobResponse>&
                  delete_blob_context) {
-        EXPECT_THAT(delete_blob_context.result, IsSuccessful());
+        EXPECT_SUCCESS(delete_blob_context.result);
         finish_called_ = true;
       };
 
@@ -550,7 +550,7 @@ TEST_F(AwsS3ClientProviderTest, DeleteBlobSuccess) {
                  move(delete_object_outcome), nullptr /*async_context*/);
       });
 
-  EXPECT_THAT(provider_.DeleteBlob(delete_blob_context_), IsSuccessful());
+  EXPECT_SUCCESS(provider_.DeleteBlob(delete_blob_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
 }

@@ -29,6 +29,7 @@
 #include "cpio/client_providers/metric_client_provider/mock/mock_metric_client_provider_with_overrides.h"
 #include "cpio/client_providers/metric_client_provider/src/error_codes.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/adapters/metric_client/mock/mock_metric_client_with_overrides.h"
 #include "public/cpio/core/mock/mock_lib_cpio.h"
 #include "public/cpio/interface/metric_client/metric_client_interface.h"
@@ -41,6 +42,7 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_CPIO_INVALID_REQUEST;
 using google::scp::core::errors::SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET;
+using google::scp::core::test::ResultIs;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::mock::MockMetricClientWithOverrides;
 using std::atomic;
@@ -107,18 +109,18 @@ TEST_F(MetricClientTest, RecordMetricRequestSuccess) {
       proto_request;
   PutMetricsRequest request;
   AddMetric(request);
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
   atomic<bool> condition = false;
   EXPECT_EQ(client_->PutMetrics(
                 request,
                 [&](const ExecutionResult result, PutMetricsResponse response) {
-                  EXPECT_EQ(result, SuccessExecutionResult());
+                  EXPECT_SUCCESS(result);
                   condition = true;
                 }),
             SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
-  EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Stop());
 }
 
 TEST_F(MetricClientTest, MultipleMetrics) {
@@ -133,18 +135,18 @@ TEST_F(MetricClientTest, MultipleMetrics) {
   PutMetricsRequest request;
   AddMetric(request);
   AddMetric(request);
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
   atomic<bool> condition = false;
   EXPECT_EQ(client_->PutMetrics(
                 request,
                 [&](const ExecutionResult result, PutMetricsResponse response) {
-                  EXPECT_EQ(result, SuccessExecutionResult());
+                  EXPECT_SUCCESS(result);
                   condition = true;
                 }),
             SuccessExecutionResult());
   WaitUntil([&]() { return condition.load(); });
-  EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Stop());
 }
 
 TEST_F(MetricClientTest, RecordMetricRequestFailure) {
@@ -155,25 +157,25 @@ TEST_F(MetricClientTest, RecordMetricRequestFailure) {
   auto public_error = FailureExecutionResult(SC_CPIO_INVALID_REQUEST);
   PutMetricsRequest request;
   AddMetric(request);
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
   atomic<bool> condition = false;
   EXPECT_EQ(client_->PutMetrics(
                 request,
                 [&](const ExecutionResult result, PutMetricsResponse response) {
-                  EXPECT_EQ(result, public_error);
+                  EXPECT_THAT(result, ResultIs(public_error));
                   condition = true;
                 }),
             public_error);
   WaitUntil([&]() { return condition.load(); });
-  EXPECT_EQ(client_->Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Stop());
 }
 
 TEST_F(MetricClientTest, InitFailure) {
   auto expected_result =
       FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET);
   client_->GetMetricClientProvider()->init_result_mock = expected_result;
-  EXPECT_EQ(client_->Init(), expected_result);
+  EXPECT_THAT(client_->Init(), ResultIs(expected_result));
 }
 
 TEST_F(MetricClientTest, RunFailure) {
@@ -181,7 +183,7 @@ TEST_F(MetricClientTest, RunFailure) {
       FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET);
   client_->GetMetricClientProvider()->run_result_mock = expected_result;
   auto public_error = FailureExecutionResult(SC_CPIO_INVALID_REQUEST);
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
   EXPECT_EQ(client_->Run(), public_error);
 }
 
@@ -190,8 +192,8 @@ TEST_F(MetricClientTest, StopFailure) {
       FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_METRIC_NOT_SET);
   client_->GetMetricClientProvider()->stop_result_mock = expected_result;
   auto public_error = FailureExecutionResult(SC_CPIO_INVALID_REQUEST);
-  EXPECT_EQ(client_->Init(), SuccessExecutionResult());
-  EXPECT_EQ(client_->Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_SUCCESS(client_->Run());
   EXPECT_EQ(client_->Stop(), public_error);
 }
 }  // namespace google::scp::cpio::test

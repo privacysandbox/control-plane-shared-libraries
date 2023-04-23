@@ -40,7 +40,7 @@
 #include "core/interface/service_interface.h"
 #include "core/utils/src/base64.h"
 #include "cpio/client_providers/interface/type_def.h"
-#include "external/tink_cc/proto/hpke.pb.h"
+#include "proto/hpke.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/proto/crypto_service/v1/crypto_service.pb.h"
 

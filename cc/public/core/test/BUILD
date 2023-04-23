@@ -32,9 +32,11 @@ cc_test(
     srcs = ["execution_result_test.cc"],
     deps = [
         "//cc:cc_base_include_dir",
+        "//cc/core/common/global_logger/src:global_logger_lib",
         "//cc/core/common/proto:core_common_proto_lib",
+        "//cc/core/logger/mock:logger_mock",
         "//cc/public/core/interface:execution_result",
-        "//cc/public/core/test/interface:execution_result_test_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

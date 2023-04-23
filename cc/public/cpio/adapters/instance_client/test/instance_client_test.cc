@@ -22,7 +22,7 @@
 #include <gmock/gmock.h>
 
 #include "core/test/utils/conditional_wait.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/adapters/instance_client/mock/mock_instance_client_with_overrides.h"
 #include "public/cpio/core/mock/mock_lib_cpio.h"
 #include "public/cpio/interface/instance_client/instance_client_interface.h"
@@ -32,6 +32,10 @@ using google::cmrt::sdk::instance_service::v1::
     GetCurrentInstanceResourceNameRequest;
 using google::cmrt::sdk::instance_service::v1::
     GetCurrentInstanceResourceNameResponse;
+using google::cmrt::sdk::instance_service::v1::
+    GetInstanceDetailsByResourceNameRequest;
+using google::cmrt::sdk::instance_service::v1::
+    GetInstanceDetailsByResourceNameResponse;
 using google::cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest;
 using google::cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse;
 using google::scp::core::AsyncContext;
@@ -152,6 +156,55 @@ TEST_F(InstanceClientTest, GetTagsByResourceNameFailure) {
                   GetTagsByResourceNameRequest(),
                   [&](const ExecutionResult result,
                       GetTagsByResourceNameResponse response) {
+                    EXPECT_THAT(result,
+                                ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+                    finished = true;
+                  }),
+              ResultIs(FailureExecutionResult(SC_UNKNOWN)));
+  WaitUntil([&]() { return finished.load(); });
+}
+
+TEST_F(InstanceClientTest, GetInstanceDetailsByResourceNameSuccess) {
+  EXPECT_CALL(*client_->GetInstanceClientProvider(),
+              GetInstanceDetailsByResourceName)
+      .WillOnce(
+          [=](AsyncContext<GetInstanceDetailsByResourceNameRequest,
+                           GetInstanceDetailsByResourceNameResponse>& context) {
+            context.response =
+                make_shared<GetInstanceDetailsByResourceNameResponse>();
+            context.result = SuccessExecutionResult();
+            context.Finish();
+            return SuccessExecutionResult();
+          });
+
+  atomic<bool> finished = false;
+  EXPECT_THAT(client_->GetInstanceDetailsByResourceName(
+                  GetInstanceDetailsByResourceNameRequest(),
+                  [&](const ExecutionResult result,
+                      GetInstanceDetailsByResourceNameResponse response) {
+                    EXPECT_THAT(result, IsSuccessful());
+                    finished = true;
+                  }),
+              IsSuccessful());
+  WaitUntil([&]() { return finished.load(); });
+}
+
+TEST_F(InstanceClientTest, GetInstanceDetailsByResourceNameFailure) {
+  EXPECT_CALL(*client_->GetInstanceClientProvider(),
+              GetInstanceDetailsByResourceName)
+      .WillOnce(
+          [=](AsyncContext<GetInstanceDetailsByResourceNameRequest,
+                           GetInstanceDetailsByResourceNameResponse>& context) {
+            context.result = FailureExecutionResult(SC_UNKNOWN);
+            context.Finish();
+            return FailureExecutionResult(SC_UNKNOWN);
+          });
+
+  atomic<bool> finished = false;
+  EXPECT_THAT(client_->GetInstanceDetailsByResourceName(
+                  GetInstanceDetailsByResourceNameRequest(),
+                  [&](const ExecutionResult result,
+                      GetInstanceDetailsByResourceNameResponse response) {
                     EXPECT_THAT(result,
                                 ResultIs(FailureExecutionResult(SC_UNKNOWN)));
                     finished = true;

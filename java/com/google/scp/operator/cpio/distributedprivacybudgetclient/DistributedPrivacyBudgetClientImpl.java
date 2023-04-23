@@ -63,8 +63,6 @@ public final class DistributedPrivacyBudgetClientImpl implements DistributedPriv
       ImmutableList<PrivacyBudgetUnit> exhaustedPrivacyBudgetUnits =
           transactionManager.execute(transactionRequest);
 
-      // TODO: Populate ConsumePrivacyBudgetResponse based on the response
-      // received from the coordinators.
       logger.info("Successfully ran distributed privacy budget service.");
       return ConsumePrivacyBudgetResponse.builder()
           .exhaustedPrivacyBudgetUnits(exhaustedPrivacyBudgetUnits)

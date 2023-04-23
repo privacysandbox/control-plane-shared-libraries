@@ -25,6 +25,12 @@ namespace google::scp::core::test {
 #define SC_TESTING_UTILS_TIMEOUT 21
 
 /**
+ * @brief Timeout exception object thrown by WaitUntil
+ *
+ */
+class TestTimeoutException : public std::exception {};
+
+/**
  * @brief Waits util the given condition is met.
  *
  * @param condition when the condition is met, stop waiting.

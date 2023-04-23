@@ -56,15 +56,13 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
           cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&)),
       (override, noexcept));
 
-  core::ExecutionResult GetInstanceDetailsByResourceName(
-      core::AsyncContext<cmrt::sdk::instance_service::v1::
-                             GetInstanceDetailsByResourceNameRequest,
-                         cmrt::sdk::instance_service::v1::
-                             GetInstanceDetailsByResourceNameResponse>&
-          context) noexcept override {
-    // Not implemented.
-    return core::FailureExecutionResult(SC_UNKNOWN);
-  }
+  MOCK_METHOD(
+      core::ExecutionResult, GetInstanceDetailsByResourceName,
+      ((core::AsyncContext<cmrt::sdk::instance_service::v1::
+                               GetInstanceDetailsByResourceNameRequest,
+                           cmrt::sdk::instance_service::v1::
+                               GetInstanceDetailsByResourceNameResponse>&)),
+      (override, noexcept));
 
   std::string instance_resource_name =
       R"(arn:aws:ec2:us-east-1:123456789012:instance/i-0e9801d129EXAMPLE)";

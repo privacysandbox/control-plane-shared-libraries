@@ -32,6 +32,7 @@
 #include "cpio/client_providers/metric_client_provider/mock/mock_metric_client_provider.h"
 #include "cpio/client_providers/metric_client_provider/mock/utils/mock_timeseries_metric_with_overrides.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 using google::cmrt::sdk::metric_service::v1::Metric;
@@ -46,6 +47,7 @@ using google::scp::core::RetryExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::Timestamp;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
+using google::scp::core::test::ResultIs;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::mock::MockMetricClientProvider;
 using google::scp::cpio::client_providers::mock::MockTimeSeriesMetricOverrides;
@@ -87,7 +89,7 @@ TEST(TimeSeriesMetricTest, Run) {
     auto timeseries_metric = MockTimeSeriesMetricOverrides(
         async_executor, mock_metric_client, metric_info, time_duration);
 
-    EXPECT_EQ(timeseries_metric.Run(), result);
+    EXPECT_THAT(timeseries_metric.Run(), ResultIs(result));
   }
 }
 
@@ -115,7 +117,7 @@ TEST(TimeSeriesMetricTest, ScheduleMetricPush) {
   auto timeseries_metric = MockTimeSeriesMetricOverrides(
       async_executor, mock_metric_client, metric_info, time_duration);
 
-  EXPECT_EQ(timeseries_metric.Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(timeseries_metric.Run());
   WaitUntil([&]() { return schedule_for_is_called; });
 }
 
@@ -149,7 +151,7 @@ TEST(TimeSeriesMetricTest, RunMetricPush) {
     return;
   };
 
-  EXPECT_EQ(timeseries_metric.Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(timeseries_metric.Run());
   WaitUntil([&]() { return schedule_for_is_called; });
   WaitUntil([&]() { return metric_push_is_called; });
 }
@@ -196,7 +198,7 @@ TEST(TimeSeriesMetricTest, MetricPushHandler) {
   time_event->Stop();
   timeseries_metric.Push(time_event);
 
-  EXPECT_EQ(timeseries_metric.Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(timeseries_metric.Run());
   WaitUntil([&]() { return schedule_for_is_called; });
   WaitUntil([&]() { return counter_time_metric_is_called; });
   WaitUntil([&]() { return accumulative_time_metric_is_called; });
@@ -248,7 +250,7 @@ TEST(TimeSeriesMetricTest, MetricPushWithRecordMetric) {
   time_event->Stop();
   timeseries_metric.Push(time_event);
 
-  EXPECT_EQ(timeseries_metric.Run(), SuccessExecutionResult());
+  EXPECT_SUCCESS(timeseries_metric.Run());
   WaitUntil([&]() { return schedule_for_is_called; });
   WaitUntil([&]() { return time_metric_found; });
   WaitUntil([&]() { return counter_metric_found; });

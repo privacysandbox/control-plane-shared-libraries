@@ -28,18 +28,21 @@
 #include "core/interface/http_types.h"
 #include "core/test/utils/timestamp_test_utils.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using google::cmrt::sdk::kms_service::v1::DecryptRequest;
 using google::cmrt::sdk::private_key_service::v1::PrivateKey;
 using google::protobuf::util::TimeUtil;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
-using google::scp::core::SuccessExecutionResult;
+using google::scp::core::errors::
+    SC_PRIVATE_KEY_CLIENT_PROVIDER_INVALID_KEY_RESOURCE_NAME;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_KEY_DATA_NOT_FOUND;
 using google::scp::core::errors::
     SC_PRIVATE_KEY_CLIENT_PROVIDER_SECRET_PIECE_SIZE_UNMATCHED;
 using google::scp::core::test::ExpectTimestampEquals;
+using google::scp::core::test::ResultIs;
 using google::scp::cpio::client_providers::KeyData;
 using google::scp::cpio::client_providers::PrivateKeyFetchingResponse;
 using std::make_shared;
@@ -55,11 +58,14 @@ static constexpr char kTestPublicKeyMaterial[] = "publicKeyMaterial";
 static constexpr int kTestExpirationTime = 123456;
 static constexpr int kTestCreationTime = 111111;
 static constexpr char kTestPublicKeySignature[] = "publicKeySignature";
+static constexpr char kTestKeyEncryptionKeyUriWithPrefix[] =
+    "1234567890keyEncryptionKeyUri";
 static constexpr char kTestKeyEncryptionKeyUri[] = "keyEncryptionKeyUri";
 static constexpr char kTestKeyMaterial[] = "keyMaterial";
 
 namespace google::scp::cpio::client_providers::test {
-shared_ptr<EncryptionKey> CreateEncryptionKey() {
+shared_ptr<EncryptionKey> CreateEncryptionKey(
+    const string& key_resource_name = kTestKeyEncryptionKeyUriWithPrefix) {
   auto encryption_key = make_shared<EncryptionKey>();
   encryption_key->key_id = make_shared<string>(kTestKeyId);
   encryption_key->resource_name = make_shared<string>(kTestResourceName);
@@ -72,8 +78,7 @@ shared_ptr<EncryptionKey> CreateEncryptionKey() {
   encryption_key->public_keyset_handle =
       make_shared<string>(kTestPublicKeysetHandle);
   auto key_data = make_shared<KeyData>();
-  key_data->key_encryption_key_uri =
-      make_shared<string>(kTestKeyEncryptionKeyUri);
+  key_data->key_encryption_key_uri = make_shared<string>(key_resource_name);
   key_data->key_material = make_shared<string>(kTestKeyMaterial);
   key_data->public_key_signature = make_shared<string>(kTestPublicKeySignature);
   encryption_key->key_data.emplace_back(key_data);
@@ -85,7 +90,7 @@ TEST(PrivateKeyClientUtilsTest, GetKmsDecryptRequestSuccess) {
   DecryptRequest kms_decrypt_request;
   auto result = PrivateKeyClientUtils::GetKmsDecryptRequest(
       encryption_key, kms_decrypt_request);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(kms_decrypt_request.ciphertext(), kTestKeyMaterial);
   EXPECT_EQ(kms_decrypt_request.key_resource_name(), kTestKeyEncryptionKeyUri);
 }
@@ -102,8 +107,19 @@ TEST(PrivateKeyClientUtilsTest, GetKmsDecryptRequestFailed) {
   DecryptRequest kms_decrypt_request;
   auto result = PrivateKeyClientUtils::GetKmsDecryptRequest(
       encryption_key, kms_decrypt_request);
-  EXPECT_EQ(result, FailureExecutionResult(
-                        SC_PRIVATE_KEY_CLIENT_PROVIDER_KEY_DATA_NOT_FOUND));
+  EXPECT_THAT(result, ResultIs(FailureExecutionResult(
+                          SC_PRIVATE_KEY_CLIENT_PROVIDER_KEY_DATA_NOT_FOUND)));
+}
+
+TEST(PrivateKeyClientUtilsTest,
+     GetKmsDecryptRequestWithInvalidKeyResourceNameFailed) {
+  auto encryption_key = CreateEncryptionKey("invalid");
+  DecryptRequest kms_decrypt_request;
+  auto result = PrivateKeyClientUtils::GetKmsDecryptRequest(
+      encryption_key, kms_decrypt_request);
+  EXPECT_THAT(result,
+              ResultIs(FailureExecutionResult(
+                  SC_PRIVATE_KEY_CLIENT_PROVIDER_INVALID_KEY_RESOURCE_NAME)));
 }
 
 TEST(PrivateKeyClientUtilsTest, GetPrivateKeyInfo) {
@@ -112,7 +128,7 @@ TEST(PrivateKeyClientUtilsTest, GetPrivateKeyInfo) {
   PrivateKey private_key;
   auto result =
       PrivateKeyClientUtils::GetPrivateKeyInfo(encryption_key, private_key);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(private_key.key_id(), "name_test");
   EXPECT_EQ(private_key.public_key(), kTestPublicKeyMaterial);
   ExpectTimestampEquals(private_key.expiration_time(),
@@ -131,7 +147,7 @@ TEST(PrivateKeyClientUtilsTest, ReconstructXorKeysetHandle) {
   string private_key;
   auto result = PrivateKeyClientUtils::ReconstructXorKeysetHandle(
       endpoint_responses, private_key);
-  EXPECT_EQ(result, SuccessExecutionResult());
+  EXPECT_SUCCESS(result);
   EXPECT_EQ(private_key, message);
 }
 
@@ -144,9 +160,9 @@ TEST(PrivateKeyClientUtilsTest,
   string private_key;
   auto result = PrivateKeyClientUtils::ReconstructXorKeysetHandle(
       endpoint_responses, private_key);
-  EXPECT_EQ(result,
-            FailureExecutionResult(
-                SC_PRIVATE_KEY_CLIENT_PROVIDER_SECRET_PIECE_SIZE_UNMATCHED));
+  EXPECT_THAT(result,
+              ResultIs(FailureExecutionResult(
+                  SC_PRIVATE_KEY_CLIENT_PROVIDER_SECRET_PIECE_SIZE_UNMATCHED)));
   EXPECT_TRUE(private_key.empty());
 }
 

@@ -29,135 +29,30 @@ rules_jvm_external_setup()
 # Download all http_archives and git_repositories: Begin
 ################################################################################
 
-http_archive(
-    name = "rules_java",
-    sha256 = "34b41ec683e67253043ab1a3d1e8b7c61e4e8edefbcad485381328c934d072fe",
-    url = "https://github.com/bazelbuild/rules_java/releases/download/4.0.0/rules_java-4.0.0.tar.gz",
-)
-
-# Load specific version of differential privacy from github.
-
-DIFFERENTIAL_PRIVACY_COMMIT = "68bdbb24fe493638d937120c08927398604c55af"
-
-# value recommended by the differential privacy repo.
-# date, not after the specified commit to allow for more shallow clone of repo
-# for faster build times.
-DIFFERENTIAL_PRIVACY_SHALLOW_SINCE = "1618997113 +0200"
-
-git_repository(
-    name = "com_google_differential_privacy",
-    commit = DIFFERENTIAL_PRIVACY_COMMIT,
-    remote = "https://github.com/google/differential-privacy.git",
-    shallow_since = DIFFERENTIAL_PRIVACY_SHALLOW_SINCE,
-)
-
-################
-# SDK Dependencies Rules #
-################
-
 # Declare explicit protobuf version and hash, to override any implicit dependencies.
 # Please update both while upgrading to new versions.
 PROTOBUF_CORE_VERSION = "3.19.4"
 
 PROTOBUF_SHA_256 = "3bd7828aa5af4b13b99c191e8b1e884ebfa9ad371b0ce264605d347f135d2568"
 
+##########################
+# SDK Dependencies Rules #
+##########################
+
 load("//build_defs/cc:sdk.bzl", "sdk_dependencies")
 
 sdk_dependencies(PROTOBUF_CORE_VERSION, PROTOBUF_SHA_256)
 
-load(
-    "@io_bazel_rules_docker//repositories:repositories.bzl",
-    container_repositories = "repositories",
-)
+#################################
+# SCP Shared Dependencies Rules #
+#################################
 
-################
-# Tink Rules #
-################
+# This bazel file contains all the dependencies in SCP, except the dependencies
+# only used in SDK. Eventually, each project will have its own bazel file for
+# its dependencies, and this file will be removed.
+load("//build_defs:scp_dependencies.bzl", "scp_dependencies")
 
-# Imports Tink git repo to this workspace as @tink_java. To be used only for
-# testing changes not yet published to Maven.
-load("//build_defs/tink:tink_defs.bzl", "import_tink_git")
-
-import_tink_git()
-
-################
-# Python Rules #
-################
-
-http_archive(
-    name = "rules_python",
-    sha256 = "a30abdfc7126d497a7698c29c46ea9901c6392d6ed315171a6df5ce433aa4502",
-    strip_prefix = "rules_python-0.6.0",
-    url = "https://github.com/bazelbuild/rules_python/archive/0.6.0.tar.gz",
-)
-
-###############
-# Proto rules #
-###############
-
-http_archive(
-    name = "rules_proto",
-    sha256 = "66bfdf8782796239d3875d37e7de19b1d94301e8972b3cbd2446b332429b4df1",
-    strip_prefix = "rules_proto-4.0.0",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/refs/tags/4.0.0.tar.gz",
-        "https://github.com/bazelbuild/rules_proto/archive/refs/tags/4.0.0.tar.gz",
-    ],
-)
-
-###########################
-# Binary Dev Dependencies #
-###########################
-
-http_archive(
-    name = "packer",
-    build_file_content = """
-package(default_visibility = ["//visibility:public"])
-exports_files(["packer"])
-""",
-    sha256 = "57d0411e578aea62918d36ed186951139d5d49d44b76e5666d1fbf2427b385ae",
-    url = "https://releases.hashicorp.com/packer/1.8.6/packer_1.8.6_linux_amd64.zip",
-)
-
-http_archive(
-    name = "terraform",
-    build_file_content = """
-package(default_visibility = ["//visibility:public"])
-exports_files(["terraform"])
-""",
-    sha256 = "728b6fbcb288ad1b7b6590585410a98d3b7e05efe4601ef776c37e15e9a83a96",
-    url = "https://releases.hashicorp.com/terraform/1.2.3/terraform_1.2.3_linux_amd64.zip",
-)
-
-# google cloud sdk for releasing artifacts to gcs
-http_archive(
-    name = "google-cloud-sdk",
-    build_file_content = """
-package(default_visibility = ["//visibility:public"])
-exports_files(["google-cloud-sdk"])
-""",
-    # latest from https://cloud.google.com/storage/docs/gsutil_install#linux as of 2021-12-16
-    sha256 = "94328b9c6559a1b7ec2eeaab9ef0e4702215e16e8327c5b99718750526ae1efe",
-    url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-367.0.0-linux-x86_64.tar.gz",
-)
-
-# google-java-format for presubmit checks of format and unused imports
-http_file(
-    name = "google_java_format",
-    downloaded_file_path = "google-java-format.jar",
-    sha256 = "a356bb0236b29c57a3ab678f17a7b027aad603b0960c183a18f1fe322e4f38ea",
-    urls = ["https://github.com/google/google-java-format/releases/download/v1.15.0/google-java-format-1.15.0-all-deps.jar"],
-)
-
-# Note: requires golang toolchain.
-http_archive(
-    name = "com_github_bazelbuild_buildtools",
-    sha256 = "ae34c344514e08c23e90da0e2d6cb700fcd28e80c02e23e4d5715dddcb42f7b3",
-    strip_prefix = "buildtools-4.2.2",
-    urls = [
-        "https://github.com/bazelbuild/buildtools/archive/refs/tags/4.2.2.tar.gz",
-    ],
-)
+scp_dependencies(PROTOBUF_CORE_VERSION, PROTOBUF_SHA_256)
 
 ################################################################################
 # Download all http_archives and git_repositories: End
@@ -224,8 +119,8 @@ maven_install(
         "com.google.protobuf:protobuf-java-util:" + PROTOBUF_CORE_VERSION,
         "com.google.guava:guava:30.1-jre",
         "com.google.guava:guava-testlib:30.1-jre",
-        "com.google.inject:guice:5.0.1",
-        "com.google.inject.extensions:guice-testlib:5.0.1",
+        "com.google.inject:guice:5.1.0",
+        "com.google.inject.extensions:guice-testlib:5.1.0",
         "com.google.jimfs:jimfs:1.2",
         "com.google.protobuf:protobuf-java:" + PROTOBUF_CORE_VERSION,
         "com.google.protobuf:protobuf-java-util:" + PROTOBUF_CORE_VERSION,
@@ -418,10 +313,10 @@ rpmpack_dependencies()
 # Distroless image for running Java.
 container_pull(
     name = "java_base",
-    # Using SHA-256 for reproducibility.
-    digest = "sha256:940d5d7c67553ea25ab03b9ac455a5c023ba973b32b1a58dd6e071f4dd770045",
+    # Using SHA-256 for reproducibility. The tag is latest-amd64.
+    digest = "sha256:901215ab3ae619500f184668461cf901830e7a9707f8f9c016d9c08d8060db5a",
     registry = "gcr.io",
-    repository = "distroless/java11-debian11",
+    repository = "distroless/java17-debian11",
 )
 
 # Distroless image for running C++.
@@ -458,6 +353,15 @@ load("//build_defs/cc:v8.bzl", "import_v8")
 
 import_v8()
 
+# Needed for cc reproducible builds
+load("//cc/tools/build:build_container_params.bzl", "CC_BUILD_CONTAINER_REGISTRY", "CC_BUILD_CONTAINER_REPOSITORY", "CC_BUILD_CONTAINER_TAG")
+
+container_pull(
+    name = "prebuilt_cc_build_container_image_pull",
+    registry = CC_BUILD_CONTAINER_REGISTRY,
+    repository = CC_BUILD_CONTAINER_REPOSITORY,
+    tag = CC_BUILD_CONTAINER_TAG,
+)
 ################################################################################
 # Download Containers: End
 ################################################################################

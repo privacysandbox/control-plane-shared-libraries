@@ -29,6 +29,7 @@ cc_test(
         "//cc/core/async_executor/src:core_async_executor_lib",
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -45,6 +46,7 @@ cc_test(
         "//cc/core/async_executor/mock:core_async_executor_mock",
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -62,6 +64,7 @@ cc_test(
         "//cc/core/async_executor/src:core_async_executor_lib",
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -81,6 +84,7 @@ cc_test(
         "//cc/core/async_executor/src:core_async_executor_lib",
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

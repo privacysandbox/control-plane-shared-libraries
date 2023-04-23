@@ -28,7 +28,7 @@
 #include "cpio/client_providers/private_key_fetcher_provider/src/error_codes.h"
 #include "cpio/client_providers/role_credentials_provider/mock/mock_role_credentials_provider.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using google::scp::core::AsyncContext;
 using google::scp::core::AwsV4Signer;
@@ -78,8 +78,8 @@ class AwsPrivateKeyFetcherProviderTest : public ::testing::Test {
         aws_private_key_fetcher_provider_(
             make_unique<AwsPrivateKeyFetcherProvider>(http_client_,
                                                       credentials_provider_)) {
-    EXPECT_THAT(aws_private_key_fetcher_provider_->Init(), IsSuccessful());
-    EXPECT_THAT(aws_private_key_fetcher_provider_->Run(), IsSuccessful());
+    EXPECT_SUCCESS(aws_private_key_fetcher_provider_->Init());
+    EXPECT_SUCCESS(aws_private_key_fetcher_provider_->Run());
 
     request_ = make_shared<PrivateKeyFetchingRequest>();
     request_->key_id = make_shared<string>(kKeyId);
@@ -92,7 +92,7 @@ class AwsPrivateKeyFetcherProviderTest : public ::testing::Test {
 
   ~AwsPrivateKeyFetcherProviderTest() {
     if (aws_private_key_fetcher_provider_) {
-      EXPECT_THAT(aws_private_key_fetcher_provider_->Stop(), IsSuccessful());
+      EXPECT_SUCCESS(aws_private_key_fetcher_provider_->Stop());
     }
   }
 
@@ -137,7 +137,7 @@ TEST_F(AwsPrivateKeyFetcherProviderTest, SignHttpRequest) {
   AsyncContext<PrivateKeyFetchingRequest, HttpRequest> context(
       request_,
       [&](AsyncContext<PrivateKeyFetchingRequest, HttpRequest>& context) {
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         condition = true;
         return SuccessExecutionResult();
       });

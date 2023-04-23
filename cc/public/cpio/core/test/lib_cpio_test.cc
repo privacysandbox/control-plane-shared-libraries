@@ -23,6 +23,7 @@
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/interface/cpio.h"
 #include "public/cpio/test/global_cpio/test_cpio_options.h"
 #include "public/cpio/test/global_cpio/test_lib_cpio.h"
@@ -32,6 +33,7 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::GlobalLogger;
 using google::scp::core::errors::SC_ASYNC_EXECUTOR_NOT_RUNNING;
+using google::scp::core::test::ResultIs;
 using google::scp::cpio::client_providers::GlobalCpio;
 using std::shared_ptr;
 using ::testing::IsNull;
@@ -44,41 +46,41 @@ TEST(LibCpioTest, NoLogTest) {
   TestCpioOptions options;
   options.log_option = LogOption::kNoLog;
   options.region = kRegion;
-  EXPECT_EQ(TestLibCpio::InitCpio(options), SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::InitCpio(options));
   EXPECT_THAT(GlobalLogger::GetGlobalLogger(), IsNull());
   EXPECT_THAT(GlobalCpio::GetGlobalCpio(), NotNull());
-  EXPECT_EQ(TestLibCpio::ShutdownCpio(options), SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::ShutdownCpio(options));
 }
 
 TEST(LibCpioTest, ConsoleLogTest) {
   TestCpioOptions options;
   options.log_option = LogOption::kConsoleLog;
   options.region = kRegion;
-  EXPECT_EQ(TestLibCpio::InitCpio(options), SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::InitCpio(options));
   EXPECT_THAT(GlobalLogger::GetGlobalLogger(), NotNull());
   EXPECT_THAT(GlobalCpio::GetGlobalCpio(), NotNull());
-  EXPECT_EQ(TestLibCpio::ShutdownCpio(options), SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::ShutdownCpio(options));
 }
 
 TEST(LibCpioTest, SysLogTest) {
   TestCpioOptions options;
   options.log_option = LogOption::kSysLog;
   options.region = kRegion;
-  EXPECT_EQ(TestLibCpio::InitCpio(options), SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::InitCpio(options));
   EXPECT_THAT(GlobalLogger::GetGlobalLogger(), NotNull());
   EXPECT_THAT(GlobalCpio::GetGlobalCpio(), NotNull());
-  EXPECT_EQ(TestLibCpio::ShutdownCpio(options), SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::ShutdownCpio(options));
 }
 
 TEST(LibCpioTest, StopSuccessfully) {
   TestCpioOptions options;
   options.log_option = LogOption::kSysLog;
   options.region = kRegion;
-  EXPECT_EQ(TestLibCpio::InitCpio(options), SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::InitCpio(options));
   shared_ptr<AsyncExecutorInterface> async_executor;
   EXPECT_EQ(GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor),
             SuccessExecutionResult());
-  EXPECT_EQ(TestLibCpio::ShutdownCpio(options), SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::ShutdownCpio(options));
 
   // AsyncExecutor already stopped in ShutdownCpio, and the second stop will
   // fail.

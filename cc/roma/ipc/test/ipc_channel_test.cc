@@ -21,6 +21,7 @@
 #include <memory>
 
 #include "core/test/utils/auto_init_run_stop.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/common/src/shared_memory.h"
 #include "roma/common/src/shared_memory_pool.h"
 
@@ -63,8 +64,8 @@ TEST_F(IpcChannelTest, ShouldReturnLastCodeObjectAfterItsRecorded) {
   code_obj->js = "JS";
   Callback callback;
   auto request_to_push = make_unique<Request>(move(code_obj), callback);
-  EXPECT_TRUE(channel.TryAcquirePushRequest().Successful());
-  EXPECT_TRUE(channel.PushRequest(move(request_to_push)).Successful());
+  EXPECT_SUCCESS(channel.TryAcquirePushRequest());
+  EXPECT_SUCCESS(channel.PushRequest(move(request_to_push)));
 
   // Should still be empty
   unique_ptr<RomaCodeObj> last_code_obj;
@@ -73,7 +74,7 @@ TEST_F(IpcChannelTest, ShouldReturnLastCodeObjectAfterItsRecorded) {
 
   Request* request;
   // The pop makes it be recorded
-  EXPECT_TRUE(channel.PopRequest(request).Successful());
+  EXPECT_SUCCESS(channel.PopRequest(request));
 
   EXPECT_TRUE(channel.GetLastRecordedCodeObjectWithoutInputs(last_code_obj)
                   .Successful());
@@ -91,8 +92,8 @@ TEST_F(IpcChannelTest, ShouldNotUpdateLastCodeObjectIfEmpty) {
   code_obj->version_num = 1;
   Callback callback;
   auto request_to_push = make_unique<Request>(move(code_obj), callback);
-  EXPECT_TRUE(channel.TryAcquirePushRequest().Successful());
-  EXPECT_TRUE(channel.PushRequest(move(request_to_push)).Successful());
+  EXPECT_SUCCESS(channel.TryAcquirePushRequest());
+  EXPECT_SUCCESS(channel.PushRequest(move(request_to_push)));
 
   // Should be empty
   unique_ptr<RomaCodeObj> last_code_obj;
@@ -100,7 +101,7 @@ TEST_F(IpcChannelTest, ShouldNotUpdateLastCodeObjectIfEmpty) {
                    .Successful());
 
   Request* request;
-  EXPECT_TRUE(channel.PopRequest(request).Successful());
+  EXPECT_SUCCESS(channel.PopRequest(request));
 
   // Should still be empty
   EXPECT_FALSE(channel.GetLastRecordedCodeObjectWithoutInputs(last_code_obj)
@@ -118,11 +119,11 @@ TEST_F(IpcChannelTest, ShouldUpdateLastCodeObjectIfVersionChanges) {
   code_obj->js = "JS";
   Callback callback;
   auto request_to_push = make_unique<Request>(move(code_obj), callback);
-  EXPECT_TRUE(channel.TryAcquirePushRequest().Successful());
-  EXPECT_TRUE(channel.PushRequest(move(request_to_push)).Successful());
+  EXPECT_SUCCESS(channel.TryAcquirePushRequest());
+  EXPECT_SUCCESS(channel.PushRequest(move(request_to_push)));
 
   Request* request;
-  EXPECT_TRUE(channel.PopRequest(request).Successful());
+  EXPECT_SUCCESS(channel.PopRequest(request));
   auto resp = make_unique<Response>();
   // Respond to request to be able to pop next available request
   EXPECT_TRUE(channel.PushResponse(move(resp)));
@@ -140,10 +141,10 @@ TEST_F(IpcChannelTest, ShouldUpdateLastCodeObjectIfVersionChanges) {
   code_obj->version_num = 2;
   code_obj->js = "NewJS";
   request_to_push = make_unique<Request>(move(code_obj), callback);
-  EXPECT_TRUE(channel.TryAcquirePushRequest().Successful());
-  EXPECT_TRUE(channel.PushRequest(move(request_to_push)).Successful());
+  EXPECT_SUCCESS(channel.TryAcquirePushRequest());
+  EXPECT_SUCCESS(channel.PushRequest(move(request_to_push)));
 
-  EXPECT_TRUE(channel.PopRequest(request).Successful());
+  EXPECT_SUCCESS(channel.PopRequest(request));
 
   EXPECT_TRUE(channel.GetLastRecordedCodeObjectWithoutInputs(last_code_obj)
                   .Successful());
@@ -163,11 +164,11 @@ TEST_F(IpcChannelTest, ShouldNotUpdateLastCodeObjectIfVersionDoesNotChange) {
   code_obj->js = "OldJS";
   Callback callback;
   auto request_to_push = make_unique<Request>(move(code_obj), callback);
-  EXPECT_TRUE(channel.TryAcquirePushRequest().Successful());
-  EXPECT_TRUE(channel.PushRequest(move(request_to_push)).Successful());
+  EXPECT_SUCCESS(channel.TryAcquirePushRequest());
+  EXPECT_SUCCESS(channel.PushRequest(move(request_to_push)));
 
   Request* request;
-  EXPECT_TRUE(channel.PopRequest(request).Successful());
+  EXPECT_SUCCESS(channel.PopRequest(request));
   auto resp = make_unique<Response>();
   // Respond to request to be able to pop next available request
   EXPECT_TRUE(channel.PushResponse(move(resp)));
@@ -186,10 +187,10 @@ TEST_F(IpcChannelTest, ShouldNotUpdateLastCodeObjectIfVersionDoesNotChange) {
   code_obj->version_num = 1;
   code_obj->js = "NewJS";
   request_to_push = make_unique<Request>(move(code_obj), callback);
-  EXPECT_TRUE(channel.TryAcquirePushRequest().Successful());
-  EXPECT_TRUE(channel.PushRequest(move(request_to_push)).Successful());
+  EXPECT_SUCCESS(channel.TryAcquirePushRequest());
+  EXPECT_SUCCESS(channel.PushRequest(move(request_to_push)));
 
-  EXPECT_TRUE(channel.PopRequest(request).Successful());
+  EXPECT_SUCCESS(channel.PopRequest(request));
 
   EXPECT_TRUE(channel.GetLastRecordedCodeObjectWithoutInputs(last_code_obj)
                   .Successful());

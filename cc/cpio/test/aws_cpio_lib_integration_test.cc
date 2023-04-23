@@ -27,6 +27,7 @@
 #include "core/test/utils/conditional_wait.h"
 #include "core/test/utils/docker_helper/docker_helper.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/adapters/metric_client/test/test_aws_metric_client.h"
 #include "public/cpio/adapters/parameter_client/test/test_aws_parameter_client.h"
 #include "public/cpio/test/global_cpio/test_cpio_options.h"
@@ -62,16 +63,15 @@ using std::thread;
 using std::unique_ptr;
 using std::vector;
 using std::chrono::milliseconds;
+using std::this_thread::sleep_for;
 
 static constexpr char kLocalHost[] = "http://127.0.0.1";
 static constexpr char kLocalstackContainerName[] =
     "cpio_integration_test_localstack";
 // TODO(b/241857324): pick available ports randomly.
 static constexpr char kLocalstackPort[] = "8888";
-static constexpr char kParameterName1[] = "test_parameter_name_1";
-static constexpr char kParameterValue1[] = "test_parameter_value_1";
-static constexpr char kParameterName2[] = "test_parameter_name_2";
-static constexpr char kParameterValue2[] = "test_parameter_value_2";
+static constexpr char kParameterName[] = "test_parameter_name";
+static constexpr char kParameterValue[] = "test_parameter_value";
 
 namespace google::scp::cpio::test {
 shared_ptr<PutMetricsRequest> CreatePutMetricsRequest() {
@@ -102,19 +102,18 @@ class CpioIntegrationTest : public ::testing::Test {
     cpio_options.region = "us-east-1";
     cpio_options.owner_id = "123456789";
     cpio_options.instance_id = "987654321";
-    EXPECT_EQ(TestLibCpio::InitCpio(cpio_options), SuccessExecutionResult());
+    EXPECT_SUCCESS(TestLibCpio::InitCpio(cpio_options));
   }
 
   void TearDown() override {
     if (metric_client) {
-      EXPECT_EQ(metric_client->Stop(), SuccessExecutionResult());
+      EXPECT_SUCCESS(metric_client->Stop());
     }
     if (parameter_client) {
-      EXPECT_EQ(parameter_client->Stop(), SuccessExecutionResult());
+      EXPECT_SUCCESS(parameter_client->Stop());
     }
 
-    EXPECT_EQ(TestLibCpio::ShutdownCpio(cpio_options),
-              SuccessExecutionResult());
+    EXPECT_SUCCESS(TestLibCpio::ShutdownCpio(cpio_options));
   }
 
   void CreateMetricClient(bool enable_batch_recording) {
@@ -126,15 +125,14 @@ class CpioIntegrationTest : public ::testing::Test {
     metric_client_options->batch_recording_time_duration = milliseconds(2000);
     metric_client = make_unique<TestAwsMetricClient>(metric_client_options);
 
-    EXPECT_EQ(metric_client->Init(), SuccessExecutionResult());
-    EXPECT_EQ(metric_client->Run(), SuccessExecutionResult());
+    EXPECT_SUCCESS(metric_client->Init());
+    EXPECT_SUCCESS(metric_client->Run());
   }
 
   void CreateParameterClient() {
     // Setup test data.
     auto ssm_client = CreateSSMClient(localstack_endpoint);
-    PutParameter(ssm_client, kParameterName1, kParameterValue1);
-    PutParameter(ssm_client, kParameterName2, kParameterValue2);
+    PutParameter(ssm_client, kParameterName, kParameterValue);
 
     auto parameter_client_options =
         make_shared<TestAwsParameterClientOptions>();
@@ -143,8 +141,8 @@ class CpioIntegrationTest : public ::testing::Test {
     parameter_client =
         make_unique<TestAwsParameterClient>(parameter_client_options);
 
-    EXPECT_EQ(parameter_client->Init(), SuccessExecutionResult());
-    EXPECT_EQ(parameter_client->Run(), SuccessExecutionResult());
+    EXPECT_SUCCESS(parameter_client->Init());
+    EXPECT_SUCCESS(parameter_client->Run());
   }
 
   string localstack_endpoint =
@@ -167,7 +165,7 @@ TEST_F(CpioIntegrationTest, MetricClientBatchRecordingDisabled) {
             metric_client->PutMetrics(
                 std::move(*CreatePutMetricsRequest()),
                 [&](const ExecutionResult result, PutMetricsResponse response) {
-                  EXPECT_EQ(result, SuccessExecutionResult());
+                  EXPECT_SUCCESS(result);
                   condition = true;
                 }),
             SuccessExecutionResult());
@@ -194,7 +192,7 @@ TEST_F(CpioIntegrationTest, MetricClientBatchRecordingEnabled) {
             metric_client->PutMetrics(
                 std::move(*CreatePutMetricsRequest()),
                 [&](const ExecutionResult result, PutMetricsResponse response) {
-                  EXPECT_EQ(result, SuccessExecutionResult());
+                  EXPECT_SUCCESS(result);
                   condition = true;
                 }),
             SuccessExecutionResult());
@@ -211,33 +209,20 @@ TEST_F(CpioIntegrationTest, MetricClientBatchRecordingEnabled) {
 
 // GetInstanceId and GetTag cannot be tested in Localstack.
 TEST_F(CpioIntegrationTest, ParameterClientGetParameterSuccessfully) {
-  GTEST_SKIP();
+  // Waits some time for the parameter to be available.
+  sleep_for(milliseconds(2000));
+
   CreateParameterClient();
 
   atomic<bool> condition = false;
-  GetParameterRequest request_1;
-  request_1.set_parameter_name(kParameterName1);
+  GetParameterRequest request;
+  request.set_parameter_name(kParameterName);
   EXPECT_EQ(
       parameter_client->GetParameter(
-          std::move(request_1),
+          std::move(request),
           [&](const ExecutionResult result, GetParameterResponse response) {
-            EXPECT_EQ(result, SuccessExecutionResult());
-            EXPECT_EQ(response.parameter_value(), kParameterValue1);
-            condition = true;
-          }),
-      SuccessExecutionResult());
-  WaitUntil([&condition]() { return condition.load(); },
-            std::chrono::milliseconds(60000));
-
-  condition = false;
-  GetParameterRequest request_2;
-  request_2.set_parameter_name(kParameterName2);
-  EXPECT_EQ(
-      parameter_client->GetParameter(
-          std::move(request_2),
-          [&](const ExecutionResult result, GetParameterResponse response) {
-            EXPECT_EQ(result, SuccessExecutionResult());
-            EXPECT_EQ(response.parameter_value(), kParameterValue2);
+            EXPECT_SUCCESS(result);
+            EXPECT_EQ(response.parameter_value(), kParameterValue);
             condition = true;
           }),
       SuccessExecutionResult());

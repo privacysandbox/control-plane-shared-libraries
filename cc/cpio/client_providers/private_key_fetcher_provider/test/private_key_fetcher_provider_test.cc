@@ -27,7 +27,7 @@
 #include "cpio/client_providers/private_key_fetcher_provider/mock/mock_private_key_fetcher_provider_with_overrides.h"
 #include "cpio/client_providers/private_key_fetcher_provider/src/error_codes.h"
 #include "public/core/interface/execution_result.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using google::scp::core::AsyncContext;
 using google::scp::core::Byte;
@@ -75,8 +75,8 @@ class PrivateKeyFetcherProviderTest : public ::testing::Test {
                 http_client_)) {
     private_key_fetcher_provider_->signed_http_request_mock->path =
         make_shared<string>(string(kPrivateKeyBaseUri) + "/" + string(kKeyId));
-    EXPECT_THAT(private_key_fetcher_provider_->Init(), IsSuccessful());
-    EXPECT_THAT(private_key_fetcher_provider_->Run(), IsSuccessful());
+    EXPECT_SUCCESS(private_key_fetcher_provider_->Init());
+    EXPECT_SUCCESS(private_key_fetcher_provider_->Run());
     request_ = make_shared<PrivateKeyFetchingRequest>();
     request_->key_id = make_shared<string>(kKeyId);
     request_->key_vending_endpoint = make_shared<PrivateKeyVendingEndpoint>();
@@ -87,7 +87,7 @@ class PrivateKeyFetcherProviderTest : public ::testing::Test {
 
   ~PrivateKeyFetcherProviderTest() {
     if (private_key_fetcher_provider_) {
-      EXPECT_THAT(private_key_fetcher_provider_->Stop(), IsSuccessful());
+      EXPECT_SUCCESS(private_key_fetcher_provider_->Stop());
     }
   }
 
@@ -150,7 +150,7 @@ TEST_F(PrivateKeyFetcherProviderTest, FetchPrivateKey) {
   AsyncContext<PrivateKeyFetchingRequest, PrivateKeyFetchingResponse> context(
       request_, [&](AsyncContext<PrivateKeyFetchingRequest,
                                  PrivateKeyFetchingResponse>& context) {
-        EXPECT_THAT(context.result, IsSuccessful());
+        EXPECT_SUCCESS(context.result);
         EXPECT_EQ(context.response->encryption_keys.size(), 1);
         const auto& encryption_key = *context.response->encryption_keys.begin();
         EXPECT_EQ(*encryption_key->resource_name, "encryptionKeys/123456");

@@ -32,6 +32,7 @@
 #include "cpio/client_providers/metric_client_provider/mock/mock_metric_client_provider.h"
 #include "cpio/client_providers/metric_client_provider/mock/utils/mock_aggregate_metric_with_overrides.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 using google::cmrt::sdk::metric_service::v1::Metric;
@@ -49,6 +50,7 @@ using google::scp::core::TimeDuration;
 using google::scp::core::Timestamp;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::errors::SC_CUSTOMIZED_METRIC_PUSH_CANNOT_SCHEDULE;
+using google::scp::core::test::ResultIs;
 using google::scp::core::test::WaitUntil;
 using google::scp::cpio::client_providers::mock::MockAggregateMetricOverrides;
 using google::scp::cpio::client_providers::mock::MockMetricClientProvider;
@@ -87,7 +89,7 @@ TEST(AggregateMetricTest, Run) {
         async_executor, mock_metric_client, metric_info, time_duration);
 
     aggregate_metric.schedule_metric_push_mock = [&]() { return result; };
-    EXPECT_EQ(aggregate_metric.Run(), result);
+    EXPECT_THAT(aggregate_metric.Run(), ResultIs(result));
   }
 }
 
@@ -114,11 +116,12 @@ TEST(AggregateMetricTest, ScheduleMetricPush) {
 
   auto aggregate_metric = MockAggregateMetricOverrides(
       async_executor, mock_metric_client, metric_info, time_duration);
-  EXPECT_EQ(aggregate_metric.ScheduleMetricPush(),
-            FailureExecutionResult(SC_CUSTOMIZED_METRIC_PUSH_CANNOT_SCHEDULE));
+  EXPECT_THAT(aggregate_metric.ScheduleMetricPush(),
+              ResultIs(FailureExecutionResult(
+                  SC_CUSTOMIZED_METRIC_PUSH_CANNOT_SCHEDULE)));
 
-  EXPECT_EQ(aggregate_metric.Run(), SuccessExecutionResult());
-  EXPECT_EQ(aggregate_metric.ScheduleMetricPush(), SuccessExecutionResult());
+  EXPECT_SUCCESS(aggregate_metric.Run());
+  EXPECT_SUCCESS(aggregate_metric.ScheduleMetricPush());
   WaitUntil([&]() { return schedule_for_is_called.load() == 2; });
 }
 

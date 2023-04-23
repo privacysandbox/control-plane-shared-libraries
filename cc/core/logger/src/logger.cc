@@ -32,7 +32,12 @@ using std::string;
 using std::string_view;
 using std::stringstream;
 
+// Default values are empty to save characters on each log on the wire.
+static constexpr char kDefaultMachineName[] = "";
+static constexpr char kDefaultClusterName[] = "";
+
 namespace google::scp::core::logger {
+
 ExecutionResult Logger::Init() noexcept {
   return log_provider_->Init();
 }
@@ -52,8 +57,8 @@ void Logger::Info(const string_view& component_name,
   va_list args;
   va_start(args, message);
   log_provider_->Log(LogLevel::kInfo, parent_activity_id, activity_id,
-                     component_name, machine_name, cluster_name, location,
-                     message, args);
+                     component_name, kDefaultMachineName, kDefaultClusterName,
+                     location, message, args);
   va_end(args);
 }
 
@@ -64,8 +69,8 @@ void Logger::Debug(const string_view& component_name,
   va_list args;
   va_start(args, message);
   log_provider_->Log(LogLevel::kDebug, parent_activity_id, activity_id,
-                     component_name, machine_name, cluster_name, location,
-                     message, args);
+                     component_name, kDefaultMachineName, kDefaultClusterName,
+                     location, message, args);
   va_end(args);
 }
 
@@ -76,8 +81,8 @@ void Logger::Warning(const string_view& component_name,
   va_list args;
   va_start(args, message);
   log_provider_->Log(LogLevel::kWarning, parent_activity_id, activity_id,
-                     component_name, machine_name, cluster_name, location,
-                     message, args);
+                     component_name, kDefaultMachineName, kDefaultClusterName,
+                     location, message, args);
   va_end(args);
 }
 
@@ -88,8 +93,8 @@ void Logger::Error(const string_view& component_name,
   va_list args;
   va_start(args, message);
   log_provider_->Log(LogLevel::kError, parent_activity_id, activity_id,
-                     component_name, machine_name, cluster_name, location,
-                     message, args);
+                     component_name, kDefaultMachineName, kDefaultClusterName,
+                     location, message, args);
   va_end(args);
 }
 
@@ -100,8 +105,8 @@ void Logger::Alert(const string_view& component_name,
   va_list args;
   va_start(args, message);
   log_provider_->Log(LogLevel::kAlert, parent_activity_id, activity_id,
-                     component_name, machine_name, cluster_name, location,
-                     message, args);
+                     component_name, kDefaultMachineName, kDefaultClusterName,
+                     location, message, args);
   va_end(args);
 }
 
@@ -112,8 +117,8 @@ void Logger::Critical(const string_view& component_name,
   va_list args;
   va_start(args, message);
   log_provider_->Log(LogLevel::kCritical, parent_activity_id, activity_id,
-                     component_name, machine_name, cluster_name, location,
-                     message, args);
+                     component_name, kDefaultMachineName, kDefaultClusterName,
+                     location, message, args);
   va_end(args);
 }
 
@@ -124,8 +129,8 @@ void Logger::Emergency(const string_view& component_name,
   va_list args;
   va_start(args, message);
   log_provider_->Log(LogLevel::kEmergency, parent_activity_id, activity_id,
-                     component_name, machine_name, cluster_name, location,
-                     message, args);
+                     component_name, kDefaultMachineName, kDefaultClusterName,
+                     location, message, args);
   va_end(args);
 }
 

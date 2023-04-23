@@ -27,6 +27,7 @@ cc_test(
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
         "//cc/cpio/common/src/aws:aws_utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -50,7 +51,7 @@ cc_test(
         "//cc/cpio/client_providers/instance_client_provider/mock/aws:aws_instance_client_provider_mock",
         "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
         "//cc/cpio/common/src/aws:aws_utils_lib",
-        "//cc/public/core/test/interface:execution_result_test_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -71,7 +72,7 @@ cc_test(
         "//cc/core/test/utils:utils_lib",
         "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
         "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
-        "//cc/public/core/test/interface:execution_result_test_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

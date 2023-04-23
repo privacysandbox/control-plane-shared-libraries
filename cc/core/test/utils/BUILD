@@ -16,6 +16,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "utils_lib",
+    testonly = True,
     srcs = glob(
         [
             "*.cc",
@@ -29,7 +30,12 @@ cc_library(
         "//cc:cc_base_include_dir",
         "//cc/core/common/time_provider/src:time_provider_lib",
         "//cc/core/interface:interface_lib",
+        "//cc/core/interface:logger_interface",
+        "//cc/core/logger/src:logger_lib",
+        "//cc/core/logger/src/log_providers:log_providers_lib",
+        "//cc/core/logger/src/log_providers/syslog:syslog_lib",
         "//cc/core/test:core_test_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],

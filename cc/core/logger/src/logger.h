@@ -84,18 +84,5 @@ class Logger : public LoggerInterface {
  protected:
   /// A unique pointer to the log provider instance.
   std::unique_ptr<logger::LogProviderInterface> log_provider_;
-  /**
-   * @brief The machine name to include in the logs.  This is a placeholder for
-   * now.
-   *
-   */
-  const std::string machine_name = "MACHINE";
-
-  /**
-   * @brief The cluster name to include in the logs.  This is a placeholder for
-   * now.
-   *
-   */
-  const std::string cluster_name = "CLUSTER";
 };
 }  // namespace google::scp::core::logger

@@ -14,6 +14,7 @@
 
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 # Agu 10, 2022
 # Commit for v1.7.0
@@ -42,7 +43,8 @@ def import_tink_git(repo_name = ""):
     """
 
     # Must be present to use Tink BUILD files which contain Android build rules.
-    http_archive(
+    maybe(
+        http_archive,
         name = "build_bazel_rules_android",
         urls = ["https://github.com/bazelbuild/rules_android/archive/v0.1.1.zip"],
         sha256 = "cd06d15dd8bb59926e4d65f9003bfc20f9da4b2519985c27e190cddc8b7a7806",
@@ -51,7 +53,8 @@ def import_tink_git(repo_name = ""):
 
     # Tink contains multiple Bazel Workspaces. The "tink_java" workspace is what's
     # needed but it references the "tink_base" workspace so import both here.
-    git_repository(
+    maybe(
+        git_repository,
         name = "tink_base",
         commit = TINK_COMMIT,
         remote = "https://github.com/google/tink.git",
@@ -62,9 +65,10 @@ def import_tink_git(repo_name = ""):
     # so Tink's dependencies are just included directly in this workspace above.
 
     # Needed by Tink for JsonKeysetRead.
-    http_archive(
+    maybe(
+        http_archive,
         name = "rapidjson",
-        build_file = Label("//build_defs/cc/build_targets:rapidjson.BUILD"),
+        build_file = Label("//build_defs/cc/shared/build_targets:rapidjson.BUILD"),
         sha256 = "30bd2c428216e50400d493b38ca33a25efb1dd65f79dfc614ab0c957a3ac2c28",
         strip_prefix = "rapidjson-418331e99f859f00bdc8306f69eba67e8693c55e",
         urls = [
@@ -72,7 +76,8 @@ def import_tink_git(repo_name = ""):
         ],
     )
 
-    git_repository(
+    maybe(
+        git_repository,
         name = "tink_cc",
         commit = TINK_COMMIT,
         remote = "https://github.com/google/tink.git",

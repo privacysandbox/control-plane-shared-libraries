@@ -91,14 +91,14 @@ TEST(RomaBasicE2ETest,
     execution_obj->input.push_back(
         make_shared<string>(to_string(size_to_allocate)));
 
-    status = Execute(
-        move(execution_obj),
-        [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
-          // Fails
-          EXPECT_FALSE(resp->ok());
-          EXPECT_EQ("Failed to create wasm object.", resp->status().message());
-          execute_finished.store(true);
-        });
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       // Fails
+                       EXPECT_FALSE(resp->ok());
+                       EXPECT_EQ("Failed to create wasm object.",
+                                 resp->status().message());
+                       execute_finished.store(true);
+                     });
     EXPECT_TRUE(status.ok());
   }
   WaitUntil([&]() { return load_finished.load(); });

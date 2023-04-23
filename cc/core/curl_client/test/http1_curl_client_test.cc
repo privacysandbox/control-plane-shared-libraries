@@ -23,7 +23,7 @@
 #include "core/curl_client/src/error_codes.h"
 #include "core/curl_client/src/http1_curl_wrapper.h"
 #include "core/test/utils/conditional_wait.h"
-#include "public/core/test/interface/execution_result_test_lib.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using std::atomic_bool;
 using std::make_shared;
@@ -114,7 +114,7 @@ TEST_F(Http1CurlClientTest, IssuesPerformRequestOnWrapper) {
 
   atomic_bool finished(false);
   http_context.callback = [&response, &finished](auto& http_context) {
-    EXPECT_THAT(http_context.result, IsSuccessful());
+    EXPECT_SUCCESS(http_context.result);
     EXPECT_THAT(http_context.response, Pointee(ResponseEquals(response)));
     finished = true;
   };
@@ -147,7 +147,7 @@ TEST_F(Http1CurlClientTest, RetriesWork) {
 
   atomic_bool finished(false);
   http_context.callback = [&response, &finished](auto& http_context) {
-    EXPECT_THAT(http_context.result, IsSuccessful());
+    EXPECT_SUCCESS(http_context.result);
     EXPECT_THAT(http_context.response, Pointee(ResponseEquals(response)));
     finished = true;
   };

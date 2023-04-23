@@ -30,6 +30,7 @@
 #include "core/test/test_config.h"
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/interface/execution_result.h"
+#include "public/core/test/interface/execution_result_matchers.h"
 
 using google::scp::core::async_executor::mock::MockAsyncExecutorWithInternals;
 using std::atomic;
@@ -51,77 +52,84 @@ namespace google::scp::core::test {
 
 TEST(AsyncExecutorTests, CannotInitWithZeroThreadCount) {
   AsyncExecutor executor(0, 10);
-  EXPECT_EQ(
-      executor.Init(),
-      FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_INVALID_THREAD_COUNT));
+  EXPECT_THAT(executor.Init(),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_ASYNC_EXECUTOR_INVALID_THREAD_COUNT)));
 }
 
 TEST(AsyncExecutorTests, CannotInitWithTooBigThreadCount) {
   AsyncExecutor executor(10001, 10);
-  EXPECT_EQ(
-      executor.Init(),
-      FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_INVALID_THREAD_COUNT));
+  EXPECT_THAT(executor.Init(),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_ASYNC_EXECUTOR_INVALID_THREAD_COUNT)));
 }
 
 TEST(AsyncExecutorTests, CannotInitWithTooBigQueueCap) {
   AsyncExecutor executor(10, kMaxQueueCap + 1);
-  EXPECT_EQ(executor.Init(), FailureExecutionResult(
-                                 errors::SC_ASYNC_EXECUTOR_INVALID_QUEUE_CAP));
+  EXPECT_THAT(executor.Init(),
+              ResultIs(FailureExecutionResult(
+                  errors::SC_ASYNC_EXECUTOR_INVALID_QUEUE_CAP)));
 }
 
 TEST(AsyncExecutorTests, EmptyWorkQueue) {
   AsyncExecutor executor(1, 10);
-  EXPECT_EQ(executor.Init(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Run(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 TEST(AsyncExecutorTests, CannotRunTwice) {
   AsyncExecutor executor(1, 10);
-  EXPECT_EQ(executor.Init(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Run(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Run(),
-            FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_ALREADY_RUNNING));
-  EXPECT_EQ(executor.Stop(), SuccessExecutionResult());
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
+  EXPECT_THAT(executor.Run(), ResultIs(FailureExecutionResult(
+                                  errors::SC_ASYNC_EXECUTOR_ALREADY_RUNNING)));
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 TEST(AsyncExecutorTests, CannotStopTwice) {
   AsyncExecutor executor(1, 10);
-  EXPECT_EQ(executor.Init(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Run(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Stop(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Stop(),
-            FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING));
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
+  EXPECT_SUCCESS(executor.Stop());
+  EXPECT_THAT(
+      executor.Stop(),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
 }
 
 TEST(AsyncExecutorTests, CannotScheduleWorkBeforeInit) {
   AsyncExecutor executor(1, 10);
-  EXPECT_EQ(executor.Schedule([]() {}, AsyncPriority::Normal),
-            FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING));
-  EXPECT_EQ(executor.ScheduleFor([]() {}, 10000),
-            FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING));
+  EXPECT_THAT(
+      executor.Schedule([]() {}, AsyncPriority::Normal),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
+  EXPECT_THAT(
+      executor.ScheduleFor([]() {}, 10000),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
 }
 
 TEST(AsyncExecutorTests, CannotScheduleWorkBeforeRun) {
   AsyncExecutor executor(1, 10);
-  EXPECT_EQ(executor.Init(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Schedule([]() {}, AsyncPriority::Normal),
-            FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING));
-  EXPECT_EQ(executor.ScheduleFor([]() {}, 1000),
-            FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING));
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_THAT(
+      executor.Schedule([]() {}, AsyncPriority::Normal),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
+  EXPECT_THAT(
+      executor.ScheduleFor([]() {}, 1000),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
 }
 
 TEST(AsyncExecutorTests, CannotRunBeforeInit) {
   AsyncExecutor executor(1, 10);
-  EXPECT_EQ(executor.Run(),
-            FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_INITIALIZED));
+  EXPECT_THAT(executor.Run(), ResultIs(FailureExecutionResult(
+                                  errors::SC_ASYNC_EXECUTOR_NOT_INITIALIZED)));
 }
 
 TEST(AsyncExecutorTests, CannotStopBeforeRun) {
   AsyncExecutor executor(1, 10);
-  EXPECT_EQ(executor.Init(), SuccessExecutionResult());
-  EXPECT_EQ(executor.Stop(),
-            FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING));
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_THAT(
+      executor.Stop(),
+      ResultIs(FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING)));
 }
 
 TEST(AsyncExecutorTests, ExceedingQueueCapSchedule) {
@@ -159,8 +167,8 @@ TEST(AsyncExecutorTests, ExceedingQueueCapSchedule) {
     auto schedule_for_timestamp = task.GetExecutionTimestamp() + two_seconds;
     executor.ScheduleFor([&]() {}, schedule_for_timestamp);
     auto result = executor.ScheduleFor([&]() {}, task.GetExecutionTimestamp());
-    EXPECT_EQ(result, RetryExecutionResult(
-                          errors::SC_ASYNC_EXECUTOR_EXCEEDING_QUEUE_CAP));
+    EXPECT_THAT(result, ResultIs(RetryExecutionResult(
+                            errors::SC_ASYNC_EXECUTOR_EXCEEDING_QUEUE_CAP)));
   }
 
   executor.Stop();
@@ -236,7 +244,7 @@ TEST(AsyncExecutorTests, AsyncContextCallback) {
 
     // Verifies the work is executed.
     EXPECT_EQ(*(context.response), "response");
-    EXPECT_EQ(context.result, SuccessExecutionResult());
+    EXPECT_SUCCESS(context.result);
     // Verifies the callback is executed.
     EXPECT_EQ(callback_count, 1);
   }
@@ -263,7 +271,7 @@ TEST(AsyncExecutorTests, AsyncContextCallback) {
 
     // Verifies the work is executed.
     EXPECT_EQ(*(context.response), "response");
-    EXPECT_EQ(context.result, SuccessExecutionResult());
+    EXPECT_SUCCESS(context.result);
     // Verifies the callback is executed.
     EXPECT_EQ(callback_count, 1);
   }
