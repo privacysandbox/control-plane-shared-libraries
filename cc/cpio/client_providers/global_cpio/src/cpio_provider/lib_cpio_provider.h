@@ -23,6 +23,7 @@
 #include "core/interface/http_client_interface.h"
 #include "core/interface/message_router_interface.h"
 #include "core/message_router/src/message_router.h"
+#include "cpio/client_providers/interface/auth_token_provider_interface.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
@@ -45,8 +46,16 @@ class LibCpioProvider : public CpioProviderInterface {
       std::shared_ptr<core::AsyncExecutorInterface>& async_executor) noexcept
       override;
 
+  core::ExecutionResult GetIOAsyncExecutor(
+      std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor) noexcept
+      override;
+
   core::ExecutionResult GetHttpClient(
       std::shared_ptr<core::HttpClientInterface>& http_client) noexcept
+      override;
+
+  core::ExecutionResult GetHttp1Client(
+      std::shared_ptr<core::HttpClientInterface>& http1_client) noexcept
       override;
 
   core::ExecutionResult GetInstanceClientProvider(
@@ -57,14 +66,21 @@ class LibCpioProvider : public CpioProviderInterface {
       std::shared_ptr<RoleCredentialsProviderInterface>&
           role_credentials_provider) noexcept override;
 
+  core::ExecutionResult GetAuthTokenProvider(
+      std::shared_ptr<AuthTokenProviderInterface>& auth_token_provider) noexcept
+      override;
+
  protected:
-  /// Global async executor.
-  std::shared_ptr<core::AsyncExecutorInterface> async_executor_;
-  /// Global http client.
-  std::shared_ptr<core::HttpClientInterface> http_client_;
+  /// Global async executors.
+  std::shared_ptr<core::AsyncExecutorInterface> async_executor_,
+      io_async_executor_;
+  /// Global http clients.
+  std::shared_ptr<core::HttpClientInterface> http1_client_, http2_client_;
   /// Global instance client provider to fetch cloud metadata.
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
   /// Global role credential provider.
   std::shared_ptr<RoleCredentialsProviderInterface> role_credentials_provider_;
+  /// Global auth token provider.
+  std::shared_ptr<AuthTokenProviderInterface> auth_token_provider_;
 };
 }  // namespace google::scp::cpio::client_providers

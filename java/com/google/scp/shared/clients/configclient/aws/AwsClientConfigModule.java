@@ -52,9 +52,9 @@ import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils;
 public class AwsClientConfigModule extends AbstractModule {
 
   // Number of times client will retry before failing.
-  public static final int CLIENT_NUM_RETRIES = 3;
+  public static final int CLIENT_NUM_RETRIES = 5;
   // Maximum wait time for exponential backoff retry policy.
-  public static final Duration CLIENT_MAX_BACKOFF_TIME = Duration.ofSeconds(10);
+  public static final Duration CLIENT_MAX_BACKOFF_TIME = Duration.ofSeconds(30);
   // The base delay for exponential backoff retry policy.
   public static final Duration CLIENT_BASE_DELAY = Duration.ofSeconds(2);
   public static final int HTTP_CLIENT_MAX_RETRY_COUNT = 5;

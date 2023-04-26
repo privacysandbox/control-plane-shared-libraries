@@ -24,11 +24,13 @@ cc_library(
     ],
     deps = [
         "//cc:cc_base_include_dir",
+        "//cc/core/interface:async_context_lib",
         "//cc/core/interface:interface_lib",
         "//cc/cpio/proto:cc_proto",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/proto/crypto_service/v1:crypto_service_cc_proto",
+        "//cc/public/cpio/proto/instance_service/v1:instance_service_cc_proto",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
         "//cc/public/cpio/proto/private_key_service/v1:private_key_service_cc_proto",
@@ -47,6 +49,7 @@ exports_files([
     "kms_client_provider_interface.h",
     "metric_client_provider_interface.h",
     "parameter_client_provider_interface.h",
+    "auth_token_provider_interface.h",
     "private_key_client_provider_interface.h",
     "private_key_fetching_client_provider_interface.h",
     "public_key_client_provider_interface.h",
@@ -57,6 +60,7 @@ exports_files([
 filegroup(
     name = "cpio_client_provider_interface_srcs",
     srcs = [
+        ":auth_token_provider_interface.h",
         ":cloud_initializer_interface.h",
         ":config_client_provider_interface.h",
         ":cpio_provider_interface.h",

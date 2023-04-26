@@ -31,20 +31,24 @@ cc_library(
         "//cc/public/cpio/interface:aws_cpio_lib": [
             "@aws_sdk_cpp//:monitoring",
             "//cc/cpio/common/src/aws:aws_utils_lib",
+            "//cc/cpio/client_providers/instance_client_provider_new/src/aws:aws_instance_client_provider_lib",
         ],
         "//cc/public/cpio/interface:gcp_cpio_lib": [
             "//cc/cpio/cloud_providers/gcp/interface:cpio_gcp_interface_lib",
+            "//cc/cpio/client_providers/instance_client_provider_new/src/gcp:gcp_instance_client_provider_lib",
             "@com_github_googleapis_google_cloud_cpp//:monitoring",
         ],
         "//conditions:default": [
             "@aws_sdk_cpp//:monitoring",
             "//cc/cpio/common/src/aws:aws_utils_lib",
+            "//cc/cpio/client_providers/instance_client_provider_new/src/aws:aws_instance_client_provider_lib",
         ],
     }) + [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:async_context_lib",
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
+        "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/interface:type_def",
         "//cc/cpio/proto:cc_proto",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",

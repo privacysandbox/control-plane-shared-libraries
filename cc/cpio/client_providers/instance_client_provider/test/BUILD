@@ -18,14 +18,15 @@ cc_library(
     srcs = [
         "test_instance_client_provider.cc",
         "test_instance_client_provider.h",
-        "//cc/cpio/client_providers/interface:instance_client_provider_interface.h",
     ],
     copts = [
         "-std=c++17",
     ],
     deps = [
         "//cc:cc_base_include_dir",
+        "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
         "//cc/core/interface:interface_lib",
+        "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/public/cpio/test/global_cpio:test_cpio_options",
     ],
 )

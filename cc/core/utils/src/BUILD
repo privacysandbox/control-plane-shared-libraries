@@ -27,9 +27,13 @@ cc_library(
     ],
     deps = [
         "//cc:cc_base_include_dir",
+        "//cc/core/interface:async_context_lib",
         "//cc/core/interface:interface_lib",
         "//cc/core/interface:type_def_lib",
         "//cc/public/core/interface:execution_result",
         "@boringssl//:crypto",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@curl",
     ],
 )

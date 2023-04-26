@@ -29,9 +29,6 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.ByteStreams;
 import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
-import com.google.inject.Provides;
-import com.google.scp.operator.cpio.blobstorageclient.BlobStorageClient;
 import com.google.scp.operator.cpio.blobstorageclient.BlobStorageClient.BlobStorageClientException;
 import com.google.scp.operator.cpio.blobstorageclient.model.DataLocation;
 import com.google.scp.operator.cpio.blobstorageclient.model.DataLocation.BlobStoreDataLocation;
@@ -71,8 +68,10 @@ public class S3BlobStorageClientTest {
   private static final int NUM_BYTES = 16;
   private static final String BUCKET_NAME = AwsHermeticTestHelper.getBucketName();
   private File file;
-
-  @Inject S3BlobStorageClient s3BlobStorageClient;
+  private S3Client s3Client = AwsHermeticTestHelper.createS3Client(localstack);
+  private S3BlobStorageClient s3BlobStorageClient = new S3BlobStorageClient(s3Client, false, 0);
+  private S3BlobStorageClient s3BlobStorageClientWithRangedStream =
+      new S3BlobStorageClient(s3Client, true, 180000);
 
   @Before
   public void setUp() throws IOException {
@@ -228,20 +227,42 @@ public class S3BlobStorageClientTest {
                     BlobStoreDataLocation.create("no-such-bucket", /* withPrefix= */ ""))));
   }
 
+  @Test
+  public void getBlob_consistentObjectRetrieval_rangedStream() throws Exception {
+    // Compare hashed message with hashed result from S3.
+    HashFunction hashFunction = Hashing.sha512();
+    HashCode hashPreUpload = hashFunction.hashString(testMessage, UTF_8);
+    ByteArrayOutputStream downloadedBytesStream = new ByteArrayOutputStream(NUM_BYTES);
+
+    DataLocation location =
+        DataLocation.ofBlobStoreDataLocation(BlobStoreDataLocation.create(BUCKET_NAME, "keyname"));
+    s3BlobStorageClientWithRangedStream.putBlob(location, file.toPath());
+    InputStream download = s3BlobStorageClientWithRangedStream.getBlob(location);
+    BufferedInputStream input = new BufferedInputStream(download);
+    InputStream sizedInputStream = ByteStreams.limit(input, NUM_BYTES);
+    ByteStreams.copy(sizedInputStream, downloadedBytesStream);
+    downloadedBytesStream.flush();
+    downloadedBytesStream.close();
+    ByteBuffer downloadedBytesBuffer = ByteBuffer.wrap(downloadedBytesStream.toByteArray());
+    HashCode hashPostUpload = hashFunction.hashBytes(downloadedBytesBuffer);
+
+    assertThat(hashPreUpload).isEqualTo(hashPostUpload);
+  }
+
+  @Test
+  public void getBlob_exceptionOnMissingObject_rangedStream() throws Exception {
+    assertThrows(
+        BlobStorageClientException.class,
+        () ->
+            s3BlobStorageClientWithRangedStream.getBlob(
+                DataLocation.ofBlobStoreDataLocation(
+                    BlobStoreDataLocation.create(BUCKET_NAME, "NonExistentKey"))));
+  }
+
   public static final class TestEnv extends AbstractModule {
     @Override
     protected final void configure() {
-      bind(BlobStorageClient.class).to(getBlobStorageClientImplementation());
       bind(LocalStackContainer.class).toInstance(memoizedContainerSupplier.get());
-    }
-
-    public Class<? extends BlobStorageClient> getBlobStorageClientImplementation() {
-      return S3BlobStorageClient.class;
-    }
-
-    @Provides
-    S3Client provideS3Client(LocalStackContainer localstack) {
-      return AwsHermeticTestHelper.createS3Client(localstack);
     }
   }
 }

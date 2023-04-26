@@ -26,7 +26,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -61,10 +65,24 @@ public final class HttpClientWithInterceptorTest {
   private HttpClientWithInterceptor httpClientWithInterceptor;
   private Header[] responseHeaders;
 
+  private final RetryRegistry retryRegistry =
+      RetryRegistry.of(
+          RetryConfig.custom()
+              .maxAttempts(4)
+              /*
+               * Retries 3 times (in addition to initial attempt) with initial interval of 1s between calls.
+               * Backoff interval increases exponentially between retries viz. 1s, 2s, 4s respectively
+               */
+              .intervalFunction(
+                  IntervalFunction.ofExponentialBackoff(
+                      Duration.ofMillis(500), 2, Duration.ofMillis(2000)))
+              .retryExceptions(Exception.class)
+              .build());
+
   @Before
   public void setup() throws IOException {
     when(httpClient.getStatus()).thenReturn(IOReactorStatus.ACTIVE);
-    httpClientWithInterceptor = new HttpClientWithInterceptor(httpClient);
+    httpClientWithInterceptor = new HttpClientWithInterceptor(httpClient, retryRegistry);
     this.responseHeaders =
         new BasicHeader[] {
           new BasicHeader("resKey1", "resVal1"), new BasicHeader("resKey2", "resVal2")
@@ -157,8 +175,8 @@ public final class HttpClientWithInterceptorTest {
             "java.util.concurrent.ExecutionException: java.lang.RuntimeException: Connection timed"
                 + " out");
     assertThat(actualException.getMessage()).isEqualTo(expectedException.getMessage());
-    verify(httpClient, times(3)).execute(any(), any());
-    verify(responseFuture, times(3)).get();
+    verify(httpClient, times(4)).execute(any(), any());
+    verify(responseFuture, times(4)).get();
   }
 
   @Test
@@ -180,8 +198,8 @@ public final class HttpClientWithInterceptorTest {
     IOException expectedException =
         new IOException("java.lang.RuntimeException: Connection timed out");
     assertThat(actualException.getMessage()).isEqualTo(expectedException.getMessage());
-    verify(httpClient, times(3)).execute(any(), any());
-    verify(responseFuture, times(3)).get();
+    verify(httpClient, times(4)).execute(any(), any());
+    verify(responseFuture, times(4)).get();
   }
 
   @Test
@@ -189,7 +207,7 @@ public final class HttpClientWithInterceptorTest {
     when(httpClient.getStatus()).thenReturn(IOReactorStatus.INACTIVE);
     doNothing().when(httpClient).start();
 
-    httpClientWithInterceptor = new HttpClientWithInterceptor(httpClient);
+    httpClientWithInterceptor = new HttpClientWithInterceptor(httpClient, retryRegistry);
 
     verify(httpClient, times(1)).start();
   }

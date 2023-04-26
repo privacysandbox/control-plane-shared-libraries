@@ -23,6 +23,7 @@
 #include "core/interface/message_router_interface.h"
 #include "core/interface/service_interface.h"
 #include "core/message_router/src/message_router.h"
+#include "cpio/client_providers/interface/auth_token_provider_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "google/protobuf/any.pb.h"
@@ -31,7 +32,9 @@
 
 namespace google::scp::cpio::client_providers {
 /**
- * @brief Provides all required global objects.
+ * @brief Provides all required global objects. This class is not thread-safe,
+ * but it will only be used for client initialization where only one main
+ * process is running.
  *
  */
 class CpioProviderInterface : public core::ServiceInterface {
@@ -48,13 +51,34 @@ class CpioProviderInterface : public core::ServiceInterface {
           async_executor) noexcept = 0;
 
   /**
-   * @brief Get the Http Client object. Only create it when it is needed.
+   * @brief Gets the global IO Async Executor. Only create it when it is
+   * needed.
    *
-   * @param http_client output Http Client
+   * @param io_async_executor the IO Async Executor.
+   * @return core::ExecutionResult get result.
+   */
+  virtual core::ExecutionResult GetIOAsyncExecutor(
+      std::shared_ptr<core::AsyncExecutorInterface>&
+          io_async_executor) noexcept = 0;
+
+  /**
+   * @brief Get the Http2 Client object. Only create it when it is needed.
+   * TODO: rename to GetHttp2Client.
+   *
+   * @param http_client output Http2 Client
    * @return core::ExecutionResult get result.
    */
   virtual core::ExecutionResult GetHttpClient(
-      std::shared_ptr<core::HttpClientInterface>& http_client) noexcept = 0;
+      std::shared_ptr<core::HttpClientInterface>& http2_client) noexcept = 0;
+
+  /**
+   * @brief Get the Http1 Client object. Only create it when it is needed.
+   *
+   * @param http_client output Http1 Client
+   * @return core::ExecutionResult get result.
+   */
+  virtual core::ExecutionResult GetHttp1Client(
+      std::shared_ptr<core::HttpClientInterface>& http1_client) noexcept = 0;
 
   /**
    * @brief Gets the InstanceClientProvider.
@@ -75,6 +99,10 @@ class CpioProviderInterface : public core::ServiceInterface {
   virtual core::ExecutionResult GetRoleCredentialsProvider(
       std::shared_ptr<RoleCredentialsProviderInterface>&
           role_credentials_provider) noexcept = 0;
+
+  virtual core::ExecutionResult GetAuthTokenProvider(
+      std::shared_ptr<AuthTokenProviderInterface>&
+          auth_token_provider) noexcept = 0;
 };
 
 /// Factory to create CpioProvider.

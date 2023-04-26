@@ -48,6 +48,7 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::common::Uuid;
 using google::scp::core::http2_client::mock::MockHttpConnection;
+using google::scp::core::test::WaitUntil;
 using std::atomic;
 using std::bind;
 using std::future;
@@ -95,6 +96,11 @@ TEST(HttpConnectionTest, SimpleRequest) {
   http_context.request = make_shared<HttpRequest>();
   http_context.request->path = make_shared<string>("http://localhost/test");
   http_context.request->method = HttpMethod::GET;
+  atomic<bool> is_called(false);
+  http_context.callback =
+      [&](AsyncContext<HttpRequest, HttpResponse>& context) {
+        is_called.store(true);
+      };
 
   ExecutionResult execution_result = RetryExecutionResult(123);
   while (execution_result.status == ExecutionStatus::Retry) {
@@ -114,11 +120,13 @@ TEST(HttpConnectionTest, SimpleRequest) {
     usleep(1000);
   }
 
+  WaitUntil([&]() { return is_called.load(); });
+  connection.Stop();
   connection.GetPendingNetworkCallbacks().Keys(keys);
   EXPECT_EQ(keys.size(), 0);
 
-  connection.Stop();
   server.stop();
+  server.join();
 }
 
 TEST(HttpConnectionTest, CancelCallbacks) {
@@ -155,9 +163,9 @@ TEST(HttpConnectionTest, CancelCallbacks) {
   http_context.callback =
       [&](AsyncContext<HttpRequest, HttpResponse>& context) {
         if (!is_called) {
-          EXPECT_EQ(
-              context.result,
-              RetryExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED));
+          EXPECT_EQ(context.result,
+                    FailureExecutionResult(
+                        errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED));
           is_called = true;
         }
       };
@@ -184,6 +192,7 @@ TEST(HttpConnectionTest, CancelCallbacks) {
   release_response = true;
   connection.Stop();
   server.stop();
+  server.join();
 }
 
 TEST(HttpConnectionTest, StopRemovesCallback) {
@@ -220,9 +229,9 @@ TEST(HttpConnectionTest, StopRemovesCallback) {
   http_context.callback =
       [&](AsyncContext<HttpRequest, HttpResponse>& context) {
         if (!is_called) {
-          EXPECT_EQ(
-              context.result,
-              RetryExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED));
+          EXPECT_EQ(context.result,
+                    FailureExecutionResult(
+                        errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED));
           is_called = true;
         }
       };
@@ -248,6 +257,7 @@ TEST(HttpConnectionTest, StopRemovesCallback) {
   release_response = true;
   connection.Stop();
   server.stop();
+  server.join();
 }
 
 }  // namespace google::scp::core

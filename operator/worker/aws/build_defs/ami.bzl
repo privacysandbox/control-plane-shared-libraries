@@ -25,6 +25,7 @@ def _packer_worker_ami_impl(ctx):
     packer_template = ctx.file.packer_ami_config
     packer_file = ctx.actions.declare_file("%s_packer.pkr.hcl" % ctx.label.name)
     licenses_tar = ctx.file.licenses
+    user_rpms = ctx.files.user_rpms
 
     ec2_provision_script = ctx.actions.declare_file(
         "%s_ec2_startup.sh" % ctx.label.name,
@@ -57,6 +58,12 @@ def _packer_worker_ami_impl(ctx):
         },
     )
 
+    rpm_list = [proxy_rpm.short_path, worker_watcher_rpm.short_path]
+    rpm_list.extend([
+        rpm_file.short_path
+        for rpm_file in user_rpms
+    ])
+
     ctx.actions.expand_template(
         template = packer_template,
         output = packer_file,
@@ -65,8 +72,6 @@ def _packer_worker_ami_impl(ctx):
             "{aws_region}": ctx.attr.aws_region[BuildSettingInfo].value,
             "{container_path}": enclave_tar.short_path,
             "{container_filename}": enclave_tar.basename,
-            "{proxy_rpm}": proxy_rpm.short_path,
-            "{worker_watcher_rpm}": worker_watcher_rpm.short_path,
             "{provision_script}": ec2_provision_script.short_path,
             "{enclave_allocator}": allocator_file_expanded.short_path,
             "{ami_name}": ctx.attr.ami_name[BuildSettingInfo].value,
@@ -74,6 +79,7 @@ def _packer_worker_ami_impl(ctx):
             "{enable_worker_debug_mode}": "true" if ctx.attr.enable_worker_debug_mode else "false",
             "{licenses}": licenses_tar.short_path,
             "{subnet_id}": ctx.attr.subnet_id[BuildSettingInfo].value,
+            "{rpms}": '["' + '","'.join(rpm_list) + '"]',
         },
     )
 
@@ -106,7 +112,7 @@ echo "-------------------------"
         ec2_provision_script,
         allocator_file_expanded,
         licenses_tar,
-    ])
+    ] + user_rpms)
     return [DefaultInfo(
         executable = script,
         files = depset([script, packer_file, ec2_provision_script, allocator_file_expanded]),
@@ -178,6 +184,10 @@ packer_worker_ami = rule(
         "subnet_id": attr.label(
             mandatory = True,
             providers = [BuildSettingInfo],
+        ),
+        "user_rpms": attr.label_list(
+            allow_empty = True,
+            default = [],
         ),
     },
     executable = True,

@@ -115,5 +115,43 @@ class MockInstanceClientProvider : public InstanceClientProviderInterface {
     instance_zone = instance_zone_mock;
     return core::SuccessExecutionResult();
   }
+
+  core::ExecutionResult GetCurrentInstanceResourceName(
+      core::AsyncContext<cmrt::sdk::instance_service::v1::
+                             GetCurrentInstanceResourceNameRequest,
+                         cmrt::sdk::instance_service::v1::
+                             GetCurrentInstanceResourceNameResponse>&
+          context) noexcept override {
+    return core::FailureExecutionResult(SC_UNKNOWN);
+  }
+
+  core::ExecutionResult GetCurrentInstanceResourceNameSync(
+      std::string& resource_name) noexcept override {
+    return core::FailureExecutionResult(SC_UNKNOWN);
+  }
+
+  core::ExecutionResult GetTagsByResourceName(
+      core::AsyncContext<
+          cmrt::sdk::instance_service::v1::GetTagsByResourceNameRequest,
+          cmrt::sdk::instance_service::v1::GetTagsByResourceNameResponse>&
+          context) noexcept override {
+    return core::FailureExecutionResult(SC_UNKNOWN);
+  }
+
+  core::ExecutionResult GetInstanceDetailsByResourceName(
+      core::AsyncContext<cmrt::sdk::instance_service::v1::
+                             GetInstanceDetailsByResourceNameRequest,
+                         cmrt::sdk::instance_service::v1::
+                             GetInstanceDetailsByResourceNameResponse>&
+          context) noexcept override {
+    return core::FailureExecutionResult(SC_UNKNOWN);
+  }
+
+  core::ExecutionResult GetInstanceDetailsByResourceNameSync(
+      const std::string& resource_name,
+      cmrt::sdk::instance_service::v1::InstanceDetails&
+          instance_details) noexcept override {
+    return core::FailureExecutionResult(SC_UNKNOWN);
+  }
 };
 }  // namespace google::scp::cpio::client_providers::mock

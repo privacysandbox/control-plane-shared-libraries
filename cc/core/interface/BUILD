@@ -40,6 +40,35 @@ cc_library(
 )
 
 cc_library(
+    name = "service_interface_lib",
+    srcs = [
+        "service_interface.h",
+    ],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+    ],
+)
+
+cc_library(
+    name = "logger_interface",
+    srcs =
+        [
+            "logger_interface.h",
+        ],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        ":service_interface_lib",
+        "//cc:cc_base_include_dir",
+        "//cc/core/common/uuid/src:uuid_lib",
+    ],
+)
+
+cc_library(
     name = "async_context_lib",
     srcs =
         [

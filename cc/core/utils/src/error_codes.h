@@ -29,4 +29,8 @@ DEFINE_ERROR_CODE(SC_CORE_UTILS_INVALID_BASE64_ENCODING_LENGTH, SC_CORE_UTILS,
                   0x0002, "The Base64 encoding is not a multiple of 4.",
                   HttpStatusCode::BAD_REQUEST)
 
+DEFINE_ERROR_CODE(SC_CORE_UTILS_CURL_INIT_ERROR, SC_CORE_UTILS, 0x0003,
+                  "CURL cannot be initialized.",
+                  HttpStatusCode::INTERNAL_SERVER_ERROR)
+
 }  // namespace google::scp::core::errors

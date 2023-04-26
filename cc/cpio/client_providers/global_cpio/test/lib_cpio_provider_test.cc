@@ -29,6 +29,7 @@ using google::scp::core::AsyncExecutor;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::HttpClientInterface;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::cpio::client_providers::AuthTokenProviderInterface;
 using google::scp::cpio::client_providers::InstanceClientProviderInterface;
 using google::scp::cpio::client_providers::RoleCredentialsProviderInterface;
 using google::scp::cpio::client_providers::mock::
@@ -71,7 +72,6 @@ TEST_F(LibCpioProviderTest, AsyncExecutorNotCreatedInInit) {
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
   EXPECT_THAT(lib_cpio_provider->GetAsyncExecutorMember(), IsNull());
-  EXPECT_THAT(lib_cpio_provider->GetHttpClientMember(), IsNull());
 
   shared_ptr<AsyncExecutorInterface> async_executor;
   EXPECT_EQ(lib_cpio_provider->GetAsyncExecutor(async_executor),
@@ -81,16 +81,44 @@ TEST_F(LibCpioProviderTest, AsyncExecutorNotCreatedInInit) {
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
 
-TEST_F(LibCpioProviderTest, HttpClientNotCreatedInInit) {
+TEST_F(LibCpioProviderTest, IOAsyncExecutorNotCreatedInInit) {
   auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
   EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
   EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
-  EXPECT_THAT(lib_cpio_provider->GetHttpClientMember(), IsNull());
+  EXPECT_THAT(lib_cpio_provider->GetIOAsyncExecutorMember(), IsNull());
 
-  shared_ptr<HttpClientInterface> http_client;
-  EXPECT_EQ(lib_cpio_provider->GetHttpClient(http_client),
+  shared_ptr<AsyncExecutorInterface> io_async_executor;
+  EXPECT_EQ(lib_cpio_provider->GetIOAsyncExecutor(io_async_executor),
             SuccessExecutionResult());
-  EXPECT_THAT(http_client, NotNull());
+  EXPECT_THAT(io_async_executor, NotNull());
+
+  EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
+}
+
+TEST_F(LibCpioProviderTest, Http2ClientNotCreatedInInit) {
+  auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
+  EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
+  EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
+  EXPECT_THAT(lib_cpio_provider->GetHttp2ClientMember(), IsNull());
+
+  shared_ptr<HttpClientInterface> http2_client;
+  EXPECT_EQ(lib_cpio_provider->GetHttpClient(http2_client),
+            SuccessExecutionResult());
+  EXPECT_THAT(http2_client, NotNull());
+
+  EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
+}
+
+TEST_F(LibCpioProviderTest, Http1ClientNotCreatedInInit) {
+  auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
+  EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
+  EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
+  EXPECT_THAT(lib_cpio_provider->GetHttp1ClientMember(), IsNull());
+
+  shared_ptr<HttpClientInterface> http1_client;
+  EXPECT_EQ(lib_cpio_provider->GetHttp1Client(http1_client),
+            SuccessExecutionResult());
+  EXPECT_THAT(http1_client, NotNull());
 
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }
@@ -106,6 +134,20 @@ TEST_F(LibCpioProviderTest, RoleCredentialsProviderNotCreatedInInit) {
       lib_cpio_provider->GetRoleCredentialsProvider(role_credentials_provider),
       SuccessExecutionResult());
   EXPECT_THAT(role_credentials_provider, NotNull());
+
+  EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
+}
+
+TEST_F(LibCpioProviderTest, AuthTokenProviderNotCreatedInInit) {
+  auto lib_cpio_provider = make_unique<MockLibCpioProviderWithOverrides>();
+  EXPECT_EQ(lib_cpio_provider->Init(), SuccessExecutionResult());
+  EXPECT_EQ(lib_cpio_provider->Run(), SuccessExecutionResult());
+  EXPECT_THAT(lib_cpio_provider->GetAuthTokenProviderMember(), IsNull());
+
+  shared_ptr<AuthTokenProviderInterface> auth_token_provider;
+  EXPECT_EQ(lib_cpio_provider->GetAuthTokenProvider(auth_token_provider),
+            SuccessExecutionResult());
+  EXPECT_THAT(auth_token_provider, NotNull());
 
   EXPECT_EQ(lib_cpio_provider->Stop(), SuccessExecutionResult());
 }

@@ -27,6 +27,7 @@ import java.util.UUID;
  * will be cached into a map and transaction engine can access it at any time.
  */
 public class Transaction {
+  private static final int DEFAULT_RETRIES = 5;
   // The current transaction id.
   private UUID id;
   // The context of the transaction.
@@ -66,7 +67,7 @@ public class Transaction {
     currentPhaseFailed = false;
     lastExecutionTimeNanosForBaseUrl = new HashMap<>();
     lastCompletedTransactionPhaseOnPrivacyBudgetServer = new HashMap<>();
-    retries = 5;
+    retries = DEFAULT_RETRIES;
     exhaustedPrivacyBudgetUnits = ImmutableList.of();
   }
 
@@ -154,6 +155,10 @@ public class Transaction {
 
   public void setRetries(int retries) {
     this.retries = retries;
+  }
+
+  public void resetRetries() {
+    this.retries = DEFAULT_RETRIES;
   }
 
   public ImmutableList<PrivacyBudgetUnit> getExhaustedPrivacyBudgetUnits() {

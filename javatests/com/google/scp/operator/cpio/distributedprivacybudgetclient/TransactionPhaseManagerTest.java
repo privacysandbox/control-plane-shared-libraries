@@ -159,4 +159,23 @@ public final class TransactionPhaseManagerTest {
                 ExecutionResult.create(ExecutionStatus.RETRY, StatusCode.UNKNOWN)))
         .isEqualTo(TransactionPhase.ABORT);
   }
+
+  @Test
+  public void proceedToNextPhase_ENDPhase() {
+    assertThat(
+            transactionPhaseManager.proceedToNextPhase(
+                TransactionPhase.END,
+                ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK)))
+        .isEqualTo(TransactionPhase.FINISHED);
+    assertThat(
+            transactionPhaseManager.proceedToNextPhase(
+                TransactionPhase.END,
+                ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN)))
+        .isEqualTo(TransactionPhase.FINISHED);
+    assertThat(
+            transactionPhaseManager.proceedToNextPhase(
+                TransactionPhase.END,
+                ExecutionResult.create(ExecutionStatus.RETRY, StatusCode.UNKNOWN)))
+        .isEqualTo(TransactionPhase.END);
+  }
 }

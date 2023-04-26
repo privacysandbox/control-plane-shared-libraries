@@ -30,6 +30,7 @@ namespace google::scp::core {
 enum class HttpMethod {
   GET = 0,
   POST = 1,
+  PUT = 2,
   UNKNOWN = 1000,
 };
 

@@ -94,9 +94,6 @@ class CpioIntegrationTest : public ::testing::Test {
                                  kLocalstackPort) != 0) {
       throw runtime_error("Failed to start localstack!");
     }
-
-    SDKOptions options;
-    InitAPI(options);
   }
 
   static void TearDownTestSuite() {
@@ -107,8 +104,13 @@ class CpioIntegrationTest : public ::testing::Test {
   }
 
   void SetUp() override {
+    SDKOptions options;
+    InitAPI(options);
+
     cpio_options.log_option = LogOption::kConsoleLog;
     cpio_options.region = "us-east-1";
+    cpio_options.owner_id = "123456789";
+    cpio_options.instance_id = "987654321";
     EXPECT_EQ(TestLibCpio::InitCpio(cpio_options), SuccessExecutionResult());
   }
 

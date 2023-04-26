@@ -30,7 +30,7 @@ cc_library(
         "//cc/core/http2_client/mock:http2_client_mock",
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/global_cpio/src/cpio_provider:cpio_provider_lib",
-        "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
+        "//cc/cpio/client_providers/instance_client_provider_new/mock:instance_client_provider_mock",
         "//cc/cpio/client_providers/role_credentials_provider/mock:role_credentials_provider_mock",
     ],
 )

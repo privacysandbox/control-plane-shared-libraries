@@ -34,9 +34,10 @@ class TestAwsMetricClientProvider : public AwsMetricClientProvider {
       const std::shared_ptr<TestAwsMetricClientOptions>& metric_client_options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider,
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor)
+      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
       : AwsMetricClientProvider(metric_client_options, instance_client_provider,
-                                async_executor),
+                                async_executor, io_async_executor),
         cloud_watch_endpoint_override_(
             metric_client_options->cloud_watch_endpoint_override) {}
 

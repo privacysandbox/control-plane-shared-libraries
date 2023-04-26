@@ -20,10 +20,17 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.scp.coordinator.privacy.budgeting.model.PrivacyBudgetUnit;
 import com.google.scp.operator.cpio.distributedprivacybudgetclient.PrivacyBudgetClient.PrivacyBudgetClientException;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Transaction engine is responsible for running the transactions. */
 public class TransactionEngineImpl implements TransactionEngine {
 
+  /* The Key specifies the phase we can ignore failures against if the phase has succeeded at lest of the number of coordinators specified by Value */
+  private static final Map<TransactionPhase, Integer> PARTIAL_SUCCESS_ACCEPTABLE_PHASES =
+      Map.of(TransactionPhase.NOTIFY, 1, TransactionPhase.END, 0);
+  private static final Logger logger = LoggerFactory.getLogger(TransactionEngineImpl.class);
   private final TransactionPhaseManager transactionPhaseManager;
   private final ImmutableList<PrivacyBudgetClient> privacyBudgetClients;
 
@@ -49,6 +56,23 @@ public class TransactionEngineImpl implements TransactionEngine {
         transactionPhaseManager.proceedToNextPhase(
             currentPhase, transaction.getCurrentPhaseExecutionResult());
 
+    /* This means that END state was executed either successfully or with failures. However, that does
+     * not affect the eventual outcome of the transaction. What decides whether the budget consumption
+     *  was successful or not depends on if ABORT was invoked. If it was, that means the transaction
+     *  failed and it has been marked as such in the Transaction object
+     * */
+    if (nextPhase == TransactionPhase.FINISHED) {
+      if (transaction.isTransactionFailed()) {
+        throw new TransactionEngineException(
+            StatusCode.TRANSACTION_ENGINE_TRANSACTION_FAILED.name());
+      }
+      return;
+    }
+
+    if (nextPhase == TransactionPhase.ABORT) {
+      transaction.setTransactionFailed(true);
+    }
+
     if (nextPhase == TransactionPhase.UNKNOWN) {
       if (currentPhase == TransactionPhase.BEGIN) {
         throw new TransactionEngineException(
@@ -58,17 +82,21 @@ public class TransactionEngineImpl implements TransactionEngine {
           StatusCode.TRANSACTION_MANAGER_TRANSACTION_UNKNOWN.name());
     }
 
-    if (nextPhase == TransactionPhase.ABORT) {
-      transaction.setTransactionFailed(true);
-    }
-
     // Handle maximum retries for Transaction phase
     if (nextPhase == currentPhase) {
       transaction.setRetries(transaction.getRetries() - 1);
-      if (transaction.getRetries() <= 0) {
-        throw new TransactionEngineException(
-            StatusCode.TRANSACTION_MANAGER_INVALID_MAX_RETRIES_VALUE.name());
+    } else {
+      transaction.resetRetries();
+    }
+
+    if (transaction.getRetries() <= 0) {
+      /* In case it was NOTIFY that failed,
+       * we might still be able to declare success if the failure was only partial.
+       * */
+      if (canMarkTransactionAsSuccessful(currentPhase, transaction)) {
+        return;
       }
+      throw new TransactionEngineException(StatusCode.TRANSACTION_MANAGER_RETRIES_EXCEEDED.name());
     }
 
     if (transaction.isCurrentPhaseFailed()) {
@@ -88,6 +116,19 @@ public class TransactionEngineImpl implements TransactionEngine {
     }
     transaction.setCurrentPhase(nextPhase);
     executeCurrentPhase(transaction);
+  }
+
+  /* It is ok to ignore failures against certain coordinators for some phases if the phase has
+   * succeeded against at least a minimum required number of coordinators for that phase.
+   * */
+  private boolean canMarkTransactionAsSuccessful(TransactionPhase phase, Transaction transaction) {
+    if (PARTIAL_SUCCESS_ACCEPTABLE_PHASES.containsKey(phase)) {
+      long phaseSucceededCount = getCountOfPhaseSuccessAgainstCoordinators(transaction, phase);
+      if (phaseSucceededCount >= PARTIAL_SUCCESS_ACCEPTABLE_PHASES.get(phase)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void executeCurrentPhase(Transaction transaction) throws TransactionEngineException {
@@ -141,16 +182,6 @@ public class TransactionEngineImpl implements TransactionEngine {
             privacyBudgetServerIdentifier, currentPhase);
       }
     }
-
-    // Return if `END` phase has executed successfully and the transaction attempt hasn't failed
-    // already
-    if (currentPhase == TransactionPhase.END) {
-      if (transaction.isTransactionFailed()) {
-        throw new TransactionEngineException(
-            StatusCode.TRANSACTION_ENGINE_TRANSACTION_FAILED.name());
-      }
-      return;
-    }
     proceedToNextPhase(currentPhase, transaction);
   }
 
@@ -183,6 +214,17 @@ public class TransactionEngineImpl implements TransactionEngine {
     } catch (PrivacyBudgetClientException e) {
       throw new TransactionEngineException(e.getMessage());
     }
+  }
+
+  private long getCountOfPhaseSuccessAgainstCoordinators(
+      Transaction transaction, TransactionPhase transactionPhase) {
+    return privacyBudgetClients.stream()
+        .map(PrivacyBudgetClient::getPrivacyBudgetServerIdentifier)
+        .map(
+            identifier ->
+                transaction.getLastCompletedTransactionPhaseOnPrivacyBudgetServer(identifier))
+        .filter(lastSuccessfulPhase -> lastSuccessfulPhase.equals(transactionPhase))
+        .count();
   }
 
   /**

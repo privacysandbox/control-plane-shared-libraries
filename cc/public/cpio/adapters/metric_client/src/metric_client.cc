@@ -63,14 +63,14 @@ namespace google::scp::cpio {
 MetricClient::MetricClient(
     const std::shared_ptr<MetricClientOptions>& options) {
   shared_ptr<AsyncExecutorInterface> async_executor;
-  if (options->enable_batch_recording) {
-    GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor);
-  }
+  GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor);
+  shared_ptr<AsyncExecutorInterface> io_async_executor;
+  GlobalCpio::GetGlobalCpio()->GetIOAsyncExecutor(io_async_executor);
   shared_ptr<InstanceClientProviderInterface> instance_client_provider;
   GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(
       instance_client_provider);
   metric_client_provider_ = MetricClientProviderFactory::Create(
-      options, instance_client_provider, async_executor);
+      options, instance_client_provider, async_executor, io_async_executor);
 }
 
 ExecutionResult MetricClient::Init() noexcept {

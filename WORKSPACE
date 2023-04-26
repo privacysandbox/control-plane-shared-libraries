@@ -173,22 +173,23 @@ http_file(
     name = "kmstool_enclave_cli",
     downloaded_file_path = "kmstool_enclave_cli",
     executable = True,
-    sha256 = "37dcd658328c5b57c0a6d8ea141156407de4e4fb5ac43f5906b171b2018352fc",
-    urls = ["https://storage.googleapis.com/scp-dependencies/aws/kmstool_enclave_cli"],
+    sha256 = "39ac7b55e30df69f963f8519686cd9e1ac3b815dd1f4cc85a35582bbc0fa6126",
+    urls = ["https://storage.googleapis.com/scp-dependencies/aws/2023-03-27/kmstool_enclave_cli"],
 )
 
 http_file(
     name = "kmstool_enclave",
     downloaded_file_path = "kmstool_enclave",
     executable = True,
-    urls = ["https://storage.googleapis.com/scp-dependencies/aws/kmstool_enclave"],
+    urls = ["https://storage.googleapis.com/scp-dependencies/aws/2023-03-27/kmstool_enclave"],
 )
 
 http_file(
     name = "libnsm",
     downloaded_file_path = "libnsm.so",
     executable = False,
-    urls = ["https://storage.googleapis.com/scp-dependencies/aws/libnsm.so"],
+    sha256 = "df536a96458af26e4800b04aef0771a05728ed4fe7d24683cc4c1ea6bbd62d50",
+    urls = ["https://storage.googleapis.com/scp-dependencies/aws/2023-03-27/libnsm.so"],
 )
 
 ###########################
@@ -433,8 +434,8 @@ maven_install(
         "com.google.protobuf:protobuf-java-util:" + PROTOBUF_CORE_VERSION,
         "com.google.guava:guava:30.1-jre",
         "com.google.guava:guava-testlib:30.1-jre",
-        "com.google.inject:guice:5.0.1",
-        "com.google.inject.extensions:guice-testlib:5.0.1",
+        "com.google.inject:guice:5.1.0",
+        "com.google.inject.extensions:guice-testlib:5.1.0",
         "com.google.jimfs:jimfs:1.2",
         "com.google.protobuf:protobuf-java:" + PROTOBUF_CORE_VERSION,
         "com.google.protobuf:protobuf-java-util:" + PROTOBUF_CORE_VERSION,
@@ -634,10 +635,10 @@ grpc_extra_deps()
 # Distroless image for running Java.
 container_pull(
     name = "java_base",
-    # Using SHA-256 for reproducibility.
-    digest = "sha256:940d5d7c67553ea25ab03b9ac455a5c023ba973b32b1a58dd6e071f4dd770045",
+    # Using SHA-256 for reproducibility. The tag is latest-amd64.
+    digest = "sha256:901215ab3ae619500f184668461cf901830e7a9707f8f9c016d9c08d8060db5a",
     registry = "gcr.io",
-    repository = "distroless/java11-debian11",
+    repository = "distroless/java17-debian11",
 )
 
 # Distroless image for running C++.
@@ -679,6 +680,39 @@ http_file(
     urls = ["https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64"],
 )
 
+# Needed for cc/pbs/deploy/pbs_server/build_defs
+container_pull(
+    name = "debian_11",
+    digest = "sha256:3098a8fda8e7bc6bc92c37aaaa9d46fa0dd93992203ca3f53bb84e1d00ffb796",
+    registry = "index.docker.io",
+    repository = "amd64/debian",
+    tag = "11",
+)
+
+container_pull(
+    name = "debian_11_runtime",
+    digest = "sha256:105e444974ba7de61aef04a3cfab9ca0ba80babfd9da8295f6df546639d9571e",
+    registry = "gcr.io",
+    repository = "distroless/cc-debian11",
+    tag = "debug-nonroot-amd64",
+)
+
+# Needed for cc reproducible builds
+load("//cc/tools/build:build_container_params.bzl", "CC_BUILD_CONTAINER_REGISTRY", "CC_BUILD_CONTAINER_REPOSITORY", "CC_BUILD_CONTAINER_TAG")
+
+container_pull(
+    name = "prebuilt_cc_build_container_image_pull",
+    registry = CC_BUILD_CONTAINER_REGISTRY,
+    repository = CC_BUILD_CONTAINER_REPOSITORY,
+    tag = CC_BUILD_CONTAINER_TAG,
+)
 ################################################################################
 # Download Containers: End
 ################################################################################
+
+http_archive(
+    name = "jemalloc",
+    build_file = "//build_defs/cc:libjemalloc.BUILD",
+    sha256 = "1f35888bad9fd331f5a03445bc1bff808a59378be61fef01e9736179d76f2fab",
+    url = "https://github.com/jemalloc/jemalloc/archive/refs/tags/5.3.0.zip",
+)

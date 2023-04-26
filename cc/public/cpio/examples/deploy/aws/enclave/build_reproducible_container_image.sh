@@ -18,16 +18,13 @@
 
 set -euo pipefail
 
-ecr_url="public.ecr.aws/t3i9g2s2"
-ecr_repository_name="cc-build-linux-x86-64"
-ecr_full_url=$ecr_url/$ecr_repository_name
-container_version_tag=$(cat $3)
-
-docker pull $ecr_full_url:$container_version_tag
-
 output_tar=$1
 source_code_tar=$2
+build_container_tar_path=$3
 container_name_to_build=$4
+
+build_container_image_name="bazel/cc/tools/build:prebuilt_cc_build_container_image"
+docker load < $build_container_tar_path
 
 timestamp=$(date "+%Y%m%d-%H%M%S%N")
 container_name="test_reproducible_build_$timestamp"
@@ -54,7 +51,7 @@ docker -D run -d -i \
 -v /var/run/docker.sock:/var/run/docker.sock \
 -v $docker_bazel_output_dir:/tmp/bazel_build_output \
 --name $container_name \
-$ecr_full_url:$container_version_tag
+$build_container_image_name
 
 # Copy the scp source code into the build container
 # The -L is important as we are copying from a symlink

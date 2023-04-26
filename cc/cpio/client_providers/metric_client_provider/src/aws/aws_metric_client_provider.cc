@@ -25,10 +25,12 @@
 #include <aws/monitoring/CloudWatchErrors.h>
 #include <aws/monitoring/model/PutMetricDataRequest.h>
 
+#include "core/async_executor/src/aws/aws_async_executor.h"
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
 #include "core/interface/async_executor_interface.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
+#include "cpio/client_providers/instance_client_provider_new/src/aws/aws_instance_client_utils.h"
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"
 #include "public/core/interface/execution_result.h"
@@ -53,13 +55,16 @@ using google::scp::core::AsyncContext;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
+using google::scp::core::FinishContext;
 using google::scp::core::MessageRouterInterface;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET;
 using google::scp::core::errors::
     SC_AWS_METRIC_CLIENT_PROVIDER_REQUEST_PAYLOAD_OVERSIZE;
+using google::scp::cpio::client_providers::AwsInstanceClientUtils;
 using google::scp::cpio::common::CreateClientConfiguration;
 using std::bind;
 using std::make_shared;
@@ -80,35 +85,38 @@ static constexpr size_t kAwsPayloadSizeLimit = 1024 * 1024;
 static constexpr char kAwsMetricClientProvider[] = "AwsMetricClientProvider";
 
 namespace google::scp::cpio::client_providers {
-ExecutionResult AwsMetricClientProvider::GetRegion(string& region) noexcept {
-  return instance_client_provider_->GetCurrentInstanceRegion(region);
-}
-
 void AwsMetricClientProvider::CreateClientConfiguration(
     const shared_ptr<string>& region,
     shared_ptr<ClientConfiguration>& client_config) noexcept {
   client_config = common::CreateClientConfiguration(region);
+  client_config->executor = make_shared<AwsAsyncExecutor>(io_async_executor_);
   client_config->maxConnections = kCloudwatchMaxConcurrentConnections;
 }
 
-ExecutionResult AwsMetricClientProvider::Init() noexcept {
-  auto execution_result = MetricClientProvider::Init();
+ExecutionResult AwsMetricClientProvider::Run() noexcept {
+  auto execution_result = MetricClientProvider::Run();
   if (!execution_result.Successful()) {
     ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to initialize MetricClientProvider");
     return execution_result;
   }
 
-  auto region = make_shared<string>();
-  execution_result = GetRegion(*region);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get region");
-    return execution_result;
+  auto region_code_or =
+      AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
+
+  if (!region_code_or.Successful()) {
+    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
+          region_code_or.result(),
+          "Failed to get region code for current instance");
+    return region_code_or.result();
   }
 
+  INFO(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
+       "GetCurrentRegionCode: %s", region_code_or->c_str());
+
   shared_ptr<ClientConfiguration> client_config;
-  CreateClientConfiguration(region, client_config);
+  CreateClientConfiguration(make_shared<string>(move(*region_code_or)),
+                            client_config);
 
   cloud_watch_client_ = make_shared<CloudWatchClient>(*client_config);
 
@@ -181,10 +189,7 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
       cloud_watch_client_->PutMetricDataAsync(
           request_chunk,
           bind(&AwsMetricClientProvider::OnPutMetricDataAsyncCallback, this,
-               make_shared<
-                   vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>(
-                   context_chunk),
-               _1, _2, _3, _4));
+               context_chunk, _1, _2, _3, _4));
       active_push_count_++;
 
       // Resets all chunks.
@@ -207,10 +212,7 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
     cloud_watch_client_->PutMetricDataAsync(
         request_chunk,
         bind(&AwsMetricClientProvider::OnPutMetricDataAsyncCallback, this,
-             make_shared<
-                 vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>(
-                 context_chunk),
-             _1, _2, _3, _4));
+             context_chunk, _1, _2, _3, _4));
     active_push_count_++;
   }
 
@@ -218,17 +220,16 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
 }
 
 void AwsMetricClientProvider::OnPutMetricDataAsyncCallback(
-    const shared_ptr<
-        vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>&
+    vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>
         metric_requests_vector,
     const CloudWatchClient*, const PutMetricDataRequest&,
     const PutMetricDataOutcome& outcome,
     const shared_ptr<const AsyncCallerContext>&) noexcept {
   active_push_count_--;
   if (outcome.IsSuccess()) {
-    for (auto& record_metric_context : *metric_requests_vector) {
-      record_metric_context.result = SuccessExecutionResult();
-      record_metric_context.Finish();
+    for (auto& record_metric_context : metric_requests_vector) {
+      FinishContext(SuccessExecutionResult(), record_metric_context,
+                    async_executor_);
     }
     return;
   }
@@ -237,12 +238,10 @@ void AwsMetricClientProvider::OnPutMetricDataAsyncCallback(
   // watch out HttpResponseCode::REQUEST_ENTITY_TOO_LARGE.
   auto result = CloudWatchErrorConverter::ConvertCloudWatchError(
       outcome.GetError().GetErrorType(), outcome.GetError().GetMessage());
-  ERROR_CONTEXT(kAwsMetricClientProvider, metric_requests_vector->back(),
-                result, "The error is %s",
-                outcome.GetError().GetMessage().c_str());
-  for (auto& record_metric_context : *metric_requests_vector) {
-    record_metric_context.result = result;
-    record_metric_context.Finish();
+  ERROR_CONTEXT(kAwsMetricClientProvider, metric_requests_vector.back(), result,
+                "The error is %s", outcome.GetError().GetMessage().c_str());
+  for (auto& record_metric_context : metric_requests_vector) {
+    FinishContext(result, record_metric_context, async_executor_);
   }
   return;
 }
@@ -252,9 +251,10 @@ std::shared_ptr<MetricClientProviderInterface>
 MetricClientProviderFactory::Create(
     const shared_ptr<MetricClientOptions>& options,
     const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
-    const shared_ptr<AsyncExecutorInterface>& async_executor) {
-  return make_shared<AwsMetricClientProvider>(options, instance_client_provider,
-                                              async_executor);
+    const shared_ptr<AsyncExecutorInterface>& async_executor,
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor) {
+  return make_shared<AwsMetricClientProvider>(
+      options, instance_client_provider, async_executor, io_async_executor);
 }
 #endif
 }  // namespace google::scp::cpio::client_providers

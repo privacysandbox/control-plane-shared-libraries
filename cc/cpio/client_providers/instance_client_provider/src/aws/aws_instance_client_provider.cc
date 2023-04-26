@@ -235,8 +235,14 @@ ExecutionResult AwsInstanceClientProvider::GetResource(
   return SuccessExecutionResult();
 }
 
-std::shared_ptr<InstanceClientProviderInterface>
-InstanceClientProviderFactory::Create() {
+shared_ptr<InstanceClientProviderInterface>
+InstanceClientProviderFactory::Create(
+    const shared_ptr<AuthTokenProviderInterface>& auth_token_provider,
+    const shared_ptr<core::HttpClientInterface>& http1_client,
+    const shared_ptr<core::HttpClientInterface>& http2_client,
+    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
   return make_shared<AwsInstanceClientProvider>();
 }
+
 }  // namespace google::scp::cpio::client_providers

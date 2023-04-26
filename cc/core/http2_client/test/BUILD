@@ -17,14 +17,13 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 cc_test(
     name = "http2_client_test",
     size = "small",
+    timeout = "moderate",
     srcs = [
         "http2_client_test.cc",
     ],
     copts = [
         "-std=c++17",
     ],
-    flaky = True,  # Remove this flag once the flakiness is fixed.
-    tags = ["manual"],
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/mock:core_async_executor_mock",
@@ -40,13 +39,13 @@ cc_test(
 cc_test(
     name = "http2_connection_test",
     size = "small",
+    timeout = "moderate",
     srcs = [
         "http2_connection_test.cc",
     ],
     copts = [
         "-std=c++17",
     ],
-    flaky = True,  # Remove this flag once the flakiness is fixed.
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/mock:core_async_executor_mock",

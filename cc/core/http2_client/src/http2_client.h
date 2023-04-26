@@ -29,11 +29,6 @@
 
 namespace google::scp::core {
 
-static constexpr TimeDuration kHttpClientRetryStrategyDelayMs = 101;
-static constexpr size_t kHttpClientRetryStrategyTotalRetries = 12;
-static const common::RetryStrategyType kRetryStrategyType =
-    common::RetryStrategyType::Exponential;
-
 /*! @copydoc HttpClientInterface
  */
 class HttpClient : public HttpClientInterface {
@@ -61,6 +56,11 @@ class HttpClient : public HttpClientInterface {
       AsyncContext<HttpRequest, HttpResponse>& http_context) noexcept override;
 
  private:
+  static constexpr TimeDuration kHttpClientRetryStrategyDelayMs = 101;
+  static constexpr size_t kHttpClientRetryStrategyTotalRetries = 12;
+  static const common::RetryStrategyType kRetryStrategyType =
+      common::RetryStrategyType::Exponential;
+
   /// An instance of the connection pool that is used by the http client.
   std::unique_ptr<HttpConnectionPool> http_connection_pool_;
 

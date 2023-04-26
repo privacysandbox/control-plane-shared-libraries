@@ -19,6 +19,8 @@ package com.google.scp.operator.cpio.blobstorageclient.aws;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.scp.operator.cpio.blobstorageclient.BlobStorageClient;
+import com.google.scp.operator.cpio.blobstorageclient.aws.S3BlobStorageClientModule.PartialRequestBufferSize;
+import com.google.scp.operator.cpio.blobstorageclient.aws.S3BlobStorageClientModule.S3UsePartialRequests;
 import com.google.scp.operator.cpio.blobstorageclient.model.DataLocation;
 import com.google.scp.operator.cpio.blobstorageclient.model.DataLocation.BlobStoreDataLocation;
 import java.io.InputStream;
@@ -38,20 +40,48 @@ import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
  */
 public final class S3BlobStorageClient implements BlobStorageClient {
 
-  private S3Client client;
+  private final S3Client client;
+  // Indicate whether to use http partial request in getBlob function.
+  private final Boolean usePartialRequests;
+  // The buffer size for http partial request.
+  private final Integer partialRequestBufferSize;
 
   /** Creates a new instance of {@code S3BlobStorageClient}. */
   @Inject
-  public S3BlobStorageClient(S3Client client) {
+  public S3BlobStorageClient(
+      S3Client client,
+      @S3UsePartialRequests Boolean usePartialRequests,
+      @PartialRequestBufferSize Integer partialRequestBufferSize) {
     this.client = client;
+    this.usePartialRequests = usePartialRequests;
+    this.partialRequestBufferSize = partialRequestBufferSize;
   }
 
+  /**
+   * If usePartialRequests is set to true, the http partial request is used. Otherwise, the original
+   * http request would be sent. In the original http request, a single request is sent for each S3
+   * object and returns a stream. This results in an error during an extended period of inactivity
+   * as the connection is closed by the server. Http partial requests can solve this issue through
+   * sending multiple requests for each object and retrieving partial data by specifying starting
+   * byte and ending byte. The partial retrieved data would be stored in memory thus avoid
+   * long-lived inactive connections.
+   */
   @Override
   public InputStream getBlob(DataLocation location) throws BlobStorageClientException {
     BlobStoreDataLocation blobLocation = location.blobStoreDataLocation();
     try {
-      return client.getObject(
-          GetObjectRequest.builder().bucket(blobLocation.bucket()).key(blobLocation.key()).build());
+      if (usePartialRequests) {
+        S3RangedStream s3RangedStream =
+            new S3RangedStream(client, blobLocation, partialRequestBufferSize);
+        s3RangedStream.checkFileExists();
+        return s3RangedStream;
+      } else {
+        return client.getObject(
+            GetObjectRequest.builder()
+                .bucket(blobLocation.bucket())
+                .key(blobLocation.key())
+                .build());
+      }
     } catch (SdkException exception) {
       throw new BlobStorageClientException(exception);
     }

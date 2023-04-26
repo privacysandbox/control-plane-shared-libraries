@@ -16,6 +16,7 @@ load(
     "@com_google_googleapis_imports//:imports.bzl",
     "cc_grpc_library",
     "cc_proto_library",
+    "java_grpc_library",
 )
 
 package(default_visibility = ["//visibility:public"])

@@ -56,16 +56,16 @@ def cpio_test_ami(
         srcs = [
             "build_reproducible_container_image.sh",
             Label("//:source_code_tar"),
-            Label("//cc/tools/build:build_container_tag"),
+            Label("//cc/tools/build:prebuilt_cc_build_container_image.tar"),
         ],
         outs = ["%s.tar" % reproducible_container_name],
         # NOTE: This order matters
         # Arguments:
         # $1 is the output tar, that is, the path where this rule generates its output ($@)
         # $2 is the packaged SCP source code ($(location //:source_code_tar))
-        # $3 is the build container image tag
+        # $3 is the build container image TAR path
         # $4 is the name of the container to be built
-        cmd = "./$(location build_reproducible_container_image.sh) $@ $(location //:source_code_tar) $(location //cc/tools/build:build_container_tag) %s" % container_name,
+        cmd = "./$(location build_reproducible_container_image.sh) $@ $(location //:source_code_tar) $(location //cc/tools/build:prebuilt_cc_build_container_image.tar) %s" % container_name,
         tags = ["manual"],
     )
 

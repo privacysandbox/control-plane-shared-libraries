@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "cpio/client_providers/global_cpio/src/cpio_provider/lib_cpio_provider.h"
-#include "cpio/client_providers/instance_client_provider/test/test_instance_client_provider.h"
+#include "cpio/client_providers/instance_client_provider_new/test/test_instance_client_provider.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "public/cpio/interface/type_def.h"
 
@@ -32,7 +32,7 @@ namespace google::scp::cpio::client_providers {
 TestLibCpioProvider::TestLibCpioProvider(
     const shared_ptr<TestCpioOptions>& test_cpio_options)
     : LibCpioProvider() {
-  instance_client_provider_ = make_shared<TestInstanceClientProvider>(
+  instance_client_provider_ = make_shared<TestInstanceClientProviderNew>(
       make_shared<TestInstanceClientOptions>(*test_cpio_options));
 }
 

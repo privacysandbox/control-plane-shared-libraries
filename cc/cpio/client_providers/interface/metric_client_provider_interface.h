@@ -59,6 +59,7 @@ class MetricClientProviderFactory {
       const std::shared_ptr<MetricClientOptions>& options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider,
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor);
+      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor);
 };
 }  // namespace google::scp::cpio::client_providers
