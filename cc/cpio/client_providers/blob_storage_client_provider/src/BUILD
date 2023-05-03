@@ -17,22 +17,22 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 cc_library(
     name = "blob_storage_client_provider_lib",
     srcs = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_provider_srcs"],
-        "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_provider_srcs"],
-        "//conditions:default": ["//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_provider_srcs"],
+        "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_client_provider_srcs"],
+        "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_client_provider_srcs"],
+        "//conditions:default": ["//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_client_provider_srcs"],
     }),
     copts = [
         "-std=c++17",
     ],
     deps = select({
         "//cc/public/cpio/interface:aws_cpio_lib": [
-            "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_provider_lib",
+            "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_client_provider_lib",
         ],
         "//cc/public/cpio/interface:gcp_cpio_lib": [
             "//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_provider_lib",
         ],
         "//conditions:default": [
-            "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_provider_lib",
+            "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_client_provider_lib",
         ],
     }),
 )

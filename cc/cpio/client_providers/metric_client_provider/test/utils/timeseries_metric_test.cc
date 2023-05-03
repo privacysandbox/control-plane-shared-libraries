@@ -231,8 +231,10 @@ TEST(TimeSeriesMetricTest, MetricPushWithRecordMetric) {
 
   auto time_metric_found = false;
   auto counter_metric_found = false;
-  mock_metric_client->record_metric_mock =
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {
+
+  EXPECT_CALL(*mock_metric_client, PutMetrics)
+      .Times(2)
+      .WillRepeatedly([&](auto& context) {
         auto type = context.request->metrics()[0].labels().find(string("Type"));
         if (type->second == string("AverageExecutionTime")) {
           time_metric_found = true;
@@ -241,7 +243,7 @@ TEST(TimeSeriesMetricTest, MetricPushWithRecordMetric) {
           counter_metric_found = true;
         }
         return FailureExecutionResult(SC_UNKNOWN);
-      };
+      });
 
   auto timeseries_metric = MockTimeSeriesMetricOverrides(
       async_executor, mock_metric_client, metric_info, time_duration);

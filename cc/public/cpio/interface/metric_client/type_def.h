@@ -61,27 +61,6 @@ enum class MetricUnit {
 /// Configurations for MetricClient.
 struct MetricClientOptions {
   virtual ~MetricClientOptions() = default;
-
-  /**
-   * @brief Required. The top level grouping for the application metrics. A
-   * typical example would be "/application_name/environment_name".
-   * Environment name could be fetched through ConfigClient.
-   *
-   */
-  MetricNamespace metric_namespace;
-  /**
-   * @brief Pushes metrics in batches if true. In most times, when the
-   * batch_recording_time_duration is met, the push is triggered. Cloud has
-   * its own maximum batch size, and if the maximum batch size is met before the
-   * batch_recording_time_duration, the push is triggered too.
-   */
-  bool enable_batch_recording = false;
-  /**
-   * @brief The time duration to push metrics when enable_batch_recording is
-   * true.
-   */
-  std::chrono::milliseconds batch_recording_time_duration =
-      std::chrono::milliseconds(30000);
 };
 }  // namespace google::scp::cpio
 

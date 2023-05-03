@@ -49,6 +49,7 @@ java_test(
         "//java/external:google_truth",
         "//java/external:guava",
         "//java/external:mockito",
+        "//java/external:test_parameter_injector",
     ],
 )
 

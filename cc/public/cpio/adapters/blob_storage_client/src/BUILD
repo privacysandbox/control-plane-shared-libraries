@@ -20,7 +20,7 @@ exports_files([
 ])
 
 filegroup(
-    name = "blob_storage_srcs",
+    name = "blob_storage_client_srcs",
     srcs = [
         ":blob_storage_client.cc",
         ":blob_storage_client.h",

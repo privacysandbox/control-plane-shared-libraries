@@ -48,4 +48,7 @@ std::shared_ptr<Aws::SSM::SSMClient> CreateSSMClient(
 void PutParameter(const std::shared_ptr<Aws::SSM::SSMClient>& ssm_client,
                   const std::string& parameter_name,
                   const std::string& parameter_value);
+
+std::string GetParameter(const std::shared_ptr<Aws::SSM::SSMClient>& ssm_client,
+                         const std::string& parameter_name);
 }  // namespace google::scp::core::test

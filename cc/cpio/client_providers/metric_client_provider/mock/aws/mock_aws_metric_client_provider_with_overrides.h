@@ -35,12 +35,20 @@ namespace google::scp::cpio::client_providers::mock {
 class MockAwsMetricClientProviderOverrides : public AwsMetricClientProvider {
  public:
   explicit MockAwsMetricClientProviderOverrides(
-      const std::shared_ptr<MetricClientOptions>& metric_client_options)
+      const std::shared_ptr<MetricBatchingOptions>& metric_batching_options)
       : AwsMetricClientProvider(
-            metric_client_options,
+            std::make_shared<MetricClientOptions>(),
             std::make_shared<MockInstanceClientProvider>(),
             std::make_shared<core::async_executor::mock::MockAsyncExecutor>(),
-            std::make_shared<core::async_executor::mock::MockAsyncExecutor>()) {
+            std::make_shared<core::async_executor::mock::MockAsyncExecutor>(),
+            metric_batching_options) {
+    std::dynamic_pointer_cast<core::async_executor::mock::MockAsyncExecutor>(
+        async_executor_)
+        ->schedule_for_mock =
+        [&](const core::AsyncOperation& work, Timestamp timestamp,
+            std::function<bool()>& cancellation_callback) {
+          return core::SuccessExecutionResult();
+        };
   }
 
   std::shared_ptr<MockCloudWatchClient> GetCloudWatchClient() {

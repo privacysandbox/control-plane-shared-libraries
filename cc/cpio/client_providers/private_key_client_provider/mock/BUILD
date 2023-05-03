@@ -16,6 +16,7 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
     name = "private_key_client_provider_mock",
+    testonly = True,
     srcs = glob(
         [
             "*.cc",

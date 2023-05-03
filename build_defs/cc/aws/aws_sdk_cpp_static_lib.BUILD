@@ -15,6 +15,11 @@ cc_library(
             "include/aws/common/*.h",
         ],
     ),
+    textual_hdrs = glob(
+        [
+            "include/**/*.inl",
+        ],
+    ),
     deps = [
         "@curl",
     ],
@@ -67,7 +72,9 @@ cc_library(
             "include/aws/core/**/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":checksums",
         ":event_stream",
@@ -87,7 +94,9 @@ cc_library(
             "include/aws/s3/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",
@@ -106,7 +115,9 @@ cc_library(
             "include/aws/dynamodb/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",
@@ -125,7 +136,9 @@ cc_library(
             "include/aws/ec2/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",
@@ -144,7 +157,9 @@ cc_library(
             "include/aws/monitoring/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",
@@ -163,7 +178,9 @@ cc_library(
             "include/aws/ssm/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",
@@ -182,7 +199,9 @@ cc_library(
             "include/aws/sts/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",
@@ -201,7 +220,9 @@ cc_library(
             "include/aws/kms/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",
@@ -220,7 +241,9 @@ cc_library(
             "include/aws/sqs/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",
@@ -239,7 +262,9 @@ cc_library(
             "include/aws/autoscaling/model/*.h",
         ],
     ),
-    strip_include_prefix = "include",
+    includes = [
+        "include",
+    ],
     deps = [
         ":core",
         "@curl",

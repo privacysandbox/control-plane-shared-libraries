@@ -171,4 +171,7 @@ DEFINE_ERROR_CODE(SC_HTTP2_CLIENT_HTTP_REQUEST_RESPONSE_STATUS_UNKNOWN,
                   SC_HTTP2_CLIENT, 0x0034,
                   "nghttp2 request response status unknown",
                   HttpStatusCode::INTERNAL_SERVER_ERROR);
+DEFINE_ERROR_CODE(SC_HTTP2_CLIENT_HTTP_CONNECTION_NOT_READY, SC_HTTP2_CLIENT,
+                  0x0035, "Http connection is not ready",
+                  HttpStatusCode::INTERNAL_SERVER_ERROR);
 }  // namespace google::scp::core::errors

@@ -16,12 +16,13 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "blob_storage_client",
-    srcs = ["//cc/public/cpio/adapters/blob_storage_client/src:blob_storage_srcs"],
+    srcs = ["//cc/public/cpio/adapters/blob_storage_client/src:blob_storage_client_srcs"],
     hdrs =
         [
             "blob_storage_client_interface.h",
         ],
     deps = [
+        ":type_def",
         "//cc:cc_base_include_dir",
         "//cc/core/interface:async_context_lib",
         "//cc/core/interface:interface_lib",
@@ -29,5 +30,16 @@ cc_library(
         "//cc/cpio/client_providers/blob_storage_client_provider/src:blob_storage_client_provider_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/public/cpio/interface:type_def",
+    ],
+)
+
+cc_library(
+    name = "type_def",
+    hdrs =
+        [
+            "type_def.h",
+        ],
+    deps = [
+        "//cc:cc_base_include_dir",
     ],
 )

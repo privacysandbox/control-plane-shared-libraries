@@ -16,6 +16,7 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
     name = "global_cpio_mock",
+    testonly = True,
     srcs = glob(
         [
             "**/*.h",

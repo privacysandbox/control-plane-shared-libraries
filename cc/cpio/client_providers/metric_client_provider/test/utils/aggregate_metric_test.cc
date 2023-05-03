@@ -38,7 +38,6 @@
 using google::cmrt::sdk::metric_service::v1::Metric;
 using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
 using google::cmrt::sdk::metric_service::v1::PutMetricsResponse;
-using google::protobuf::Any;
 using google::scp::core::AsyncContext;
 using google::scp::core ::AsyncExecutorInterface;
 using google::scp::core::AsyncOperation;
@@ -186,14 +185,16 @@ TEST(AggregateMetricTest, RunMetricPushHandler) {
 
   Metric metric_received;
   int metric_push_is_called = 0;
-  mock_metric_client->record_metric_mock =
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {
+
+  EXPECT_CALL(*mock_metric_client, PutMetrics)
+      .Times(3)
+      .WillRepeatedly([&](auto& context) {
         metric_push_is_called += 1;
         metric_received.CopyFrom(context.request->metrics()[0]);
         context.result = FailureExecutionResult(123);
         context.Finish();
         return context.result;
-      };
+      });
 
   vector<string> event_list = {"QPS", "Errors"};
   auto aggregate_metric = MockAggregateMetricOverrides(

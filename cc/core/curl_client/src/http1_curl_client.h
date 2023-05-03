@@ -48,9 +48,10 @@ class Http1CurlClient : public HttpClientInterface {
       std::shared_ptr<AsyncExecutorInterface>& io_async_executor,
       std::shared_ptr<Http1CurlWrapperProvider> curl_wrapper_provider =
           std::make_shared<Http1CurlWrapperProvider>(),
-      core::common::RetryStrategyType retry_strategy_type =
-          common::RetryStrategyType::Exponential,
-      core::TimeDuration time_duration_ms = 101, size_t total_retries = 12);
+      common::RetryStrategyOptions retry_strategy_options =
+          common::RetryStrategyOptions(common::RetryStrategyType::Exponential,
+                                       kDefaultRetryStrategyDelayInMs,
+                                       kDefaultRetryStrategyMaxRetries));
 
   ExecutionResult Init() noexcept override;
   ExecutionResult Run() noexcept override;

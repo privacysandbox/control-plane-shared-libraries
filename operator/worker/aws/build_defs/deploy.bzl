@@ -39,7 +39,7 @@ def worker_aws_deployment(
         jvm_options = [],
         licenses = "//licenses:licenses_tar",
         enable_worker_debug_mode = False,
-        uninstall_ssh_server = False,
+        uninstall_ssh_server = True,
         user_rpms = []):
     """Creates targets for AWS AMI generation and enclave Docker container.
 

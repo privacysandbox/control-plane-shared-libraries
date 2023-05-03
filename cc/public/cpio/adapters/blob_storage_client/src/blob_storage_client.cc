@@ -24,6 +24,7 @@
 #include "core/interface/errors.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/blob_storage_client/type_def.h"
 #include "public/cpio/proto/blob_storage_service/v1/blob_storage_service.pb.h"
 
 using google::cmrt::sdk::blob_storage_service::v1::DeleteBlobRequest;
@@ -48,6 +49,7 @@ using google::scp::core::common::kZeroUuid;
 using google::scp::cpio::client_providers::BlobStorageClientProviderFactory;
 using google::scp::cpio::client_providers::GlobalCpio;
 using google::scp::cpio::client_providers::InstanceClientProviderInterface;
+using std::make_shared;
 using std::make_unique;
 using std::shared_ptr;
 
@@ -85,7 +87,7 @@ ExecutionResult BlobStorageClient::Init() noexcept {
     return execution_result;
   }
   blob_storage_client_provider_ = BlobStorageClientProviderFactory::Create(
-      instance_client, cpu_async_executor, io_async_executor);
+      options_, instance_client, cpu_async_executor, io_async_executor);
   execution_result = blob_storage_client_provider_->Init();
   if (!execution_result.Successful()) {
     ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
@@ -150,7 +152,9 @@ ExecutionResult BlobStorageClient::PutBlobStream(
   return blob_storage_client_provider_->PutBlobStream(put_blob_stream_context);
 }
 
-std::unique_ptr<BlobStorageClientInterface> BlobStorageClientFactory::Create() {
-  return make_unique<BlobStorageClient>();
+std::unique_ptr<BlobStorageClientInterface> BlobStorageClientFactory::Create(
+    BlobStorageClientOptions options) {
+  return make_unique<BlobStorageClient>(
+      make_shared<BlobStorageClientOptions>(options));
 }
 }  // namespace google::scp::cpio

@@ -72,16 +72,17 @@ static constexpr char kContentLengthHeader[] = "content-length";
 static constexpr char kHttp2Client[] = "Http2Client";
 static constexpr char kHttpMethodGetTag[] = "GET";
 static constexpr char kHttpMethodPostTag[] = "POST";
-static constexpr size_t kHttp2ReadTimeoutSeconds = 10;
 
 namespace google::scp::core {
 HttpConnection::HttpConnection(
     const shared_ptr<AsyncExecutorInterface>& async_executor,
-    const string& host, const string& service, bool https)
+    const string& host, const string& service, bool is_https,
+    TimeDuration http2_read_timeout_in_sec)
     : async_executor_(async_executor),
       host_(host),
       service_(service),
-      https_(https),
+      is_https_(is_https),
+      http2_read_timeout_in_sec_(http2_read_timeout_in_sec),
       tls_context_(context::sslv23),
       is_ready_(false),
       is_dropped_(false) {}
@@ -104,14 +105,14 @@ ExecutionResult HttpConnection::Init() noexcept {
       return result;
     }
 
-    if (https_) {
+    if (is_https_) {
       session_ =
           make_shared<session>(*io_service_, tls_context_, host_, service_);
     } else {
       session_ = make_shared<session>(*io_service_, host_, service_);
     }
 
-    session_->read_timeout(seconds(kHttp2ReadTimeoutSeconds));
+    session_->read_timeout(seconds(http2_read_timeout_in_sec_));
     session_->on_connect(bind(&HttpConnection::OnConnectionCreated, this, _1));
     session_->on_error(bind(&HttpConnection::OnConnectionError, this));
     return SuccessExecutionResult();
@@ -121,6 +122,9 @@ ExecutionResult HttpConnection::Init() noexcept {
     ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result, "Failed to initialize.");
     return result;
   }
+
+  INFO(kHttp2Client, kZeroUuid, kZeroUuid, "Initialized connection with ID: %p",
+       this);
 }
 
 ExecutionResult HttpConnection::Run() noexcept {
@@ -174,7 +178,8 @@ ExecutionResult HttpConnection::Stop() noexcept {
 
 void HttpConnection::OnConnectionCreated(tcp::resolver::iterator) noexcept {
   post(*io_service_, [this]() mutable {
-    INFO(kHttp2Client, kZeroUuid, kZeroUuid, "Connection is created.");
+    INFO(kHttp2Client, kZeroUuid, kZeroUuid,
+         "Connection %p for host %s is established.", this, host_.c_str());
     is_ready_ = true;
   });
 }
@@ -183,7 +188,8 @@ void HttpConnection::OnConnectionError() noexcept {
   post(*io_service_, [this]() mutable {
     auto failure =
         FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
-    ERROR(kHttp2Client, kZeroUuid, kZeroUuid, failure, "Connection got error.");
+    ERROR(kHttp2Client, kZeroUuid, kZeroUuid, failure,
+          "Connection %p for host %s got an error.", this, host_.c_str());
 
     is_ready_ = false;
     is_dropped_ = true;
@@ -225,6 +231,7 @@ void HttpConnection::CancelPendingCallbacks() noexcept {
       http_context.result =
           FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
     }
+
     ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
                   "Pending callback context is dropped.");
     http_context.Finish();
@@ -239,6 +246,10 @@ void HttpConnection::Reset() noexcept {
 
 bool HttpConnection::IsDropped() noexcept {
   return is_dropped_.load();
+}
+
+bool HttpConnection::IsReady() noexcept {
+  return is_ready_.load();
 }
 
 ExecutionResult HttpConnection::Execute(

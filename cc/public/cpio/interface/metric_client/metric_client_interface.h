@@ -25,40 +25,11 @@
 #include "core/interface/async_context.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/type_def.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 #include "type_def.h"
 
 namespace google::scp::cpio {
-/// Represents the metric object.
-struct Metric {
-  /// Metric name.
-  MetricName name;
-
-  /// The value of the metric data point. Inside it, it should be double type.
-  MetricValue value;
-
-  /// The unit of the metric data point.
-  MetricUnit unit;
-
-  /// A set of key-value pairs.
-  MetricLabels labels;
-
-  /// The time the metric data was received in milliseconds. This is an optional
-  /// field and the default value is current time.
-  Timestamp timestamp_in_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::system_clock::now().time_since_epoch())
-          .count();
-};
-
-/// Represents all fields required to record custom metrics.
-struct PutMetricsRequest {
-  std::vector<Metric> metrics;
-};
-
-/// The response object of recording custom metrics.
-struct PutMetricsResponse {};
-
 /**
  * @brief Interface responsible for recording custom metrics.
  *
@@ -76,8 +47,9 @@ class MetricClientInterface : public core::ServiceInterface {
    * @return core::ExecutionResult scheduling result returned synchronously.
    */
   virtual core::ExecutionResult PutMetrics(
-      PutMetricsRequest request,
-      Callback<PutMetricsResponse> callback) noexcept = 0;
+      google::cmrt::sdk::metric_service::v1::PutMetricsRequest request,
+      Callback<google::cmrt::sdk::metric_service::v1::PutMetricsResponse>
+          callback) noexcept = 0;
 };
 
 /// Factory to create MetricClient.

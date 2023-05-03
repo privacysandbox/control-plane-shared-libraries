@@ -28,6 +28,33 @@
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
+
+/// Configurations for batching metrics.
+struct MetricBatchingOptions {
+  virtual ~MetricBatchingOptions() = default;
+
+  /**
+   * @brief The top level grouping for the application metrics. A
+   * typical example would be "/application_name/environment_name".
+   * Environment name could be fetched through ConfigClient.
+   * Batching only works for the metrics for the same namespace.
+   */
+  MetricNamespace metric_namespace;
+  /**
+   * @brief Pushes metrics in batches if true. In most times, when the
+   * batch_recording_time_duration is met, the push is triggered. Cloud has
+   * its own maximum batch size, and if the maximum batch size is met before the
+   * batch_recording_time_duration, the push is triggered too.
+   */
+  bool enable_batch_recording = false;
+  /**
+   * @brief The time duration to push metrics when enable_batch_recording is
+   * true.
+   */
+  std::chrono::milliseconds batch_recording_time_duration =
+      std::chrono::milliseconds(30000);
+};
+
 /**
  * @brief Responsible to record custom metrics for clients.
  */

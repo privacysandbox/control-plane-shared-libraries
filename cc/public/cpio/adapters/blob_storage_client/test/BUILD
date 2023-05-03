@@ -14,6 +14,15 @@
 
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
+exports_files(["test_aws_blob_storage_client.h"])
+
+filegroup(
+    name = "test_aws_blob_storage_client_srcs",
+    srcs = [
+        ":test_aws_blob_storage_client.h",
+    ],
+)
+
 cc_test(
     name = "blob_storage_client_test",
     size = "small",

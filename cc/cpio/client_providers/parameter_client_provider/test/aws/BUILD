@@ -31,6 +31,7 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/core/message_router/src:message_router_lib",
         "//cc/cpio/client_providers/global_cpio/test:test_global_cpio_lib",
+        "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
         "//cc/cpio/client_providers/interface:type_def",
         "//cc/cpio/common/src/aws:aws_utils_lib",
         "//cc/cpio/common/test/aws:test_aws_utils_lib",

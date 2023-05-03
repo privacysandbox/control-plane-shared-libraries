@@ -40,12 +40,14 @@ class MetricClientProvider : public MetricClientProviderInterface {
       const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
       const std::shared_ptr<MetricClientOptions>& metric_client_options,
       const std::shared_ptr<InstanceClientProviderInterface>&
-          instance_client_provider)
+          instance_client_provider,
+      const std::shared_ptr<MetricBatchingOptions>& metric_batching_options =
+          std::make_shared<MetricBatchingOptions>())
       : async_executor_(async_executor),
         metric_client_options_(metric_client_options),
+        metric_batching_options_(metric_batching_options),
         is_batch_recording_enable(
-            metric_client_options_ &&
-            metric_client_options_->enable_batch_recording),
+            metric_batching_options->enable_batch_recording),
         instance_client_provider_(instance_client_provider),
         is_running_(false),
         active_push_count_(0),
@@ -106,6 +108,8 @@ class MetricClientProvider : public MetricClientProviderInterface {
 
   /// The configuration for metric client.
   std::shared_ptr<MetricClientOptions> metric_client_options_;
+
+  std::shared_ptr<MetricBatchingOptions> metric_batching_options_;
 
   /// Whether metric client enables batch recording.
   bool is_batch_recording_enable;

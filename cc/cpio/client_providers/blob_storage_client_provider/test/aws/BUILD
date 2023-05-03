@@ -17,10 +17,11 @@ package(default_visibility = ["//visibility:public"])
 cc_test(
     name = "aws_s3_test",
     size = "small",
-    srcs = glob([
-        "*.cc",
-        "*.h",
-    ]),
+    srcs = [
+        "aws_s3_client_provider_test.cc",
+        "aws_s3_utils_test.cc",
+        "mock_s3_client.h",
+    ],
     copts = [
         "-std=c++17",
     ],
@@ -31,11 +32,29 @@ cc_test(
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/core/utils/src:core_utils",
-        "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_provider_lib",
+        "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_client_provider_lib",
         "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
         "//cc/public/core/test/interface:execution_result_matchers",
         "@aws_sdk_cpp//:core",
         "@aws_sdk_cpp//:s3",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "test_aws_blob_storage_client_provider_lib",
+    srcs = [
+        "test_aws_blob_storage_client_provider.cc",
+        "test_aws_blob_storage_client_provider.h",
+        "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_client_provider_srcs",
+        "//cc/cpio/client_providers/interface:blob_storage_client_provider_interface.h",
+    ],
+    copts = [
+        "-DTEST_CPIO=1",
+    ],
+    deps = [
+        "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_client_provider_lib",
+        "//cc/cpio/common/test/aws:test_aws_utils_lib",
+        "//cc/public/cpio/test/blob_storage_client:test_aws_blob_storage_client_options",
     ],
 )

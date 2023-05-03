@@ -64,6 +64,8 @@ public final class PrivacyBudgetClientTest {
   private HttpClientResponse preconditionNotMetFailureResponse;
   private HttpClientResponse badRequestFailureResponse;
   private HttpClientResponse budgetExhaustedResponse;
+  private HttpClientResponse unauthenticatedResponse;
+  private HttpClientResponse unauthorizedResponse;
   private Transaction transaction;
 
   private PrivacyBudgetClientImpl privacyBudgetClient;
@@ -83,6 +85,8 @@ public final class PrivacyBudgetClientTest {
     badRequestFailureResponse = HttpClientResponse.create(400, "", Collections.emptyMap());
     budgetExhaustedResponse =
         HttpClientResponse.create(409, "{\"f\":[0],\"v\":\"1.0\"}", Collections.emptyMap());
+    unauthenticatedResponse = HttpClientResponse.create(401, "", Collections.emptyMap());
+    unauthorizedResponse = HttpClientResponse.create(403, "", Collections.emptyMap());
   }
 
   @Test
@@ -261,6 +265,42 @@ public final class PrivacyBudgetClientTest {
     assertThat(executionResult.statusCode()).isEqualTo(StatusCode.UNKNOWN);
     assertThat(transaction.getExhaustedPrivacyBudgetUnits())
         .containsExactly(transactionRequest.privacyBudgetUnits().get(0));
+  }
+
+  @Test
+  public void performAction_unauthenticated() throws IOException, PrivacyBudgetClientException {
+    transaction =
+        generateTransaction(endpoint, transactionId, TransactionPhase.PREPARE, transactionRequest);
+    long lastExecTimeStamp = Instant.now().toEpochMilli();
+    when(awsHttpClient.executePost(
+            eq(preparePhaseUri),
+            eq(expectedPayload()),
+            eq(expectedHeadersMap(endpoint, transaction))))
+        .thenReturn(unauthenticatedResponse);
+
+    ExecutionResult executionResult = privacyBudgetClient.performActionPrepare(transaction);
+
+    assertThat(executionResult.executionStatus()).isEqualTo(ExecutionStatus.FAILURE);
+    assertThat(executionResult.statusCode())
+        .isEqualTo(StatusCode.PRIVACY_BUDGET_CLIENT_UNAUTHENTICATED);
+  }
+
+  @Test
+  public void performAction_unauthorized() throws IOException, PrivacyBudgetClientException {
+    transaction =
+        generateTransaction(endpoint, transactionId, TransactionPhase.PREPARE, transactionRequest);
+    long lastExecTimeStamp = Instant.now().toEpochMilli();
+    when(awsHttpClient.executePost(
+            eq(preparePhaseUri),
+            eq(expectedPayload()),
+            eq(expectedHeadersMap(endpoint, transaction))))
+        .thenReturn(unauthorizedResponse);
+
+    ExecutionResult executionResult = privacyBudgetClient.performActionPrepare(transaction);
+
+    assertThat(executionResult.executionStatus()).isEqualTo(ExecutionStatus.FAILURE);
+    assertThat(executionResult.statusCode())
+        .isEqualTo(StatusCode.PRIVACY_BUDGET_CLIENT_UNAUTHORIZED);
   }
 
   @Test

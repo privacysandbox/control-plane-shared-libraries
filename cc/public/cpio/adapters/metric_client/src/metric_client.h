@@ -28,7 +28,8 @@ namespace google::scp::cpio {
  */
 class MetricClient : public MetricClientInterface {
  public:
-  explicit MetricClient(const std::shared_ptr<MetricClientOptions>& options);
+  explicit MetricClient(const std::shared_ptr<MetricClientOptions>& options)
+      : options_(options) {}
 
   core::ExecutionResult Init() noexcept override;
 
@@ -37,25 +38,17 @@ class MetricClient : public MetricClientInterface {
   core::ExecutionResult Stop() noexcept override;
 
   core::ExecutionResult PutMetrics(
-      PutMetricsRequest request,
-      Callback<PutMetricsResponse> callback) noexcept override;
+      google::cmrt::sdk::metric_service::v1::PutMetricsRequest request,
+      Callback<google::cmrt::sdk::metric_service::v1::PutMetricsResponse>
+          callback) noexcept override;
 
  protected:
-  /**
-   * @brief Callback when OnRecordMetric results are returned.
-   *
-   * @param request caller's request.
-   * @param callback caller's callback
-   * @param record_metrics_context execution context.
-   */
-  void OnPutMetricsCallback(
-      const PutMetricsRequest& request, Callback<PutMetricsResponse>& callback,
-      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
-                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
-          record_metrics_context) noexcept;
-
-  std::shared_ptr<MetricClientOptions> options_;
   std::shared_ptr<client_providers::MetricClientProviderInterface>
       metric_client_provider_;
+
+ private:
+  virtual core::ExecutionResult CreateMetricClientProvider() noexcept;
+
+  std::shared_ptr<MetricClientOptions> options_;
 };
 }  // namespace google::scp::cpio

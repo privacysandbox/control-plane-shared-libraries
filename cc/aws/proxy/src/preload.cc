@@ -475,23 +475,23 @@ EXPORT int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
   }
   uint16_t port = 0;
   if (addr->sa_family == AF_INET) {
-    // If the socket family does not match the address to bind, return EINVAL.
-    // It's OK if it is VSOCK.
-    if (sock_domain == AF_INET6) {
-      errno = EINVAL;
-      return -1;
+    // If the socket family does not match the address to bind, fallback and let
+    // libc_bind handle it. It's OK if it is VSOCK.
+    if (sock_domain != AF_INET && sock_domain != AF_VSOCK) {
+      return libc_bind(sockfd, addr, addrlen);
     }
     const sockaddr_in* v4addr = reinterpret_cast<const sockaddr_in*>(addr);
     port = ntohs(v4addr->sin_port);
   } else if (addr->sa_family == AF_INET6) {
-    // If the socket family does not match the address to bind, return EINVAL.
-    // It's OK if it is VSOCK.
-    if (sock_domain == AF_INET) {
-      errno = EINVAL;
-      return -1;
+    // If the socket family does not match the address to bind, fallback and let
+    // libc_bind handle it. It's OK if it is VSOCK.
+    if (sock_domain != AF_INET6 && sock_domain != AF_VSOCK) {
+      return libc_bind(sockfd, addr, addrlen);
     }
     const sockaddr_in6* v6addr = reinterpret_cast<const sockaddr_in6*>(addr);
     port = ntohs(v6addr->sin6_port);
+  } else {
+    return libc_bind(sockfd, addr, addrlen);
   }
   // In the next few steps, replace sockfd with a UNIX domain socket.
   int uds_sock = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -581,10 +581,10 @@ EXPORT int accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen,
   socklen_t sock_domain_len = sizeof(sock_domain);
   if (libc_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN,
                       static_cast<void*>(&sock_domain), &sock_domain_len)) {
-    return libc_accept(sockfd, addr, addrlen);
+    return libc_accept4(sockfd, addr, addrlen, flags);
   }
   if (sock_domain != AF_UNIX) {
-    return libc_accept(sockfd, addr, addrlen);
+    return libc_accept4(sockfd, addr, addrlen, flags);
   }
   // There might be use cases that the application uses unix domain socket for
   // communication. Here we check if sockfd is in a connected state by calling
@@ -596,7 +596,7 @@ EXPORT int accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen,
   int ret = getpeername(sockfd, reinterpret_cast<sockaddr*>(&uds_addr),
                         &uds_addr_len);
   if (ret < 0) {
-    return libc_accept(sockfd, addr, addrlen);
+    return libc_accept4(sockfd, addr, addrlen, flags);
   }
 
   // Now prepare for accepting a file descriptor

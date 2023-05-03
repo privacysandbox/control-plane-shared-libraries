@@ -41,9 +41,21 @@ public interface TransactionEngine {
 
   /** Represents an exception thrown by TransactionEngine */
   final class TransactionEngineException extends Exception {
+    private final StatusCode statusCode;
+
     /** Creates a new instance of the exception. */
-    public TransactionEngineException(String message) {
+    public TransactionEngineException(StatusCode statusCode) {
+      this(statusCode, statusCode.name());
+    }
+
+    /** Creates a new instance of the exception. */
+    public TransactionEngineException(StatusCode statusCode, String message) {
       super(message);
+      this.statusCode = statusCode;
+    }
+
+    public StatusCode getStatusCode() {
+      return this.statusCode;
     }
   }
 }

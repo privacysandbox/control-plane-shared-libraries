@@ -27,6 +27,11 @@
 #include "public/cpio/proto/auto_scaling_service/v1/auto_scaling_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
+/// Configurations for AutoScalingClient.
+struct AutoScalingClientOptions {
+  virtual ~AutoScalingClientOptions() = default;
+};
+
 /**
  * @brief Responsible to handle auto scalings.
  */
@@ -59,6 +64,7 @@ class AutoScalingClientProviderFactory {
    * AutoScalingClientProvider.
    */
   static std::shared_ptr<AutoScalingClientProviderInterface> Create(
+      const std::shared_ptr<AutoScalingClientOptions>& options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider);
 };

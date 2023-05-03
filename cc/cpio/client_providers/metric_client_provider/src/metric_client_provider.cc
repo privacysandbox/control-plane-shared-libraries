@@ -69,9 +69,9 @@ static constexpr size_t kMetricsBatchSize = 1000;
 namespace google::scp::cpio::client_providers {
 
 ExecutionResult MetricClientProvider::Init() noexcept {
-  // Metric namespace cannot be empty.
-  if (metric_client_options_ &&
-      metric_client_options_->metric_namespace.empty()) {
+  // Metric namespace cannot be empty when enable batch recording.
+  if (is_batch_recording_enable &&
+      metric_batching_options_->metric_namespace.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET);
     ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -137,7 +137,7 @@ ExecutionResult MetricClientProvider::PutMetrics(
   }
 
   auto execution_result = MetricClientUtils::ValidateRequest(
-      *record_metric_context.request, metric_client_options_);
+      *record_metric_context.request, metric_batching_options_);
   if (!execution_result.Successful()) {
     ERROR_CONTEXT(kMetricClientProvider, record_metric_context,
                   execution_result, "Invalid metric.");
@@ -196,9 +196,10 @@ ExecutionResult MetricClientProvider::ScheduleMetricsBatchPush() noexcept {
           "Failed to schedule metric batch push.");
     return execution_result;
   }
-  auto next_push_time = (TimeProvider::GetSteadyTimestampInNanoseconds() +
-                         metric_client_options_->batch_recording_time_duration)
-                            .count();
+  auto next_push_time =
+      (TimeProvider::GetSteadyTimestampInNanoseconds() +
+       metric_batching_options_->batch_recording_time_duration)
+          .count();
   auto execution_result = async_executor_->ScheduleFor(
       [this]() {
         ScheduleMetricsBatchPush();

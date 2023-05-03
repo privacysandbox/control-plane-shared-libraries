@@ -122,14 +122,13 @@ TEST(SimpleMetricTest, RunMetricPush) {
   Metric metric_received;
   bool record_metric_is_called = false;
 
-  mock_metric_client->record_metric_mock =
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {
-        record_metric_is_called = true;
-        metric_received.CopyFrom(context.request->metrics()[0]);
-        context.result = FailureExecutionResult(123);
-        context.Finish();
-        return context.result;
-      };
+  EXPECT_CALL(*mock_metric_client, PutMetrics).WillOnce([&](auto& context) {
+    record_metric_is_called = true;
+    metric_received.CopyFrom(context.request->metrics()[0]);
+    context.result = FailureExecutionResult(123);
+    context.Finish();
+    return context.result;
+  });
 
   auto metric_value = make_shared<MetricValue>("12345");
   simple_metric.Push(metric_value);

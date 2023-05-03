@@ -15,8 +15,8 @@
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
-    name = "aws_blob_storage_provider_lib",
-    srcs = [":aws_blob_storage_provider_srcs"],
+    name = "aws_blob_storage_client_provider_lib",
+    srcs = [":aws_blob_storage_client_provider_srcs"],
     copts = [
         "-std=c++17",
     ],
@@ -28,6 +28,7 @@ cc_library(
         "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
         "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/common/src/aws:aws_utils_lib",
+        "//cc/public/cpio/interface/blob_storage_client:type_def",
         "@aws_sdk_cpp//:core",
         "@aws_sdk_cpp//:s3",
         "@com_google_absl//absl/strings",
@@ -41,7 +42,7 @@ exports_files([
 ])
 
 filegroup(
-    name = "aws_blob_storage_provider_srcs",
+    name = "aws_blob_storage_client_provider_srcs",
     srcs = [
         ":aws_s3_client_provider.cc",
         ":aws_s3_client_provider.h",

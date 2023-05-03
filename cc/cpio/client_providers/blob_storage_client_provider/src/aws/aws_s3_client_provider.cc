@@ -37,6 +37,7 @@
 #include "cpio/client_providers/blob_storage_client_provider/src/common/error_codes.h"
 #include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
 #include "cpio/common/src/aws/aws_utils.h"
+#include "public/cpio/interface/blob_storage_client/type_def.h"
 
 using Aws::MakeShared;
 using Aws::String;
@@ -103,6 +104,10 @@ static constexpr size_t kMaxConcurrentConnections = 1000;
 static constexpr size_t kListBlobsMetadataMaxResults = 1000;
 
 namespace google::scp::cpio::client_providers {
+shared_ptr<ClientConfiguration> AwsS3ClientProvider::CreateClientConfiguration(
+    const string& region) noexcept {
+  return common::CreateClientConfiguration(make_shared<string>(move(region)));
+}
 
 ExecutionResult AwsS3ClientProvider::Init() noexcept {
   auto region_code_or =
@@ -113,8 +118,8 @@ ExecutionResult AwsS3ClientProvider::Init() noexcept {
     return region_code_or.result();
   }
 
-  auto client_or =
-      s3_factory_->CreateClient(*region_code_or, io_async_executor_);
+  auto client_or = s3_factory_->CreateClient(
+      *CreateClientConfiguration(*region_code_or), io_async_executor_);
   if (!client_or.Successful()) {
     ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, client_or.result(),
           "Failed creating AWS S3 client.");
@@ -453,23 +458,24 @@ void AwsS3ClientProvider::OnDeleteObjectCallback(
                 cpu_async_executor_, AsyncPriority::High);
 }
 
+#ifndef TEST_CPIO
 ExecutionResultOr<shared_ptr<S3Client>> AwsS3Factory::CreateClient(
-    const string& region,
+    ClientConfiguration& client_config,
     shared_ptr<AsyncExecutorInterface> async_executor) noexcept {
-  auto client_config =
-      common::CreateClientConfiguration(make_shared<string>(region));
-  client_config->maxConnections = kMaxConcurrentConnections;
-  client_config->executor = make_shared<AwsAsyncExecutor>(async_executor);
+  client_config.maxConnections = kMaxConcurrentConnections;
+  client_config.executor = make_shared<AwsAsyncExecutor>(async_executor);
 
-  return make_shared<S3Client>(*client_config);
+  return make_shared<S3Client>(client_config);
 }
 
 shared_ptr<BlobStorageClientProviderInterface>
 BlobStorageClientProviderFactory::Create(
+    shared_ptr<BlobStorageClientOptions> options,
     shared_ptr<InstanceClientProviderInterface> instance_client,
     shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
     shared_ptr<core::AsyncExecutorInterface> io_async_executor) noexcept {
-  return make_shared<AwsS3ClientProvider>(instance_client, cpu_async_executor,
-                                          io_async_executor);
+  return make_shared<AwsS3ClientProvider>(
+      options, instance_client, cpu_async_executor, io_async_executor);
 }
+#endif
 }  // namespace google::scp::cpio::client_providers

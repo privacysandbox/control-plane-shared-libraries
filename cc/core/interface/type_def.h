@@ -122,4 +122,13 @@ struct LoadableObject {
 };
 
 static constexpr TimeDuration kAsyncContextExpirationDurationInSeconds = 90;
+
+// The default config value for RetryStrategyOptions
+static constexpr size_t kDefaultRetryStrategyMaxRetries = 12;
+static constexpr TimeDuration kDefaultRetryStrategyDelayInMs = 101;
+
+// The default config value for HttpClientOptions
+static constexpr size_t kDefaultMaxConnectionsPerHost = 2;
+static constexpr TimeDuration kDefaultHttp2ReadTimeoutInSeconds = 60;
+
 }  // namespace google::scp::core

@@ -23,7 +23,7 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/kms_client/kms_client_interface.h"
 
-namespace google::scp::cpio::mock {
+namespace google::scp::cpio {
 class MockKmsClient : public KmsClientInterface {
  public:
   MockKmsClient() {
@@ -46,4 +46,4 @@ class MockKmsClient : public KmsClientInterface {
               (noexcept, override));
 };
 
-}  // namespace google::scp::cpio::mock
+}  // namespace google::scp::cpio

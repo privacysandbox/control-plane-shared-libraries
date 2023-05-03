@@ -57,6 +57,8 @@ public class TransactionPhaseManagerImpl implements TransactionPhaseManager {
         return currentPhaseSucceeded ? TransactionPhase.END : TransactionPhase.NOTIFY;
       case ABORT:
         return currentPhaseSucceeded ? TransactionPhase.END : TransactionPhase.ABORT;
+      case END:
+        return TransactionPhase.FINISHED;
       default:
         return TransactionPhase.UNKNOWN;
     }

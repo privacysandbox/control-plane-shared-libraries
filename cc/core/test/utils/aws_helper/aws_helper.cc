@@ -24,6 +24,7 @@
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/CreateBucketRequest.h>
 #include <aws/ssm/SSMClient.h>
+#include <aws/ssm/model/GetParametersRequest.h>
 #include <aws/ssm/model/PutParameterRequest.h>
 
 using Aws::Client::ClientConfiguration;
@@ -40,6 +41,7 @@ using Aws::S3::S3Client;
 using Aws::S3::Model::BucketCannedACL;
 using Aws::S3::Model::CreateBucketRequest;
 using Aws::SSM::SSMClient;
+using Aws::SSM::Model::GetParametersRequest;
 using Aws::SSM::Model::PutParameterRequest;
 using std::make_shared;
 using std::shared_ptr;
@@ -142,6 +144,27 @@ void PutParameter(const std::shared_ptr<SSMClient>& ssm_client,
               << std::endl;
   } else {
     std::cout << "Succeeded to put parameter:" << parameter_name << std::endl;
+  }
+}
+
+std::string GetParameter(const std::shared_ptr<SSMClient>& ssm_client,
+                         const std::string& parameter_name) {
+  GetParametersRequest request;
+  request.AddNames(parameter_name.c_str());
+
+  auto outcome = ssm_client->GetParameters(request);
+  if (!outcome.IsSuccess()) {
+    std::cout << "Failed to get parameter: " << outcome.GetError().GetMessage()
+              << std::endl;
+    return "";
+  } else {
+    if (outcome.GetResult().GetParameters().size() != 1) {
+      std::cout << "Parameter number does not match! The size is: "
+                << outcome.GetResult().GetParameters().size() << std::endl;
+      return "";
+    }
+    std::cout << "Succeeded to get parameter:" << parameter_name << std::endl;
+    return outcome.GetResult().GetParameters()[0].GetValue();
   }
 }
 }  // namespace google::scp::core::test

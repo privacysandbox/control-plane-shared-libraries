@@ -25,8 +25,8 @@ public enum TransactionPhase {
   NOTIFY(4),
   ABORT(5),
   END(6),
-  UNKNOWN(1000);
-
+  UNKNOWN(1000),
+  FINISHED(2000);
   private int numValue;
 
   TransactionPhase(int val) {

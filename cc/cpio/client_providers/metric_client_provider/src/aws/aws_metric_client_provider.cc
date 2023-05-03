@@ -61,9 +61,9 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
-    SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET;
-using google::scp::core::errors::
     SC_AWS_METRIC_CLIENT_PROVIDER_REQUEST_PAYLOAD_OVERSIZE;
+using google::scp::core::errors::
+    SC_AWS_METRIC_CLIENT_PROVIDER_SHOULD_ENABLE_BATCH_RECORDING;
 using google::scp::cpio::client_providers::AwsInstanceClientUtils;
 using google::scp::cpio::common::CreateClientConfiguration;
 using std::bind;
@@ -131,23 +131,25 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
     return SuccessExecutionResult();
   }
 
-  // When perform batch recording, metric_client_options_ is required.
-  if (!metric_client_options_ && metric_requests_vector->size() > 1) {
+  // When perform batch recording, enable_batch_recording should be true.
+  if (!metric_batching_options_->enable_batch_recording &&
+      metric_requests_vector->size() > 1) {
     auto execution_result = FailureExecutionResult(
-        SC_AWS_METRIC_CLIENT_PROVIDER_METRIC_CLIENT_OPTIONS_NOT_SET);
+        SC_AWS_METRIC_CLIENT_PROVIDER_SHOULD_ENABLE_BATCH_RECORDING);
     ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create ClientConfiguration");
+          "Should enable batch recording");
     return execution_result;
   }
 
   vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>> context_chunk;
 
   PutMetricDataRequest request_chunk;
-  // Already confirmed if metric_client_options_ is not set,
-  // metric_requests_vector should only have one entry.
+  // Already confirmed if metric_namespace in metric_batching_options is empty,
+  // batch recording is not enabled and metric_requests_vector should only have
+  // one entry.
   string name_space =
-      metric_client_options_
-          ? metric_client_options_->metric_namespace
+      !metric_batching_options_->metric_namespace.empty()
+          ? metric_batching_options_->metric_namespace
           : (*metric_requests_vector)[0].request->metric_namespace();
   request_chunk.SetNamespace(name_space.c_str());
   size_t chunk_payload = 0;
@@ -228,6 +230,7 @@ void AwsMetricClientProvider::OnPutMetricDataAsyncCallback(
   active_push_count_--;
   if (outcome.IsSuccess()) {
     for (auto& record_metric_context : metric_requests_vector) {
+      record_metric_context.response = make_shared<PutMetricsResponse>();
       FinishContext(SuccessExecutionResult(), record_metric_context,
                     async_executor_);
     }

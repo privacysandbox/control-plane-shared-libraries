@@ -47,7 +47,10 @@ using namespace std::placeholders;            // NOLINT
 
 using google::scp::core::AsyncExecutor;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::TimeDuration;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
+using google::scp::core::common::RetryStrategyOptions;
+using google::scp::core::common::RetryStrategyType;
 using google::scp::core::test::AutoInitRunStop;
 using google::scp::core::test::IsSuccessful;
 using google::scp::core::test::ResultIs;
@@ -63,6 +66,8 @@ using std::thread;
 using std::to_string;
 using std::vector;
 using std::chrono::milliseconds;
+
+static constexpr TimeDuration kHttp2ReadTimeoutInSeconds = 10;
 
 namespace google::scp::core {
 
@@ -207,7 +212,13 @@ class HttpClientTestII : public ::testing::Test {
     async_executor->Init();
     async_executor->Run();
 
-    http_client = make_shared<HttpClient>(async_executor);
+    auto options = HttpClientOptions(
+        RetryStrategyOptions(RetryStrategyType::Exponential,
+                             kDefaultRetryStrategyDelayInMs,
+                             kDefaultRetryStrategyMaxRetries),
+        kDefaultMaxConnectionsPerHost, kHttp2ReadTimeoutInSeconds);
+
+    http_client = make_shared<HttpClient>(async_executor, options);
     EXPECT_SUCCESS(http_client->Init());
     EXPECT_SUCCESS(http_client->Run());
   }

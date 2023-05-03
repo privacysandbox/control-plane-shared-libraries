@@ -28,6 +28,8 @@
 #include "public/cpio/interface/type_def.h"
 #include "public/cpio/proto/blob_storage_service/v1/blob_storage_service.pb.h"
 
+#include "type_def.h"
+
 namespace google::scp::cpio {
 /**
  * @brief Interface responsible for interacting with BlobStorage.
@@ -123,7 +125,8 @@ class BlobStorageClientFactory {
    *
    * @return std::unique_ptr<BlobStorageClient> BlobStorageClient object.
    */
-  static std::unique_ptr<BlobStorageClientInterface> Create();
+  static std::unique_ptr<BlobStorageClientInterface> Create(
+      BlobStorageClientOptions options = BlobStorageClientOptions());
 };
 }  // namespace google::scp::cpio
 

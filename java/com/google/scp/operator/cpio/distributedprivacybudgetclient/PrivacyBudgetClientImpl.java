@@ -221,6 +221,16 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
       }
       return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
     }
+    // StatusCode 401 - The request is unauthenticated, likely due to IAM issues.
+    if (statusCode == HttpStatus.SC_UNAUTHORIZED) {
+      return ExecutionResult.create(
+          ExecutionStatus.FAILURE, StatusCode.PRIVACY_BUDGET_CLIENT_UNAUTHENTICATED);
+    }
+    // StatusCode 403 - The request is authenticated, but server refuse to serve the request.
+    if (statusCode == HttpStatus.SC_FORBIDDEN) {
+      return ExecutionResult.create(
+          ExecutionStatus.FAILURE, StatusCode.PRIVACY_BUDGET_CLIENT_UNAUTHORIZED);
+    }
     if (statusCode < HttpStatus.SC_SERVER_ERROR || statusCode > 599) {
       return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
     }

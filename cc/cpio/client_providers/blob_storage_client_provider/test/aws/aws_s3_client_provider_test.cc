@@ -41,6 +41,7 @@ using Aws::ShutdownAPI;
 using Aws::StringStream;
 using Aws::Vector;
 using Aws::Client::AWSError;
+using Aws::Client::ClientConfiguration;
 using Aws::S3::S3Errors;
 using Aws::S3::Model::DeleteObjectOutcome;
 using Aws::S3::Model::DeleteObjectRequest;
@@ -97,7 +98,7 @@ class MockAwsS3Factory : public AwsS3Factory {
  public:
   MOCK_METHOD(core::ExecutionResultOr<std::shared_ptr<Aws::S3::S3Client>>,
               CreateClient,
-              (const std::string&,
+              (ClientConfiguration&,
                std::shared_ptr<core::AsyncExecutorInterface>),
               (noexcept, override));
 };
@@ -107,7 +108,8 @@ class AwsS3ClientProviderTest : public ::testing::Test {
   AwsS3ClientProviderTest()
       : instance_client_(make_shared<MockInstanceClientProvider>()),
         s3_factory_(make_shared<NiceMock<MockAwsS3Factory>>()),
-        provider_(instance_client_, make_shared<MockAsyncExecutor>(),
+        provider_(make_shared<BlobStorageClientOptions>(), instance_client_,
+                  make_shared<MockAsyncExecutor>(),
                   make_shared<MockAsyncExecutor>(), s3_factory_) {
     InitAPI(options_);
     instance_client_->instance_resource_name = kResourceNameMock;

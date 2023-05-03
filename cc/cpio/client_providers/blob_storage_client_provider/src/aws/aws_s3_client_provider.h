@@ -30,6 +30,7 @@
 #include "core/interface/streaming_context.h"
 #include "cpio/client_providers/interface/blob_storage_client_provider_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
+#include "public/cpio/interface/blob_storage_client/type_def.h"
 
 namespace google::scp::cpio::client_providers {
 
@@ -40,6 +41,7 @@ class AwsS3Factory;
 class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
  public:
   explicit AwsS3ClientProvider(
+      std::shared_ptr<BlobStorageClientOptions> options,
       std::shared_ptr<InstanceClientProviderInterface> instance_client,
       std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
       std::shared_ptr<core::AsyncExecutorInterface> io_async_executor,
@@ -172,6 +174,15 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
       const std::shared_ptr<const Aws::Client::AsyncCallerContext>
           async_context) noexcept;
 
+  /**
+   * @brief Creates the Client Config object.
+   *
+   * @param region the region of the client.
+   * @return std::shared_ptr<Aws::Client::ClientConfiguration> client
+   * configuration.
+   */
+  virtual std::shared_ptr<Aws::Client::ClientConfiguration>
+  CreateClientConfiguration(const std::string& region) noexcept;
   std::shared_ptr<InstanceClientProviderInterface> instance_client_;
 
   /// Instances of the async executor for local compute and blocking IO
@@ -191,7 +202,7 @@ class AwsS3Factory {
  public:
   virtual core::ExecutionResultOr<std::shared_ptr<Aws::S3::S3Client>>
   CreateClient(
-      const std::string& region,
+      Aws::Client::ClientConfiguration& client_config,
       std::shared_ptr<core::AsyncExecutorInterface> async_executor) noexcept;
 
   virtual ~AwsS3Factory() = default;

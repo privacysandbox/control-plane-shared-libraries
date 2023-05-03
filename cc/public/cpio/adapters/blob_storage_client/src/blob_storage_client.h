@@ -25,6 +25,7 @@
 #include "cpio/client_providers/interface/blob_storage_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/blob_storage_client/blob_storage_client_interface.h"
+#include "public/cpio/interface/blob_storage_client/type_def.h"
 #include "public/cpio/interface/type_def.h"
 #include "public/cpio/proto/blob_storage_service/v1/blob_storage_service.pb.h"
 
@@ -33,7 +34,9 @@ namespace google::scp::cpio {
  */
 class BlobStorageClient : public BlobStorageClientInterface {
  public:
-  BlobStorageClient() = default;
+  explicit BlobStorageClient(
+      const std::shared_ptr<BlobStorageClientOptions>& options)
+      : options_(options) {}
 
   core::ExecutionResult Init() noexcept override;
   core::ExecutionResult Run() noexcept override;
@@ -81,5 +84,8 @@ class BlobStorageClient : public BlobStorageClientInterface {
  protected:
   std::shared_ptr<client_providers::BlobStorageClientProviderInterface>
       blob_storage_client_provider_;
+
+ private:
+  std::shared_ptr<BlobStorageClientOptions> options_;
 };
 }  // namespace google::scp::cpio

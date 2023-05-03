@@ -29,9 +29,11 @@ class MockMetricClientProviderWithOverrides : public MetricClientProvider {
  public:
   explicit MockMetricClientProviderWithOverrides(
       const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
-      const std::shared_ptr<MetricClientOptions>& metric_client_options)
-      : MetricClientProvider(async_executor, metric_client_options,
-                             std::make_shared<MockInstanceClientProvider>()) {}
+      const std::shared_ptr<MetricBatchingOptions>& metric_batching_options)
+      : MetricClientProvider(async_executor,
+                             std::make_shared<MetricClientOptions>(),
+                             std::make_shared<MockInstanceClientProvider>(),
+                             metric_batching_options) {}
 
   std::function<core::ExecutionResult(
       core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,

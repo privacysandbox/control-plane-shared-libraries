@@ -66,8 +66,9 @@ class Http1CurlClientTest : public ::testing::Test {
         wrapper_(make_shared<MockCurlWrapper>()),
         provider_(make_shared<MockCurlWrapperProvider>()),
         subject_(cpu_async_executor_, io_async_executor_, provider_,
-                 common::RetryStrategyType::Exponential,
-                 /*time_duration_ms=*/1UL, /*total_retries=*/10) {
+                 common::RetryStrategyOptions(
+                     common::RetryStrategyType::Exponential,
+                     /*time_duration_ms=*/1UL, /*total_retries=*/10)) {
     assert(cpu_async_executor_->Init().Successful());
     assert(io_async_executor_->Init().Successful());
     assert(cpu_async_executor_->Run().Successful());

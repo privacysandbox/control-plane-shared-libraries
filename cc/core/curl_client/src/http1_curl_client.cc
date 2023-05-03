@@ -35,15 +35,12 @@ Http1CurlClient::Http1CurlClient(
     shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
     shared_ptr<AsyncExecutorInterface>& io_async_executor,
     shared_ptr<Http1CurlWrapperProvider> curl_wrapper_provider,
-    RetryStrategyType retry_strategy_type, TimeDuration time_duration_ms,
-    size_t total_retries)
+    common::RetryStrategyOptions retry_strategy_options)
     : curl_wrapper_provider_(curl_wrapper_provider),
       cpu_async_executor_(cpu_async_executor),
       io_async_executor_(io_async_executor),
-      operation_dispatcher_(
-          io_async_executor,
-          RetryStrategy(retry_strategy_type, time_duration_ms, total_retries)) {
-}
+      operation_dispatcher_(io_async_executor,
+                            RetryStrategy(retry_strategy_options)) {}
 
 ExecutionResult Http1CurlClient::Init() noexcept {
   return SuccessExecutionResult();

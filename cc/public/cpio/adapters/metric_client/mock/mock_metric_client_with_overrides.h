@@ -28,13 +28,18 @@ class MockMetricClientWithOverrides : public MetricClient {
  public:
   MockMetricClientWithOverrides(
       const std::shared_ptr<MetricClientOptions>& options)
-      : MetricClient(options) {
-    metric_client_provider_ =
-        std::make_shared<client_providers::mock::MockMetricClientProvider>();
-  }
+      : MetricClient(options) {}
 
-  core::ExecutionResult Init() noexcept override {
-    return metric_client_provider_->Init();
+  core::ExecutionResult create_metric_client_provider_result =
+      core::SuccessExecutionResult();
+
+  core::ExecutionResult CreateMetricClientProvider() noexcept override {
+    if (create_metric_client_provider_result.Successful()) {
+      metric_client_provider_ =
+          std::make_shared<client_providers::mock::MockMetricClientProvider>();
+      return create_metric_client_provider_result;
+    }
+    return create_metric_client_provider_result;
   }
 
   std::shared_ptr<client_providers::mock::MockMetricClientProvider>

@@ -30,6 +30,7 @@ cc_library(
     deps = select({
         "//cc/public/cpio/interface:aws_cpio_lib": [
             "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
+            "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
             "//cc/cpio/common/src/aws:aws_utils_lib",
             "@aws_sdk_cpp//:monitoring",
         ],
@@ -39,6 +40,7 @@ cc_library(
         ],
         "//conditions:default": [
             "//cc/core/async_executor/src/aws:core_aws_async_executor_lib",
+            "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
             "//cc/cpio/common/src/aws:aws_utils_lib",
             "@aws_sdk_cpp//:monitoring",
         ],

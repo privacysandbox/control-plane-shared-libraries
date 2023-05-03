@@ -27,11 +27,11 @@ import java.util.UUID;
  * will be cached into a map and transaction engine can access it at any time.
  */
 public class Transaction {
+  private static final int DEFAULT_RETRIES = 5;
   // The current transaction id.
   private UUID id;
   // The context of the transaction.
   private TransactionRequest request;
-  private ExecutionResult result;
   // The current phase of the transaction.
   private TransactionPhase currentPhase;
   // The current phase execution result of the transaction.
@@ -66,7 +66,7 @@ public class Transaction {
     currentPhaseFailed = false;
     lastExecutionTimeNanosForBaseUrl = new HashMap<>();
     lastCompletedTransactionPhaseOnPrivacyBudgetServer = new HashMap<>();
-    retries = 5;
+    retries = DEFAULT_RETRIES;
     exhaustedPrivacyBudgetUnits = ImmutableList.of();
   }
 
@@ -100,6 +100,10 @@ public class Transaction {
 
   public void setTransactionFailed(boolean transactionFailed) {
     this.transactionFailed = transactionFailed;
+  }
+
+  ExecutionResult getTransactionExecutionResult() {
+    return this.transactionExecutionResult;
   }
 
   public void setTransactionExecutionResult(ExecutionResult transactionExecutionResult) {
@@ -154,6 +158,10 @@ public class Transaction {
 
   public void setRetries(int retries) {
     this.retries = retries;
+  }
+
+  public void resetRetries() {
+    this.retries = DEFAULT_RETRIES;
   }
 
   public ImmutableList<PrivacyBudgetUnit> getExhaustedPrivacyBudgetUnits() {

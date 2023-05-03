@@ -27,6 +27,7 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:type_def",
+        "//cc/public/cpio/interface/blob_storage_client:type_def",
         "//cc/public/cpio/interface/metric_client:type_def",
         "//cc/public/cpio/interface/parameter_client:type_def",
         "//cc/public/cpio/interface/private_key_client:type_def",

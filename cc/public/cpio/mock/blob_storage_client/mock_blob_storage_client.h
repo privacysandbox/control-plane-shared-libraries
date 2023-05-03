@@ -23,7 +23,7 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/blob_storage_client/blob_storage_client_interface.h"
 
-namespace google::scp::cpio::mock {
+namespace google::scp::cpio {
 class MockBlobStorageClient : public BlobStorageClientInterface {
  public:
   MockBlobStorageClient() {
@@ -85,4 +85,4 @@ class MockBlobStorageClient : public BlobStorageClientInterface {
       (noexcept, override));
 };
 
-}  // namespace google::scp::cpio::mock
+}  // namespace google::scp::cpio
