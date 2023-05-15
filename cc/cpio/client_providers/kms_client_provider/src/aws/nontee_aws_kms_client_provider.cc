@@ -26,6 +26,7 @@
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"
+#include "public/cpio/interface/kms_client/type_def.h"
 
 #include "aws_kms_aead.h"
 #include "nontee_error_codes.h"
@@ -253,16 +254,25 @@ void NonteeAwsKmsClientProvider::GetSessionCredentialsCallbackToCreateKms(
   create_kms_context.Finish();
 }
 
+shared_ptr<ClientConfiguration>
+NonteeAwsKmsClientProvider::CreateClientConfiguration(
+    const string& region) noexcept {
+  return common::CreateClientConfiguration(make_shared<string>(region));
+}
+
 shared_ptr<KMSClient> NonteeAwsKmsClientProvider::GetKmsClient(
     const shared_ptr<AWSCredentials>& aws_credentials,
     const shared_ptr<string>& kms_region) noexcept {
-  auto client_config = common::CreateClientConfiguration(kms_region);
-  return make_shared<KMSClient>(*aws_credentials, *client_config);
+  return make_shared<KMSClient>(*aws_credentials,
+                                *CreateClientConfiguration(*kms_region));
 }
 
+#ifndef TEST_CPIO
 std::shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
+    const shared_ptr<KmsClientOptions>& options,
     const shared_ptr<RoleCredentialsProviderInterface>&
-        role_credentials_provider) {
+        role_credentials_provider) noexcept {
   return make_shared<NonteeAwsKmsClientProvider>(role_credentials_provider);
 }
+#endif
 }  // namespace google::scp::cpio::client_providers

@@ -33,6 +33,8 @@
 #include "error_codes.h"
 
 namespace google::scp::cpio::client_providers {
+class SSMClientFactory;
+
 /*! @copydoc ParameterClientInterface
  */
 class AwsParameterClientProvider : public ParameterClientProviderInterface {
@@ -46,8 +48,11 @@ class AwsParameterClientProvider : public ParameterClientProviderInterface {
   AwsParameterClientProvider(
       const std::shared_ptr<ParameterClientOptions>& options,
       const std::shared_ptr<InstanceClientProviderInterface>&
-          instance_client_provider)
-      : instance_client_provider_(instance_client_provider) {}
+          instance_client_provider,
+      const std::shared_ptr<SSMClientFactory>& ssm_client_factory =
+          std::make_shared<SSMClientFactory>())
+      : instance_client_provider_(instance_client_provider),
+        ssm_client_factory_(ssm_client_factory) {}
 
   core::ExecutionResult Init() noexcept override;
 
@@ -84,13 +89,27 @@ class AwsParameterClientProvider : public ParameterClientProviderInterface {
    * @param client_config returned Client Configuration.
    * @return core::ExecutionResult creation result.
    */
-  virtual core::ExecutionResult CreateClientConfiguration(
-      std::shared_ptr<Aws::Client::ClientConfiguration>&
-          client_config) noexcept;
+  virtual std::shared_ptr<Aws::Client::ClientConfiguration>
+  CreateClientConfiguration(const std::string& region) noexcept;
 
   /// InstanceClientProvider.
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
   /// SSMClient.
   std::shared_ptr<Aws::SSM::SSMClient> ssm_client_;
+  std::shared_ptr<SSMClientFactory> ssm_client_factory_;
+};
+
+/// Provides SSMClient.
+class SSMClientFactory {
+ public:
+  /**
+   * @brief Creates SSMClient.
+   *
+   * @param client_config the Configuratoin to create the client.
+   * @return std::shared_ptr<Aws::SSM::SSMClient> the creation
+   * result.
+   */
+  virtual std::shared_ptr<Aws::SSM::SSMClient> CreateSSMClient(
+      const Aws::Client::ClientConfiguration& client_config) noexcept;
 };
 }  // namespace google::scp::cpio::client_providers

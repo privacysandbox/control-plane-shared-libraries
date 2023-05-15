@@ -16,6 +16,7 @@ load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 load("@io_bazel_rules_docker//docker/util:run.bzl", "container_run_and_commit", "container_run_and_commit_layer")
 load("@io_bazel_rules_docker//docker/package_managers:download_pkgs.bzl", "download_pkgs")
 load("@io_bazel_rules_docker//docker/package_managers:install_pkgs.bzl", "install_pkgs")
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -83,23 +84,51 @@ container_run_and_commit_layer(
         "CC": "/usr/bin/clang",
         "CXX": "/usr/bin/clang++",
     },
-    image = ":container_to_build_cc_base.tar",
+    image = ":cc_build_apt_pkgs_install.tar",
     tags = ["manual"],
 )
 
 container_run_and_commit_layer(
-    name = "container_to_build_cc_aws_sdk",
+    name = "container_to_build_cc_boringssl",
     commands = [
-        "mkdir /tmp/aws",
-        "cd /tmp/aws",
+        "mkdir /tmp/build",
+        "cd /tmp/build",
         "git clone https://github.com/google/boringssl.git boringssl",
         "cd boringssl",
         "git checkout 64393b57e8734b92a6ba784bcfc02b1aa01e5ff2",
         "mkdir build",
         "cd build",
         "cmake .. -DCMAKE_PREFIX_PATH=/opt/deps -DCMAKE_INSTALL_PREFIX=/opt/deps",
-        "make -j $(nproc)",
         "make install",
+        "rm -rf /tmp/build",
+    ],
+    image = ":cc_build_apt_pkgs_install.tar",
+    tags = ["manual"],
+)
+
+pkg_tar(
+    name = "enclaves-patch",
+    srcs = ["aws_nitro_enclaves_sdk.patch"],
+    mode = "0644",
+    package_dir = "/opt/deps/",
+    tags = ["manual"],
+)
+
+container_image(
+    name = "container_to_build_cc_shared_libraries",
+    base = "container_to_build_cc_base.tar",
+    layers = [
+        ":container_to_build_cc_bazel",
+        ":container_to_build_cc_boringssl",
+    ],
+    tags = ["manual"],
+    tars = [":enclaves-patch"],
+)
+
+container_run_and_commit_layer(
+    name = "container_to_build_cc_aws_sdk",
+    commands = [
+        "mkdir /tmp/aws",
         "cd /tmp/aws",
         "git clone -b v0.8.0 https://github.com/awslabs/aws-c-common.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-common -B aws-c-common/build",
@@ -123,7 +152,7 @@ container_run_and_commit_layer(
         "cd /tmp",
         "rm -rf aws",
     ],
-    image = ":container_to_build_cc_base.tar",
+    image = ":container_to_build_cc_shared_libraries.tar",
     tags = ["manual"],
 )
 
@@ -133,10 +162,6 @@ container_run_and_commit_layer(
         "curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.60",
         "mkdir /tmp/crt-builder",
         "cd /tmp/crt-builder",
-        "git clone -b v1.0.2 https://github.com/awslabs/aws-lc.git aws-lc",
-        "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -DBUILD_TESTING=0 -S aws-lc -B aws-lc/build .",
-        "go env -w GOPROXY=direct",
-        "cmake --build aws-lc/build --parallel $(nproc) --target install",
         "git clone -b v1.3.20 https://github.com/aws/s2n-tls.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -S s2n-tls -B s2n-tls/build",
         "cmake --build s2n-tls/build --parallel $(nproc) --target install",
@@ -146,8 +171,12 @@ container_run_and_commit_layer(
         "git clone -b v0.1.2 https://github.com/awslabs/aws-c-sdkutils.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-sdkutils -B aws-c-sdkutils/build",
         "cmake --build aws-c-sdkutils/build --parallel $(nproc) --target install",
-        "git clone -b v0.5.18 https://github.com/awslabs/aws-c-cal.git",
-        "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-cal -B aws-c-cal/build",
+        "git clone https://github.com/awslabs/aws-c-cal.git",
+        "cd aws-c-cal",
+        # This verison fix the compatibility with BoringSSL
+        "git checkout c20ec7e001a8967dbfdbeaf488ccf01afc75c217",
+        "cd /tmp/crt-builder",
+        "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -DUSE_OPENSSL=0 -DOPENSSL_IS_AWSLC=0 -GNinja -S aws-c-cal -B aws-c-cal/build",
         "cmake --build aws-c-cal/build --parallel $(nproc) --target install",
         "git clone -b v0.11.0 https://github.com/awslabs/aws-c-io.git",
         "cmake -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-io -B aws-c-io/build",
@@ -164,30 +193,30 @@ container_run_and_commit_layer(
         "git clone -b json-c-0.16-20220414 https://github.com/json-c/json-c.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -DBUILD_SHARED_LIBS=OFF -GNinja -S json-c -B json-c/build",
         "cmake --build json-c/build --parallel $(nproc)  --target install",
-        "git clone https://github.com/aws/aws-nitro-enclaves-nsm-api.git",
+        "git clone -b v0.3.0 https://github.com/aws/aws-nitro-enclaves-nsm-api.git",
         "cd aws-nitro-enclaves-nsm-api",
-        # The version v0.2.1 is not working due to its dependency
-        # We choose the lastest version on 4/13/2023 as it fix the issue
-        "git checkout 5b1347908f05136195095ef8a360f4f9995077d0",
         ". /root/.cargo/env && cargo build --release --jobs $(nproc) -p nsm-lib",
         "mv /tmp/crt-builder/aws-nitro-enclaves-nsm-api/target/release/libnsm.so /opt/deps/lib",
         "mv /tmp/crt-builder/aws-nitro-enclaves-nsm-api/target/release/nsm.h /opt/deps/include",
         "cd /tmp/crt-builder",
-        "git clone -b v0.3.1 https://github.com/aws/aws-nitro-enclaves-sdk-c.git",
-        "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DCMAKE_INSTALL_PREFIX=/opt/deps -DBUILD_SHARED_LIBS=OFF -GNinja -S aws-nitro-enclaves-sdk-c -B aws-nitro-enclaves-sdk-c/build",
-        "cmake --build aws-nitro-enclaves-sdk-c/build --parallel $(nproc) --target install",
+        "git clone -b v0.3.2 https://github.com/aws/aws-nitro-enclaves-sdk-c.git",
+        "cd aws-nitro-enclaves-sdk-c",
+        # Version 0.3.2 is not compatible with BoringSSL and need patch to fix the issue.
+        "git apply /opt/deps/aws_nitro_enclaves_sdk.patch",
+        "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DCMAKE_INSTALL_PREFIX=/opt/deps -DBUILD_SHARED_LIBS=OFF -GNinja -S . -B build",
+        "cmake --build build --parallel $(nproc) --target install",
         "cd /tmp",
         "rm -rf crt-builder",
     ],
-    image = ":container_to_build_cc_base.tar",
+    image = ":container_to_build_cc_shared_libraries.tar",
     tags = ["manual"],
 )
 
 container_image(
     name = "container_to_build_cc_tar",
-    base = "container_to_build_cc_base.tar",
+    base = "container_to_build_cc_shared_libraries.tar",
+    cmd = "/bin/bash -c sleep infinity;",
     layers = [
-        ":container_to_build_cc_bazel",
         ":container_to_build_cc_aws_sdk",
         ":container_to_build_cc_enclaves",
     ],

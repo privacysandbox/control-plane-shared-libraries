@@ -28,7 +28,12 @@ namespace google::scp::core::test {
  * @brief Timeout exception object thrown by WaitUntil
  *
  */
-class TestTimeoutException : public std::exception {};
+class TestTimeoutException : public std::exception {
+  const char* what() const noexcept override {
+    static constexpr char exception_name[] = "TestTimeoutException";
+    return exception_name;
+  }
+};
 
 /**
  * @brief Waits util the given condition is met.

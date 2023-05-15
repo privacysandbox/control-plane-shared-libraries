@@ -68,7 +68,7 @@ public final class DistributedPrivacyBudgetClientImpl implements DistributedPriv
           .exhaustedPrivacyBudgetUnits(exhaustedPrivacyBudgetUnits)
           .build();
     } catch (TransactionManagerException e) {
-      throw new DistributedPrivacyBudgetServiceException(e.getMessage(), e);
+      throw new DistributedPrivacyBudgetServiceException(e.getStatusCode(), e);
     }
   }
 

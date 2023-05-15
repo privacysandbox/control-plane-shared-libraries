@@ -52,6 +52,7 @@ using Aws::EC2::Model::DescribeTagsRequest;
 using Aws::EC2::Model::DescribeTagsResponse;
 using Aws::EC2::Model::Instance;
 using Aws::EC2::Model::Reservation;
+using Aws::EC2::Model::Tag;
 using Aws::EC2::Model::TagDescription;
 using google::cmrt::sdk::instance_service::v1::
     GetCurrentInstanceResourceNameRequest;
@@ -499,6 +500,14 @@ TEST_F(AwsInstanceClientProviderTest,
         instance.SetInstanceId(kInstanceIdMock);
         instance.SetPrivateIpAddress(kPrivateIpMock);
         instance.SetPublicIpAddress(kPublicIpMock);
+        Tag tag_1;
+        tag_1.SetKey(kTagName1);
+        tag_1.SetValue(kTagValue1);
+        instance.AddTags(tag_1);
+        Tag tag_2;
+        tag_2.SetKey(kTagName2);
+        tag_2.SetValue(kTagValue2);
+        instance.AddTags(tag_2);
         Reservation reservation;
         reservation.AddInstances(instance);
         DescribeInstancesResponse response;
@@ -514,6 +523,9 @@ TEST_F(AwsInstanceClientProviderTest,
   EXPECT_EQ(details.instance_id(), kInstanceIdMock);
   EXPECT_EQ(details.networks(0).public_ipv4_address(), kPublicIpMock);
   EXPECT_EQ(details.networks(0).private_ipv4_address(), kPrivateIpMock);
+  EXPECT_THAT(details.labels(),
+              UnorderedElementsAre(Pair(kTagName1, kTagValue1),
+                                   Pair(kTagName2, kTagValue2)));
 }
 
 TEST_F(AwsInstanceClientProviderTest,

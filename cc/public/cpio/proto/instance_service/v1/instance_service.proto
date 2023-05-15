@@ -92,6 +92,10 @@ message InstanceDetails {
   // Instance networks.
   // GCP VM instance supports multiple network interfaces.
   repeated InstanceNetwork networks = 2;
+  // Labels on the instance.
+  // In AWS, they are the same as instance tags.
+  // In GCP, they are the instance labels.
+  map<string, string> labels = 3;
 }
 
 // Response of fetching instance details for a given resource id.

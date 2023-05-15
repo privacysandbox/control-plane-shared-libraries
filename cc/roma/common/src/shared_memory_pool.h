@@ -205,6 +205,8 @@ class SharedMemoryPool {
   /// Set the default mempool for this thread as this object.
   void SetThisThreadMemPool() { default_mempool_of_thread_ = this; }
 
+  size_t GetAllocatedSize() { return allocated_size_.load(); }
+
   /// Set the default mempool for this thread. This is useful when we have a
   /// thread working on a designated pool, and this allows default-construction
   /// of ShmAllocators, so that it eases the construction of objects.

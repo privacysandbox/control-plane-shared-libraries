@@ -43,7 +43,7 @@ public class TransactionManagerImpl implements TransactionManager {
     try {
       return transactionEngine.execute(request);
     } catch (TransactionEngineException e) {
-      throw new TransactionManagerException(e.getMessage());
+      throw new TransactionManagerException(e.getStatusCode(), e);
     }
   }
 

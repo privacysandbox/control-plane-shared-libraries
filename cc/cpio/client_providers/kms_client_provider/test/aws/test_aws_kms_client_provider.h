@@ -22,26 +22,25 @@
 #include <aws/core/Aws.h>
 #include <aws/core/client/ClientConfiguration.h>
 
-#include "cpio/client_providers/interface/parameter_client_provider_interface.h"
-#include "cpio/client_providers/parameter_client_provider/src/aws/aws_parameter_client_provider.h"
-#include "public/cpio/test/parameter_client/test_aws_parameter_client_options.h"
+#include "cpio/client_providers/kms_client_provider/src/aws/nontee_aws_kms_client_provider.h"
+#include "public/cpio/test/kms_client/test_aws_kms_client_options.h"
 
 namespace google::scp::cpio::client_providers {
-/*! @copydoc AwsParameterClientInterface
+/*! @copydoc AwsKmsClientProvider
  */
-class TestAwsParameterClientProvider : public AwsParameterClientProvider {
+class TestAwsKmsClientProvider : public NonteeAwsKmsClientProvider {
  public:
-  TestAwsParameterClientProvider(
-      const std::shared_ptr<TestAwsParameterClientOptions>& test_options,
-      const std::shared_ptr<InstanceClientProviderInterface>&
-          instance_client_provider)
-      : AwsParameterClientProvider(test_options, instance_client_provider),
-        test_options_(test_options) {}
+  explicit TestAwsKmsClientProvider(
+      const std::shared_ptr<TestAwsKmsClientOptions>& options,
+      const std::shared_ptr<RoleCredentialsProviderInterface>&
+          role_credentials_provider)
+      : NonteeAwsKmsClientProvider(role_credentials_provider),
+        test_options_(options) {}
 
  protected:
   std::shared_ptr<Aws::Client::ClientConfiguration> CreateClientConfiguration(
       const std::string& region) noexcept override;
 
-  std::shared_ptr<TestAwsParameterClientOptions> test_options_;
+  std::shared_ptr<TestAwsKmsClientOptions> test_options_;
 };
 }  // namespace google::scp::cpio::client_providers

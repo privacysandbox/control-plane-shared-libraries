@@ -29,6 +29,7 @@ import com.google.scp.coordinator.privacy.budgeting.model.ConsumePrivacyBudgetRe
 import com.google.scp.coordinator.privacy.budgeting.model.PrivacyBudgetUnit;
 import com.google.scp.operator.cpio.distributedprivacybudgetclient.DistributedPrivacyBudgetClient.DistributedPrivacyBudgetClientException;
 import com.google.scp.operator.cpio.distributedprivacybudgetclient.DistributedPrivacyBudgetClient.DistributedPrivacyBudgetServiceException;
+import com.google.scp.operator.cpio.distributedprivacybudgetclient.TransactionEngine.TransactionEngineException;
 import com.google.scp.operator.cpio.distributedprivacybudgetclient.TransactionManager.TransactionManagerException;
 import java.time.Instant;
 import org.junit.Before;
@@ -94,15 +95,22 @@ public final class DistributedPrivacyBudgetClientTest {
 
   @Test
   public void consumePrivacyBudget_transactionManagerFailure() throws Exception {
-    doThrow(TransactionManagerException.class)
+    doThrow(
+            new TransactionManagerException(
+                StatusCode.UNKNOWN,
+                new TransactionEngineException(StatusCode.PRIVACY_BUDGET_CLIENT_UNAUTHENTICATED)))
         .when(transactionManager)
         .execute(any(TransactionRequest.class));
     var argument = ArgumentCaptor.forClass(TransactionRequest.class);
 
-    assertThrows(
-        DistributedPrivacyBudgetServiceException.class,
-        () -> distributedPrivacyBudgetClient.consumePrivacyBudget(getRequest(1)));
+    DistributedPrivacyBudgetServiceException exception =
+        assertThrows(
+            DistributedPrivacyBudgetServiceException.class,
+            () -> distributedPrivacyBudgetClient.consumePrivacyBudget(getRequest(1)));
     verify(transactionManager).execute(argument.capture());
+    assertThat(exception.getMessage()).isEqualTo(StatusCode.UNKNOWN.name());
+    assertThat(exception.getCause().getCause().getMessage())
+        .isEqualTo(StatusCode.PRIVACY_BUDGET_CLIENT_UNAUTHENTICATED.name());
   }
 
   private ConsumePrivacyBudgetResponse getExhaustedBudget() {

@@ -90,3 +90,21 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "test_aws_kms_client_provider_lib",
+    srcs = [
+        "test_aws_kms_client_provider.cc",
+        "test_aws_kms_client_provider.h",
+        "//cc/cpio/client_providers/interface:kms_client_provider_interface.h",
+        "//cc/cpio/client_providers/kms_client_provider/src/aws:nontee_aws_kms_client_provider_srcs",
+    ],
+    copts = [
+        "-DTEST_CPIO=1",
+    ],
+    deps = [
+        "//cc/cpio/client_providers/kms_client_provider/src/aws:nontee_aws_kms_client_provider_lib",
+        "//cc/cpio/common/test/aws:test_aws_utils_lib",
+        "//cc/public/cpio/test/kms_client:test_aws_kms_client_options",
+    ],
+)

@@ -21,6 +21,7 @@ import com.google.scp.coordinator.privacy.budgeting.model.ConsumePrivacyBudgetRe
 import com.google.scp.coordinator.privacy.budgeting.model.ConsumePrivacyBudgetResponse;
 import com.google.scp.coordinator.privacy.budgeting.model.PrivacyBudgetUnit;
 import com.google.scp.operator.cpio.distributedprivacybudgetclient.DistributedPrivacyBudgetClient;
+import com.google.scp.operator.cpio.distributedprivacybudgetclient.StatusCode;
 import java.time.Instant;
 
 /**
@@ -56,7 +57,8 @@ public final class FakeDistributedPrivacyBudgetClient implements DistributedPriv
       throws DistributedPrivacyBudgetServiceException {
     if (shouldThrow) {
       throw new DistributedPrivacyBudgetServiceException(
-          "Privacy Budget Exception", new IllegalStateException("Set to throw"));
+          StatusCode.PRIVACY_BUDGET_CLIENT_UNAUTHENTICATED,
+          new IllegalStateException("Set to throw"));
     }
     lastRequest = privacyBudgetRequest;
     if (shouldReturnExhausted) {

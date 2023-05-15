@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "test_aws_parameter_client_provider.h"
+#include "test_aws_kms_client_provider.h"
 
 #include <memory>
 #include <string>
@@ -22,11 +22,13 @@
 #include <aws/core/Aws.h>
 #include <aws/core/client/ClientConfiguration.h>
 
-#include "cpio/client_providers/interface/parameter_client_provider_interface.h"
+#include "cpio/client_providers/kms_client_provider/src/aws/nontee_aws_kms_client_provider.h"
 #include "cpio/common/test/aws/test_aws_utils.h"
-#include "public/cpio/test/parameter_client/test_aws_parameter_client_options.h"
+#include "public/cpio/interface/kms_client/type_def.h"
+#include "public/cpio/test/kms_client/test_aws_kms_client_options.h"
 
 using Aws::Client::ClientConfiguration;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::cpio::common::test::CreateTestClientConfiguration;
@@ -37,20 +39,18 @@ using std::string;
 
 namespace google::scp::cpio::client_providers {
 shared_ptr<ClientConfiguration>
-TestAwsParameterClientProvider::CreateClientConfiguration(
+TestAwsKmsClientProvider::CreateClientConfiguration(
     const string& region) noexcept {
-  return CreateTestClientConfiguration(test_options_->ssm_endpoint_override,
+  return CreateTestClientConfiguration(test_options_->kms_endpoint_override,
                                        make_shared<string>(region));
 }
 
-shared_ptr<ParameterClientProviderInterface>
-ParameterClientProviderFactory::Create(
-    const shared_ptr<ParameterClientOptions>& options,
-    const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
-    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
-    const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
-  return make_shared<TestAwsParameterClientProvider>(
-      dynamic_pointer_cast<TestAwsParameterClientOptions>(options),
-      instance_client_provider);
+shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
+    const shared_ptr<KmsClientOptions>& options,
+    const shared_ptr<RoleCredentialsProviderInterface>&
+        role_credentials_provider) noexcept {
+  return make_shared<TestAwsKmsClientProvider>(
+      dynamic_pointer_cast<TestAwsKmsClientOptions>(options),
+      role_credentials_provider);
 }
 }  // namespace google::scp::cpio::client_providers

@@ -25,6 +25,7 @@
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/kms_client/kms_client_interface.h"
+#include "public/cpio/interface/kms_client/type_def.h"
 #include "public/cpio/interface/type_def.h"
 #include "public/cpio/proto/kms_service/v1/kms_service.pb.h"
 
@@ -33,7 +34,8 @@ namespace google::scp::cpio {
  */
 class KmsClient : public KmsClientInterface {
  public:
-  KmsClient() = default;
+  explicit KmsClient(const std::shared_ptr<KmsClientOptions>& options)
+      : options_(options) {}
 
   core::ExecutionResult Init() noexcept override;
   core::ExecutionResult Run() noexcept override;
@@ -47,5 +49,8 @@ class KmsClient : public KmsClientInterface {
  protected:
   std::shared_ptr<client_providers::KmsClientProviderInterface>
       kms_client_provider_;
+
+ private:
+  std::shared_ptr<KmsClientOptions> options_;
 };
 }  // namespace google::scp::cpio

@@ -1,21 +1,21 @@
 # CPIO
 
-Provides a unified interface to talk to different cloud platforms for SCP.  
+Provides a unified interface to talk to different cloud platforms for SCP.
 Only AWS is supported currently.
 
 # Build
 
 ## Prerequisites
 
-This project needs to be built using [Bazel](https://bazel.build/install).  
+This project needs to be built using [Bazel](https://bazel.build/install).
 To get reproducible build, this project needs to be built inside container.
 
 ## Building the project
 A flag is defined to choose cloud platform at building time:
-    `//cc/public/cpio/interface:platform`. Supported value is "aws" currently.  
-Choose to import AWS SDK source code dependency by running:
+    `//cc/public/cpio/interface:platform`. Supported value is "aws" currently.
+Choose to import AWS SDK source code dependencies by running:
 
-        ln -rsf build_defs/cc/aws/aws_sdk_cpp_source_code_deps.bzl build_defs/cc/aws/aws_sdk_cpp_deps.bzl
+        ln -rsf build_defs/cc/sdk_source_code.bzl build_defs/cc/sdk.bzl
 
 Then build the project by running:
 

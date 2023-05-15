@@ -18,11 +18,33 @@
 
 #include "core/interface/initializable_interface.h"
 #include "core/interface/partition_interface.h"
-#include "core/transaction_manager/interface/transaction_engine_interface.h"
 
 namespace google::scp::core {
 
 typedef common::Uuid PartitionId;
+
+/**
+ * @brief Represents the current state of partition w.r.t load/unload.
+ *
+ */
+enum class PartitionLoadUnloadState : uint64_t {
+  /// @brief After Partition object is created. This is the initial
+  /// state after object creation.
+  Created,
+  /// @brief After Init() is completed successfully.
+  Initialized,
+  /// @brief State during Load()ing of the partition.
+  Loading,
+  /// @brief After Loading the partition successfully. This is the steady state
+  /// of the partition. Incoming transaction requests can be accepted only at
+  /// this state.
+  Loaded,
+  /// @brief State during Unload()ing of the partition.
+  Unloading,
+  /// @brief After unloading the partition successfully. Partition object to be
+  /// destroyed and cannot be reused. This is a terminal state.
+  Unloaded
+};
 
 /**
  * @brief Partition represents encapsulation of components that operate on a
@@ -53,11 +75,11 @@ class PartitionInterface : public InitializableInterface {
   virtual ExecutionResult Unload() noexcept = 0;
 
   /**
-   * @brief Check if the partition has completed unloading.
+   * @brief Returns the current state of the partition w.r.t. load/unload
    *
-   * @return ExecutionResult
+   * @return PartitionLoadUnloadState
    */
-  virtual bool IsUnloaded() noexcept = 0;
+  virtual PartitionLoadUnloadState GetPartitionLoadUnloadState() noexcept = 0;
 };
 
 }  // namespace google::scp::core

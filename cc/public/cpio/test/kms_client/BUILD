@@ -15,31 +15,29 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "kms_client",
-    srcs = ["//cc/public/cpio/adapters/kms_client/src:kms_client_srcs"],
-    hdrs =
-        [
-            "kms_client_interface.h",
-        ],
+    name = "test_aws_kms_client_options",
+    hdrs = [
+        "test_aws_kms_client_options.h",
+    ],
     deps = [
-        ":type_def",
         "//cc:cc_base_include_dir",
-        "//cc/core/interface:async_context_lib",
-        "//cc/core/interface:interface_lib",
-        "//cc/core/utils/src:core_utils",
-        "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
-        "//cc/cpio/client_providers/kms_client_provider/src:kms_client_provider_lib",
-        "//cc/public/cpio/interface:type_def",
+        "//cc/public/cpio/interface/kms_client:type_def",
     ],
 )
 
 cc_library(
-    name = "type_def",
+    name = "test_aws_kms_client",
+    srcs = [
+        "//cc/public/cpio/adapters/kms_client/src:kms_client_srcs",
+        "//cc/public/cpio/adapters/kms_client/test:test_aws_kms_client_srcs",
+    ],
     hdrs =
         [
-            "type_def.h",
+            "//cc/public/cpio/interface/kms_client:kms_client_interface.h",
         ],
     deps = [
-        "//cc:cc_base_include_dir",
+        ":test_aws_kms_client_options",
+        "//cc/cpio/client_providers/kms_client_provider/test/aws:test_aws_kms_client_provider_lib",
+        "//cc/public/cpio/interface/kms_client",
     ],
 )

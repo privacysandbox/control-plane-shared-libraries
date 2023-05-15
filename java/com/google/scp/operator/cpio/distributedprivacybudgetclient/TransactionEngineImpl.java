@@ -236,7 +236,7 @@ public class TransactionEngineImpl implements TransactionEngine {
           "[{}] Failed to perform transaction phase action. Error is: ",
           transaction.getId(),
           e.getMessage());
-      throw new TransactionEngineException(StatusCode.UNKNOWN, e.getMessage());
+      throw new TransactionEngineException(StatusCode.UNKNOWN, e);
     }
   }
 

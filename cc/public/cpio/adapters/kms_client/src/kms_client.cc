@@ -36,7 +36,9 @@ using google::scp::core::common::kZeroUuid;
 using google::scp::cpio::client_providers::GlobalCpio;
 using google::scp::cpio::client_providers::KmsClientProviderFactory;
 using google::scp::cpio::client_providers::RoleCredentialsProviderInterface;
+using std::make_shared;
 using std::make_unique;
+using std::move;
 using std::shared_ptr;
 
 namespace {
@@ -56,7 +58,7 @@ ExecutionResult KmsClient::Init() noexcept {
     return execution_result;
   }
   kms_client_provider_ =
-      KmsClientProviderFactory::Create(role_credentials_provider);
+      KmsClientProviderFactory::Create(options_, role_credentials_provider);
   execution_result = kms_client_provider_->Init();
   if (!execution_result.Successful()) {
     ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
@@ -93,6 +95,6 @@ ExecutionResult KmsClient::Decrypt(
 
 std::unique_ptr<KmsClientInterface> KmsClientFactory::Create(
     KmsClientOptions options) {
-  return make_unique<KmsClient>();
+  return make_unique<KmsClient>(make_shared<KmsClientOptions>(move(options)));
 }
 }  // namespace google::scp::cpio

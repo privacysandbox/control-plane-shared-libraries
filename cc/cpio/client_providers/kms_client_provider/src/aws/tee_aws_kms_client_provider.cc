@@ -28,6 +28,7 @@
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"
+#include "public/cpio/interface/kms_client/type_def.h"
 
 #include "tee_aws_kms_client_provider_utils.h"
 #include "tee_error_codes.h"
@@ -250,9 +251,12 @@ ExecutionResult TeeAwsKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
   return SuccessExecutionResult();
 }
 
+#ifndef TEST_CPIO
 std::shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
+    const shared_ptr<KmsClientOptions>& options,
     const shared_ptr<RoleCredentialsProviderInterface>&
-        role_credentials_provider) {
+        role_credentials_provider) noexcept {
   return make_shared<TeeAwsKmsClientProvider>(role_credentials_provider);
 }
+#endif
 }  // namespace google::scp::cpio::client_providers

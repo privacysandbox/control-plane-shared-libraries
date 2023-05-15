@@ -27,8 +27,6 @@ cc_library(
     ],
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
-        "//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_lib",
         "@aws_sdk_cpp//:ssm",
         "@com_google_absl//absl/algorithm:container",
     ],

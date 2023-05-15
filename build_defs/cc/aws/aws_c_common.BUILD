@@ -11,8 +11,10 @@ cc_library(
     name = "aws_c_common",
     srcs = glob([
         "include/aws/common/*.h",
+        "include/aws/common/external/*.h",
         "include/aws/common/private/*.h",
         "source/*.c",
+        "source/external/*.c",
         "source/posix/*.c",
     ]),
     hdrs = [

@@ -183,6 +183,7 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
    */
   virtual std::shared_ptr<Aws::Client::ClientConfiguration>
   CreateClientConfiguration(const std::string& region) noexcept;
+
   std::shared_ptr<InstanceClientProviderInterface> instance_client_;
 
   /// Instances of the async executor for local compute and blocking IO

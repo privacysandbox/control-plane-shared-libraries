@@ -316,4 +316,68 @@ TEST(WorkContainerTest, TryAcquireAddShouldFailWhenTheContainerIsFull) {
 
   delete container;
 }
+
+TEST(WorkContainerTest, OverflowRequestsPushedToWorkContianer) {
+  SharedMemorySegment segment;
+  segment.Create(1024000);
+  auto* pool = new (segment.Get()) SharedMemoryPool();
+  pool->Init(reinterpret_cast<uint8_t*>(segment.Get()) + sizeof(*pool),
+             segment.Size() - sizeof(*pool));
+  pool->SetThisThreadMemPool();
+
+  auto* container = new WorkContainer(*pool, /* capacity */ 10);
+  int total_request = 1000;
+
+  std::thread handle_request([&container, &pool, total_request]() {
+    pool->SetThisThreadMemPool();
+    for (int i = 0; i < total_request; ++i) {
+      Request* request;
+      auto result = container->GetRequest(request);
+      EXPECT_SUCCESS(result);
+
+      auto response = make_unique<Response>();
+      response->status = ResponseStatus::kSucceeded;
+
+      result = container->CompleteRequest(move(response));
+      EXPECT_SUCCESS(result);
+    }
+  });
+
+  std::thread get_response([&container, &pool, total_request]() {
+    pool->SetThisThreadMemPool();
+    for (int i = 0; i < total_request; ++i) {
+      unique_ptr<WorkItem> completed;
+      auto result = container->GetCompleted(completed);
+      EXPECT_SUCCESS(result);
+      EXPECT_TRUE(completed->Succeeded());
+    }
+  });
+
+  // Insert requests
+  std::cout << pool->GetAllocatedSize() << std::endl;
+  for (int i = 0; i < total_request; i++) {
+    while (!container->TryAcquireAdd().Successful()) {}
+
+    auto work_item = make_unique<WorkItem>();
+    work_item->request = make_unique<Request>();
+    CodeObject code_obj = {.id = "REQ_ID" + to_string(i)};
+    work_item->request->code_obj = make_unique<RomaCodeObj>(code_obj);
+
+    container->Add(move(work_item));
+
+    if (i % 10 == 0) {
+      std::cout << "request " << i
+                << " allocated size: " << pool->GetAllocatedSize() << std::endl;
+    }
+  }
+
+  std::cout << pool->GetAllocatedSize() << std::endl;
+
+  handle_request.join();
+  get_response.join();
+  // Container is empty
+  EXPECT_EQ(container->Size(), 0);
+
+  delete container;
+}
 }  // namespace google::scp::roma::ipc::test

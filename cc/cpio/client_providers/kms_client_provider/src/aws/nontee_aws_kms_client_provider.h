@@ -78,6 +78,16 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
                          crypto::tink::Aead>& get_aead_context) noexcept;
 
   /**
+   * @brief Creates the Client Config object.
+   *
+   * @param region the region of the client.
+   * @return std::shared_ptr<Aws::Client::ClientConfiguration> client
+   * configuration.
+   */
+  virtual std::shared_ptr<Aws::Client::ClientConfiguration>
+  CreateClientConfiguration(const std::string& region) noexcept;
+
+  /**
    * @brief Creates a KMS Client object.
    *
    * @param create_kms_context the context of created KMS Client.

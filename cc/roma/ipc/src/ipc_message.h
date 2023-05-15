@@ -138,6 +138,8 @@ struct Request : public ShmAllocated {
 
   Request() {}
 
+  ~Request() = default;
+
   Request(Request&& other)
       : code_obj(std::move(other.code_obj)),
         callback(std::move(other.callback)),
@@ -194,6 +196,8 @@ struct Response : public ShmAllocated {
   std::unique_ptr<Request> request;
   ResponseStatus status;
 
+  ~Response() = default;
+
   Response() : status(ResponseStatus::kUnknown) {}
 
   ResponseObject CreateCodeResponse() const {
@@ -209,6 +213,8 @@ struct WorkItem : public ShmAllocated {
   std::unique_ptr<Response> response;
 
   WorkItem() : request(nullptr), response(nullptr) {}
+
+  ~WorkItem() = default;
 
   void Complete(std::unique_ptr<Response> resp) { response.swap(resp); }
 

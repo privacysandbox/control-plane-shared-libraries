@@ -45,12 +45,13 @@ public interface TransactionEngine {
 
     /** Creates a new instance of the exception. */
     public TransactionEngineException(StatusCode statusCode) {
-      this(statusCode, statusCode.name());
+      super(statusCode.name());
+      this.statusCode = statusCode;
     }
 
     /** Creates a new instance of the exception. */
-    public TransactionEngineException(StatusCode statusCode, String message) {
-      super(message);
+    public TransactionEngineException(StatusCode statusCode, Throwable cause) {
+      super(statusCode.name(), cause);
       this.statusCode = statusCode;
     }
 

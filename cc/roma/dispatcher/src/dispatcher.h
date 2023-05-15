@@ -89,9 +89,10 @@ class Dispatcher : public core::ServiceInterface {
           };
 
       auto request = std::make_unique<RequestT>(batch[index]);
-      auto result = Dispatcher::Dispatch(std::move(request), callback);
-      if (!result.Successful()) {
-        return result;
+      // Need a blocking call here to make sure all requests in the batch are
+      // enqueued.
+      while (!Dispatcher::Dispatch(std::move(request), callback).Successful()) {
+        request = std::make_unique<RequestT>(batch[index]);
       }
     }
 

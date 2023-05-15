@@ -367,13 +367,13 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
 
 shared_ptr<PrivateKeyClientProviderInterface>
 PrivateKeyClientProviderFactory::Create(
-    const std::shared_ptr<PrivateKeyClientOptions>& options,
-    const std::shared_ptr<core::HttpClientInterface>& http_client,
-    const std::shared_ptr<RoleCredentialsProviderInterface>&
+    const shared_ptr<PrivateKeyClientOptions>& options,
+    const shared_ptr<core::HttpClientInterface>& http_client,
+    const shared_ptr<RoleCredentialsProviderInterface>&
         role_credentials_provider,
-    const std::shared_ptr<AuthTokenProviderInterface>& auth_token_provider) {
-  auto kms_client_provider =
-      KmsClientProviderFactory::Create(role_credentials_provider);
+    const shared_ptr<AuthTokenProviderInterface>& auth_token_provider) {
+  auto kms_client_provider = KmsClientProviderFactory::Create(
+      make_shared<KmsClientOptions>(), role_credentials_provider);
   // TODO: provide AuthTokenProvider in lib_cpio_provider.
   auto private_key_fetcher = PrivateKeyFetcherProviderFactory::Create(
       http_client, role_credentials_provider, auth_token_provider);

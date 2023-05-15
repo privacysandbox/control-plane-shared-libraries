@@ -140,7 +140,7 @@ class WorkContainer : public ShmAllocated {
    * @brief Calls to functions of the container can be blocking. And we need to
    * make sure that when the service is stopping we allow both the completed
    * work poller (dispatcher) and the workers to exit. So this function releases
-   * the sempahores.
+   * the semaphores.
    *
    */
   void ReleaseLocks();

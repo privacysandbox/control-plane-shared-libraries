@@ -26,7 +26,8 @@
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio::client_providers::mock {
-class MockMetricClientProvider : public MetricClientProviderInterface {
+class MockMetricClientProvider
+    : public testing::NiceMock<MetricClientProviderInterface> {
  public:
   MockMetricClientProvider() {
     ON_CALL(*this, Init)

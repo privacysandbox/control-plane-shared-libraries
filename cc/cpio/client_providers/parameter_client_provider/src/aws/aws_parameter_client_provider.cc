@@ -73,8 +73,13 @@ static constexpr char kAwsParameterClientProvider[] =
     "AwsParameterClientProvider";
 
 namespace google::scp::cpio::client_providers {
-ExecutionResult AwsParameterClientProvider::CreateClientConfiguration(
-    shared_ptr<ClientConfiguration>& client_config) noexcept {
+shared_ptr<ClientConfiguration>
+AwsParameterClientProvider::CreateClientConfiguration(
+    const string& region) noexcept {
+  return common::CreateClientConfiguration(make_shared<string>(move(region)));
+}
+
+ExecutionResult AwsParameterClientProvider::Init() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
   if (!region_code_or.Successful()) {
@@ -84,21 +89,8 @@ ExecutionResult AwsParameterClientProvider::CreateClientConfiguration(
     return region_code_or.result();
   }
 
-  client_config = common::CreateClientConfiguration(
-      make_shared<string>(move(*region_code_or)));
-  return SuccessExecutionResult();
-}
-
-ExecutionResult AwsParameterClientProvider::Init() noexcept {
-  shared_ptr<ClientConfiguration> client_config;
-  auto execution_result = CreateClientConfiguration(client_config);
-  if (!execution_result.Successful()) {
-    ERROR(kAwsParameterClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create ClientConfiguration");
-    return execution_result;
-  }
-
-  ssm_client_ = make_shared<SSMClient>(*client_config);
+  ssm_client_ = ssm_client_factory_->CreateSSMClient(
+      *CreateClientConfiguration(*region_code_or));
 
   return SuccessExecutionResult();
 }
@@ -178,6 +170,11 @@ void AwsParameterClientProvider::OnGetParametersCallback(
       outcome.GetResult().GetParameters()[0].GetValue().c_str());
   list_parameters_context.result = SuccessExecutionResult();
   list_parameters_context.Finish();
+}
+
+shared_ptr<SSMClient> SSMClientFactory::CreateSSMClient(
+    const ClientConfiguration& client_config) noexcept {
+  return make_shared<SSMClient>(client_config);
 }
 
 #ifndef TEST_CPIO

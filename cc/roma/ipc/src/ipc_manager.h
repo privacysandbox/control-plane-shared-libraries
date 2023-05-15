@@ -108,7 +108,7 @@ class IpcManager : public IpcManagerInterface<Request, Response> {
 
  private:
   /// The size of each shared memory segment.
-  static constexpr size_t kSharedMemorySegmentSize = 1024 * 1024 * 64;
+  static constexpr size_t kSharedMemorySegmentSize = 1024 * 1024 * 64 * 2;
 
   static IpcManager* instance_;
   /// The role of current (worker) process.

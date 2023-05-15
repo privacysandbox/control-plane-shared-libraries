@@ -34,10 +34,10 @@ def import_aws_sdk_cpp():
         http_archive,
         name = "aws_c_common",
         build_file = Label("//build_defs/cc/aws:aws_c_common.BUILD"),
-        sha256 = "6eb0b806c78b36a32eec9bcba8d2833e3973491a29d46fe3d11edc3f8d3e7f73",
-        strip_prefix = "aws-c-common-0.6.20",
+        sha256 = "43a95662f958df6284d502a191cfdedea8ef76a96746a06cbdec94eeba97de61",
+        strip_prefix = "aws-c-common-0.8.0",
         urls = [
-            "https://github.com/awslabs/aws-c-common/archive/refs/tags/v0.6.20.tar.gz",
+            "https://github.com/awslabs/aws-c-common/archive/refs/tags/v0.8.0.tar.gz",
         ],
     )
 
@@ -45,10 +45,10 @@ def import_aws_sdk_cpp():
         http_archive,
         name = "aws_c_event_stream",
         build_file = Label("//build_defs/cc/aws:aws_c_event_stream.BUILD"),
-        sha256 = "31d880d1c868d3f3df1e1f4b45e56ac73724a4dc3449d04d47fc0746f6f077b6",
-        strip_prefix = "aws-c-event-stream-0.1.4",
+        sha256 = "f1b423a487b5d6dca118bfc0d0c6cc596dc476b282258a3228e73a8f730422d4",
+        strip_prefix = "aws-c-event-stream-0.1.5",
         urls = [
-            "https://github.com/awslabs/aws-c-event-stream/archive/v0.1.4.tar.gz",
+            "https://github.com/awslabs/aws-c-event-stream/archive/v0.1.5.tar.gz",
         ],
     )
 

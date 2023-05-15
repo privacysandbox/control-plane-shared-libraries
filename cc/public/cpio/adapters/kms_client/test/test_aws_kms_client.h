@@ -18,27 +18,18 @@
 
 #include <memory>
 
-#include "cpio/client_providers/kms_client_provider/mock/mock_kms_client_provider.h"
+#include "cpio/client_providers/kms_client_provider/test/aws/test_aws_kms_client_provider.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/adapters/kms_client/src/kms_client.h"
+#include "public/cpio/test/kms_client/test_aws_kms_client_options.h"
 
-namespace google::scp::cpio::mock {
-class MockKmsClientWithOverrides : public KmsClient {
+namespace google::scp::cpio {
+/*! @copydoc KmsClientInterface
+ */
+class TestAwsKmsClient : public KmsClient {
  public:
-  explicit MockKmsClientWithOverrides(
-      const std::shared_ptr<KmsClientOptions>& options =
-          std::make_shared<KmsClientOptions>())
+  explicit TestAwsKmsClient(
+      const std::shared_ptr<TestAwsKmsClientOptions>& options)
       : KmsClient(options) {}
-
-  core::ExecutionResult Init() noexcept override {
-    kms_client_provider_ =
-        std::make_shared<client_providers::mock::MockKmsClientProvider>();
-    return core::SuccessExecutionResult();
-  }
-
-  client_providers::mock::MockKmsClientProvider& GetKmsClientProvider() {
-    return static_cast<client_providers::mock::MockKmsClientProvider&>(
-        *kms_client_provider_);
-  }
 };
-}  // namespace google::scp::cpio::mock
+}  // namespace google::scp::cpio

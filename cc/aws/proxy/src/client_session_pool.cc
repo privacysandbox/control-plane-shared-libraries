@@ -316,11 +316,14 @@ void ClientSessionPool::HandleClientError(const error_code& ec) {
 
 void ClientSessionPool::Stop() {
   stop_.store(true);
-  error_code ec;
-  for (auto& sock : pool_) {
-    sock.close(ec);
-  }
-  client_sock_.close(ec);
+  auto closure = [this]() {
+    error_code ec;
+    for (auto& sock : pool_) {
+      sock.close(ec);
+    }
+    client_sock_.close();
+  };
+  asio::dispatch(bind_executor(client_strand_, closure));
 }
 
 }  // namespace google::scp::proxy

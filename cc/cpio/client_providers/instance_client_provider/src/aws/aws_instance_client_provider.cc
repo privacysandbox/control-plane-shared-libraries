@@ -444,6 +444,12 @@ void AwsInstanceClientProvider::OnDescribeInstancesAsyncCallback(
   network->set_public_ipv4_address(
       target_instance.GetPublicIpAddress().c_str());
 
+  // Extract instance labels.
+  auto* labels_proto = instance_details->mutable_labels();
+  for (const auto& tag : target_instance.GetTags()) {
+    labels_proto->insert(MapPair(tag.GetKey(), tag.GetValue()));
+  }
+
   FinishContext(SuccessExecutionResult(), get_details_context,
                 cpu_async_executor_);
 }

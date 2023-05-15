@@ -35,9 +35,16 @@ public interface DistributedPrivacyBudgetClient {
    * errors.
    */
   final class DistributedPrivacyBudgetServiceException extends Exception {
+    private final StatusCode statusCode;
+
     /** Creates a new instance of the exception. */
-    public DistributedPrivacyBudgetServiceException(String message, Throwable cause) {
-      super(message, cause);
+    public DistributedPrivacyBudgetServiceException(StatusCode statusCode, Throwable cause) {
+      super(statusCode.name(), cause);
+      this.statusCode = statusCode;
+    }
+
+    public StatusCode getStatusCode() {
+      return this.statusCode;
     }
   }
 

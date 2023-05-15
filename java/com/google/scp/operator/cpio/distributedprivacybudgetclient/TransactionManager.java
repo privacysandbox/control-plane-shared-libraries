@@ -43,9 +43,16 @@ public interface TransactionManager {
 
   /** Represents an exception thrown by TransactionManager */
   final class TransactionManagerException extends Exception {
+    private final StatusCode statusCode;
+
     /** Creates a new instance of the exception. */
-    public TransactionManagerException(String message) {
-      super(message);
+    public TransactionManagerException(StatusCode statusCode, Throwable cause) {
+      super(statusCode.name(), cause);
+      this.statusCode = statusCode;
+    }
+
+    public StatusCode getStatusCode() {
+      return this.statusCode;
     }
   }
 }

@@ -23,6 +23,7 @@
 #include "core/interface/service_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/kms_client/type_def.h"
 #include "public/cpio/interface/type_def.h"
 #include "public/cpio/proto/kms_service/v1/kms_service.pb.h"
 
@@ -55,7 +56,8 @@ class KmsClientProviderFactory {
    * KmsClientProvider.
    */
   static std::shared_ptr<KmsClientProviderInterface> Create(
+      const std::shared_ptr<KmsClientOptions>& options,
       const std::shared_ptr<RoleCredentialsProviderInterface>&
-          role_credentials_provider);
+          role_credentials_provider) noexcept;
 };
 }  // namespace google::scp::cpio::client_providers
