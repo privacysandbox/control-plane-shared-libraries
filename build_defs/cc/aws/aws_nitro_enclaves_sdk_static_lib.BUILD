@@ -5,7 +5,7 @@ licenses(["notice"])  # Apache 2.0
 exports_files(["LICENSE"])
 
 cc_library(
-    name = "aws-lc",
+    name = "aws_lc",
     srcs = glob(
         [
             "lib/libcrypto.a",
@@ -26,7 +26,7 @@ cc_library(
 )
 
 cc_library(
-    name = "s2n-tls",
+    name = "s2n_tls",
     srcs = glob(
         [
             "lib/libs2n.a",
@@ -45,7 +45,7 @@ cc_library(
 )
 
 cc_library(
-    name = "aws-c-common",
+    name = "aws_c_common",
     srcs = glob(
         [
             "lib/libaws-c-common.a",
@@ -72,7 +72,7 @@ cc_library(
 )
 
 cc_library(
-    name = "aws-c-sdkutils",
+    name = "aws_c_sdkutils",
     srcs = glob(
         [
             "lib/libaws-c-sdkutils.a",
@@ -87,12 +87,12 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws-c-common",
+        ":aws_c_common",
     ],
 )
 
 cc_library(
-    name = "aws-c-io",
+    name = "aws_c_io",
     srcs = glob(
         [
             "lib/libaws-c-io.a",
@@ -107,12 +107,12 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws-c-common",
+        ":aws_c_common",
     ],
 )
 
 cc_library(
-    name = "aws-c-compression",
+    name = "aws_c_compression",
     srcs = glob(
         [
             "lib/libaws-c-compression.a",
@@ -127,12 +127,12 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws-c-common",
+        ":aws_c_common",
     ],
 )
 
 cc_library(
-    name = "aws-c-cal",
+    name = "aws_c_cal",
     srcs = glob(
         [
             "lib/libaws-c-cal.a",
@@ -147,13 +147,13 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws-c-common",
-        ":aws-lc",
+        ":aws_c_common",
+        ":aws_lc",
     ],
 )
 
 cc_library(
-    name = "aws-c-http",
+    name = "aws_c_http",
     srcs = glob(
         [
             "lib/libaws-c-http.a",
@@ -168,17 +168,17 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws-c-cal",
-        ":aws-c-common",
-        ":aws-c-compression",
-        ":aws-c-io",
-        ":aws-lc",
-        ":s2n-tls",
+        ":aws_c_cal",
+        ":aws_c_common",
+        ":aws_c_compression",
+        ":aws_c_io",
+        ":aws_lc",
+        ":s2n_tls",
     ],
 )
 
 cc_library(
-    name = "aws-c-auth",
+    name = "aws_c_auth",
     srcs = glob(
         [
             "lib/libaws-c-auth.a",
@@ -193,12 +193,12 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws-c-http",
+        ":aws_c_http",
     ],
 )
 
 cc_library(
-    name = "json-c",
+    name = "json_c",
     srcs = glob(
         [
             "lib/libjson-c.a",
@@ -217,7 +217,7 @@ cc_library(
 )
 
 cc_library(
-    name = "aws-nitro-enclaves-nsm-api",
+    name = "aws_nitro_enclaves_nsm_api",
     srcs = glob(
         [
             "lib/libnsm.so",
@@ -236,7 +236,7 @@ cc_library(
 )
 
 cc_library(
-    name = "aws-nitro-enclaves-sdk",
+    name = "aws_nitro_enclaves_sdk",
     srcs = glob(
         [
             "lib/libaws-nitro-enclaves-sdk-c.a",
@@ -255,8 +255,8 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws-c-auth",
-        ":aws-c-sdkutils",
-        ":aws-nitro-enclaves-nsm-api",
+        ":aws_c_auth",
+        ":aws_c_sdkutils",
+        ":aws_nitro_enclaves_nsm_api",
     ],
 )

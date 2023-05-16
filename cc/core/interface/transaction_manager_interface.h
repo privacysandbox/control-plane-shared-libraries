@@ -254,7 +254,7 @@ class TransactionManagerInterface : public ServiceInterface {
    * the TM
    * @return ExecutionResult
    */
-  virtual ExecutionResult GetStatus(
+  virtual ExecutionResult GetTransactionManagerStatus(
       const GetTransactionManagerStatusRequest& request,
       GetTransactionManagerStatusResponse& response) noexcept = 0;
 };

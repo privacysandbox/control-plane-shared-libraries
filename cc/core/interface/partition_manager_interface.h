@@ -20,23 +20,28 @@
 #include <string>
 
 #include "core/common/uuid/src/uuid.h"
+#include "core/interface/http_types.h"
 #include "core/interface/partition_interface.h"
 #include "core/interface/service_interface.h"
 #include "core/interface/type_def.h"
 
 namespace google::scp::core {
 
-typedef std::string PartitionAddressUri;
 /**
- * @brief Represents types of Partitions that can be loaded.
+ * @brief Request's Partition endpoint info
  *
- * Local: The Partition's home address is this instance.
- * Remote: The Partition's home address is another instance.
- *
- * NOTE: If lease is obtained on a partition by this instance, then it is
- * considered to be home on this instance.
  */
-enum class PartitionType { Local, Remote };
+struct RequestPartitionEndpointInfo : public RequestEndpointInfo {
+  RequestPartitionEndpointInfo(const std::shared_ptr<core::Uri>& uri,
+                               const PartitionId& partition_id,
+                               bool is_local_endpoint)
+      : RequestEndpointInfo(uri, is_local_endpoint),
+        partition_id_(partition_id) {}
+
+  const PartitionId partition_id_;
+};
+
+typedef std::string PartitionAddressUri;
 
 /**
  * @brief Information about Partition to be loaded/unloaded
@@ -45,14 +50,15 @@ enum class PartitionType { Local, Remote };
 struct PartitionMetadata {
   PartitionMetadata(PartitionId partition_id, PartitionType partition_type,
                     PartitionAddressUri partition_address_uri)
-      : partition_id_(partition_id),
-        partition_type_(partition_type),
-        partition_home_address_uri_(partition_address_uri) {}
+      : partition_id(partition_id),
+        partition_type(partition_type),
+        partition_address_uri(partition_address_uri) {}
 
-  const PartitionId partition_id_;
-  const PartitionType partition_type_;
-  /// @brief home address would be empty if PartitionType is Local
-  const PartitionAddressUri partition_home_address_uri_;
+  PartitionId Id() { return partition_id; }
+
+  const PartitionId partition_id;
+  const PartitionType partition_type;
+  const PartitionAddressUri partition_address_uri;
 };
 
 /**
@@ -63,6 +69,7 @@ struct PartitionMetadata {
  */
 class PartitionManagerInterface : public ServiceInterface {
  public:
+  ~PartitionManagerInterface() = default;
   /**
    * @brief Loads a partition.
    *
@@ -82,13 +89,45 @@ class PartitionManagerInterface : public ServiceInterface {
       PartitionMetadata partitionInfo) noexcept = 0;
 
   /**
+   * @brief Update the partition's address of a partition.
+   * When remote partition moves from one remote node to another remote node,
+   * the address needs to be updated to keep track of the latest location of it
+   * to forward requests to if needed.
+   *
+   * @param partitionInfo
+   * @return ExecutionResult
+   */
+  virtual core::ExecutionResult RefreshPartitionAddress(
+      const core::PartitionMetadata& partition_address) noexcept = 0;
+
+  /**
+   * @brief Get the Partition Address shared_ptr. Shared_ptr is returned to
+   * avoid copies since this address may potentially be used for large number of
+   * incoming requests.
+   *
+   * @param partition_id
+   * @return core::ExecutionResultOr<core::PartitionAddressUri>
+   */
+  virtual core::ExecutionResultOr<std::shared_ptr<core::PartitionAddressUri>>
+  GetPartitionAddress(core::PartitionId partition_id) noexcept = 0;
+
+  /**
+   * @brief Get the Partition Type
+   *
+   * @param partition_id
+   * @return core::ExecutionResultOr<core::PartitionType>
+   */
+  virtual core::ExecutionResultOr<core::PartitionType> GetPartitionType(
+      core::PartitionId partition_id) noexcept = 0;
+
+  /**
    * @brief Get the Partition object for the Partition ID if already loaded. The
    * returned partition could be of any of PartitionType.
    *
    * @param partitionId
    * @return std::shared_ptr<Partition>
    */
-  virtual std::shared_ptr<PartitionInterface> GetPartition(
+  virtual ExecutionResultOr<std::shared_ptr<PartitionInterface>> GetPartition(
       PartitionId partitionId) noexcept = 0;
 };
 }  // namespace google::scp::core

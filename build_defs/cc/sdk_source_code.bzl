@@ -13,8 +13,10 @@
 # limitations under the License.
 
 load("//build_defs/cc/aws:aws_sdk_cpp_source_code_deps.bzl", "import_aws_sdk_cpp")
+load("//build_defs/cc/aws:aws_nitro_enclaves_sdk_source_code_deps.bzl", "import_aws_nitro_enclaves_sdk")
 load("//build_defs/cc:sdk_common.bzl", "sdk_common")
 
 def sdk_dependencies(protobuf_version, protobuf_repo_hash):
     sdk_common(protobuf_version, protobuf_repo_hash)
     import_aws_sdk_cpp()
+    import_aws_nitro_enclaves_sdk()

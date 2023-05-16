@@ -246,6 +246,18 @@ data "aws_iam_policy_document" "enclave_policy_doc" {
     }
   }
 
+  statement {
+    sid    = "AllowOTelAccess"
+    effect = "Allow"
+    actions = [
+      "logs:PutLogEvents",
+      "logs:CreateLogStream",
+      "xray:PutTelemetryRecords",
+      "xray:PutTraceSegments",
+    ]
+    resources = ["*"]
+  }
+
   dynamic "statement" {
     # The contents of the list below are arbitrary, but must be of length one.
     for_each = var.coordinator_b_assume_role_arn != var.coordinator_a_assume_role_arn ? [1] : []

@@ -18,6 +18,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,27 @@ struct AuthContext {
   std::shared_ptr<std::string> authorized_domain;
 };
 
+/**
+ * @brief RequestEndpointInfo for describing the target
+ * for a request that can process the request.
+ *
+ * By default, this structure represents a local endpoint.
+ */
+struct RequestEndpointInfo {
+  virtual ~RequestEndpointInfo() = default;
+
+  // Default is a local endpoint
+  RequestEndpointInfo() : is_local_endpoint(true) {}
+
+  RequestEndpointInfo(const std::shared_ptr<Uri>& uri, bool is_local_endpoint)
+      : uri(uri), is_local_endpoint(is_local_endpoint) {}
+
+  /// @brief URI of the endpoint
+  const std::shared_ptr<Uri> uri;
+  /// @brief If this endpoint is local to this instance or not
+  const bool is_local_endpoint;
+};
+
 /// Http request object.
 struct HttpRequest {
   virtual ~HttpRequest() = default;
@@ -61,6 +83,8 @@ struct HttpRequest {
   BytesBuffer body;
   /// Represents the context of authentication and/or authorization.
   AuthContext auth_context;
+  /// Represents the resolved target endpoint of the request.
+  std::shared_ptr<RequestEndpointInfo> resolved_route_info;
 };
 
 /// Http response object.

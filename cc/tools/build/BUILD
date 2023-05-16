@@ -108,7 +108,7 @@ container_run_and_commit_layer(
 
 pkg_tar(
     name = "enclaves-patch",
-    srcs = ["aws_nitro_enclaves_sdk.patch"],
+    srcs = ["//build_defs/cc/aws:aws_nitro_enclaves_sdk.patch"],
     mode = "0644",
     package_dir = "/opt/deps/",
     tags = ["manual"],

@@ -16,12 +16,24 @@
 
 #pragma once
 
+#include "core/common/uuid/src/uuid.h"
 #include "core/interface/initializable_interface.h"
 #include "core/interface/partition_interface.h"
 
 namespace google::scp::core {
 
 typedef common::Uuid PartitionId;
+
+/**
+ * @brief Represents types of Partitions that can be loaded.
+ *
+ * Local: The Partition's home address is this instance.
+ * Remote: The Partition's home address is another instance.
+ *
+ * NOTE: If lease is obtained on a partition by this instance, then it is
+ * considered to be home on this instance.
+ */
+enum class PartitionType { Local, Remote };
 
 /**
  * @brief Represents the current state of partition w.r.t load/unload.
@@ -52,6 +64,7 @@ enum class PartitionLoadUnloadState : uint64_t {
  */
 class PartitionInterface : public InitializableInterface {
  public:
+  ~PartitionInterface() = default;
   /**
    * @brief Initialize required data for loading the partition.
    *
@@ -79,7 +92,7 @@ class PartitionInterface : public InitializableInterface {
    *
    * @return PartitionLoadUnloadState
    */
-  virtual PartitionLoadUnloadState GetPartitionLoadUnloadState() noexcept = 0;
+  virtual PartitionLoadUnloadState GetPartitionState() noexcept = 0;
 };
 
 }  // namespace google::scp::core

@@ -31,6 +31,7 @@ namespace google::scp::core {
  */
 class PartitionLeaseManagerInterface : public ServiceInterface {
  public:
+  ~PartitionLeaseManagerInterface() = default;
   /**
    * @brief Instruct lease manager to start managing (acquire and renew) leases
    * on any partitions of count specified. This method can be invoked multiple

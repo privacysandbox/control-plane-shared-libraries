@@ -33,4 +33,6 @@ static constexpr char kTransactionTimeoutInSecondsConfigName[] =
     "google_scp_pbs_transaction_timeout_in_seconds";
 static constexpr char kAggregatedMetricIntervalMs[] =
     "google_scp_aggregated_metric_interval_ms";
+static constexpr char kHTTPServerRequestRoutingEnabled[] =
+    "google_scp_http_server_request_routing_enabled";
 }  // namespace google::scp::core

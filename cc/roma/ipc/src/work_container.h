@@ -56,7 +56,7 @@ class WorkContainer : public ShmAllocated {
    * @param shm_pool A reference to the shared memory pool
    * @param capacity The capacity of the circular buffer used by the container
    */
-  explicit WorkContainer(SharedMemoryPool& shm_pool, size_t capacity = 1024)
+  explicit WorkContainer(SharedMemoryPool& shm_pool, size_t capacity = 100)
       : mem_pool_(shm_pool),
         acquire_semaphore_(0),
         complete_semaphore_(0),
