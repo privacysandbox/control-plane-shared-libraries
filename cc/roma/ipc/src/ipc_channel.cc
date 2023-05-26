@@ -31,9 +31,11 @@ using core::errors::SC_ROMA_IPC_CHANNEL_NO_RECORDED_CODE_OBJECT;
 using std::make_unique;
 using std::unique_ptr;
 
-IpcChannel::IpcChannel(SharedMemorySegment& shared_memory)
+IpcChannel::IpcChannel(SharedMemorySegment& shared_memory,
+                       size_t worker_queue_capacity)
     : shared_memory_(shared_memory),
       mem_pool_(),
+      worker_queue_capacity_(worker_queue_capacity),
       last_code_object_without_inputs_(nullptr),
       pending_request_(false) {}
 
@@ -47,7 +49,7 @@ ExecutionResult IpcChannel::Init() noexcept {
   size_t pool_size = shared_memory_.Size() - sizeof(*this);
   mem_pool_.Init(reinterpret_cast<void*>(pool_location), pool_size);
   auto ctx = SharedMemoryPool::SwitchTo(mem_pool_);
-  work_container_ = std::make_unique<WorkContainer>();
+  work_container_ = std::make_unique<WorkContainer>(worker_queue_capacity_);
 
   return SuccessExecutionResult();
 }

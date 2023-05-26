@@ -98,6 +98,8 @@ class ExecutionUtilsTest : public ::testing::Test {
       v8::V8::Initialize();
     }
 
+    config.NumberOfWorkers = 1;
+
     Isolate::CreateParams create_params;
     create_params.array_buffer_allocator =
         v8::ArrayBuffer::Allocator::NewDefaultAllocator();
@@ -205,6 +207,7 @@ class ExecutionUtilsTest : public ::testing::Test {
     return SuccessExecutionResult();
   }
 
+  Config config;
   static unique_ptr<v8::Platform> platform_;
   Isolate* isolate_{nullptr};
 };
@@ -212,7 +215,7 @@ class ExecutionUtilsTest : public ::testing::Test {
 unique_ptr<v8::Platform> ExecutionUtilsTest::platform_{nullptr};
 
 TEST_F(ExecutionUtilsTest, RomaStrToLocalStr) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -229,7 +232,7 @@ TEST_F(ExecutionUtilsTest, RomaStrToLocalStr) {
 }
 
 TEST_F(ExecutionUtilsTest, InputToLocalArgv) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -252,7 +255,7 @@ TEST_F(ExecutionUtilsTest, InputToLocalArgv) {
 }
 
 TEST_F(ExecutionUtilsTest, InputToLocalArgvJsonInput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -278,7 +281,7 @@ TEST_F(ExecutionUtilsTest, InputToLocalArgvJsonInput) {
 }
 
 TEST_F(ExecutionUtilsTest, InputToLocalArgvInvalidJsonInput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -297,7 +300,7 @@ TEST_F(ExecutionUtilsTest, InputToLocalArgvInvalidJsonInput) {
 }
 
 TEST_F(ExecutionUtilsTest, InputToLocalArgvInputWithEmptyString) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -323,7 +326,7 @@ TEST_F(ExecutionUtilsTest, InputToLocalArgvInputWithEmptyString) {
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjWithBadInput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -344,7 +347,7 @@ TEST_F(ExecutionUtilsTest, RunCodeObjWithBadInput) {
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -364,7 +367,7 @@ TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInput) {
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInputMissKey) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -385,7 +388,7 @@ TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInputMissKey) {
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInputMissValue) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -406,7 +409,7 @@ TEST_F(ExecutionUtilsTest, RunCodeObjWithJsonInputMissValue) {
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjRunWithLessArgs) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -427,7 +430,7 @@ TEST_F(ExecutionUtilsTest, RunCodeObjRunWithLessArgs) {
 }
 
 TEST_F(ExecutionUtilsTest, RunCodeObjRunWithJsonArgsMissing) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -448,7 +451,7 @@ TEST_F(ExecutionUtilsTest, RunCodeObjRunWithJsonArgsMissing) {
 }
 
 TEST_F(ExecutionUtilsTest, NoHandlerName) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -464,7 +467,7 @@ TEST_F(ExecutionUtilsTest, NoHandlerName) {
 }
 
 TEST_F(ExecutionUtilsTest, UnmatchedHandlerName) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -481,7 +484,7 @@ TEST_F(ExecutionUtilsTest, UnmatchedHandlerName) {
 }
 
 TEST_F(ExecutionUtilsTest, ScriptCompileFailure) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -500,7 +503,7 @@ TEST_F(ExecutionUtilsTest, ScriptCompileFailure) {
 }
 
 TEST_F(ExecutionUtilsTest, SuccessWithUnNeedArgs) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -517,7 +520,7 @@ TEST_F(ExecutionUtilsTest, SuccessWithUnNeedArgs) {
 }
 
 TEST_F(ExecutionUtilsTest, CodeExecutionFailure) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -534,7 +537,7 @@ TEST_F(ExecutionUtilsTest, CodeExecutionFailure) {
 }
 
 TEST_F(ExecutionUtilsTest, WasmSourceCode) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -560,7 +563,7 @@ TEST_F(ExecutionUtilsTest, WasmSourceCode) {
 }
 
 TEST_F(ExecutionUtilsTest, WasmSourceCodeCompileFailed) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -582,7 +585,7 @@ TEST_F(ExecutionUtilsTest, WasmSourceCodeCompileFailed) {
 }
 
 TEST_F(ExecutionUtilsTest, WasmSourceCodeUnmatchedName) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -607,7 +610,7 @@ TEST_F(ExecutionUtilsTest, WasmSourceCodeUnmatchedName) {
 }
 
 TEST_F(ExecutionUtilsTest, CppWasmWithStringInputAndStringOutput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -632,7 +635,7 @@ TEST_F(ExecutionUtilsTest, CppWasmWithStringInputAndStringOutput) {
 }
 
 TEST_F(ExecutionUtilsTest, RustWasmWithStringInputAndStringOutput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -657,7 +660,7 @@ TEST_F(ExecutionUtilsTest, RustWasmWithStringInputAndStringOutput) {
 }
 
 TEST_F(ExecutionUtilsTest, CppWasmWithListOfStringInputAndListOfStringOutput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -685,7 +688,7 @@ TEST_F(ExecutionUtilsTest, CppWasmWithListOfStringInputAndListOfStringOutput) {
 }
 
 TEST_F(ExecutionUtilsTest, RustWasmWithListOfStringInputAndListOfStringOutput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -714,7 +717,7 @@ TEST_F(ExecutionUtilsTest, RustWasmWithListOfStringInputAndListOfStringOutput) {
 }
 
 TEST_F(ExecutionUtilsTest, JsEmebbedGlobalWasmCompileRunExecute) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);

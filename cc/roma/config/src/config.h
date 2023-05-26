@@ -26,15 +26,39 @@
 namespace google::scp::roma {
 class Config {
  public:
+  /**
+   * @brief The number of workers that Roma will start. If no valid value is
+   * configured here, the default number of workedkrs (number of host CPUs) will
+   * be started.
+   *
+   * NOTE: A valid value is [1, number_of_host_CPUs].
+   */
   size_t NumberOfWorkers = 0;
-  size_t ThreadsPerWorker = 0;
-  size_t IpcMemorySize = 0;
+
+  /// @brief The size of worker queue, which caches the requests. Worker could
+  /// process the item in the queue one by one. The default queue size is 100.
   size_t QueueMaxItems = 0;
 
-  // The maximum number of pages that the WASM memory can use. Each page is
-  // 64KiB. Will be clamped to 65536 (4GiB) if larger.
-  // If left at zero, the default behavior is to use the maximum value allowed
-  // (up to 4GiB).
+  /**
+   * @brief Shared memory size in MB per IPC. Shared memory is used to store
+   * requests and responses shared between ROMA and worker processes. If
+   * IpcMemorySizeMb is not configured, a default value of 128MB will be set.
+   *
+   * NOTE: Small shared memory configurations can cause ROMA OOM error. The size
+   * of the shared memory needs to be larger than worker_item_payload *
+   * worker_queue_size. The content of worker_item_payload includes request and
+   * response.
+   */
+  size_t IpcMemorySizeMb = 0;
+
+  size_t ThreadsPerWorker = 0;
+
+  /**
+   * @brief The maximum number of pages that the WASM memory can use. Each page
+   * is 64KiB. Will be clamped to 65536 (4GiB) if larger. If left at zero, the
+   * default behavior is to use the maximum value allowed (up to 4GiB).
+   *
+   */
   size_t MaxWasmMemoryNumberOfPages = 0;
 
   /**

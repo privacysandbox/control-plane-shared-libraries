@@ -42,7 +42,7 @@ class Dispatcher : public core::ServiceInterface {
 
   /// Default construct a dispatcher.
   explicit Dispatcher(ipc::IpcManager& ipc_manager)
-      : ipc_manager_(ipc_manager) {}
+      : ipc_manager_(ipc_manager), next_worker_index_(0), stop_(true) {}
 
   /// Dispatch an invocation request to workers for execution.
   template <typename RequestT>
@@ -91,8 +91,15 @@ class Dispatcher : public core::ServiceInterface {
       auto request = std::make_unique<RequestT>(batch[index]);
       // Need a blocking call here to make sure all requests in the batch are
       // enqueued.
-      while (!Dispatcher::Dispatch(std::move(request), callback).Successful()) {
+      auto result = Dispatcher::Dispatch(std::move(request), callback);
+      while (!result.Successful()) {
+        // If the first request from the batch got failure, return failure
+        // without waiting.
+        if (index == 0) {
+          return result;
+        }
         request = std::make_unique<RequestT>(batch[index]);
+        result = Dispatcher::Dispatch(std::move(request), callback);
       }
     }
 
@@ -117,10 +124,10 @@ class Dispatcher : public core::ServiceInterface {
   // TODO: We probably don't need one poller thread per worker. This may be
   // optimized.
   std::vector<std::thread> response_pollers_;
-  /// The next worker index that we dispatch to.
-  std::atomic<uint32_t> next_worker_index_;
   /// The IpcManager to route the messages.
   ipc::IpcManager& ipc_manager_;
+  /// The next worker index that we dispatch to.
+  std::atomic<uint32_t> next_worker_index_;
   /// The response pollers shall stop if this flag becomes true.
   std::atomic<bool> stop_;
 };

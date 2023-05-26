@@ -34,6 +34,7 @@
 
 using Aws::String;
 using Aws::Client::AsyncCallerContext;
+using Aws::Client::ClientConfiguration;
 using Aws::STS::STSClient;
 using Aws::STS::Model::AssumeRoleOutcome;
 using Aws::STS::Model::AssumeRoleRequest;
@@ -60,6 +61,12 @@ static constexpr char kAwsRoleCredentialsProvider[] =
     "AwsRoleCredentialsProvider";
 
 namespace google::scp::cpio::client_providers {
+shared_ptr<ClientConfiguration>
+AwsRoleCredentialsProvider::CreateClientConfiguration(
+    const string& region) noexcept {
+  return common::CreateClientConfiguration(make_shared<string>(move(region)));
+}
+
 ExecutionResult AwsRoleCredentialsProvider::Init() noexcept {
   if (!instance_client_provider_) {
     auto execution_result = FailureExecutionResult(
@@ -69,7 +76,7 @@ ExecutionResult AwsRoleCredentialsProvider::Init() noexcept {
     return execution_result;
   }
 
-  if (!async_executor_) {
+  if (!cpu_async_executor_) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_ROLE_CREDENTIALS_PROVIDER_INITIALIZATION_FAILED);
     ERROR(kAwsRoleCredentialsProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -86,8 +93,7 @@ ExecutionResult AwsRoleCredentialsProvider::Init() noexcept {
     return region_code_or.result();
   }
 
-  auto client_config = common::CreateClientConfiguration(
-      make_shared<string>(move(*region_code_or)));
+  auto client_config = CreateClientConfiguration(*region_code_or);
   sts_client_ = make_shared<STSClient>(*client_config);
 
   auto timestamp =
@@ -137,7 +143,7 @@ void AwsRoleCredentialsProvider::OnGetRoleCredentialsCallback(
 
     // Retries for retriable errors with high priority if specified in the
     // callback of get_credentials_context.
-    if (!async_executor_
+    if (!cpu_async_executor_
              ->Schedule(
                  [get_credentials_context]() mutable {
                    get_credentials_context.Finish();
@@ -170,11 +176,14 @@ void AwsRoleCredentialsProvider::OnGetRoleCredentialsCallback(
   get_credentials_context.Finish();
 }
 
+#ifndef TEST_CPIO
 std::shared_ptr<RoleCredentialsProviderInterface>
 RoleCredentialsProviderFactory::Create(
+    const shared_ptr<RoleCredentialsProviderOptions>& options,
     const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
-    const shared_ptr<core::AsyncExecutorInterface>& async_executor) {
+    const shared_ptr<core::AsyncExecutorInterface>& async_executor) noexcept {
   return make_shared<AwsRoleCredentialsProvider>(instance_client_provider,
                                                  async_executor);
 }
+#endif
 }  // namespace google::scp::cpio::client_providers

@@ -109,7 +109,7 @@ class PartitionManagerInterface : public ServiceInterface {
    * @return core::ExecutionResultOr<core::PartitionAddressUri>
    */
   virtual core::ExecutionResultOr<std::shared_ptr<core::PartitionAddressUri>>
-  GetPartitionAddress(core::PartitionId partition_id) noexcept = 0;
+  GetPartitionAddress(const core::PartitionId& partition_id) noexcept = 0;
 
   /**
    * @brief Get the Partition Type
@@ -118,7 +118,7 @@ class PartitionManagerInterface : public ServiceInterface {
    * @return core::ExecutionResultOr<core::PartitionType>
    */
   virtual core::ExecutionResultOr<core::PartitionType> GetPartitionType(
-      core::PartitionId partition_id) noexcept = 0;
+      const core::PartitionId& partition_id) noexcept = 0;
 
   /**
    * @brief Get the Partition object for the Partition ID if already loaded. The
@@ -128,6 +128,6 @@ class PartitionManagerInterface : public ServiceInterface {
    * @return std::shared_ptr<Partition>
    */
   virtual ExecutionResultOr<std::shared_ptr<PartitionInterface>> GetPartition(
-      PartitionId partitionId) noexcept = 0;
+      const PartitionId& partition_id) noexcept = 0;
 };
 }  // namespace google::scp::core

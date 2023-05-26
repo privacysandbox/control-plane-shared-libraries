@@ -1,0 +1,52 @@
+diff --git a/sandboxed_api/bazel/sapi.bzl b/sandboxed_api/bazel/sapi.bzl
+index 94c28b0..50c2c31 100644
+--- a/sandboxed_api/bazel/sapi.bzl
++++ b/sandboxed_api/bazel/sapi.bzl
+@@ -20,7 +20,7 @@ load(
+     "//sandboxed_api/bazel:proto.bzl",
+     _sapi_proto_library = "sapi_proto_library",
+ )
+-load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain", "use_cpp_toolchain")
++load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
+ 
+ # Reexport symbols
+ sapi_proto_library = _sapi_proto_library
+@@ -229,7 +229,6 @@ sapi_interface = rule(
+         ),
+     },
+     output_to_genfiles = True,
+-    toolchains = use_cpp_toolchain(),
+ )
+ 
+ def sapi_library(
+@@ -316,7 +315,7 @@ def sapi_library(
+     else:
+         lib_hdrs += [generated_header]
+ 
+-    default_deps = ["//sandboxed_api/sandbox2"]
++    default_deps = ["@com_google_sandboxed_api//sandboxed_api/sandbox2"]
+ 
+     # Library that contains generated interface and sandboxed binary as a data
+     # dependency. Add this as a dependency instead of original library.
+@@ -332,9 +331,9 @@ def sapi_library(
+                 "@com_google_absl//absl/base:core_headers",
+                 "@com_google_absl//absl/status",
+                 "@com_google_absl//absl/status:statusor",
+-                "//sandboxed_api:sapi",
+-                "//sandboxed_api/util:status",
+-                "//sandboxed_api:vars",
++                "@com_google_sandboxed_api//sandboxed_api:sapi",
++                "@com_google_sandboxed_api//sandboxed_api/util:status",
++                "@com_google_sandboxed_api//sandboxed_api:vars",
+             ] + deps +
+             ([":" + name + "_embed"] if embed else []) +
+             (default_deps if add_default_deps else []),
+@@ -351,7 +350,7 @@ def sapi_library(
+         ] + exported_funcs,  # must be both referenced, and exported
+         deps = [
+             ":" + name + ".lib",
+-            "//sandboxed_api:client",
++            "@com_google_sandboxed_api//sandboxed_api:client",
+         ],
+         copts = default_copts,
+         **common

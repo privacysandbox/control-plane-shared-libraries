@@ -28,6 +28,8 @@
 #include <aws/ssm/model/GetParametersRequest.h>
 #include <gmock/gmock.h>
 
+#include "core/async_executor/mock/mock_async_executor.h"
+// #include "core/async_executor/src/aws/aws_async_executor.h"
 #include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"
 #include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"
@@ -49,6 +51,8 @@ using Aws::SSM::Model::Parameter;
 using google::cmrt::sdk::parameter_service::v1::GetParameterRequest;
 using google::cmrt::sdk::parameter_service::v1::GetParameterResponse;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
+using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
@@ -66,6 +70,7 @@ using std::atomic;
 using std::make_shared;
 using std::make_unique;
 using std::map;
+using std::move;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
@@ -84,7 +89,8 @@ namespace google::scp::cpio::client_providers::test {
 class MockSSMClientFactory : public SSMClientFactory {
  public:
   MOCK_METHOD(std::shared_ptr<Aws::SSM::SSMClient>, CreateSSMClient,
-              (const Aws::Client::ClientConfiguration& client_config),
+              (Aws::Client::ClientConfiguration & client_config,
+               std::shared_ptr<core::AsyncExecutorInterface> io_async_executor),
               (noexcept, override));
 };
 
@@ -109,9 +115,13 @@ class AwsParameterClientProviderTest : public ::testing::Test {
     ON_CALL(*mock_ssm_client_factory_, CreateSSMClient)
         .WillByDefault(Return(mock_ssm_client_));
 
+    MockAsyncExecutor mock_io_async_executor;
+    shared_ptr<AsyncExecutorInterface> io_async_executor =
+            make_shared<MockAsyncExecutor>(move(mock_io_async_executor));
+
     client_ = make_unique<AwsParameterClientProvider>(
         make_shared<ParameterClientOptions>(), mock_instance_client_,
-        mock_ssm_client_factory_);
+        io_async_executor, mock_ssm_client_factory_);
   }
 
   void MockParameters() {
@@ -135,6 +145,7 @@ class AwsParameterClientProviderTest : public ::testing::Test {
   shared_ptr<MockInstanceClientProvider> mock_instance_client_;
   shared_ptr<MockSSMClient> mock_ssm_client_;
   shared_ptr<MockSSMClientFactory> mock_ssm_client_factory_;
+  shared_ptr<MockAsyncExecutor> mock_io_async_executor_;
   unique_ptr<AwsParameterClientProvider> client_;
 };
 

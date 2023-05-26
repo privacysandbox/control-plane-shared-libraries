@@ -18,8 +18,10 @@
 #define SCP_CPIO_INTERFACE_TYPE_DEFS_H_
 
 #include <functional>
+#include <memory>
 #include <string>
 
+#include "core/interface/async_executor_interface.h"
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio {
@@ -59,6 +61,13 @@ struct CpioOptions {
 
   /// Default is kInitInCpio.
   CloudInitOption cloud_init_option = CloudInitOption::kInitInCpio;
+
+  /// Optional CPU thread pool. If not set, an internal thread pool will be
+  /// used.
+  std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor;
+
+  /// Optional IO thread pool. If not set, an internal thread pool will be used.
+  std::shared_ptr<core::AsyncExecutorInterface> io_async_executor;
 };
 
 template <typename TResponse>

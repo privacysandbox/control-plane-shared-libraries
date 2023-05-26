@@ -69,11 +69,7 @@ ExecutionResult RomaService::Init() noexcept {
     v8::V8::Initialize();
   }
 
-  size_t concurrency = config_.NumberOfWorkers;
-  if (concurrency == 0) {
-    concurrency = thread::hardware_concurrency();
-  }
-  auto* ipc_manager_ = IpcManager::Create(concurrency);
+  auto* ipc_manager_ = IpcManager::Create(config_);
   auto result = ipc_manager_->Init();
   if (!result.Successful()) {
     return result;

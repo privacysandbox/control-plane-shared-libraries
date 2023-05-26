@@ -20,14 +20,18 @@
 #include <utility>
 #include <vector>
 
-#include "roma/dispatcher/src/dispatcher.h"
+#if defined(_SCP_ROMA_SANDBOXED_LIBRARY)
+#include "roma/sandbox/roma_service/src/roma_service.h"
+using google::scp::roma::sandbox::roma_service::RomaService;
 
+#else
 #include "roma_service.h"
+using google::scp::roma::roma_service::RomaService;
+#endif
 
 using absl::OkStatus;
 using absl::Status;
 using absl::StatusCode;
-using google::scp::roma::roma_service::RomaService;
 using std::make_unique;
 using std::move;
 using std::unique_ptr;

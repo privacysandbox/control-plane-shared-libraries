@@ -46,6 +46,7 @@ download_pkgs(
         "python-is-python3",
         "python3",
         "python3-distutils",
+        "python3-pip",
         "rsyslog",
         "socat",
         "sudo",
@@ -79,6 +80,7 @@ container_run_and_commit_layer(
         "ln -s /usr/bin/clang-13 /usr/bin/clang",
         "ln -s /usr/bin/clang++-13 /usr/bin/clang++",
         "ln -s /usr/bin/clang-cpp-13 /usr/bin/clang-cpp",
+        "pip3 install libclang",
     ],
     env = {
         "CC": "/usr/bin/clang",
@@ -106,6 +108,20 @@ container_run_and_commit_layer(
     tags = ["manual"],
 )
 
+container_run_and_commit_layer(
+    name = "container_to_build_cc_aws_c_common",
+    commands = [
+        "mkdir /tmp/build",
+        "cd /tmp/build",
+        "git clone -b v0.8.16 https://github.com/awslabs/aws-c-common.git",
+        "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-common -B aws-c-common/build",
+        "cmake --build aws-c-common/build --target install",
+        "rm -rf /tmp/build",
+    ],
+    image = ":cc_build_apt_pkgs_install.tar",
+    tags = ["manual"],
+)
+
 pkg_tar(
     name = "enclaves-patch",
     srcs = ["//build_defs/cc/aws:aws_nitro_enclaves_sdk.patch"],
@@ -120,6 +136,7 @@ container_image(
     layers = [
         ":container_to_build_cc_bazel",
         ":container_to_build_cc_boringssl",
+        ":container_to_build_cc_aws_c_common",
     ],
     tags = ["manual"],
     tars = [":enclaves-patch"],
@@ -130,9 +147,6 @@ container_run_and_commit_layer(
     commands = [
         "mkdir /tmp/aws",
         "cd /tmp/aws",
-        "git clone -b v0.8.0 https://github.com/awslabs/aws-c-common.git",
-        "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-common -B aws-c-common/build",
-        "cmake --build aws-c-common/build --parallel $(nproc) --target install",
         "git clone -b v0.1.5 https://github.com/awslabs/aws-checksums.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-checksums -B aws-checksums/build",
         "cmake --build aws-checksums/build --parallel $(nproc) --target install",
@@ -165,9 +179,6 @@ container_run_and_commit_layer(
         "git clone -b v1.3.20 https://github.com/aws/s2n-tls.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -S s2n-tls -B s2n-tls/build",
         "cmake --build s2n-tls/build --parallel $(nproc) --target install",
-        "git clone -b v0.8.0 https://github.com/awslabs/aws-c-common.git",
-        "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-common -B aws-c-common/build",
-        "cmake --build aws-c-common/build --parallel $(nproc) --target install",
         "git clone -b v0.1.2 https://github.com/awslabs/aws-c-sdkutils.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-sdkutils -B aws-c-sdkutils/build",
         "cmake --build aws-c-sdkutils/build --parallel $(nproc) --target install",
@@ -178,16 +189,16 @@ container_run_and_commit_layer(
         "cd /tmp/crt-builder",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -DUSE_OPENSSL=0 -DOPENSSL_IS_AWSLC=0 -GNinja -S aws-c-cal -B aws-c-cal/build",
         "cmake --build aws-c-cal/build --parallel $(nproc) --target install",
-        "git clone -b v0.11.0 https://github.com/awslabs/aws-c-io.git",
+        "git clone -b v0.13.13 https://github.com/awslabs/aws-c-io.git",
         "cmake -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-io -B aws-c-io/build",
         "cmake --build aws-c-io/build --parallel $(nproc) --target install",
         "git clone -b v0.2.14 http://github.com/awslabs/aws-c-compression.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-compression -B aws-c-compression/build",
         "cmake --build aws-c-compression/build --parallel $(nproc) --target install",
-        "git clone -b v0.6.19 https://github.com/awslabs/aws-c-http.git",
+        "git clone -b v0.7.4 https://github.com/awslabs/aws-c-http.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-http -B aws-c-http/build",
         "cmake --build aws-c-http/build --parallel $(nproc) --target install",
-        "git clone -b v0.6.15 https://github.com/awslabs/aws-c-auth.git",
+        "git clone -b v0.6.22 https://github.com/awslabs/aws-c-auth.git",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DBUILD_TESTING=0 -DCMAKE_INSTALL_PREFIX=/opt/deps -GNinja -S aws-c-auth -B aws-c-auth/build",
         "cmake --build aws-c-auth/build --parallel $(nproc) --target install",
         "git clone -b json-c-0.16-20220414 https://github.com/json-c/json-c.git",

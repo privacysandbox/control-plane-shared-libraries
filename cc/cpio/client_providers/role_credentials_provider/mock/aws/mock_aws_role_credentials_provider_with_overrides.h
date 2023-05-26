@@ -58,9 +58,9 @@ class MockAwsRoleCredentialsProviderWithOverrides
     return std::dynamic_pointer_cast<MockSTSClient>(sts_client_);
   }
 
-  std::shared_ptr<core::AsyncExecutorInterface> GetAsyncExecutor() {
+  std::shared_ptr<core::AsyncExecutorInterface> GetCpuAsyncExecutor() {
     return std::dynamic_pointer_cast<core::AsyncExecutorInterface>(
-        async_executor_);
+        cpu_async_executor_);
   }
 
   void OnGetRoleCredentialsCallback(

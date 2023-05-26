@@ -47,5 +47,6 @@ cc_library(
         "//cc/cpio/client_providers/cloud_initializer/src:cloud_initializer_lib",
         "//cc/cpio/client_providers/global_cpio/test:test_global_cpio_lib",
         "//cc/cpio/client_providers/global_cpio/test:test_lib_cpio_provider",
+        "//cc/public/cpio/core/src:cpio_utils_lib",
     ],
 )

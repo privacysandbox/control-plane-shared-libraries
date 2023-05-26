@@ -32,17 +32,6 @@ def import_aws_nitro_enclaves_sdk():
 
     maybe(
         http_archive,
-        name = "aws_c_common",
-        build_file = Label("//build_defs/cc/aws:aws_c_common.BUILD"),
-        sha256 = "43a95662f958df6284d502a191cfdedea8ef76a96746a06cbdec94eeba97de61",
-        strip_prefix = "aws-c-common-0.8.0",
-        urls = [
-            "https://github.com/awslabs/aws-c-common/archive/refs/tags/v0.8.0.tar.gz",
-        ],
-    )
-
-    maybe(
-        http_archive,
         name = "aws_c_sdkutils",
         build_file = Label("//build_defs/cc/aws:aws_c_sdkutils.BUILD"),
         sha256 = "d654670c145212ed3ce0699a988b9f83ebf3e7c44ed74d4d0772dc95ad46b38e",
@@ -68,10 +57,10 @@ def import_aws_nitro_enclaves_sdk():
         http_archive,
         name = "aws_c_io",
         build_file = Label("//build_defs/cc/aws:aws_c_io.BUILD"),
-        sha256 = "cd8fdcae6dcab2c91f699369220230f4973fd9c7dbda569c42326c8ead073be7",
-        strip_prefix = "aws-c-io-0.11.0",
+        sha256 = "ce9368ce8cadc09105f26a499767efe575a7a544e8326aa33d0f239309b8bd82",
+        strip_prefix = "aws-c-io-0.13.13",
         urls = [
-            "https://github.com/awslabs/aws-c-io/archive/refs/tags/v0.11.0.tar.gz",
+            "https://github.com/awslabs/aws-c-io/archive/refs/tags/v0.13.13.tar.gz",
         ],
     )
 
@@ -90,10 +79,10 @@ def import_aws_nitro_enclaves_sdk():
         http_archive,
         name = "aws_c_http",
         build_file = Label("//build_defs/cc/aws:aws_c_http.BUILD"),
-        sha256 = "4f6a36a580f7ed2206f97ef6d70cada23a05da43868af32b765fb429d576f47c",
-        strip_prefix = "aws-c-http-0.6.19",
+        sha256 = "cde8fbcb52d9c894e75cb398b5c5ea5334188dfc23003c2f7396aa05395f2699",
+        strip_prefix = "aws-c-http-0.7.4",
         urls = [
-            "https://github.com/awslabs/aws-c-http/archive/refs/tags/v0.6.19.tar.gz",
+            "https://github.com/awslabs/aws-c-http/archive/refs/tags/v0.7.4.tar.gz",
         ],
     )
 
@@ -101,10 +90,10 @@ def import_aws_nitro_enclaves_sdk():
         http_archive,
         name = "aws_c_auth",
         build_file = Label("//build_defs/cc/aws:aws_c_auth.BUILD"),
-        sha256 = "52b1bf58155e726cc135257c1ea1e9af7c7f4e0f674d066165b11db20bb85477",
-        strip_prefix = "aws-c-auth-0.6.15",
+        sha256 = "691a6b4418afcd3dc141351b6ad33fccd8e3ff84df0e9e045b42295d284ee14c",
+        strip_prefix = "aws-c-auth-0.6.22",
         urls = [
-            "https://github.com/awslabs/aws-c-auth/archive/refs/tags/v0.6.15.tar.gz",
+            "https://github.com/awslabs/aws-c-auth/archive/refs/tags/v0.6.22.tar.gz",
         ],
     )
 

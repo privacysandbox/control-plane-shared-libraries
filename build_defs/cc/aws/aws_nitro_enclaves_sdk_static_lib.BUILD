@@ -5,27 +5,6 @@ licenses(["notice"])  # Apache 2.0
 exports_files(["LICENSE"])
 
 cc_library(
-    name = "aws_lc",
-    srcs = glob(
-        [
-            "lib/libcrypto.a",
-            "lib/libssl.a",
-            "lib/libdecrepit.a",
-        ],
-    ),
-    hdrs = glob(
-        [
-            "include/openssl/*.h",
-        ],
-    ),
-    includes = [
-        "include",
-    ],
-    deps = [
-    ],
-)
-
-cc_library(
     name = "s2n_tls",
     srcs = glob(
         [
@@ -40,33 +19,6 @@ cc_library(
     includes = [
         "include",
     ],
-    deps = [
-    ],
-)
-
-cc_library(
-    name = "aws_c_common",
-    srcs = glob(
-        [
-            "lib/libaws-c-common.a",
-        ],
-    ),
-    hdrs = glob(
-        [
-            "include/aws/common/*.h",
-        ],
-    ),
-    defines = [
-        "AWS_AFFINITY_METHOD",
-    ],
-    includes = [
-        "include",
-    ],
-    textual_hdrs = glob(
-        [
-            "include/aws/common/error.inl",
-        ],
-    ),
     deps = [
     ],
 )
@@ -87,47 +39,7 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws_c_common",
-    ],
-)
-
-cc_library(
-    name = "aws_c_io",
-    srcs = glob(
-        [
-            "lib/libaws-c-io.a",
-        ],
-    ),
-    hdrs = glob(
-        [
-            "include/aws/io/*.h",
-        ],
-    ),
-    includes = [
-        "include",
-    ],
-    deps = [
-        ":aws_c_common",
-    ],
-)
-
-cc_library(
-    name = "aws_c_compression",
-    srcs = glob(
-        [
-            "lib/libaws-c-compression.a",
-        ],
-    ),
-    hdrs = glob(
-        [
-            "include/aws/compression/*.h",
-        ],
-    ),
-    includes = [
-        "include",
-    ],
-    deps = [
-        ":aws_c_common",
+        "@aws_c_common",
     ],
 )
 
@@ -147,8 +59,53 @@ cc_library(
         "include",
     ],
     deps = [
-        ":aws_c_common",
-        ":aws_lc",
+        "@aws_c_common",
+        "@boringssl//:crypto",
+        "@boringssl//:ssl",
+    ],
+)
+
+cc_library(
+    name = "aws_c_io",
+    srcs = glob(
+        [
+            "lib/libaws-c-io.a",
+        ],
+    ),
+    hdrs = glob(
+        [
+            "include/aws/io/*.h",
+            "include/aws/io/private/*.h",
+        ],
+    ),
+    includes = [
+        "include",
+    ],
+    deps = [
+        ":aws_c_cal",
+        ":s2n_tls",
+        "@aws_c_common",
+    ],
+)
+
+cc_library(
+    name = "aws_c_compression",
+    srcs = glob(
+        [
+            "lib/libaws-c-compression.a",
+        ],
+    ),
+    hdrs = glob(
+        [
+            "include/aws/compression/*.h",
+            "include/aws/compression/private/*.h",
+        ],
+    ),
+    includes = [
+        "include",
+    ],
+    deps = [
+        "@aws_c_common",
     ],
 )
 
@@ -162,6 +119,7 @@ cc_library(
     hdrs = glob(
         [
             "include/aws/http/*.h",
+            "include/aws/http/private/*.h",
         ],
     ),
     includes = [
@@ -169,11 +127,9 @@ cc_library(
     ],
     deps = [
         ":aws_c_cal",
-        ":aws_c_common",
         ":aws_c_compression",
         ":aws_c_io",
-        ":aws_lc",
-        ":s2n_tls",
+        "@aws_c_common",
     ],
 )
 
@@ -187,13 +143,18 @@ cc_library(
     hdrs = glob(
         [
             "include/aws/auth/*.h",
+            "include/aws/auth/external/*.h",
+            "include/aws/auth/private/*.h",
         ],
     ),
     includes = [
         "include",
     ],
     deps = [
+        ":aws_c_compression",
         ":aws_c_http",
+        ":aws_c_io",
+        ":aws_c_sdkutils",
     ],
 )
 
@@ -249,6 +210,7 @@ cc_library(
             "include/aws/nitro_enclaves/kms.h",
             "include/aws/nitro_enclaves/nitro_enclaves.h",
             "include/aws/nitro_enclaves/rest.h",
+            "include/aws/nitro_enclaves/internal/cms.h",
         ],
     ),
     includes = [
@@ -256,7 +218,10 @@ cc_library(
     ],
     deps = [
         ":aws_c_auth",
-        ":aws_c_sdkutils",
+        ":aws_c_http",
+        ":aws_c_io",
         ":aws_nitro_enclaves_nsm_api",
+        ":json_c",
+        "@aws_c_common",
     ],
 )

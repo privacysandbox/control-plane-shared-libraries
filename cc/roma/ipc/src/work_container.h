@@ -81,6 +81,15 @@ class WorkContainer : public ShmAllocated {
   WorkContainer() : WorkContainer(SharedMemoryPool::GetThisThreadMemPool()) {}
 
   /**
+   * @brief Construct a new work container object with input capacity and the
+   * default shared memory pool.
+   *
+   * @param capacity the capacity of work contianer.
+   */
+  explicit WorkContainer(size_t capacity)
+      : WorkContainer(SharedMemoryPool::GetThisThreadMemPool(), capacity) {}
+
+  /**
    * @brief Try to acquire a slot to add an item into the container. Must be
    * called before calling Add(), and Add() should only be called if this
    * function returns a success.

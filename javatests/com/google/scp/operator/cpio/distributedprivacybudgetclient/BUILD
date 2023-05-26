@@ -49,6 +49,8 @@ java_test(
         "//java/external:google_truth",
         "//java/external:guava",
         "//java/external:mockito",
+        # Needs snakeyaml dependency here to choose the right snakeyaml version.
+        "//java/external:snakeyaml",
         "//java/external:test_parameter_injector",
     ],
 )

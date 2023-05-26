@@ -1,5 +1,4 @@
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 ################################################################################
 # Rules JVM External: Begin
@@ -54,6 +53,23 @@ load("//build_defs:scp_dependencies.bzl", "scp_dependencies")
 
 scp_dependencies(PROTOBUF_CORE_VERSION, PROTOBUF_SHA_256)
 
+######### To gegerate Java interface for SDK #########
+load("@com_google_api_gax_java//:repository_rules.bzl", "com_google_api_gax_java_properties")
+
+com_google_api_gax_java_properties(
+    name = "com_google_api_gax_java_properties",
+    file = "@com_google_api_gax_java//:dependencies.properties",
+)
+
+load("@com_google_api_gax_java//:repositories.bzl", "com_google_api_gax_java_repositories")
+
+com_google_api_gax_java_repositories()
+
+load("@io_grpc_grpc_java//:repositories.bzl", "grpc_java_repositories")
+
+grpc_java_repositories()
+##########################################################
+
 ################################################################################
 # Download all http_archives and git_repositories: End
 ################################################################################
@@ -63,6 +79,7 @@ scp_dependencies(PROTOBUF_CORE_VERSION, PROTOBUF_SHA_256)
 ################################################################################
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("//build_defs/tink:tink_defs.bzl", "TINK_MAVEN_ARTIFACTS")
+load("//build_defs/shared:java_grpc.bzl", "GAPIC_GENERATOR_JAVA_VERSION")
 
 JACKSON_VERSION = "2.12.2"
 
@@ -75,6 +92,7 @@ GOOGLE_GAX_VERSION = "2.4.0"
 AUTO_SERVICE_VERSION = "1.0"
 
 maven_install(
+    name = "maven",
     artifacts = [
         "com.amazonaws:aws-lambda-java-core:1.2.1",
         "com.amazonaws:aws-lambda-java-events:3.8.0",
@@ -174,10 +192,24 @@ maven_install(
         "software.amazon.awssdk:utils:" + AWS_SDK_VERSION,
         "software.amazon.awssdk:auth:" + AWS_SDK_VERSION,
         "software.amazon.awssdk:lambda:" + AWS_SDK_VERSION,
+        "com.google.api:gapic-generator-java:" + GAPIC_GENERATOR_JAVA_VERSION,  # To use generated gRpc Java interface
+        "io.grpc:grpc-netty:1.54.0",
     ] + TINK_MAVEN_ARTIFACTS,
     repositories = [
         "https://repo1.maven.org/maven2",
     ],
+)
+
+maven_install(
+    name = "maven_yaml",
+    artifacts = [
+        "org.yaml:snakeyaml:1.27",
+    ],
+    repositories = [
+        "https://repo1.maven.org/maven2",
+    ],
+    # Pin the working version for snakeyaml.
+    version_conflict_policy = "pinned",
 )
 
 ################################################################################
@@ -232,6 +264,7 @@ protobuf_deps()
 ###########################
 # CC Dependencies #
 ###########################
+
 # Load indirect dependencies due to
 #     https://github.com/bazelbuild/bazel/issues/1943
 load("@com_github_googleapis_google_cloud_cpp//bazel:google_cloud_cpp_deps.bzl", "google_cloud_cpp_deps")
@@ -244,6 +277,7 @@ switched_rules_by_language(
     name = "com_google_googleapis_imports",
     cc = True,
     grpc = True,
+    java = True,
 )
 
 # Boost
@@ -350,9 +384,26 @@ container_pull(
     tag = "2.0.20220805.0",
 )
 
-load("//build_defs/cc:v8.bzl", "import_v8")
+########################################################################
+# Roma dependencies
+load("//build_defs/cc:roma.bzl", "roma_dependencies")
 
-import_v8()
+roma_dependencies()
+
+# Must be right after roma_dependencies
+load(
+    "@com_google_sandboxed_api//sandboxed_api/bazel:sapi_deps.bzl",
+    "sapi_deps",
+)
+load(
+    "@com_google_sandboxed_api//sandboxed_api/bazel:llvm_config.bzl",
+    "llvm_disable_optional_support_deps",
+)
+
+llvm_disable_optional_support_deps()
+
+sapi_deps()
+########################################################################
 
 # Needed for cc reproducible builds
 load("//cc/tools/build:build_container_params.bzl", "CC_BUILD_CONTAINER_REGISTRY", "CC_BUILD_CONTAINER_REPOSITORY", "CC_BUILD_CONTAINER_TAG")
@@ -363,6 +414,7 @@ container_pull(
     repository = CC_BUILD_CONTAINER_REPOSITORY,
     tag = CC_BUILD_CONTAINER_TAG,
 )
+
 ################################################################################
 # Download Containers: End
 ################################################################################

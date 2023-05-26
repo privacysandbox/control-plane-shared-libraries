@@ -95,6 +95,8 @@ genrule(
         yum install glibc-devel-2.26-60.amzn2 glibc-headers-2.26-60.amzn2 gcc-7.3.1-15.amzn2 gcc-c++-7.3.1-15.amzn2 tar git -y > /dev/null
         tar xf /source_code.tar -C /
         cd /scp
+        # Remove clang flags
+        sed -i '/fbracket-depth=512/d' .bazelrc
         bazel build \
           //cc/aws/proxy/src:proxify \
           //cc/aws/proxy/src:proxy \

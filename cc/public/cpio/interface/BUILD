@@ -107,6 +107,7 @@ cc_library(
         "//cc/core/logger/src/log_providers/syslog:syslog_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/global_cpio/src/cpio_provider:cpio_provider_lib",
+        "//cc/public/cpio/core/src:cpio_utils_lib",
     ],
 )
 

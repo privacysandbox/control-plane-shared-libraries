@@ -16,6 +16,7 @@
 
 #include <gmock/gmock.h>
 
+#include "core/async_executor/src/async_executor.h"
 #include "core/async_executor/src/error_codes.h"
 #include "core/common/global_logger/src/global_logger.h"
 #include "core/interface/async_executor_interface.h"
@@ -28,6 +29,7 @@
 #include "public/cpio/test/global_cpio/test_cpio_options.h"
 #include "public/cpio/test/global_cpio/test_lib_cpio.h"
 
+using google::scp::core::AsyncExecutor;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
@@ -35,6 +37,7 @@ using google::scp::core::common::GlobalLogger;
 using google::scp::core::errors::SC_ASYNC_EXECUTOR_NOT_RUNNING;
 using google::scp::core::test::ResultIs;
 using google::scp::cpio::client_providers::GlobalCpio;
+using std::make_shared;
 using std::shared_ptr;
 using ::testing::IsNull;
 using ::testing::NotNull;
@@ -77,14 +80,58 @@ TEST(LibCpioTest, StopSuccessfully) {
   options.log_option = LogOption::kSysLog;
   options.region = kRegion;
   EXPECT_SUCCESS(TestLibCpio::InitCpio(options));
-  shared_ptr<AsyncExecutorInterface> async_executor;
-  EXPECT_EQ(GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor),
-            SuccessExecutionResult());
+  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
+  EXPECT_EQ(
+      GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor),
+      SuccessExecutionResult());
   EXPECT_SUCCESS(TestLibCpio::ShutdownCpio(options));
 
   // AsyncExecutor already stopped in ShutdownCpio, and the second stop will
   // fail.
-  EXPECT_EQ(async_executor->Stop(),
+  EXPECT_EQ(cpu_async_executor->Stop(),
             FailureExecutionResult(SC_ASYNC_EXECUTOR_NOT_RUNNING));
+}
+
+TEST(LibCpioTest, SetExternalCpuAsyncExecutor) {
+  TestCpioOptions options;
+  options.log_option = LogOption::kSysLog;
+  options.region = kRegion;
+
+  shared_ptr<AsyncExecutorInterface> external_async_executor =
+      make_shared<AsyncExecutor>(1, 2);
+  EXPECT_SUCCESS(external_async_executor->Init());
+  EXPECT_SUCCESS(external_async_executor->Run());
+  options.cpu_async_executor = external_async_executor;
+
+  EXPECT_SUCCESS(TestLibCpio::InitCpio(options));
+  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
+  EXPECT_EQ(
+      GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor),
+      SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::ShutdownCpio(options));
+
+  // Can stop CpuAsyncExecutor outside.
+  EXPECT_SUCCESS(cpu_async_executor->Stop());
+}
+
+TEST(LibCpioTest, SetExternalIoAsyncExecutor) {
+  TestCpioOptions options;
+  options.log_option = LogOption::kSysLog;
+  options.region = kRegion;
+
+  shared_ptr<AsyncExecutorInterface> external_async_executor =
+      make_shared<AsyncExecutor>(1, 2);
+  EXPECT_SUCCESS(external_async_executor->Init());
+  EXPECT_SUCCESS(external_async_executor->Run());
+  options.io_async_executor = external_async_executor;
+
+  EXPECT_SUCCESS(TestLibCpio::InitCpio(options));
+  shared_ptr<AsyncExecutorInterface> io_async_executor;
+  EXPECT_EQ(GlobalCpio::GetGlobalCpio()->GetIoAsyncExecutor(io_async_executor),
+            SuccessExecutionResult());
+  EXPECT_SUCCESS(TestLibCpio::ShutdownCpio(options));
+
+  // Can stop IoAsyncExecutor outside.
+  EXPECT_SUCCESS(io_async_executor->Stop());
 }
 }  // namespace google::scp::cpio::test

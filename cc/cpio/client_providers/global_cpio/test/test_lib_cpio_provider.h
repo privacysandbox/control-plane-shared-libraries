@@ -27,6 +27,12 @@ namespace google::scp::cpio::client_providers {
 class TestLibCpioProvider : public LibCpioProvider {
  public:
   explicit TestLibCpioProvider(
-      const std::shared_ptr<TestCpioOptions>& test_cpio_options);
+      const std::shared_ptr<TestCpioOptions>& test_options);
+
+ private:
+  std::shared_ptr<RoleCredentialsProviderInterface>
+  CreateRoleCredentialsProvider() noexcept override;
+
+  std::shared_ptr<TestCpioOptions> test_options_;
 };
 }  // namespace google::scp::cpio::client_providers

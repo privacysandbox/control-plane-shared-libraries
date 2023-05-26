@@ -39,7 +39,12 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Client which fetches encrypted private keys from the private key vending service. */
+/**
+ * Client which fetches encrypted private keys from the private key vending service.
+ *
+ * @deprecated Single-party key features are deprecated. Pending removal b/282204533.
+ */
+@Deprecated
 public final class HttpPrivateKeyFetchingService implements PrivateKeyFetchingService {
 
   private static final int REQUEST_TIMEOUT_DURATION = Duration.ofMinutes(1).toMillisPart();

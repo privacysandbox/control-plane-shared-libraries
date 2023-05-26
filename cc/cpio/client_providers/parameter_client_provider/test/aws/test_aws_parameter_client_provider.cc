@@ -51,6 +51,6 @@ ParameterClientProviderFactory::Create(
     const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
   return make_shared<TestAwsParameterClientProvider>(
       dynamic_pointer_cast<TestAwsParameterClientOptions>(options),
-      instance_client_provider);
+      instance_client_provider, io_async_executor);
 }
 }  // namespace google::scp::cpio::client_providers

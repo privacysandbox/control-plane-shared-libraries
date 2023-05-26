@@ -32,17 +32,6 @@ def import_aws_sdk_cpp():
 
     maybe(
         http_archive,
-        name = "aws_c_common",
-        build_file = Label("//build_defs/cc/aws:aws_c_common.BUILD"),
-        sha256 = "43a95662f958df6284d502a191cfdedea8ef76a96746a06cbdec94eeba97de61",
-        strip_prefix = "aws-c-common-0.8.0",
-        urls = [
-            "https://github.com/awslabs/aws-c-common/archive/refs/tags/v0.8.0.tar.gz",
-        ],
-    )
-
-    maybe(
-        http_archive,
         name = "aws_c_event_stream",
         build_file = Label("//build_defs/cc/aws:aws_c_event_stream.BUILD"),
         sha256 = "f1b423a487b5d6dca118bfc0d0c6cc596dc476b282258a3228e73a8f730422d4",
@@ -57,6 +46,7 @@ def import_aws_sdk_cpp():
         name = "aws_sdk_cpp",
         build_file = Label("//build_defs/cc/aws:aws_sdk_cpp_source_code.BUILD"),
         patch_cmds = [
+            """sed -i.bak 's/UUID::RandomUUID/Aws::Utils::UUID::RandomUUID/g' aws-cpp-sdk-core/source/client/AWSClient.cpp""",
             # Apply fix in https://github.com/aws/aws-sdk-cpp/commit/9669a1c1d9a96621cd0846679cbe973c648a64b3
             """sed -i.bak 's/Tags\\.entry/Tag/g' aws-cpp-sdk-sqs/source/model/TagQueueRequest.cpp""",
         ],

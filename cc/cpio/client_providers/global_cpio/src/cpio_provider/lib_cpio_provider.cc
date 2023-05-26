@@ -35,9 +35,12 @@
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 
+#include "error_codes.h"
+
 using google::scp::core::AsyncExecutor;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
+using google::scp::core::FailureExecutionResult;
 using google::scp::core::Http1CurlClient;
 using google::scp::core::HttpClient;
 using google::scp::core::HttpClientInterface;
@@ -45,6 +48,10 @@ using google::scp::core::MessageRouter;
 using google::scp::core::MessageRouterInterface;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
+using google::scp::core::errors::
+    SC_LIB_CPIO_ROVIDER_CPU_ASYNC_EXECUTOR_ALREADY_EXISTS;
+using google::scp::core::errors::
+    SC_LIB_CPIO_ROVIDER_IO_ASYNC_EXECUTOR_ALREADY_EXISTS;
 using std::make_shared;
 using std::make_unique;
 using std::shared_ptr;
@@ -120,16 +127,16 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
     }
   }
 
-  if (async_executor_) {
-    auto execution_result = async_executor_->Stop();
+  if (!external_cpu_async_executor_is_set_ && cpu_async_executor_) {
+    auto execution_result = cpu_async_executor_->Stop();
     if (!execution_result.Successful()) {
       ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
-            "Failed to stop async executor.");
+            "Failed to stop CPU async executor.");
       return execution_result;
     }
   }
 
-  if (io_async_executor_) {
+  if (!external_io_asycn_executor_is_set_ && io_async_executor_) {
     auto execution_result = io_async_executor_->Stop();
     if (!execution_result.Successful()) {
       ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -158,15 +165,16 @@ ExecutionResult LibCpioProvider::GetHttpClient(
     return SuccessExecutionResult();
   }
 
-  shared_ptr<AsyncExecutorInterface> async_executor;
-  auto execution_result = LibCpioProvider::GetAsyncExecutor(async_executor);
+  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
+  auto execution_result =
+      LibCpioProvider::GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get asynce executor.");
     return execution_result;
   }
 
-  http2_client_ = make_shared<HttpClient>(async_executor);
+  http2_client_ = make_shared<HttpClient>(cpu_async_executor);
   execution_result = http2_client_->Init();
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
@@ -192,7 +200,8 @@ ExecutionResult LibCpioProvider::GetHttp1Client(
   }
 
   shared_ptr<AsyncExecutorInterface> cpu_async_executor;
-  auto execution_result = LibCpioProvider::GetAsyncExecutor(cpu_async_executor);
+  auto execution_result =
+      LibCpioProvider::GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get CPU async executor.");
@@ -200,7 +209,7 @@ ExecutionResult LibCpioProvider::GetHttp1Client(
   }
 
   shared_ptr<AsyncExecutorInterface> io_async_executor;
-  execution_result = LibCpioProvider::GetIOAsyncExecutor(io_async_executor);
+  execution_result = LibCpioProvider::GetIoAsyncExecutor(io_async_executor);
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get IO async executor.");
@@ -226,33 +235,58 @@ ExecutionResult LibCpioProvider::GetHttp1Client(
   return SuccessExecutionResult();
 }
 
-ExecutionResult LibCpioProvider::GetAsyncExecutor(
-    std::shared_ptr<AsyncExecutorInterface>& async_executor) noexcept {
-  if (async_executor_) {
-    async_executor = async_executor_;
+ExecutionResult LibCpioProvider::SetCpuAsyncExecutor(
+    const std::shared_ptr<AsyncExecutorInterface>&
+        cpu_async_executor) noexcept {
+  if (cpu_async_executor_) {
+    return FailureExecutionResult(
+        SC_LIB_CPIO_ROVIDER_CPU_ASYNC_EXECUTOR_ALREADY_EXISTS);
+  }
+  cpu_async_executor_ = cpu_async_executor;
+  external_cpu_async_executor_is_set_ = true;
+
+  return SuccessExecutionResult();
+}
+
+ExecutionResult LibCpioProvider::SetIoAsyncExecutor(
+    const std::shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
+  if (io_async_executor_) {
+    return FailureExecutionResult(
+        SC_LIB_CPIO_ROVIDER_IO_ASYNC_EXECUTOR_ALREADY_EXISTS);
+  }
+  io_async_executor_ = io_async_executor;
+  external_io_asycn_executor_is_set_ = true;
+
+  return SuccessExecutionResult();
+}
+
+ExecutionResult LibCpioProvider::GetCpuAsyncExecutor(
+    std::shared_ptr<AsyncExecutorInterface>& cpu_async_executor) noexcept {
+  if (cpu_async_executor_) {
+    cpu_async_executor = cpu_async_executor_;
     return SuccessExecutionResult();
   }
 
-  async_executor_ =
+  cpu_async_executor_ =
       make_shared<AsyncExecutor>(kThreadPoolThreadCount, kThreadPoolQueueSize);
-  auto execution_result = async_executor_->Init();
+  auto execution_result = cpu_async_executor_->Init();
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to initialize async executor.");
     return execution_result;
   }
 
-  execution_result = async_executor_->Run();
+  execution_result = cpu_async_executor_->Run();
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to run async executor.");
     return execution_result;
   }
-  async_executor = async_executor_;
+  cpu_async_executor = cpu_async_executor_;
   return SuccessExecutionResult();
 }
 
-ExecutionResult LibCpioProvider::GetIOAsyncExecutor(
+ExecutionResult LibCpioProvider::GetIoAsyncExecutor(
     std::shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
   if (io_async_executor_) {
     io_async_executor = io_async_executor_;
@@ -312,7 +346,7 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
   }
 
   shared_ptr<AsyncExecutorInterface> cpu_async_executor;
-  execution_result = LibCpioProvider::GetAsyncExecutor(cpu_async_executor);
+  execution_result = LibCpioProvider::GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get cpu async executor.");
@@ -320,7 +354,7 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
   }
 
   shared_ptr<AsyncExecutorInterface> io_async_executor;
-  execution_result = LibCpioProvider::GetIOAsyncExecutor(io_async_executor);
+  execution_result = LibCpioProvider::GetIoAsyncExecutor(io_async_executor);
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get io async executor.");
@@ -347,6 +381,13 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
   return SuccessExecutionResult();
 }
 
+shared_ptr<RoleCredentialsProviderInterface>
+LibCpioProvider::CreateRoleCredentialsProvider() noexcept {
+  return RoleCredentialsProviderFactory::Create(
+      make_shared<RoleCredentialsProviderOptions>(), instance_client_provider_,
+      cpu_async_executor_);
+}
+
 ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
     shared_ptr<RoleCredentialsProviderInterface>&
         role_credentials_provider) noexcept {
@@ -356,7 +397,7 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
   }
 
   shared_ptr<AsyncExecutorInterface> async_executor;
-  auto execution_result = LibCpioProvider::GetAsyncExecutor(async_executor);
+  auto execution_result = LibCpioProvider::GetCpuAsyncExecutor(async_executor);
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get asynce executor.");
@@ -371,8 +412,7 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
     return execution_result;
   }
 
-  role_credentials_provider_ =
-      RoleCredentialsProviderFactory::Create(instance_client, async_executor);
+  role_credentials_provider_ = CreateRoleCredentialsProvider();
   execution_result = role_credentials_provider_->Init();
   if (!execution_result.Successful()) {
     ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,

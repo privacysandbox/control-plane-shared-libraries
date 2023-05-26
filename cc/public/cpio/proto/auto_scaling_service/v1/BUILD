@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_java//java:defs.bzl", "java_proto_library")
 load(
     "@com_google_googleapis_imports//:imports.bzl",
     "cc_grpc_library",
     "cc_proto_library",
+    "java_grpc_library",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -42,4 +44,18 @@ cc_grpc_library(
     generate_mocks = True,
     grpc_only = True,
     deps = [":auto_scaling_service_cc_proto"],
+)
+
+##############################################################################
+# Java
+##############################################################################
+java_proto_library(
+    name = "auto_scaling_service_java_proto",
+    deps = [":auto_scaling_service_proto"],
+)
+
+java_grpc_library(
+    name = "auto_scaling_service_java_grpc",
+    srcs = [":auto_scaling_service_proto"],
+    deps = [":auto_scaling_service_java_proto"],
 )

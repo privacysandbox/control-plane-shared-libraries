@@ -71,3 +71,18 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "sandboxed_service_test",
+    size = "large",
+    srcs = ["sandboxed_service_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    tags = ["manual"],
+    deps = [
+        "//cc/core/test/utils:utils_lib",
+        "//cc/roma/roma_service/src:roma_service_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

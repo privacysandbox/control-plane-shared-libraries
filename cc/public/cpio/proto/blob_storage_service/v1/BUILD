@@ -58,7 +58,5 @@ java_proto_library(
 java_grpc_library(
     name = "blob_storage_service_java_grpc",
     srcs = [":blob_storage_service_proto"],
-    generate_mocks = True,
-    grpc_only = True,
     deps = [":blob_storage_service_java_proto"],
 )

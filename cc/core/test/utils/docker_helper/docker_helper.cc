@@ -23,7 +23,11 @@
 using std::map;
 using std::string;
 
+// localstack version is pinned so that tests are repeatable
 static constexpr char kLocalstackImage[] = "localstack/localstack:1.0.3";
+// gcloud SDK tool version is pinned so that tests are repeatable
+static constexpr char kGcpImage[] =
+    "gcr.io/google.com/cloudsdktool/google-cloud-cli:380.0.0-emulators";
 
 namespace google::scp::core::test {
 string PortMapToSelf(string port) {
@@ -35,9 +39,16 @@ int StartLocalStackContainer(const string& network,
                              const string& exposed_port) {
   map<string, string> env_variables;
   env_variables["EDGE_PORT"] = exposed_port;
-  // localstack version is pinned so that tests are repeatable
   return StartContainer(network, container_name, kLocalstackImage,
                         PortMapToSelf(exposed_port), "4510-4559",
+                        env_variables);
+}
+
+int StartGcpContainer(const string& network, const string& container_name,
+                      const string& exposed_port) {
+  map<string, string> env_variables;
+  return StartContainer(network, container_name, kGcpImage,
+                        PortMapToSelf(exposed_port), "9000-9050",
                         env_variables);
 }
 
@@ -45,10 +56,11 @@ int StartContainer(
     const string& network, const string& container_name,
     const string& image_name, const string& port_mapping1,
     const string& port_mapping2,
-    const std::map<std::string, std::string>& environment_variables) {
-  return std::system(BuildStartContainerCmd(network, container_name, image_name,
-                                            port_mapping1, port_mapping2,
-                                            environment_variables)
+    const std::map<std::string, std::string>& environment_variables,
+    const string& addition_args) {
+  return std::system(BuildStartContainerCmd(
+                         network, container_name, image_name, port_mapping1,
+                         port_mapping2, environment_variables, addition_args)
                          .c_str());
 }
 
@@ -56,7 +68,8 @@ string BuildStartContainerCmd(
     const string& network, const string& container_name,
     const string& image_name, const string& port_mapping1,
     const string& port_mapping2,
-    const std::map<std::string, std::string>& environment_variables) {
+    const std::map<std::string, std::string>& environment_variables,
+    const string& addition_args) {
   auto ports_mapping = absl::StrFormat("-p %s ", port_mapping1);
   if (!port_mapping2.empty()) {
     ports_mapping += absl::StrFormat("-p %s ", port_mapping2);
@@ -79,8 +92,10 @@ string BuildStartContainerCmd(
       "--name=%s "
       "%s"
       "%s"
+      "%s"
       "%s",
-      name_network, container_name, ports_mapping, envs, image_name);
+      name_network, container_name, ports_mapping, envs,
+      addition_args.empty() ? addition_args : addition_args + " ", image_name);
 }
 
 int CreateImage(const string& image_target, const string& args) {

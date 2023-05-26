@@ -26,12 +26,17 @@ int StartLocalStackContainer(const std::string& network,
                              const std::string& container_name,
                              const std::string& exposed_port);
 
+int StartGcpContainer(const std::string& network,
+                      const std::string& container_name,
+                      const std::string& exposed_port);
+
 int StartContainer(
     const std::string& network, const std::string& container_name,
     const std::string& image_name, const std::string& port_mapping1,
     const std::string& port_mapping2 = "",
     const std::map<std::string, std::string>& environment_variables =
-        std::map<std::string, std::string>({}));
+        std::map<std::string, std::string>({}),
+    const std::string& addition_args = "");
 
 int CreateImage(const std::string& image_target, const std::string& args = "");
 
@@ -59,5 +64,6 @@ std::string BuildStartContainerCmd(
     const std::string& image_name, const std::string& port_mapping1,
     const std::string& port_mapping2 = "",
     const std::map<std::string, std::string>& environment_variables =
-        std::map<std::string, std::string>({}));
+        std::map<std::string, std::string>({}),
+    const std::string& addition_args = "");
 }  // namespace google::scp::core::test

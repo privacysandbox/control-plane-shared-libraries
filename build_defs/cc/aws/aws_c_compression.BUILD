@@ -12,7 +12,6 @@ cc_library(
     srcs = glob([
         "include/aws/compression/*.h",
         "include/aws/compression/private/*.h",
-        "source/huffman_generator/*.c",
         "source/*.c",
     ]),
     includes = [

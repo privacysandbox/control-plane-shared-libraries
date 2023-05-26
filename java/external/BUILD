@@ -132,6 +132,12 @@ alias(
 )
 
 alias(
+    name = "snakeyaml",
+    actual = "@maven_yaml//:org_yaml_snakeyaml",
+)
+
+# Make sure use snakeyaml deps together to pick the right snakeyaml version.
+alias(
     name = "test_parameter_injector",
     actual = "@maven//:com_google_testparameterinjector_test_parameter_injector",
 )
@@ -673,4 +679,14 @@ alias(
 alias(
     name = "google_http_client_gson",
     actual = "@maven//:com_google_http_client_google_http_client_gson",
+)
+
+alias(
+    name = "grpc_netty",
+    actual = "@maven//:io_grpc_grpc_netty",
+)
+
+alias(
+    name = "grcp_netty_shaded",
+    actual = "@maven//:io_grpc_grpc_netty_shaded",
 )

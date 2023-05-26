@@ -16,6 +16,10 @@ syntax = "proto3";
 
 package google.cmrt.sdk.kms_service.v1;
 
+option java_multiple_files = true;
+option java_outer_classname = "KmsServiceProto";
+option java_package = "com.google.cmrt.sdk.kms_service.v1";
+
 import "cc/core/common/proto/common.proto";
 import "google/protobuf/duration.proto";
 
@@ -30,7 +34,7 @@ service KmsService {
 
 // Request to decrypt some text.
 message DecryptRequest {
-  // The ciphertext.
+  // The ciphertext. It should be Base64 encoded.
   string ciphertext = 1;
 
   // The region where we want to use the KMS.

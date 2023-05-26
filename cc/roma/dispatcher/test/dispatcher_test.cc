@@ -50,8 +50,10 @@ using roma::ipc::Response;
 using roma::ipc::RomaCodeResponse;
 
 TEST(DispatcherTest, testDispatch) {
+  Config config;
+  config.NumberOfWorkers = 1;
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
   Dispatcher dispatcher(*ipc_manager);
   dispatcher.Init();
@@ -94,8 +96,10 @@ TEST(DispatcherTest, testDispatch) {
 }
 
 TEST(DispatcherTest, testDispatchSharedInput) {
+  Config config;
+  config.NumberOfWorkers = 1;
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
   Dispatcher dispatcher(*ipc_manager);
   dispatcher.Init();
@@ -138,8 +142,10 @@ TEST(DispatcherTest, testDispatchSharedInput) {
 }
 
 TEST(DispatcherTest, testRoundRobin) {
+  Config config;
+  config.NumberOfWorkers = 2;
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(2));
+  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
   Dispatcher dispatcher(*ipc_manager);
   dispatcher.Init();
@@ -183,38 +189,37 @@ TEST(DispatcherTest, testRoundRobin) {
   }
 
   auto code_obj = make_unique<InvocationRequestStrInput>();
-  atomic<bool> finished;
-  finished.store(false);
-  string id;
+  atomic<bool> finished_0{false};
   auto result = dispatcher.Dispatch(
       move(code_obj), [&](unique_ptr<StatusOr<ResponseObject>> resp) {
         auto& code_resp = **resp;
-        id = code_resp.id;
-        finished.store(true);
+        EXPECT_EQ(code_resp.id, "0");
+        finished_0.store(true);
       });
-  WaitUntil([&]() { return finished.load(); });
-  EXPECT_TRUE(finished.load());
-  EXPECT_EQ(id, "0");
 
-  finished.store(false);
+  atomic<bool> finished_1{false};
   code_obj = make_unique<InvocationRequestStrInput>();
   result = dispatcher.Dispatch(move(code_obj),
                                [&](unique_ptr<StatusOr<ResponseObject>> resp) {
                                  auto& code_resp = **resp;
-                                 id = code_resp.id;
-                                 finished.store(true);
+                                 EXPECT_EQ(code_resp.id, "1");
+                                 finished_1.store(true);
                                });
 
-  WaitUntil([&]() { return finished.load(); });
-  EXPECT_TRUE(finished.load());
-  EXPECT_EQ(id, "1");
+  WaitUntil([&]() { return finished_0.load(); });
+  WaitUntil([&]() { return finished_1.load(); });
+  EXPECT_TRUE(finished_0.load());
+  EXPECT_TRUE(finished_1.load());
+
   ipc_manager->ReleaseLocks();
   dispatcher.Stop();
 }
 
 TEST(DispatcherTest, testDispatchBatch) {
+  Config config;
+  config.NumberOfWorkers = 5;
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(5));
+  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
   Dispatcher dispatcher(*ipc_manager);
   dispatcher.Init();
@@ -262,8 +267,10 @@ TEST(DispatcherTest, testDispatchBatch) {
 }
 
 TEST(DispatcherTest, testDispatchBatchSharedInput) {
+  Config config;
+  config.NumberOfWorkers = 5;
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(5));
+  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
   Dispatcher dispatcher(*ipc_manager);
   dispatcher.Init();
@@ -309,9 +316,42 @@ TEST(DispatcherTest, testDispatchBatchSharedInput) {
   dispatcher.Stop();
 }
 
-TEST(DispatcherTest, testBroadcastSuccess) {
+TEST(DispatcherTest, testDispatchBatchFailedWithQueueFull) {
+  Config config;
+  config.NumberOfWorkers = 1;
+  config.QueueMaxItems = 5;
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(5));
+  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
+  AutoInitRunStop auto_init_run_stop(*ipc_manager);
+  Dispatcher dispatcher(*ipc_manager);
+  dispatcher.Init();
+  dispatcher.Run();
+
+  auto code_obj = InvocationRequestSharedInput();
+  code_obj.input.emplace_back(make_unique<string>("test"));
+  vector<InvocationRequestSharedInput> batch(5, code_obj);
+  auto result = dispatcher.DispatchBatch(
+      batch,
+      [&](const std::vector<absl::StatusOr<ResponseObject>>& batch_response) {
+      });
+  EXPECT_SUCCESS(result);
+
+  // DispatchBatch will failure as the worker queue is full.
+  result = dispatcher.DispatchBatch(
+      batch,
+      [&](const std::vector<absl::StatusOr<ResponseObject>>& batch_response) {
+      });
+  EXPECT_FALSE(result.Successful());
+
+  ipc_manager->ReleaseLocks();
+  dispatcher.Stop();
+}
+
+TEST(DispatcherTest, testBroadcastSuccess) {
+  Config config;
+  config.NumberOfWorkers = 5;
+  // using a unique_ptr so that we deallocate after test done
+  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
   Dispatcher dispatcher(*ipc_manager);
   dispatcher.Init();
@@ -356,8 +396,10 @@ TEST(DispatcherTest, testBroadcastSuccess) {
 }
 
 TEST(DispatcherTest, testBroadcastFailed) {
+  Config config;
+  config.NumberOfWorkers = 5;
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(5));
+  unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
   Dispatcher dispatcher(*ipc_manager);
   dispatcher.Init();

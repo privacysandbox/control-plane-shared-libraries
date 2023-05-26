@@ -78,6 +78,7 @@ class ExecutionManagerTest : public ::testing::Test {
       v8::V8::InitializePlatform(platform_.get());
       v8::V8::Initialize();
     }
+    config.NumberOfWorkers = 1;
   }
 
   void GetCodeObj(CodeObject& code_obj, string js = std::string(),
@@ -97,6 +98,7 @@ class ExecutionManagerTest : public ::testing::Test {
     ext_obj.version_num = version_num;
   }
 
+  Config config;
   v8::Isolate* isolate_{nullptr};
   static unique_ptr<v8::Platform> platform_;
 };
@@ -104,7 +106,7 @@ class ExecutionManagerTest : public ::testing::Test {
 unique_ptr<v8::Platform> ExecutionManagerTest::platform_{nullptr};
 
 TEST_F(ExecutionManagerTest, ProcessJsCodeMixedWithGlobalWebAssembly) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -166,7 +168,7 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeMixedWithGlobalWebAssembly) {
 }
 
 TEST_F(ExecutionManagerTest, CreateAndProcessWasmCode) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -218,7 +220,7 @@ TEST_F(ExecutionManagerTest, CreateAndProcessWasmCode) {
 }
 
 TEST_F(ExecutionManagerTest, UnknownWasmReturnType) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -282,7 +284,7 @@ TEST_F(ExecutionManagerTest, UnknownWasmReturnType) {
 }
 
 TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsMixedWithLocalWebAssembly) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -338,7 +340,7 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsMixedWithLocalWebAssembly) {
 }
 
 TEST_F(ExecutionManagerTest, DescribeThrowError) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -383,7 +385,7 @@ TEST_F(ExecutionManagerTest, DescribeThrowError) {
 }
 
 TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCode) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -430,7 +432,7 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCode) {
 }
 
 TEST_F(ExecutionManagerTest, ProcessJsCodeWithInvalidInput) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -492,7 +494,7 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeWithInvalidInput) {
 }
 
 TEST_F(ExecutionManagerTest, UnSetIsolate) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
@@ -511,7 +513,7 @@ TEST_F(ExecutionManagerTest, UnSetIsolate) {
 }
 
 TEST_F(ExecutionManagerTest, UnmatchedCodeVersionNum) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);

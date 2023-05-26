@@ -78,6 +78,7 @@ cc_library(
     includes = [
         "aws-cpp-sdk-core/include",
     ],
+    linkopts = ["-ldl"],
     deps = [
         "@aws_c_event_stream",
         "@boringssl//:crypto",

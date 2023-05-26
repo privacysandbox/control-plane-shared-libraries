@@ -28,19 +28,19 @@ cc_library(
     ],
     deps = select({
         "//cc/public/cpio/interface:aws_cpio_lib": [
-            "//cc/cpio/common/src/aws:aws_utils_lib",
             "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
+            "//cc/cpio/common/src/aws:aws_utils_lib",
             "@aws_sdk_cpp//:core",
             "@aws_sdk_cpp//:ssm",
         ],
         "//cc/public/cpio/interface:gcp_cpio_lib": [
-            "//cc/cpio/common/src/gcp:gcp_utils_lib",
             "//cc/cpio/client_providers/instance_client_provider/src/gcp:gcp_instance_client_provider",
+            "//cc/cpio/common/src/gcp:gcp_utils_lib",
             "@com_github_googleapis_google_cloud_cpp//:secretmanager",
         ],
         "//conditions:default": [
-            "//cc/cpio/common/src/aws:aws_utils_lib",
             "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
+            "//cc/cpio/common/src/aws:aws_utils_lib",
             "@aws_sdk_cpp//:core",
             "@aws_sdk_cpp//:ssm",
         ],

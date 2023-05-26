@@ -17,12 +17,20 @@
 #ifndef SCP_CPIO_INTERFACE_BLOB_STORAGE_CLIENT_TYPE_DEF_H_
 #define SCP_CPIO_INTERFACE_BLOB_STORAGE_CLIENT_TYPE_DEF_H_
 
+#include <chrono>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace google::scp::cpio {
 /// Configurations for BlobStorageClient.
 struct BlobStorageClientOptions {
+  // GCP - How long a blob storage transfer (download or upload) should stay
+  // alive for after some duration of inaction.
+  std::chrono::seconds transfer_stall_timeout = std::chrono::seconds(60 * 2);
+  // GCP - How many retries should be used for blob storage operations.
+  size_t retry_limit = 3;
+
   virtual ~BlobStorageClientOptions() = default;
 };
 }  // namespace google::scp::cpio

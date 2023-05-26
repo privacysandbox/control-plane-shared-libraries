@@ -62,7 +62,7 @@ namespace google::scp::cpio {
 ExecutionResult BlobStorageClient::Init() noexcept {
   shared_ptr<AsyncExecutorInterface> cpu_async_executor;
   auto execution_result =
-      GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(cpu_async_executor);
+      GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
     ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get AsyncExecutor.");
@@ -71,7 +71,7 @@ ExecutionResult BlobStorageClient::Init() noexcept {
 
   shared_ptr<AsyncExecutorInterface> io_async_executor;
   execution_result =
-      GlobalCpio::GetGlobalCpio()->GetIOAsyncExecutor(io_async_executor);
+      GlobalCpio::GetGlobalCpio()->GetIoAsyncExecutor(io_async_executor);
   if (!execution_result.Successful()) {
     ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
           "Failed to get IOAsyncExecutor.");

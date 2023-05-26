@@ -36,8 +36,11 @@ namespace google::scp::roma::ipc::test {
 using common::RoleId;
 
 TEST(IpcManagerTest, ExplicitShare) {
+  Config config;
+  config.NumberOfWorkers = 5;
+
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> manager(IpcManager::Create(5));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   // Create an atomic int on each segment.
   vector<atomic<int>*> values;
@@ -63,11 +66,13 @@ TEST(IpcManagerTest, ExplicitShare) {
     WaitUntil([&, i]() { return values[i]->load() == 0xBEEF; });
     EXPECT_EQ(values[i]->load(), 0xBEEF);
   }
-}
+}  // namespace google::scp::roma::ipc::test
 
 TEST(IpcManagerTest, AccessFault) {
+  Config config;
+  config.NumberOfWorkers = 5;
   // using a unique_ptr so that we deallocate after test done
-  unique_ptr<IpcManager> manager(IpcManager::Create(5));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
   atomic<int>* int_ptr = nullptr;
   {

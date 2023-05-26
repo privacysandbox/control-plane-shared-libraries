@@ -81,8 +81,10 @@ class WorkerTest : public ::testing::Test {
       v8::V8::InitializePlatform(platform_.get());
       v8::V8::Initialize();
     }
+    config.NumberOfWorkers = 1;
   }
 
+  Config config;
   static unique_ptr<v8::Platform> platform_;
 };
 
@@ -97,7 +99,7 @@ unique_ptr<v8::Platform> WorkerTest::platform_{nullptr};
  * type of code.
  */
 TEST_F(WorkerTest, ExecuteJsOrWasmOrJsMixedWithWasmCode) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
   string js = R"(
@@ -248,7 +250,7 @@ TEST_F(WorkerTest, ExecuteJsOrWasmOrJsMixedWithWasmCode) {
  * clear context for each code object execution.
  */
 TEST_F(WorkerTest, CleanCompiledDefaultContext) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
   auto role_id = RoleId(0, false);
@@ -355,7 +357,7 @@ TEST_F(WorkerTest, CleanCompiledDefaultContext) {
  * and timeout in code execution step works.
  */
 TEST_F(WorkerTest, TimeoutTrueInfiniteLoop) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
   auto role_id = RoleId(0, false);
@@ -422,7 +424,7 @@ TEST_F(WorkerTest, TimeoutTrueInfiniteLoop) {
  * request.
  */
 TEST_F(WorkerTest, DefaultExecutionTimeout) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
   auto role_id = RoleId(0, false);
@@ -492,7 +494,7 @@ TEST_F(WorkerTest, DefaultExecutionTimeout) {
 }
 
 TEST_F(WorkerTest, CustomizedExecuteTimeout) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
   auto role_id = RoleId(0, false);
@@ -583,7 +585,7 @@ TEST_F(WorkerTest, CustomizedExecuteTimeout) {
 }
 
 TEST_F(WorkerTest, FailedWithUnmatchVersionNum) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(1));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
   auto role_id = RoleId(0, false);

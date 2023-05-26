@@ -34,8 +34,10 @@ class TestAwsParameterClientProvider : public AwsParameterClientProvider {
   TestAwsParameterClientProvider(
       const std::shared_ptr<TestAwsParameterClientOptions>& test_options,
       const std::shared_ptr<InstanceClientProviderInterface>&
-          instance_client_provider)
-      : AwsParameterClientProvider(test_options, instance_client_provider),
+          instance_client_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
+      : AwsParameterClientProvider(test_options, instance_client_provider,
+                                   io_async_executor),
         test_options_(test_options) {}
 
  protected:

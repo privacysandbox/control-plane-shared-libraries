@@ -28,6 +28,7 @@ load("//build_defs/cc/shared:gtest.bzl", "google_test")
 load("//build_defs/cc/shared:nghttp2.bzl", "nghttp2")
 load("//build_defs/cc/shared:google_cloud_cpp.bzl", "import_google_cloud_cpp")
 load("//build_defs/tink:tink_defs.bzl", "import_tink_git")
+load("//build_defs/shared:java_grpc.bzl", "java_grpc")
 
 def sdk_common(protobuf_version, protobuf_repo_hash):
     absl()
@@ -42,6 +43,7 @@ def sdk_common(protobuf_version, protobuf_repo_hash):
     go_deps()
     google_test()
     grpc()
+    java_grpc()
     nghttp2()
     protobuf(protobuf_version, protobuf_repo_hash)
     import_google_cloud_cpp()

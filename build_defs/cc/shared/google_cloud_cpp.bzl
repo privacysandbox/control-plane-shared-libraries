@@ -16,6 +16,26 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 def import_google_cloud_cpp():
+    # Load the googleapis dependency for gcloud.
+    maybe(
+        http_archive,
+        name = "com_google_googleapis",
+        urls = [
+            "https://storage.googleapis.com/cloud-cpp-community-archive/com_google_googleapis/b6b4ed5d7ebdfc0ff8855311bd63ba258b94ae2b.tar.gz",
+            "https://github.com/googleapis/googleapis/archive/b6b4ed5d7ebdfc0ff8855311bd63ba258b94ae2b.tar.gz",
+        ],
+        sha256 = "faefdf45528de8c5c9a8a0454134c2f9a0916fbd55ccae1d2b15af9cbee30ee6",
+        strip_prefix = "googleapis-b6b4ed5d7ebdfc0ff8855311bd63ba258b94ae2b",
+        build_file = Label("//build_defs/cc/shared/build_targets:googleapis.BUILD"),
+        # Scaffolding for patching googleapis after download. For example:
+        #   patches = ["googleapis.patch"]
+        # NOTE: This should only be used while developing with a new
+        # protobuf message. No changes to `patches` should ever be
+        # committed to the main branch.
+        patch_tool = "patch",
+        patch_args = ["-p1"],
+        patches = [],
+    )
     maybe(
         http_archive,
         name = "com_github_googleapis_google_cloud_cpp",

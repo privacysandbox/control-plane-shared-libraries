@@ -37,11 +37,11 @@ class MockLibCpioProviderWithOverrides : public LibCpioProvider {
     return core::SuccessExecutionResult();
   }
 
-  std::shared_ptr<core::AsyncExecutorInterface> GetAsyncExecutorMember() {
-    return async_executor_;
+  std::shared_ptr<core::AsyncExecutorInterface> GetCpuAsyncExecutorMember() {
+    return cpu_async_executor_;
   }
 
-  std::shared_ptr<core::AsyncExecutorInterface> GetIOAsyncExecutorMember() {
+  std::shared_ptr<core::AsyncExecutorInterface> GetIoAsyncExecutorMember() {
     return io_async_executor_;
   }
 

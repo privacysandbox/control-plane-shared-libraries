@@ -42,7 +42,8 @@ using common::ShmAllocator;
  */
 class IpcChannel : public IpcChannelInterface<Request, Response> {
  public:
-  explicit IpcChannel(SharedMemorySegment& shared_memory);
+  explicit IpcChannel(SharedMemorySegment& shared_memory,
+                      size_t worker_queue_capacity);
 
   /// Create a mempool allocator for type T.
   template <typename T>
@@ -100,6 +101,8 @@ class IpcChannel : public IpcChannelInterface<Request, Response> {
 
   SharedMemorySegment& shared_memory_;
   SharedMemoryPool mem_pool_;
+
+  size_t worker_queue_capacity_;
   std::unique_ptr<WorkContainer> work_container_;
   // The last code object item contained in the request that was popped from
   // this channel. Note that this code object will NOT include the inputs.

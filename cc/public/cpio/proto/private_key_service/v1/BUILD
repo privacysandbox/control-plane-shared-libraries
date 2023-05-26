@@ -58,7 +58,5 @@ java_proto_library(
 java_grpc_library(
     name = "private_key_service_java_grpc",
     srcs = [":private_key_service_proto"],
-    generate_mocks = True,
-    grpc_only = True,
     deps = [":private_key_service_java_proto"],
 )

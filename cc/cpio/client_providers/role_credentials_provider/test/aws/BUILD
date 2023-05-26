@@ -15,9 +15,9 @@
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_test(
-    name = "aws_assume_role_credentials_provider_test",
+    name = "aws_role_credentials_provider_test",
     size = "small",
-    srcs = glob(["*.cc"]),
+    srcs = glob(["aws_role_credentials_provider_test.cc"]),
     copts = [
         "-std=c++17",
     ],
@@ -51,5 +51,24 @@ cc_test(
         "//cc/public/core/test/interface:execution_result_matchers",
         "@aws_sdk_cpp//:sts",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "test_aws_role_credentials_provider_lib",
+    srcs = [
+        "test_aws_role_credentials_provider.cc",
+        "test_aws_role_credentials_provider.h",
+        "//cc/cpio/client_providers/interface:role_credentials_provider_interface.h",
+        "//cc/cpio/client_providers/role_credentials_provider/src/aws:aws_role_credentials_provider_srcs",
+    ],
+    copts = [
+        "-DTEST_CPIO=1",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/cpio/client_providers/role_credentials_provider/src/aws:aws_role_credentials_provider_lib",
+        "//cc/cpio/common/test/aws:test_aws_utils_lib",
+        "//cc/public/cpio/test/global_cpio:test_cpio_options",
     ],
 )

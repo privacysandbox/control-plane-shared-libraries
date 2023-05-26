@@ -58,7 +58,5 @@ java_proto_library(
 java_grpc_library(
     name = "queue_service_java_grpc",
     srcs = [":queue_service_proto"],
-    generate_mocks = True,
-    grpc_only = True,
     deps = [":queue_service_java_proto"],
 )

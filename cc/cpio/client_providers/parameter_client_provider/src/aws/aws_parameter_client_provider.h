@@ -44,14 +44,17 @@ class AwsParameterClientProvider : public ParameterClientProviderInterface {
    *
    * @param parameter_client_options configurations for ParameterClient.
    * @param instance_client_provider Aws instance client.
+   * @param io_async_executor The Aws io async context.
    */
   AwsParameterClientProvider(
       const std::shared_ptr<ParameterClientOptions>& options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor,
       const std::shared_ptr<SSMClientFactory>& ssm_client_factory =
           std::make_shared<SSMClientFactory>())
       : instance_client_provider_(instance_client_provider),
+        io_async_executor_(io_async_executor),
         ssm_client_factory_(ssm_client_factory) {}
 
   core::ExecutionResult Init() noexcept override;
@@ -94,6 +97,8 @@ class AwsParameterClientProvider : public ParameterClientProviderInterface {
 
   /// InstanceClientProvider.
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
+  /// Instance of the io async executor
+  std::shared_ptr<core::AsyncExecutorInterface> io_async_executor_;
   /// SSMClient.
   std::shared_ptr<Aws::SSM::SSMClient> ssm_client_;
   std::shared_ptr<SSMClientFactory> ssm_client_factory_;
@@ -105,11 +110,12 @@ class SSMClientFactory {
   /**
    * @brief Creates SSMClient.
    *
-   * @param client_config the Configuratoin to create the client.
+   * @param client_config the Configuration to create the client.
    * @return std::shared_ptr<Aws::SSM::SSMClient> the creation
    * result.
    */
   virtual std::shared_ptr<Aws::SSM::SSMClient> CreateSSMClient(
-      const Aws::Client::ClientConfiguration& client_config) noexcept;
+      Aws::Client::ClientConfiguration& client_config,
+      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor) noexcept;
 };
 }  // namespace google::scp::cpio::client_providers

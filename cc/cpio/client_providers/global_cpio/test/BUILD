@@ -41,9 +41,11 @@ cc_library(
         select({
             "//cc/public/cpio/interface:aws_cpio_lib": [
                 "//cc/cpio/client_providers/instance_client_provider/test/aws:test_aws_instance_client_provider_lib",
+                "//cc/cpio/client_providers/role_credentials_provider/test/aws:test_aws_role_credentials_provider_lib",
             ],
             "//cc/public/cpio/interface:gcp_cpio_lib": [
                 "//cc/cpio/client_providers/instance_client_provider/test/gcp:test_gcp_instance_client_provider_lib",
+                "//cc/cpio/client_providers/role_credentials_provider/src/gcp:gcp_role_credentials_provider_lib",
             ],
             "//conditions:default": [
                 "//cc/cpio/client_providers/instance_client_provider/test/aws:test_aws_instance_client_provider_lib",

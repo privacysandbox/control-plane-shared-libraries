@@ -66,17 +66,18 @@ static constexpr char kMetricClient[] = "MetricClient";
 
 namespace google::scp::cpio {
 ExecutionResult MetricClient::CreateMetricClientProvider() noexcept {
-  shared_ptr<AsyncExecutorInterface> async_executor;
+  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
   RETURN_IF_FAILURE(
-      GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(async_executor));
+      GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor));
   shared_ptr<AsyncExecutorInterface> io_async_executor;
   RETURN_IF_FAILURE(
-      GlobalCpio::GetGlobalCpio()->GetIOAsyncExecutor(io_async_executor));
+      GlobalCpio::GetGlobalCpio()->GetIoAsyncExecutor(io_async_executor));
   shared_ptr<InstanceClientProviderInterface> instance_client_provider;
   RETURN_IF_FAILURE(GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(
       instance_client_provider));
   metric_client_provider_ = MetricClientProviderFactory::Create(
-      options_, instance_client_provider, async_executor, io_async_executor);
+      options_, instance_client_provider, cpu_async_executor,
+      io_async_executor);
 
   return SuccessExecutionResult();
 }

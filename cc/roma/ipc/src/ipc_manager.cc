@@ -17,6 +17,7 @@
 #include "ipc_manager.h"
 
 #include <memory>
+#include <thread>
 
 #include "error_codes.h"
 
@@ -24,6 +25,7 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using std::make_unique;
+using std::thread;
 
 namespace google::scp::roma::ipc {
 
@@ -31,19 +33,33 @@ IpcManager* IpcManager::instance_ = nullptr;
 RoleId IpcManager::my_process_role_;
 thread_local RoleId IpcManager::my_thread_role_;
 
-IpcManager::IpcManager(size_t num_processes) : num_processes_(num_processes) {}
+IpcManager::IpcManager(Config config) {
+  auto cpu_count = thread::hardware_concurrency();
+  num_processes_ =
+      (config.NumberOfWorkers > 0 && config.NumberOfWorkers <= cpu_count)
+          ? config.NumberOfWorkers
+          : cpu_count;
+
+  shm_segment_size_ = config.IpcMemorySizeMb > 0
+                          ? config.IpcMemorySizeMb * 1024 * 1024
+                          : kSharedMemorySegmentSize;
+
+  worker_queue_capacity_ =
+      config.QueueMaxItems > 0 ? config.QueueMaxItems : kWorkerQueueCapacity;
+}
 
 ExecutionResult IpcManager::Init() noexcept {
   // create all shared memory segments
   shared_mem_.reserve(num_processes_);
   for (size_t i = 0; i < num_processes_; ++i) {
     auto& shared_mem = shared_mem_.emplace_back();
-    auto result = shared_mem.Create(kSharedMemorySegmentSize);
+    auto result = shared_mem.Create(shm_segment_size_);
     if (!result) {
       return result;
     }
     // Construct an IpcChannel right on the shared memory segment.
-    auto* ipc_channel_ptr = new (shared_mem.Get()) IpcChannel(shared_mem);
+    auto* ipc_channel_ptr =
+        new (shared_mem.Get()) IpcChannel(shared_mem, worker_queue_capacity_);
     // Construct the unique_ptr
     auto& ipc_channel = ipc_channels_.emplace_back(ipc_channel_ptr);
     ipc_channel->Init();

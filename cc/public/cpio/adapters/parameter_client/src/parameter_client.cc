@@ -65,13 +65,13 @@ ExecutionResult ParameterClient::CreateParameterClientProvider() noexcept {
 
   shared_ptr<AsyncExecutorInterface> cpu_async_executor;
   RETURN_AND_LOG_IF_FAILURE(
-      GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(cpu_async_executor),
+      GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor),
       kParameterClient, kZeroUuid, kZeroUuid, __res,
       "Failed to get CpuAsyncExecutor.");
 
   shared_ptr<AsyncExecutorInterface> io_async_executor;
   RETURN_AND_LOG_IF_FAILURE(
-      GlobalCpio::GetGlobalCpio()->GetAsyncExecutor(io_async_executor),
+      GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(io_async_executor),
       kParameterClient, kZeroUuid, kZeroUuid, __res,
       "Failed to get IoAsyncExecutor.");
 

@@ -30,6 +30,10 @@ using std::make_unique;
 using std::move;
 using std::unique_ptr;
 
+namespace {
+constexpr size_t kWorkerQueueCapacity = 100;
+}
+
 namespace google::scp::roma::ipc::test {
 using common::SharedMemoryPool;
 using common::SharedMemorySegment;
@@ -44,7 +48,7 @@ class IpcChannelTest : public ::testing::Test {
 };
 
 TEST_F(IpcChannelTest, ShouldReturnFailureWhenLastCodeObjectIsEmpty) {
-  IpcChannel channel(segment_);
+  IpcChannel channel(segment_, kWorkerQueueCapacity);
   AutoInitRunStop auto_init_run_stop(channel);
   channel.GetMemPool().SetThisThreadMemPool();
 
@@ -54,7 +58,7 @@ TEST_F(IpcChannelTest, ShouldReturnFailureWhenLastCodeObjectIsEmpty) {
 }
 
 TEST_F(IpcChannelTest, ShouldReturnLastCodeObjectAfterItsRecorded) {
-  IpcChannel channel(segment_);
+  IpcChannel channel(segment_, kWorkerQueueCapacity);
   AutoInitRunStop auto_init_run_stop(channel);
   channel.GetMemPool().SetThisThreadMemPool();
 
@@ -82,7 +86,7 @@ TEST_F(IpcChannelTest, ShouldReturnLastCodeObjectAfterItsRecorded) {
 }
 
 TEST_F(IpcChannelTest, ShouldNotUpdateLastCodeObjectIfEmpty) {
-  IpcChannel channel(segment_);
+  IpcChannel channel(segment_, kWorkerQueueCapacity);
   AutoInitRunStop auto_init_run_stop(channel);
   channel.GetMemPool().SetThisThreadMemPool();
 
@@ -109,7 +113,7 @@ TEST_F(IpcChannelTest, ShouldNotUpdateLastCodeObjectIfEmpty) {
 }
 
 TEST_F(IpcChannelTest, ShouldUpdateLastCodeObjectIfVersionChanges) {
-  IpcChannel channel(segment_);
+  IpcChannel channel(segment_, kWorkerQueueCapacity);
   AutoInitRunStop auto_init_run_stop(channel);
   channel.GetMemPool().SetThisThreadMemPool();
 
@@ -154,7 +158,7 @@ TEST_F(IpcChannelTest, ShouldUpdateLastCodeObjectIfVersionChanges) {
 }
 
 TEST_F(IpcChannelTest, ShouldNotUpdateLastCodeObjectIfVersionDoesNotChange) {
-  IpcChannel channel(segment_);
+  IpcChannel channel(segment_, kWorkerQueueCapacity);
   AutoInitRunStop auto_init_run_stop(channel);
   channel.GetMemPool().SetThisThreadMemPool();
 

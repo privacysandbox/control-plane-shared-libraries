@@ -24,8 +24,12 @@
 
 #if defined(AWS_TEST)
 #include "cpio/client_providers/instance_client_provider/test/aws/test_aws_instance_client_provider.h"
+#include "cpio/client_providers/role_credentials_provider/test/aws/test_aws_role_credentials_provider.h"
 #elif defined(GCP_TEST)
 #include "cpio/client_providers/instance_client_provider/test/gcp/test_gcp_instance_client_provider.h"
+#include "cpio/client_providers/role_credentials_provider/src/gcp/gcp_role_credentials_provider.h"
+#else
+#error "Must provide AWS_TEST or GCP_TEST"
 #endif
 
 using std::make_shared;
@@ -35,14 +39,25 @@ using std::unique_ptr;
 
 namespace google::scp::cpio::client_providers {
 TestLibCpioProvider::TestLibCpioProvider(
-    const shared_ptr<TestCpioOptions>& test_cpio_options)
-    : LibCpioProvider(test_cpio_options) {
+    const shared_ptr<TestCpioOptions>& test_options)
+    : LibCpioProvider(test_options), test_options_(test_options) {
 #if defined(AWS_TEST)
   instance_client_provider_ = make_shared<TestAwsInstanceClientProvider>(
-      make_shared<TestInstanceClientOptions>(*test_cpio_options));
+      make_shared<TestInstanceClientOptions>(*test_options_));
 #elif defined(GCP_TEST)
   instance_client_provider_ = make_shared<TestGcpInstanceClientProvider>(
-      make_shared<TestInstanceClientOptions>(*test_cpio_options));
+      make_shared<TestInstanceClientOptions>(*test_options_));
+#endif
+}
+
+shared_ptr<RoleCredentialsProviderInterface>
+TestLibCpioProvider::CreateRoleCredentialsProvider() noexcept {
+#if defined(AWS_TEST)
+  return make_shared<TestAwsRoleCredentialsProvider>(
+      make_shared<TestAwsRoleCredentialsProviderOptions>(*test_options_),
+      instance_client_provider_, cpu_async_executor_);
+#elif defined(GCP_TEST)
+  return make_shared<GcpRoleCredentialsProvider>();
 #endif
 }
 

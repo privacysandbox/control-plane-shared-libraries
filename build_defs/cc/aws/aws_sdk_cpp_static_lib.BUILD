@@ -5,28 +5,7 @@ licenses(["notice"])  # Apache 2.0
 exports_files(["LICENSE"])
 
 cc_library(
-    name = "common",
-    srcs =
-        [
-            "lib/libaws-c-common.a",
-        ],
-    hdrs = glob(
-        [
-            "include/aws/common/*.h",
-        ],
-    ),
-    textual_hdrs = glob(
-        [
-            "include/**/*.inl",
-        ],
-    ),
-    deps = [
-        "@curl",
-    ],
-)
-
-cc_library(
-    name = "checksums",
+    name = "aws_checksums",
     srcs =
         [
             "lib/libaws-checksums.a",
@@ -37,13 +16,13 @@ cc_library(
         ],
     ),
     deps = [
-        ":common",
+        "@aws_c_common",
         "@curl",
     ],
 )
 
 cc_library(
-    name = "event_stream",
+    name = "aws_c_event_stream",
     srcs =
         [
             "lib/libaws-c-event-stream.a",
@@ -54,8 +33,8 @@ cc_library(
         ],
     ),
     deps = [
-        ":checksums",
-        ":common",
+        ":aws_checksums",
+        "@aws_c_common",
         "@curl",
     ],
 )
@@ -76,8 +55,8 @@ cc_library(
         "include",
     ],
     deps = [
-        ":checksums",
-        ":event_stream",
+        ":aws_c_event_stream",
+        ":aws_checksums",
         "@curl",
     ],
 )

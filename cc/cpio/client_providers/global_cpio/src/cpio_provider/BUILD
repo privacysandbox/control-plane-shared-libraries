@@ -17,11 +17,13 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 exports_files([
     "lib_cpio_provider.h",
     "lib_cpio_provider.cc",
+    "error_codes.h",
 ])
 
 filegroup(
     name = "lib_cpio_provider_srcs",
     srcs = [
+        ":error_codes.h",
         ":lib_cpio_provider.cc",
         ":lib_cpio_provider.h",
     ],

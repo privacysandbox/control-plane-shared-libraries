@@ -54,15 +54,17 @@ class WorkerPoolTest : public ::testing::Test {
       v8::V8::InitializePlatform(platform_.get());
       v8::V8::Initialize();
     }
+    config.NumberOfWorkers = 5;
   }
 
+  Config config;
   static unique_ptr<v8::Platform> platform_;
 };
 
 unique_ptr<v8::Platform> WorkerPoolTest::platform_{nullptr};
 
 TEST_F(WorkerPoolTest, InitRunStopTrueV8) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(5));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
   WorkerPool worker_pool;
@@ -76,7 +78,7 @@ TEST_F(WorkerPoolTest, InitRunStopTrueV8) {
 }
 
 TEST_F(WorkerPoolTest, InitRunStop) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(5));
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
   WorkerPool worker_pool;

@@ -27,6 +27,7 @@
 #include <aws/ssm/model/GetParametersRequest.h>
 
 #include "cc/core/common/uuid/src/uuid.h"
+#include "core/async_executor/src/aws/aws_async_executor.h"
 #include "core/interface/async_context.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
@@ -45,9 +46,11 @@ using Aws::SSM::Model::GetParametersRequest;
 using google::cmrt::sdk::parameter_service::v1::GetParameterRequest;
 using google::cmrt::sdk::parameter_service::v1::GetParameterResponse;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_AWS_PARAMETER_CLIENT_PROVIDER_INVALID_PARAMETER_NAME;
@@ -90,7 +93,7 @@ ExecutionResult AwsParameterClientProvider::Init() noexcept {
   }
 
   ssm_client_ = ssm_client_factory_->CreateSSMClient(
-      *CreateClientConfiguration(*region_code_or));
+      *CreateClientConfiguration(*region_code_or), io_async_executor_);
 
   return SuccessExecutionResult();
 }
@@ -173,7 +176,9 @@ void AwsParameterClientProvider::OnGetParametersCallback(
 }
 
 shared_ptr<SSMClient> SSMClientFactory::CreateSSMClient(
-    const ClientConfiguration& client_config) noexcept {
+    ClientConfiguration& client_config,
+    shared_ptr<AsyncExecutorInterface> io_async_executor) noexcept {
+  client_config.executor = make_shared<AwsAsyncExecutor>(io_async_executor);
   return make_shared<SSMClient>(client_config);
 }
 
@@ -184,8 +189,8 @@ ParameterClientProviderFactory::Create(
     const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
     const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
     const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
-  return make_shared<AwsParameterClientProvider>(options,
-                                                 instance_client_provider);
+  return make_shared<AwsParameterClientProvider>(
+      options, instance_client_provider, io_async_executor);
 }
 #endif
 }  // namespace google::scp::cpio::client_providers

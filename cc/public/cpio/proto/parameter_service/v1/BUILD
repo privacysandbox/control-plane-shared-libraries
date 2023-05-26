@@ -57,7 +57,5 @@ java_proto_library(
 java_grpc_library(
     name = "parameter_service_java_grpc",
     srcs = [":parameter_service_proto"],
-    generate_mocks = True,
-    grpc_only = True,
     deps = [":parameter_service_java_proto"],
 )

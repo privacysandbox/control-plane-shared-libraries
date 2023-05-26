@@ -15,14 +15,17 @@ cc_library(
         "source/linux/*.c",
         "source/pkcs11/v2.40/*.h",
         "source/posix/*.c",
+        "source/s2n/*.c",
         "source/*.c",
         "source/*.h",
     ]),
+    defines = ["USE_S2N"],
     includes = [
         "include",
     ],
     deps = [
         "@aws_c_cal",
         "@aws_c_common",
+        "@s2n_tls",
     ],
 )

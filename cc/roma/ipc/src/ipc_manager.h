@@ -71,7 +71,7 @@ class IpcManager : public IpcManagerInterface<Request, Response> {
 
   /// Constructs an IpcManager to prepare for communicating with \a
   /// num_processes workers.
-  explicit IpcManager(size_t num_processes);
+  explicit IpcManager(Config config);
 
   /// Get the IpcChannel for a specific role.
   IpcChannel& GetIpcChannel(RoleId role) override {
@@ -99,16 +99,18 @@ class IpcManager : public IpcManagerInterface<Request, Response> {
 
   static IpcManager* Instance() { return instance_; }
 
-  static IpcManager* Create(size_t num_processes) {
-    instance_ = new IpcManager(num_processes);
+  static IpcManager* Create(Config config) {
+    instance_ = new IpcManager(config);
     return instance_;
   }
 
   void ReleaseLocks();
 
  private:
-  /// The size of each shared memory segment.
-  static constexpr size_t kSharedMemorySegmentSize = 1024 * 1024 * 64 * 2;
+  /// The default size of each shared memory segment.
+  static constexpr size_t kSharedMemorySegmentSize = 1024 * 1024 * 128;
+  /// The default size of worker container.
+  static constexpr size_t kWorkerQueueCapacity = 100;
 
   static IpcManager* instance_;
   /// The role of current (worker) process.
@@ -125,6 +127,10 @@ class IpcManager : public IpcManagerInterface<Request, Response> {
   std::vector<std::unique_ptr<IpcChannel, common::NoOpDelete>> ipc_channels_;
   /// The total number of worker processes we intend to support.
   size_t num_processes_;
+  /// The size of shared memory segment for each ipc channel.
+  size_t shm_segment_size_;
+  /// The capacity of worker container for each ipc channel.
+  size_t worker_queue_capacity_;
 };
 
 }  // namespace google::scp::roma::ipc

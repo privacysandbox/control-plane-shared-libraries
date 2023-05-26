@@ -57,4 +57,8 @@ DEFINE_ERROR_CODE(SC_ASYNC_EXECUTOR_INVALID_LOAD_BALANCING_TYPE,
 DEFINE_ERROR_CODE(SC_ASYNC_EXECUTOR_INVALID_TASK_POOL_TYPE, SC_ASYNC_EXECUTOR,
                   0x0009, "Invalid task pool type.",
                   HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ASYNC_EXECUTOR_UNABLE_TO_SET_AFFINITY, SC_ASYNC_EXECUTOR,
+                  0x000A, "Setting CPU affinity failed",
+                  HttpStatusCode::BAD_REQUEST)
 }  // namespace google::scp::core::errors

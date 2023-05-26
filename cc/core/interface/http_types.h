@@ -83,8 +83,6 @@ struct HttpRequest {
   BytesBuffer body;
   /// Represents the context of authentication and/or authorization.
   AuthContext auth_context;
-  /// Represents the resolved target endpoint of the request.
-  std::shared_ptr<RequestEndpointInfo> resolved_route_info;
 };
 
 /// Http response object.

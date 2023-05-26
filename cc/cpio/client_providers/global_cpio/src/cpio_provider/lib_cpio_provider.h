@@ -31,6 +31,8 @@
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 
+#include "error_codes.h"
+
 namespace google::scp::cpio::client_providers {
 /*! @copydoc CpioProviderInterface
  * Provides global objects for native library mode.
@@ -38,7 +40,10 @@ namespace google::scp::cpio::client_providers {
 class LibCpioProvider : public CpioProviderInterface {
  public:
   explicit LibCpioProvider(const std::shared_ptr<CpioOptions>& options)
-      : cpio_options_(options), cloud_initializer_(nullptr) {}
+      : cpio_options_(options),
+        cloud_initializer_(nullptr),
+        external_cpu_async_executor_is_set_(false),
+        external_io_asycn_executor_is_set_(false) {}
 
   core::ExecutionResult Init() noexcept override;
 
@@ -46,11 +51,19 @@ class LibCpioProvider : public CpioProviderInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
-  core::ExecutionResult GetAsyncExecutor(
-      std::shared_ptr<core::AsyncExecutorInterface>& async_executor) noexcept
-      override;
+  core::ExecutionResult SetCpuAsyncExecutor(
+      const std::shared_ptr<core::AsyncExecutorInterface>&
+          cpu_async_executor) noexcept override;
 
-  core::ExecutionResult GetIOAsyncExecutor(
+  core::ExecutionResult SetIoAsyncExecutor(
+      const std::shared_ptr<core::AsyncExecutorInterface>&
+          io_async_executor) noexcept override;
+
+  core::ExecutionResult GetCpuAsyncExecutor(
+      std::shared_ptr<core::AsyncExecutorInterface>&
+          cpu_async_executor) noexcept override;
+
+  core::ExecutionResult GetIoAsyncExecutor(
       std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor) noexcept
       override;
 
@@ -80,7 +93,7 @@ class LibCpioProvider : public CpioProviderInterface {
   /// Global cloud initializer.
   std::shared_ptr<CloudInitializerInterface> cloud_initializer_;
   /// Global async executors.
-  std::shared_ptr<core::AsyncExecutorInterface> async_executor_,
+  std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
       io_async_executor_;
   /// Global http clients.
   std::shared_ptr<core::HttpClientInterface> http1_client_, http2_client_;
@@ -90,5 +103,12 @@ class LibCpioProvider : public CpioProviderInterface {
   std::shared_ptr<RoleCredentialsProviderInterface> role_credentials_provider_;
   /// Global auth token provider.
   std::shared_ptr<AuthTokenProviderInterface> auth_token_provider_;
+
+ private:
+  virtual std::shared_ptr<RoleCredentialsProviderInterface>
+  CreateRoleCredentialsProvider() noexcept;
+
+  bool external_cpu_async_executor_is_set_;
+  bool external_io_asycn_executor_is_set_;
 };
 }  // namespace google::scp::cpio::client_providers

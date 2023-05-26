@@ -77,7 +77,11 @@ public class S3RangedStream extends InputStream {
    * be thrown.
    */
   public void checkFileExists() throws BlobStorageClientException {
-    getBlobRange(0, 1);
+    // Use try-with-resources to close the stream when exiting.
+    try (ResponseInputStream<GetObjectResponse> rangeResponse = getBlobRange(0, 1)) {
+    } catch (IOException e) {
+      throw new BlobStorageClientException(e);
+    }
   }
 
   // Sends a partial request to fetch the next chunk of data from the server.
