@@ -37,7 +37,7 @@ public class S3RangedStream extends InputStream {
   private final S3Client client;
   private final BlobStoreDataLocation dataLocation;
   // A cursor to record the start point of http partial request.
-  private int currentFileOffset = 0;
+  private long currentFileOffset = 0;
   // The buffer size for http request.
   private final int rangedHttpBufferSize;
   // The current available data size in the buffer.
@@ -58,7 +58,7 @@ public class S3RangedStream extends InputStream {
    * This function sends GetObjectRequest to retrieve partial data from an S3 object. The partial
    * data range can be specified in start and end parameters.
    */
-  private ResponseInputStream<GetObjectResponse> getBlobRange(Integer start, Integer end)
+  private ResponseInputStream<GetObjectResponse> getBlobRange(long start, long end)
       throws BlobStorageClientException {
     try {
       return client.getObject(
@@ -77,13 +77,17 @@ public class S3RangedStream extends InputStream {
    * be thrown.
    */
   public void checkFileExists() throws BlobStorageClientException {
-    getBlobRange(0, 1);
+    // Use try-with-resources to close the stream when exiting.
+    try (ResponseInputStream<GetObjectResponse> rangeResponse = getBlobRange(0, 1)) {
+    } catch (IOException e) {
+      throw new BlobStorageClientException(e);
+    }
   }
 
   // Sends a partial request to fetch the next chunk of data from the server.
   private void requestHttpData() throws IOException, BlobStorageClientException {
     // The start and end bytes in http range request are inclusive.
-    Integer httpRangeEnd = currentFileOffset + rangedHttpBufferSize - 1;
+    long httpRangeEnd = currentFileOffset + rangedHttpBufferSize - 1;
     try (ResponseInputStream<GetObjectResponse> rangeResponse =
         getBlobRange(currentFileOffset, httpRangeEnd)) {
       // Read the response into a byte buffer.
@@ -99,9 +103,12 @@ public class S3RangedStream extends InputStream {
             "The total file length is unknown. Currently, "
                 + "S3RangedStream only supports when total file length is known.");
       }
-      int fileLength = Integer.parseInt(fileLengthString);
-      int responseSize = Math.toIntExact(rangeResponse.response().contentLength());
+      long fileLength = Long.parseLong(fileLengthString);
+      // The responseSize would be the same as rangedHttpBufferSize except for last request which
+      // may be less than rangedHttpBufferSize.
+      long responseSize = rangeResponse.response().contentLength();
       currentFileOffset += responseSize;
+      // The range of availableBufferSize is always between 0 and rangedHttpBufferSize.
       availableBufferSize += responseSize;
       if (currentFileOffset >= fileLength) {
         isEndOfFile = true;

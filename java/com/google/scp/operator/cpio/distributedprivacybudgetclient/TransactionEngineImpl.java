@@ -169,11 +169,21 @@ public class TransactionEngineImpl implements TransactionEngine {
           || lastSuccessfulTransactionPhase == TransactionPhase.END) {
         continue;
       }
+      logger.info(
+          "[{}] Executing phase '{}' against coordinator: '{}'",
+          transaction.getId(),
+          currentPhase,
+          privacyBudgetServerIdentifier);
       ExecutionResult executionResult =
           dispatchDistributedCommand(privacyBudgetClient, transaction);
       if (executionResult.executionStatus() != ExecutionStatus.SUCCESS) {
         // Only change if the current status was false.
         if (!transaction.isCurrentPhaseFailed()) {
+          logger.info(
+              "[{}] Phase '{}' against coordinator: '{}' failed",
+              transaction.getId(),
+              currentPhase,
+              privacyBudgetServerIdentifier);
           transaction.setCurrentPhaseFailed(true);
           transaction.setCurrentPhaseExecutionResult(executionResult);
         }
@@ -212,6 +222,10 @@ public class TransactionEngineImpl implements TransactionEngine {
               StatusCode.TRANSACTION_MANAGER_INVALID_TRANSACTION_PHASE.name());
       }
     } catch (PrivacyBudgetClientException e) {
+      logger.error(
+          "[{}] Failed to perform transaction phase action. Error is: ",
+          transaction.getId(),
+          e.getMessage());
       throw new TransactionEngineException(e.getMessage());
     }
   }

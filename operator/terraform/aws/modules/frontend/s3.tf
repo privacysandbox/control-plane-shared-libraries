@@ -26,3 +26,30 @@ resource "aws_s3_bucket" "lambda_package_storage" {
     role        = "frontend-lambda-package-storage"
   }
 }
+
+resource "aws_s3_bucket_policy" "lambda_package_storage_bucket_deny_non_ssl_requests" {
+  bucket = aws_s3_bucket.lambda_package_storage.id
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyNonSslRequests",
+      "Action": "s3:*",
+      "Effect": "Deny",
+      "Resource": [
+        "${aws_s3_bucket.lambda_package_storage.arn}",
+        "${aws_s3_bucket.lambda_package_storage.arn}/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      },
+      "Principal": "*"
+    }
+  ]
+}
+EOF
+}

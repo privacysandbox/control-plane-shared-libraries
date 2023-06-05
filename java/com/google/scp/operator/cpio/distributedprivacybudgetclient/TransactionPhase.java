@@ -18,22 +18,13 @@ package com.google.scp.operator.cpio.distributedprivacybudgetclient;
 
 /** Supported states for a Transaction phase. */
 public enum TransactionPhase {
-  NOTSTARTED(0),
-  BEGIN(1),
-  PREPARE(2),
-  COMMIT(3),
-  NOTIFY(4),
-  ABORT(5),
-  END(6),
-  UNKNOWN(1000),
-  FINISHED(2000);
-  private int numValue;
-
-  TransactionPhase(int val) {
-    this.numValue = val;
-  }
-
-  public int getNumValue() {
-    return this.numValue;
-  }
-};
+  NOTSTARTED,
+  BEGIN,
+  PREPARE,
+  COMMIT,
+  NOTIFY,
+  ABORT,
+  END,
+  UNKNOWN,
+  FINISHED;
+}

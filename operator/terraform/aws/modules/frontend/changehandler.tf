@@ -150,6 +150,8 @@ resource "aws_sqs_queue" "change_handler_dead_letter_queue" {
 
   // 14 days, AWS maximum
   message_retention_seconds = var.change_handler_dlq_sqs_message_retention_seconds
+  # Enable server-side encryption
+  sqs_managed_sse_enabled = true
 
   // Tags for identifying the queue in various metrics
   tags = {

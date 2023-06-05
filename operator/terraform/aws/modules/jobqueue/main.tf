@@ -19,6 +19,8 @@ resource "aws_sqs_queue" "job_queue" {
 
   # 14 days, AWS maximum
   message_retention_seconds = 1209600
+  # Enable server-side encryption
+  sqs_managed_sse_enabled = true
 
   # Tags for identifying the queue in various metrics
   tags = {
