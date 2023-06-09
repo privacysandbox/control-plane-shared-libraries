@@ -28,6 +28,7 @@ legacy_service_deps = [
     "//cc/roma/dispatcher/src:roma_dispatcher_lib",
     "//cc/roma/interface:roma_interface_lib",
     "//cc/roma/worker/src:roma_worker_lib",
+    "//cc/core/os/src/linux:system_resource_info_provider_linux_lib",
 ]
 
 sandboxed_service_deps = [
@@ -35,6 +36,7 @@ sandboxed_service_deps = [
     "//cc/core/interface:interface_lib",
     "//cc/roma/sandbox/dispatcher/src:roma_dispatcher_lib",
     "//cc/roma/sandbox/roma_service/src:roma_service_lib",
+    "//cc/core/os/src/linux:system_resource_info_provider_linux_lib",
 ]
 
 service_copts = select({

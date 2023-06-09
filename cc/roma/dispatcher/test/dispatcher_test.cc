@@ -51,7 +51,7 @@ using roma::ipc::RomaCodeResponse;
 
 TEST(DispatcherTest, testDispatch) {
   Config config;
-  config.NumberOfWorkers = 1;
+  config.number_of_workers = 1;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
@@ -97,7 +97,7 @@ TEST(DispatcherTest, testDispatch) {
 
 TEST(DispatcherTest, testDispatchSharedInput) {
   Config config;
-  config.NumberOfWorkers = 1;
+  config.number_of_workers = 1;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
@@ -143,7 +143,7 @@ TEST(DispatcherTest, testDispatchSharedInput) {
 
 TEST(DispatcherTest, testRoundRobin) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
@@ -217,7 +217,7 @@ TEST(DispatcherTest, testRoundRobin) {
 
 TEST(DispatcherTest, testDispatchBatch) {
   Config config;
-  config.NumberOfWorkers = 5;
+  config.number_of_workers = 5;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
@@ -268,7 +268,7 @@ TEST(DispatcherTest, testDispatchBatch) {
 
 TEST(DispatcherTest, testDispatchBatchSharedInput) {
   Config config;
-  config.NumberOfWorkers = 5;
+  config.number_of_workers = 5;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
@@ -318,8 +318,8 @@ TEST(DispatcherTest, testDispatchBatchSharedInput) {
 
 TEST(DispatcherTest, testDispatchBatchFailedWithQueueFull) {
   Config config;
-  config.NumberOfWorkers = 1;
-  config.QueueMaxItems = 5;
+  config.number_of_workers = 1;
+  config.worker_queue_max_items = 5;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
@@ -349,7 +349,7 @@ TEST(DispatcherTest, testDispatchBatchFailedWithQueueFull) {
 
 TEST(DispatcherTest, testBroadcastSuccess) {
   Config config;
-  config.NumberOfWorkers = 5;
+  config.number_of_workers = 5;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);
@@ -397,7 +397,7 @@ TEST(DispatcherTest, testBroadcastSuccess) {
 
 TEST(DispatcherTest, testBroadcastFailed) {
   Config config;
-  config.NumberOfWorkers = 5;
+  config.number_of_workers = 5;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> ipc_manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*ipc_manager);

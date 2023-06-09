@@ -145,9 +145,10 @@ ExecutionResult PrivateKeyClientProvider::ListPrivateKeys(
           list_private_keys_context.Finish();
         }
 
-        ERROR(kPrivateKeyClientProvider, kZeroUuid, kZeroUuid, execution_result,
-              "Failed to fetch private key with endpoint %s.",
-              endpoint.private_key_vending_service_endpoint.c_str());
+        SCP_ERROR(kPrivateKeyClientProvider, kZeroUuid, kZeroUuid,
+                  execution_result,
+                  "Failed to fetch private key with endpoint %s.",
+                  endpoint.private_key_vending_service_endpoint.c_str());
         return execution_result;
       }
     }
@@ -175,9 +176,9 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
                                                               true)) {
       list_private_keys_context.result = execution_result;
       list_private_keys_context.Finish();
-      ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
-                    list_private_keys_context.result,
-                    "Failed to fetch private key.");
+      SCP_ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                        list_private_keys_context.result,
+                        "Failed to fetch private key.");
     }
     return;
   }
@@ -198,7 +199,7 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
         list_private_keys_context.result = FailureExecutionResult(
             SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA);
         list_private_keys_context.Finish();
-        ERROR_CONTEXT(
+        SCP_ERROR_CONTEXT(
             kPrivateKeyClientProvider, list_private_keys_context,
             list_private_keys_context.result,
             "Unmatched endpoints number and private key split data size.");
@@ -215,9 +216,9 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
                                                                 true)) {
         list_private_keys_context.result = execution_result;
         list_private_keys_context.Finish();
-        ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
-                      list_private_keys_context.result,
-                      "Failed to get the key data.");
+        SCP_ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                          list_private_keys_context.result,
+                          "Failed to get the key data.");
       }
       return;
     }
@@ -244,9 +245,9 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
                                                                 true)) {
         list_private_keys_context.result = execution_result;
         list_private_keys_context.Finish();
-        ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
-                      list_private_keys_context.result,
-                      "Failed to send decrypt request.");
+        SCP_ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                          list_private_keys_context.result,
+                          "Failed to send decrypt request.");
       }
       return;
     }
@@ -271,9 +272,9 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
                                                               true)) {
       list_private_keys_context.result = execution_result;
       list_private_keys_context.Finish();
-      ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
-                    list_private_keys_context.result,
-                    "Failed to decrypt the encrypt key.");
+      SCP_ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                        list_private_keys_context.result,
+                        "Failed to decrypt the encrypt key.");
     }
     return;
   }
@@ -306,9 +307,9 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
                                                                 true)) {
         list_private_keys_context.result = execution_result;
         list_private_keys_context.Finish();
-        ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
-                      list_private_keys_context.result,
-                      "Failed to get valid private key.");
+        SCP_ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                          list_private_keys_context.result,
+                          "Failed to get valid private key.");
       }
       return;
     }
@@ -320,9 +321,9 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
                                                                 true)) {
         list_private_keys_context.result = execution_result;
         list_private_keys_context.Finish();
-        ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
-                      list_private_keys_context.result,
-                      "Failed to concatenate split private keys.");
+        SCP_ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                          list_private_keys_context.result,
+                          "Failed to concatenate split private keys.");
       }
       return;
     }
@@ -337,9 +338,9 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
                                                                 true)) {
         list_private_keys_context.result = execution_result;
         list_private_keys_context.Finish();
-        ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
-                      list_private_keys_context.result,
-                      "Failed to encode the private key using base64.");
+        SCP_ERROR_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                          list_private_keys_context.result,
+                          "Failed to encode the private key using base64.");
       }
       return;
     }

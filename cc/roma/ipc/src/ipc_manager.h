@@ -108,7 +108,7 @@ class IpcManager : public IpcManagerInterface<Request, Response> {
 
  private:
   /// The default size of each shared memory segment.
-  static constexpr size_t kSharedMemorySegmentSize = 1024 * 1024 * 128;
+  static constexpr size_t kSharedMemorySegmentSize = 128 * kMB;
   /// The default size of worker container.
   static constexpr size_t kWorkerQueueCapacity = 100;
 

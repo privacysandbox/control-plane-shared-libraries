@@ -17,6 +17,12 @@
 package com.google.scp.operator.cpio.distributedprivacybudgetclient;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.scp.operator.cpio.distributedprivacybudgetclient.TransactionPhase.BEGIN;
+import static com.google.scp.operator.cpio.distributedprivacybudgetclient.TransactionPhase.COMMIT;
+import static com.google.scp.operator.cpio.distributedprivacybudgetclient.TransactionPhase.END;
+import static com.google.scp.operator.cpio.distributedprivacybudgetclient.TransactionPhase.NOTIFY;
+import static com.google.scp.operator.cpio.distributedprivacybudgetclient.TransactionPhase.PREPARE;
+import static com.google.scp.operator.cpio.distributedprivacybudgetclient.TransactionPhase.UNKNOWN;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,18 +49,22 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
 
   private static final Logger logger = LoggerFactory.getLogger(PrivacyBudgetClientImpl.class);
 
-  private static final String beginTransactionPath = "/transactions:begin";
-  private static final String prepareTransactionPath = "/transactions:prepare";
-  private static final String commitTransactionPath = "/transactions:commit";
-  private static final String notifyTransactionPath = "/transactions:notify";
-  private static final String abortTransactionPath = "/transactions:abort";
-  private static final String endTransactionPath = "/transactions:end";
-  private static final String transactionStatusPath = "/transactions:status";
-  private static final String transactionIdHeaderKey = "x-gscp-transaction-id";
-  private static final String transactionLastExecTimestampHeaderKey =
+  private static final String BEGIN_TRANSACTION_PATH = "/transactions:begin";
+  private static final String PREPARE_TRANSACTION_PATH = "/transactions:prepare";
+  private static final String COMMIT_TRANSACTION_PATH = "/transactions:commit";
+  private static final String NOTIFY_TRANSACTION_PATH = "/transactions:notify";
+  private static final String ABORT_TRANSACTION_PATH = "/transactions:abort";
+  private static final String END_TRANSACTION_PATH = "/transactions:end";
+  private static final String TRANSACTION_STATUS_PATH = "/transactions:status";
+  private static final String TRANSACTION_ID_HEADER_KEY = "x-gscp-transaction-id";
+  private static final String TRANSACTION_LAST_EXEC_TIMESTAMP_HEADER_KEY =
       "x-gscp-transaction-last-execution-timestamp";
-  private static final String transactionSecretHeaderKey = "x-gscp-transaction-secret";
-  private static final String claimedIdentityHeaderKey = "x-gscp-claimed-identity";
+  private static final String TRANSACTION_SECRET_HEADER_KEY = "x-gscp-transaction-secret";
+  private static final String CLAIMED_IDENTITY_HEADER_KEY = "x-gscp-claimed-identity";
+
+  private static final List<Integer> HTTP_CODES_FOR_STATUS_CHECK_INVOCATION =
+      ImmutableList.of(HttpStatus.SC_CLIENT_ERROR, HttpStatus.SC_PRECONDITION_FAILED);
+
   private static final ObjectMapper mapper = new TimeObjectMapper();
 
   private final HttpClientWithInterceptor httpClient;
@@ -75,7 +85,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   @Override
   public ExecutionResult performActionBegin(Transaction transaction)
       throws PrivacyBudgetClientException {
-    return performTransactionPhaseAction(beginTransactionPath, transaction);
+    return performTransactionPhaseAction(BEGIN_TRANSACTION_PATH, transaction);
   }
 
   /**
@@ -88,7 +98,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   @Override
   public ExecutionResult performActionPrepare(Transaction transaction)
       throws PrivacyBudgetClientException {
-    return performTransactionPhaseAction(prepareTransactionPath, transaction);
+    return performTransactionPhaseAction(PREPARE_TRANSACTION_PATH, transaction);
   }
 
   /**
@@ -101,7 +111,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   @Override
   public ExecutionResult performActionCommit(Transaction transaction)
       throws PrivacyBudgetClientException {
-    return performTransactionPhaseAction(commitTransactionPath, transaction);
+    return performTransactionPhaseAction(COMMIT_TRANSACTION_PATH, transaction);
   }
 
   /**
@@ -114,7 +124,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   @Override
   public ExecutionResult performActionNotify(Transaction transaction)
       throws PrivacyBudgetClientException {
-    return performTransactionPhaseAction(notifyTransactionPath, transaction);
+    return performTransactionPhaseAction(NOTIFY_TRANSACTION_PATH, transaction);
   }
 
   /**
@@ -127,7 +137,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   @Override
   public ExecutionResult performActionEnd(Transaction transaction)
       throws PrivacyBudgetClientException {
-    return performTransactionPhaseAction(endTransactionPath, transaction);
+    return performTransactionPhaseAction(END_TRANSACTION_PATH, transaction);
   }
 
   /**
@@ -140,7 +150,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
   @Override
   public ExecutionResult performActionAbort(Transaction transaction)
       throws PrivacyBudgetClientException {
-    return performTransactionPhaseAction(abortTransactionPath, transaction);
+    return performTransactionPhaseAction(ABORT_TRANSACTION_PATH, transaction);
   }
 
   @Override
@@ -150,7 +160,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
 
   private void updateTransactionState(Transaction transaction, HttpClientResponse response) {
     if (response.statusCode() == 200) {
-      String lastExecTimestamp = response.headers().get(transactionLastExecTimestampHeaderKey);
+      String lastExecTimestamp = response.headers().get(TRANSACTION_LAST_EXEC_TIMESTAMP_HEADER_KEY);
       transaction.setLastExecutionTimestamp(baseUrl, lastExecTimestamp);
     }
   }
@@ -160,24 +170,27 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
     final String transactionId = transaction.getId().toString();
     ImmutableMap<String, String> headers =
         new ImmutableMap.Builder<String, String>()
-            .put(transactionIdHeaderKey, transactionId.toUpperCase())
-            .put(transactionSecretHeaderKey, transaction.getRequest().transactionSecret())
-            .put(claimedIdentityHeaderKey, transaction.getRequest().attributionReportTo())
+            .put(TRANSACTION_ID_HEADER_KEY, transaction.getId().toString().toUpperCase())
+            .put(TRANSACTION_SECRET_HEADER_KEY, transaction.getRequest().transactionSecret())
+            .put(CLAIMED_IDENTITY_HEADER_KEY, transaction.getRequest().attributionReportTo())
             .build();
-    logger.info("[{}] Making GET request to {}", transactionId, baseUrl + transactionStatusPath);
-    var response = httpClient.executeGet(baseUrl + transactionStatusPath, headers);
+    logger.info(
+        "[{}] Making GET request to {}",
+        transaction.getId().toString(),
+        baseUrl + TRANSACTION_STATUS_PATH);
+    var response = httpClient.executeGet(baseUrl + TRANSACTION_STATUS_PATH, headers);
     logger.info("[{}] GET request response: " + response, transactionId);
     return generateTransactionStatus(response);
   }
 
   private Map<String, String> getTransactionPhaseRequestHeaders(Transaction transaction) {
     ImmutableMap.Builder<String, String> mapBuilder = ImmutableMap.builder();
-    mapBuilder.put(transactionIdHeaderKey, transaction.getId().toString().toUpperCase());
-    mapBuilder.put(transactionSecretHeaderKey, transaction.getRequest().transactionSecret());
-    mapBuilder.put(claimedIdentityHeaderKey, transaction.getRequest().attributionReportTo());
-    if (!transaction.getCurrentPhase().equals(TransactionPhase.BEGIN)) {
+    mapBuilder.put(TRANSACTION_ID_HEADER_KEY, transaction.getId().toString().toUpperCase());
+    mapBuilder.put(TRANSACTION_SECRET_HEADER_KEY, transaction.getRequest().transactionSecret());
+    mapBuilder.put(CLAIMED_IDENTITY_HEADER_KEY, transaction.getRequest().attributionReportTo());
+    if (!transaction.getCurrentPhase().equals(BEGIN)) {
       String lastExecTimestamp = transaction.getLastExecutionTimestamp(baseUrl);
-      mapBuilder.put(transactionLastExecTimestampHeaderKey, lastExecTimestamp);
+      mapBuilder.put(TRANSACTION_LAST_EXEC_TIMESTAMP_HEADER_KEY, lastExecTimestamp);
     }
     return mapBuilder.build();
   }
@@ -204,8 +217,7 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
     if (statusCode == HttpStatus.SC_OK) {
       return ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK);
     }
-    if (ImmutableList.of(HttpStatus.SC_CLIENT_ERROR, HttpStatus.SC_PRECONDITION_FAILED)
-        .contains(statusCode)) {
+    if (HTTP_CODES_FOR_STATUS_CHECK_INVOCATION.contains(statusCode)) {
       // StatusCode 412 - Returned when last execution timestamp sent by the client does not match
       // what server has
       // StatusCode 400 - One of the reasons it can be returned is if client is trying to execute a
@@ -277,6 +289,10 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
    */
   private ExecutionResult getExecutionResultBasedOnTransactionStatus(
       Transaction transaction, int actionHttpStatusCode) throws PrivacyBudgetClientException {
+    if (!HTTP_CODES_FOR_STATUS_CHECK_INVOCATION.contains((actionHttpStatusCode))) {
+      // HTTP code is one of the codes which is not expected to be resolved using status API
+      return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
+    }
     TransactionStatusResponse transactionStatusResponse = null;
     try {
       transactionStatusResponse = fetchTransactionStatus(transaction);
@@ -296,30 +312,53 @@ public final class PrivacyBudgetClientImpl implements PrivacyBudgetClient {
     if (transactionStatusResponse.hasFailed()) {
       return ExecutionResult.create(ExecutionStatus.RETRY, StatusCode.UNKNOWN);
     }
-    if (actionHttpStatusCode == HttpStatus.SC_CLIENT_ERROR) {
-      /**
-       * It is ok to mark SUCCESS in response to a 400 only if the server has moved ahead of the
-       * client in its understanding of the current transaction phase. In all other cases status
-       * code of 400 means that a non-retriable error has occurred
-       */
-      int serverPhaseValue = transactionStatusResponse.currentPhase().getNumValue();
-      int clientPhaseValue = transaction.getCurrentPhase().getNumValue();
-      int phaseDiff = serverPhaseValue - clientPhaseValue;
-      switch (phaseDiff) {
-        case 1: // Server is ahead of client by 1 phase
-          return ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK);
-        case 0: // The cause of the 400 is not due to phase differences.
-          return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
-        default: // serverPhaseValue > clientPhaseValue + 1 || serverPhaseValue < clientPhaseValue.
-          throw new PrivacyBudgetClientException(
-              String.format(
-                  "The PrivacyBudget client and server phases are out of sync. server phase numeric"
-                      + " value: %d. client phase numeric value; %d. Transaction cannot be"
-                      + " completed",
-                  serverPhaseValue, clientPhaseValue));
+    TransactionPhase serverPhase = transactionStatusResponse.currentPhase();
+    TransactionPhase clientPhase = transaction.getCurrentPhase();
+    TransactionPhase clientNextPhaseOnSuccess = getNextPhaseOnSuccess(clientPhase);
+    if (serverPhase == clientNextPhaseOnSuccess) {
+      // The phase has succeeded on the server. Client can mark this phase as success as well and
+      // proceed.
+      return ExecutionResult.create(ExecutionStatus.SUCCESS, StatusCode.OK);
+    } else if (serverPhase == clientPhase) {
+      if (actionHttpStatusCode == HttpStatus.SC_CLIENT_ERROR) {
+        // The cause of the 400 is not due to phase differences.
+        return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
+      } else if (actionHttpStatusCode == HttpStatus.SC_PRECONDITION_FAILED) {
+        // The cause of the 412 is not due to phase differences but due to timestamp
+        // difference. Retry will fix it
+        return ExecutionResult.create(ExecutionStatus.RETRY, StatusCode.UNKNOWN);
+      } else {
+        // Should not reach here.
+        // HTTP code is one of the codes which is not expected to be resolved using status API
+        return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
       }
+    } else {
+      // Server phase is either behind client or much ahead of client phase.
+      throw new PrivacyBudgetClientException(
+          String.format(
+              "The PrivacyBudget client and server phases are out of sync. server phase"
+                  + " value: %s. client phase value: %s. Transaction cannot be"
+                  + " completed",
+              serverPhase, clientPhase));
     }
-    return ExecutionResult.create(ExecutionStatus.FAILURE, StatusCode.UNKNOWN);
+  }
+
+  private static TransactionPhase getNextPhaseOnSuccess(TransactionPhase currentPhase) {
+    switch (currentPhase) {
+      case NOTSTARTED:
+        return BEGIN;
+      case BEGIN:
+        return PREPARE;
+      case PREPARE:
+        return COMMIT;
+      case COMMIT:
+        return NOTIFY;
+      case NOTIFY:
+      case ABORT:
+        return END;
+      default:
+        return UNKNOWN;
+    }
   }
 
   private TransactionStatusResponse generateTransactionStatus(HttpClientResponse response)

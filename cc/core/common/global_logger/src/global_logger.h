@@ -34,51 +34,54 @@ class GlobalLogger {
 };
 }  // namespace google::scp::core::common
 
-#define LOCATION                                                            \
+#define SCP_LOCATION                                                        \
   (std::string(__FILE__) + ":" + __func__ + ":" + std::to_string(__LINE__)) \
       .c_str()
 
-#define INFO(component_name, parent_activity_id, activity_id, message, ...) \
+#define SCP_INFO(component_name, parent_activity_id, activity_id, message, \
+                 ...)                                                      \
+  if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&        \
+      google::scp::core::common::GlobalLogger::IsLogLevelEnabled(          \
+          google::scp::core::LogLevel::kInfo)) {                           \
+    google::scp::core::common::GlobalLogger::GetGlobalLogger()->Info(      \
+        component_name, parent_activity_id, activity_id, SCP_LOCATION,     \
+        message, ##__VA_ARGS__);                                           \
+  }
+
+#define SCP_INFO_CONTEXT(component_name, async_context, message, ...) \
+  SCP_INFO(component_name, async_context.parent_activity_id,          \
+           async_context.activity_id, message, ##__VA_ARGS__)
+
+#define SCP_DEBUG(component_name, parent_activity_id, activity_id, message, \
+                  ...)                                                      \
   if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&         \
       google::scp::core::common::GlobalLogger::IsLogLevelEnabled(           \
-          google::scp::core::LogLevel::kInfo)) {                            \
-    google::scp::core::common::GlobalLogger::GetGlobalLogger()->Info(       \
-        component_name, parent_activity_id, activity_id, LOCATION, message, \
-        ##__VA_ARGS__);                                                     \
+          google::scp::core::LogLevel::kDebug)) {                           \
+    google::scp::core::common::GlobalLogger::GetGlobalLogger()->Debug(      \
+        component_name, parent_activity_id, activity_id, SCP_LOCATION,      \
+        message, ##__VA_ARGS__);                                            \
   }
 
-#define INFO_CONTEXT(component_name, async_context, message, ...) \
-  INFO(component_name, async_context.parent_activity_id,          \
-       async_context.activity_id, message, ##__VA_ARGS__)
+#define SCP_DEBUG_CONTEXT(component_name, async_context, message, ...) \
+  SCP_DEBUG(component_name, async_context.parent_activity_id,          \
+            async_context.activity_id, message, ##__VA_ARGS__)
 
-#define DEBUG(component_name, parent_activity_id, activity_id, message, ...) \
-  if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&          \
-      google::scp::core::common::GlobalLogger::IsLogLevelEnabled(            \
-          google::scp::core::LogLevel::kDebug)) {                            \
-    google::scp::core::common::GlobalLogger::GetGlobalLogger()->Debug(       \
-        component_name, parent_activity_id, activity_id, LOCATION, message,  \
-        ##__VA_ARGS__);                                                      \
+#define SCP_WARNING(component_name, parent_activity_id, activity_id, message, \
+                    ...)                                                      \
+  if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&           \
+      google::scp::core::common::GlobalLogger::IsLogLevelEnabled(             \
+          google::scp::core::LogLevel::kWarning)) {                           \
+    google::scp::core::common::GlobalLogger::GetGlobalLogger()->Warning(      \
+        component_name, parent_activity_id, activity_id, SCP_LOCATION,        \
+        message, ##__VA_ARGS__);                                              \
   }
 
-#define DEBUG_CONTEXT(component_name, async_context, message, ...) \
-  DEBUG(component_name, async_context.parent_activity_id,          \
-        async_context.activity_id, message, ##__VA_ARGS__)
+#define SCP_WARNING_CONTEXT(component_name, async_context, message, ...) \
+  SCP_WARNING(component_name, async_context.parent_activity_id,          \
+              async_context.activity_id, message, ##__VA_ARGS__)
 
-#define WARNING(component_name, parent_activity_id, activity_id, message, ...) \
-  if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&            \
-      google::scp::core::common::GlobalLogger::IsLogLevelEnabled(              \
-          google::scp::core::LogLevel::kWarning)) {                            \
-    google::scp::core::common::GlobalLogger::GetGlobalLogger()->Warning(       \
-        component_name, parent_activity_id, activity_id, LOCATION, message,    \
-        ##__VA_ARGS__);                                                        \
-  }
-
-#define WARNING_CONTEXT(component_name, async_context, message, ...) \
-  WARNING(component_name, async_context.parent_activity_id,          \
-          async_context.activity_id, message, ##__VA_ARGS__)
-
-#define ERROR(component_name, parent_activity_id, activity_id,            \
-              execution_result, message, ...)                             \
+#define SCP_ERROR(component_name, parent_activity_id, activity_id,        \
+                  execution_result, message, ...)                         \
   if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&       \
       google::scp::core::common::GlobalLogger::IsLogLevelEnabled(         \
           google::scp::core::LogLevel::kError)) {                         \
@@ -87,17 +90,18 @@ class GlobalLogger {
                               google::scp::core::errors::GetErrorMessage( \
                                   execution_result.status_code);          \
     google::scp::core::common::GlobalLogger::GetGlobalLogger()->Error(    \
-        component_name, parent_activity_id, activity_id, LOCATION,        \
+        component_name, parent_activity_id, activity_id, SCP_LOCATION,    \
         message_with_error.c_str(), ##__VA_ARGS__);                       \
   }
 
-#define ERROR_CONTEXT(component_name, async_context, execution_result, \
-                      message, ...)                                    \
-  ERROR(component_name, async_context.parent_activity_id,              \
-        async_context.activity_id, execution_result, message, ##__VA_ARGS__)
+#define SCP_ERROR_CONTEXT(component_name, async_context, execution_result, \
+                          message, ...)                                    \
+  SCP_ERROR(component_name, async_context.parent_activity_id,              \
+            async_context.activity_id, execution_result, message,          \
+            ##__VA_ARGS__)
 
-#define CRITICAL(component_name, parent_activity_id, activity_id,         \
-                 execution_result, message, ...)                          \
+#define SCP_CRITICAL(component_name, parent_activity_id, activity_id,     \
+                     execution_result, message, ...)                      \
   if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&       \
       google::scp::core::common::GlobalLogger::IsLogLevelEnabled(         \
           google::scp::core::LogLevel::kCritical)) {                      \
@@ -106,18 +110,18 @@ class GlobalLogger {
                               google::scp::core::errors::GetErrorMessage( \
                                   execution_result.status_code);          \
     google::scp::core::common::GlobalLogger::GetGlobalLogger()->Critical( \
-        component_name, parent_activity_id, activity_id, LOCATION,        \
+        component_name, parent_activity_id, activity_id, SCP_LOCATION,    \
         message_with_error.c_str(), ##__VA_ARGS__);                       \
   }
 
-#define CRITICAL_CONTEXT(component_name, async_context, execution_result, \
-                         message, ...)                                    \
-  CRITICAL(component_name, async_context.parent_activity_id,              \
-           async_context.activity_id, execution_result, message,          \
-           ##__VA_ARGS__)
+#define SCP_CRITICAL_CONTEXT(component_name, async_context, execution_result, \
+                             message, ...)                                    \
+  SCP_CRITICAL(component_name, async_context.parent_activity_id,              \
+               async_context.activity_id, execution_result, message,          \
+               ##__VA_ARGS__)
 
-#define ALERT(component_name, parent_activity_id, activity_id,            \
-              execution_result, message, ...)                             \
+#define SCP_ALERT(component_name, parent_activity_id, activity_id,        \
+                  execution_result, message, ...)                         \
   if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&       \
       google::scp::core::common::GlobalLogger::IsLogLevelEnabled(         \
           google::scp::core::LogLevel::kAlert)) {                         \
@@ -126,17 +130,18 @@ class GlobalLogger {
                               google::scp::core::errors::GetErrorMessage( \
                                   execution_result.status_code);          \
     google::scp::core::common::GlobalLogger::GetGlobalLogger()->Alert(    \
-        component_name, parent_activity_id, activity_id, LOCATION,        \
+        component_name, parent_activity_id, activity_id, SCP_LOCATION,    \
         message_with_error.c_str(), ##__VA_ARGS__);                       \
   }
 
-#define ALERT_CONTEXT(component_name, async_context, execution_result, \
-                      message, ...)                                    \
-  ALERT(component_name, async_context.parent_activity_id,              \
-        async_context.activity_id, execution_result, message, ##__VA_ARGS__)
+#define SCP_ALERT_CONTEXT(component_name, async_context, execution_result, \
+                          message, ...)                                    \
+  SCP_ALERT(component_name, async_context.parent_activity_id,              \
+            async_context.activity_id, execution_result, message,          \
+            ##__VA_ARGS__)
 
-#define EMERGENCY(component_name, parent_activity_id, activity_id,         \
-                  execution_result, message, ...)                          \
+#define SCP_EMERGENCY(component_name, parent_activity_id, activity_id,     \
+                      execution_result, message, ...)                      \
   if (google::scp::core::common::GlobalLogger::GetGlobalLogger() &&        \
       google::scp::core::common::GlobalLogger::IsLogLevelEnabled(          \
           google::scp::core::LogLevel::kEmergency)) {                      \
@@ -145,12 +150,12 @@ class GlobalLogger {
                               google::scp::core::errors::GetErrorMessage(  \
                                   execution_result.status_code);           \
     google::scp::core::common::GlobalLogger::GetGlobalLogger()->Emergency( \
-        component_name, parent_activity_id, activity_id, LOCATION,         \
+        component_name, parent_activity_id, activity_id, SCP_LOCATION,     \
         message_with_error.c_str(), ##__VA_ARGS__);                        \
   }
 
 #define EMERGENCY_CONTEXT(component_name, async_context, execution_result, \
                           message, ...)                                    \
-  EMERGENCY(component_name, async_context.parent_activity_id,              \
-            async_context.activity_id, execution_result, message,          \
-            ##__VA_ARGS__)
+  SCP_EMERGENCY(component_name, async_context.parent_activity_id,          \
+                async_context.activity_id, execution_result, message,      \
+                ##__VA_ARGS__)

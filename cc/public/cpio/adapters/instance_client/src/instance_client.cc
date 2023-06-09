@@ -66,8 +66,8 @@ ExecutionResult InstanceClient::CreateInstanceClientProvider() noexcept {
       GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(
           instance_client_provider_);
   if (!execution_result.Successful()) {
-    ERROR(kInstanceClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get InstanceClientProvider.");
+    SCP_ERROR(kInstanceClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get InstanceClientProvider.");
     return execution_result;
   }
 
@@ -77,8 +77,8 @@ ExecutionResult InstanceClient::CreateInstanceClientProvider() noexcept {
 ExecutionResult InstanceClient::Init() noexcept {
   auto execution_result = CreateInstanceClientProvider();
   if (!execution_result.Successful()) {
-    ERROR(kInstanceClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create InstanceClientProvider.");
+    SCP_ERROR(kInstanceClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to create InstanceClientProvider.");
     return ConvertToPublicExecutionResult(execution_result);
   }
 

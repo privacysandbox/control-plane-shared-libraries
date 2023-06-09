@@ -116,6 +116,7 @@ class SSMClientFactory {
    */
   virtual std::shared_ptr<Aws::SSM::SSMClient> CreateSSMClient(
       Aws::Client::ClientConfiguration& client_config,
-      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor) noexcept;
+      const std::shared_ptr<core::AsyncExecutorInterface>&
+          io_async_executor) noexcept;
 };
 }  // namespace google::scp::cpio::client_providers

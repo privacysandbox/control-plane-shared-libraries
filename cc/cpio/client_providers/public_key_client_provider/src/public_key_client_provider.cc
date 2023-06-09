@@ -77,16 +77,16 @@ ExecutionResult PublicKeyClientProvider::Init() noexcept {
       !public_key_client_options_->endpoints.size()) {
     auto execution_result = FailureExecutionResult(
         SC_PUBLIC_KEY_CLIENT_PROVIDER_INVALID_CONFIG_OPTIONS);
-    ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to init PublicKeyClientProvider.");
+    SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to init PublicKeyClientProvider.");
     return execution_result;
   }
 
   if (!http_client_) {
     auto execution_result = FailureExecutionResult(
         SC_PUBLIC_KEY_CLIENT_PROVIDER_HTTP_CLIENT_REQUIRED);
-    ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to init PublicKeyClientProvider.");
+    SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to init PublicKeyClientProvider.");
     return execution_result;
   }
 
@@ -143,16 +143,17 @@ ExecutionResult PublicKeyClientProvider::ListPublicKeys(
       // return success.
       result = SuccessExecutionResult();
     } else {
-      ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid, execution_result,
-            "Failed to perform request with endpoint %s.", uri.c_str());
+      SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid,
+                execution_result, "Failed to perform request with endpoint %s.",
+                uri.c_str());
     }
   }
 
   if (!result.Successful()) {
     public_key_fetching_context.result = result;
-    ERROR_CONTEXT(kPublicKeyClientProvider, public_key_fetching_context,
-                  public_key_fetching_context.result,
-                  "Failed to perform request with config endpoints.");
+    SCP_ERROR_CONTEXT(kPublicKeyClientProvider, public_key_fetching_context,
+                      public_key_fetching_context.result,
+                      "Failed to perform request with config endpoints.");
     public_key_fetching_context.Finish();
   }
 
@@ -166,8 +167,8 @@ void ExecutionResultCheckingHelper(
   auto pervious_unfinished = unfinished_counter->fetch_sub(1);
   if (pervious_unfinished == 1) {
     context.result = result;
-    ERROR_CONTEXT(kPublicKeyClientProvider, context, context.result,
-                  "Failed to fetch public keys.");
+    SCP_ERROR_CONTEXT(kPublicKeyClientProvider, context, context.result,
+                      "Failed to fetch public keys.");
     context.Finish();
   }
 }

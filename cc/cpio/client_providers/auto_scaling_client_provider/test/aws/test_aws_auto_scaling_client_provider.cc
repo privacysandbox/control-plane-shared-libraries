@@ -40,10 +40,10 @@ TestAwsAutoScalingClientProvider::CreateClientConfiguration(
 shared_ptr<AutoScalingClientProviderInterface>
 AutoScalingClientProviderFactory::Create(
     const shared_ptr<AutoScalingClientOptions>& options,
-    const shared_ptr<InstanceClientProviderInterface>&
-        instance_client_provider) {
+    const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
+    const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
   return make_shared<TestAwsAutoScalingClientProvider>(
       std::dynamic_pointer_cast<TestAwsAutoScalingClientOptions>(options),
-      instance_client_provider);
+      instance_client_provider, io_async_executor);
 }
 }  // namespace google::scp::cpio::client_providers

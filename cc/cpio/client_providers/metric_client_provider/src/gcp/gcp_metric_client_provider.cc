@@ -69,8 +69,8 @@ namespace google::scp::cpio::client_providers {
 ExecutionResult GcpMetricClientProvider::Run() noexcept {
   auto execution_result = MetricClientProvider::Run();
   if (!execution_result.Successful()) {
-    ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to initialize MetricClientProvider");
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to initialize MetricClientProvider");
     return execution_result;
   }
 
@@ -79,17 +79,17 @@ ExecutionResult GcpMetricClientProvider::Run() noexcept {
       instance_client_provider_->GetCurrentInstanceResourceNameSync(
           instance_resource_name);
   if (!execution_result.Successful()) {
-    ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to fetch current instance resource name");
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to fetch current instance resource name");
     return execution_result;
   }
 
   execution_result = GcpInstanceClientUtils::GetInstanceResourceNameDetails(
       instance_resource_name, instance_resource_);
   if (!execution_result.Successful()) {
-    ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to parse instance resource name %s",
-          instance_resource_name.c_str());
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to parse instance resource name %s",
+              instance_resource_name.c_str());
   }
 
   CreateMetricServiceClient();
@@ -180,8 +180,9 @@ void GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback(
   auto result = GcpUtils::GcpErrorConverter(outcome_status);
 
   if (!result.Successful()) {
-    ERROR_CONTEXT(kGcpMetricClientProvider, metric_requests_vector.back(),
-                  result, "The error is %s", outcome_status.message().c_str());
+    SCP_ERROR_CONTEXT(kGcpMetricClientProvider, metric_requests_vector.back(),
+                      result, "The error is %s",
+                      outcome_status.message().c_str());
   }
 
   for (auto& record_metric_context : metric_requests_vector) {

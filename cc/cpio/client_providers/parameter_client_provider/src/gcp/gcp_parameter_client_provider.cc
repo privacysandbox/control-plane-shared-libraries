@@ -70,9 +70,9 @@ ExecutionResult GcpParameterClientProvider::Init() noexcept {
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_provider_);
   if (!project_id_or.Successful()) {
-    ERROR(kGcpParameterClientProvider, kZeroUuid, kZeroUuid,
-          project_id_or.result(),
-          "Failed to get project ID for current instance");
+    SCP_ERROR(kGcpParameterClientProvider, kZeroUuid, kZeroUuid,
+              project_id_or.result(),
+              "Failed to get project ID for current instance");
     return project_id_or.result();
   }
   project_id_ = move(*project_id_or);
@@ -81,8 +81,9 @@ ExecutionResult GcpParameterClientProvider::Init() noexcept {
   if (!sm_client_shared_) {
     auto execution_result = FailureExecutionResult(
         SC_GCP_PARAMETER_CLIENT_PROVIDER_CREATE_SM_CLIENT_FAILURE);
-    ERROR(kGcpParameterClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create secret manager service client.");
+    SCP_ERROR(kGcpParameterClientProvider, kZeroUuid, kZeroUuid,
+              execution_result,
+              "Failed to create secret manager service client.");
     return execution_result;
   }
 
@@ -110,8 +111,8 @@ ExecutionResult GcpParameterClientProvider::GetParameter(
   if (secret.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_GCP_PARAMETER_CLIENT_PROVIDER_INVALID_PARAMETER_NAME);
-    ERROR_CONTEXT(kGcpParameterClientProvider, get_parameter_context,
-                  execution_result, "Failed due to an empty parameter.");
+    SCP_ERROR_CONTEXT(kGcpParameterClientProvider, get_parameter_context,
+                      execution_result, "Failed due to an empty parameter.");
     get_parameter_context.result = execution_result;
     get_parameter_context.Finish();
     return execution_result;
@@ -131,9 +132,9 @@ ExecutionResult GcpParameterClientProvider::GetParameter(
     get_parameter_context.result = schedule_result;
     get_parameter_context.Finish();
 
-    ERROR_CONTEXT(kGcpParameterClientProvider, get_parameter_context,
-                  schedule_result,
-                  "Failed to schedule AsyncGetParameterCallback().");
+    SCP_ERROR_CONTEXT(kGcpParameterClientProvider, get_parameter_context,
+                      schedule_result,
+                      "Failed to schedule AsyncGetParameterCallback().");
     return schedule_result;
   }
 
@@ -150,9 +151,9 @@ void GcpParameterClientProvider::AsyncGetParameterCallback(
   auto result = GcpUtils::GcpErrorConverter(secret_result.status());
 
   if (!result.Successful()) {
-    ERROR_CONTEXT(kGcpParameterClientProvider, get_parameter_context, result,
-                  "Failed to get parameter with %s",
-                  secret_result.status().message().c_str());
+    SCP_ERROR_CONTEXT(kGcpParameterClientProvider, get_parameter_context,
+                      result, "Failed to get parameter with %s",
+                      secret_result.status().message().c_str());
 
     get_parameter_context.result = result;
     FinishContext(result, get_parameter_context, async_executor_);

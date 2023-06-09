@@ -15,6 +15,7 @@
 #include "core/async_executor/src/async_executor_utils.h"
 
 #include <gtest/gtest.h>
+
 #include "public/core/test/interface/execution_result_matchers.h"
 
 namespace google::scp::core::test {

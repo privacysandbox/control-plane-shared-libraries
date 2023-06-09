@@ -39,3 +39,21 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "test_gcp_queue_client_provider_lib",
+    srcs = [
+        "test_gcp_queue_client_provider.cc",
+        "test_gcp_queue_client_provider.h",
+        "//cc/cpio/client_providers/interface:queue_client_provider_interface.h",
+        "//cc/cpio/client_providers/queue_client_provider/src/gcp:gcp_queue_client_provider_srcs",
+    ],
+    copts = [
+        "-DTEST_CPIO=1",
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/cpio/client_providers/queue_client_provider/src/gcp:gcp_queue_client_provider_lib",
+    ],
+)

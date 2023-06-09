@@ -97,8 +97,8 @@ ExecutionResult JobClientProvider::Init() noexcept {
   if (!job_client_options_) {
     auto execution_result = FailureExecutionResult(
         SC_JOB_CLIENT_PROVIDER_JOB_CLIENT_OPTIONS_REQUIRED);
-    ERROR(kJobClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Invalid job client options.");
+    SCP_ERROR(kJobClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Invalid job client options.");
     return execution_result;
   }
 
@@ -136,7 +136,7 @@ void JobClientProvider::OnEnqueueMessageCallback(
   const string& job_id = enqueue_message_context.request->message_body();
   if (!enqueue_message_context.result.Successful()) {
     auto execution_result = enqueue_message_context.result;
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kJobClientProvider, put_job_context, execution_result,
         "Failed to put job due to job message creation failed. Job id: %s",
         job_id.c_str());
@@ -148,9 +148,9 @@ void JobClientProvider::OnEnqueueMessageCallback(
   const auto job_body_as_string_or =
       JobClientUtils::ConvertAnyToBase64String(job_body);
   if (!job_body_as_string_or.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, put_job_context,
-                  job_body_as_string_or.result(),
-                  "Cannot serialize the job body. Job id: %s", job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, put_job_context, job_body_as_string_or.result(),
+        "Cannot serialize the job body. Job id: %s", job_id.c_str());
     FinishContext(job_body_as_string_or.result(), put_job_context,
                   async_executor_);
     return;
@@ -173,9 +173,9 @@ void JobClientProvider::OnEnqueueMessageCallback(
       upsert_database_item_context);
 
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, put_job_context, execution_result,
-                  "Cannot upsert job into NoSQL database. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, put_job_context, execution_result,
+                      "Cannot upsert job into NoSQL database. Job id: %s",
+                      job_id.c_str());
     FinishContext(execution_result, put_job_context, async_executor_);
     return;
   }
@@ -188,13 +188,13 @@ void JobClientProvider::OnUpsertNewJobItemCallback(
         upsert_database_item_context) noexcept {
   if (!upsert_database_item_context.result.Successful()) {
     auto execution_result = upsert_database_item_context.result;
-    ERROR_CONTEXT(kJobClientProvider, put_job_context, execution_result,
-                  "Failed to put job due to upsert job to NoSQL database "
-                  "failed. Job id: %s",
-                  upsert_database_item_context.request->key()
-                      .partition_key()
-                      .value_string()
-                      .c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, put_job_context, execution_result,
+                      "Failed to put job due to upsert job to NoSQL database "
+                      "failed. Job id: %s",
+                      upsert_database_item_context.request->key()
+                          .partition_key()
+                          .value_string()
+                          .c_str());
     FinishContext(execution_result, put_job_context, async_executor_);
     return;
   }
@@ -222,7 +222,7 @@ void JobClientProvider::OnGetTopMessageCallback(
         get_top_message_context) noexcept {
   if (!get_top_message_context.result.Successful()) {
     auto execution_result = get_top_message_context.result;
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kJobClientProvider, get_next_job_context, execution_result,
         "Failed to get next job due to get job message from queue failed.");
     FinishContext(execution_result, get_next_job_context, async_executor_);
@@ -245,9 +245,9 @@ void JobClientProvider::OnGetTopMessageCallback(
       get_database_item_context);
 
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, get_next_job_context, execution_result,
-                  "Cannot get job from NoSQL database. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, get_next_job_context, execution_result,
+        "Cannot get job from NoSQL database. Job id: %s", job_id.c_str());
     FinishContext(execution_result, get_next_job_context, async_executor_);
     return;
   }
@@ -262,10 +262,11 @@ void JobClientProvider::OnGetNextJobItemCallback(
       get_database_item_context.request->key().partition_key().value_string();
   if (!get_database_item_context.result.Successful()) {
     auto execution_result = get_database_item_context.result;
-    ERROR_CONTEXT(kJobClientProvider, get_next_job_context, execution_result,
-                  "Failed to get next job due to get job from NoSQL database "
-                  "failed. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, get_next_job_context, execution_result,
+        "Failed to get next job due to get job from NoSQL database "
+        "failed. Job id: %s",
+        job_id.c_str());
     FinishContext(execution_result, get_next_job_context, async_executor_);
     return;
   }
@@ -273,9 +274,9 @@ void JobClientProvider::OnGetNextJobItemCallback(
   const auto& item = get_database_item_context.response->item();
   auto job_or = JobClientUtils::ConvertDatabaseItemToJob(item);
   if (!job_or.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, get_next_job_context, job_or.result(),
-                  "Cannot convert database item to job. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, get_next_job_context, job_or.result(),
+                      "Cannot convert database item to job. Job id: %s",
+                      job_id.c_str());
     FinishContext(job_or.result(), get_next_job_context, async_executor_);
     return;
   }
@@ -294,8 +295,9 @@ ExecutionResult JobClientProvider::GetJobById(
   if (job_id.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_MISSING_JOB_ID);
-    ERROR_CONTEXT(kJobClientProvider, get_job_by_id_context, execution_result,
-                  "Failed to get job by id due to missing job id.");
+    SCP_ERROR_CONTEXT(kJobClientProvider, get_job_by_id_context,
+                      execution_result,
+                      "Failed to get job by id due to missing job id.");
     get_job_by_id_context.result = execution_result;
     get_job_by_id_context.Finish();
     return execution_result;
@@ -320,10 +322,11 @@ void JobClientProvider::OnGetJobItemByJobIdCallback(
   const string& job_id = get_job_by_id_context.request->job_id();
   if (!get_database_item_context.result.Successful()) {
     auto execution_result = get_database_item_context.result;
-    ERROR_CONTEXT(kJobClientProvider, get_job_by_id_context, execution_result,
-                  "Failed to get job by job id due to get job from NoSQL "
-                  "database failed. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, get_job_by_id_context,
+                      execution_result,
+                      "Failed to get job by job id due to get job from NoSQL "
+                      "database failed. Job id: %s",
+                      job_id.c_str());
     FinishContext(execution_result, get_job_by_id_context, async_executor_);
     return;
   }
@@ -331,9 +334,9 @@ void JobClientProvider::OnGetJobItemByJobIdCallback(
   const auto& item = get_database_item_context.response->item();
   auto job_or = JobClientUtils::ConvertDatabaseItemToJob(item);
   if (!job_or.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, get_job_by_id_context, job_or.result(),
-                  "Cannot convert database item to job. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, get_job_by_id_context, job_or.result(),
+        "Cannot convert database item to job. Job id: %s", job_id.c_str());
     FinishContext(job_or.result(), get_job_by_id_context, async_executor_);
     return;
   }
@@ -351,8 +354,9 @@ ExecutionResult JobClientProvider::UpdateJobBody(
   if (job_id.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_MISSING_JOB_ID);
-    ERROR_CONTEXT(kJobClientProvider, update_job_body_context, execution_result,
-                  "Failed to update job body due to missing job id.");
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_body_context,
+                      execution_result,
+                      "Failed to update job body due to missing job id.");
     update_job_body_context.result = execution_result;
     update_job_body_context.Finish();
     return execution_result;
@@ -379,10 +383,11 @@ void JobClientProvider::OnGetJobItemForUpdateJobBodyCallback(
   const string& job_id = update_job_body_context.request->job_id();
   if (!get_database_item_context.result.Successful()) {
     auto execution_result = get_database_item_context.result;
-    ERROR_CONTEXT(kJobClientProvider, update_job_body_context, execution_result,
-                  "Failed to update job body due to get job from NoSQL "
-                  "database failed. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_body_context,
+                      execution_result,
+                      "Failed to update job body due to get job from NoSQL "
+                      "database failed. Job id: %s",
+                      job_id.c_str());
     FinishContext(execution_result, update_job_body_context, async_executor_);
     return;
   }
@@ -390,9 +395,9 @@ void JobClientProvider::OnGetJobItemForUpdateJobBodyCallback(
   const auto& item = get_database_item_context.response->item();
   auto job_or = JobClientUtils::ConvertDatabaseItemToJob(item);
   if (!job_or.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, update_job_body_context, job_or.result(),
-                  "Cannot convert database item to job. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_body_context, job_or.result(),
+        "Cannot convert database item to job. Job id: %s", job_id.c_str());
     FinishContext(job_or.result(), update_job_body_context, async_executor_);
     return;
   }
@@ -401,10 +406,11 @@ void JobClientProvider::OnGetJobItemForUpdateJobBodyCallback(
       update_job_body_context.request->most_recent_updated_time()) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_UPDATION_CONFLICT);
-    ERROR_CONTEXT(kJobClientProvider, update_job_body_context, execution_result,
-                  "Failed to update job body due to job is already updated by "
-                  "another request. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_body_context, execution_result,
+        "Failed to update job body due to job is already updated by "
+        "another request. Job id: %s",
+        job_id.c_str());
     FinishContext(execution_result, update_job_body_context, async_executor_);
     return;
   }
@@ -420,9 +426,10 @@ void JobClientProvider::OnGetJobItemForUpdateJobBodyCallback(
   const auto job_body_as_string_or =
       JobClientUtils::ConvertAnyToBase64String(job_body);
   if (!job_body_as_string_or.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, update_job_body_context,
-                  job_body_as_string_or.result(),
-                  "Cannot serialize the job body. Job id: %s", job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_body_context,
+                      job_body_as_string_or.result(),
+                      "Cannot serialize the job body. Job id: %s",
+                      job_id.c_str());
     FinishContext(job_body_as_string_or.result(), update_job_body_context,
                   async_executor_);
     return;
@@ -441,9 +448,9 @@ void JobClientProvider::OnGetJobItemForUpdateJobBodyCallback(
       upsert_database_item_context);
 
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, update_job_body_context, execution_result,
-                  "Cannot upsert job into NoSQL database. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_body_context, execution_result,
+        "Cannot upsert job into NoSQL database. Job id: %s", job_id.c_str());
     FinishContext(execution_result, update_job_body_context, async_executor_);
     return;
   }
@@ -457,13 +464,14 @@ void JobClientProvider::OnUpsertUpdatedJobBodyJobItemCallback(
         upsert_database_item_context) noexcept {
   if (!upsert_database_item_context.result.Successful()) {
     auto execution_result = upsert_database_item_context.result;
-    ERROR_CONTEXT(kJobClientProvider, update_job_body_context, execution_result,
-                  "Failed to update job body due to upsert updated job to "
-                  "NoSQL database failed. Job id: %s",
-                  upsert_database_item_context.request->key()
-                      .partition_key()
-                      .value_string()
-                      .c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_body_context,
+                      execution_result,
+                      "Failed to update job body due to upsert updated job to "
+                      "NoSQL database failed. Job id: %s",
+                      upsert_database_item_context.request->key()
+                          .partition_key()
+                          .value_string()
+                          .c_str());
     FinishContext(execution_result, update_job_body_context, async_executor_);
     return;
   }
@@ -481,7 +489,7 @@ ExecutionResult JobClientProvider::UpdateJobStatus(
   if (job_id.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_MISSING_JOB_ID);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kJobClientProvider, update_job_status_context, execution_result,
         "Failed to update status due to missing job id in the request.");
     update_job_status_context.result = execution_result;
@@ -496,11 +504,11 @@ ExecutionResult JobClientProvider::UpdateJobStatus(
                                job_status == JobStatus::JOB_STATUS_FAILURE)) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_INVALID_RECEIPT_INFO);
-    ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
-                  execution_result,
-                  "Failed to update status due to missing receipt info in the "
-                  "request. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_status_context, execution_result,
+        "Failed to update status due to missing receipt info in the "
+        "request. Job id: %s",
+        job_id.c_str());
     update_job_status_context.result = execution_result;
     update_job_status_context.Finish();
     return execution_result;
@@ -527,11 +535,11 @@ void JobClientProvider::OnGetJobItemForUpdateJobStatusCallback(
   const string& job_id = update_job_status_context.request->job_id();
   if (!get_database_item_context.result.Successful()) {
     auto execution_result = get_database_item_context.result;
-    ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
-                  execution_result,
-                  "Failed to update job status due to get job from NoSQL "
-                  "database failed. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
+                      execution_result,
+                      "Failed to update job status due to get job from NoSQL "
+                      "database failed. Job id: %s",
+                      job_id.c_str());
     FinishContext(execution_result, update_job_status_context, async_executor_);
     return;
   }
@@ -539,7 +547,7 @@ void JobClientProvider::OnGetJobItemForUpdateJobStatusCallback(
   const auto& item = get_database_item_context.response->item();
   auto job_or = JobClientUtils::ConvertDatabaseItemToJob(item);
   if (!job_or.Successful()) {
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kJobClientProvider, update_job_status_context, job_or.result(),
         "Cannot convert database item to job. Job id: %s", job_id.c_str());
     FinishContext(job_or.result(), update_job_status_context, async_executor_);
@@ -550,11 +558,11 @@ void JobClientProvider::OnGetJobItemForUpdateJobStatusCallback(
       update_job_status_context.request->most_recent_updated_time()) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_UPDATION_CONFLICT);
-    ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
-                  execution_result,
-                  "Failed to update job status due to job is already updated "
-                  "by another request. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_status_context, execution_result,
+        "Failed to update job status due to job is already updated "
+        "by another request. Job id: %s",
+        job_id.c_str());
     FinishContext(execution_result, update_job_status_context, async_executor_);
     return;
   }
@@ -565,11 +573,11 @@ void JobClientProvider::OnGetJobItemForUpdateJobStatusCallback(
   auto execution_result = JobClientUtils::ValidateJobStatus(
       current_job_status, job_status_in_request);
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
-                  execution_result,
-                  "Failed to update status due to invalid job status. Job id: "
-                  "%s, Current Job status: %s, Job status in request: %s",
-                  job_id.c_str(), current_job_status, job_status_in_request);
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_status_context, execution_result,
+        "Failed to update status due to invalid job status. Job id: "
+        "%s, Current Job status: %s, Job status in request: %s",
+        job_id.c_str(), current_job_status, job_status_in_request);
     FinishContext(execution_result, update_job_status_context, async_executor_);
     return;
   }
@@ -590,11 +598,11 @@ void JobClientProvider::OnGetJobItemForUpdateJobStatusCallback(
     default: {
       auto execution_result =
           FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_INVALID_JOB_STATUS);
-      ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
-                    execution_result,
-                    "Failed to update status due to invalid job status in the "
-                    "request. Job id: %s, Job status: %s",
-                    job_id.c_str(), job_status_in_request);
+      SCP_ERROR_CONTEXT(
+          kJobClientProvider, update_job_status_context, execution_result,
+          "Failed to update status due to invalid job status in the "
+          "request. Job id: %s, Job status: %s",
+          job_id.c_str(), job_status_in_request);
       FinishContext(execution_result, update_job_status_context,
                     async_executor_);
     }
@@ -617,7 +625,7 @@ void JobClientProvider::DeleteJobMessage(
   auto execution_result =
       queue_client_provider_->DeleteMessage(delete_message_context);
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kJobClientProvider, update_job_status_context, execution_result,
         "Cannot delete message from queue. Job id: %s", job_id.c_str());
     FinishContext(execution_result, update_job_status_context, async_executor_);
@@ -633,11 +641,11 @@ void JobClientProvider::OnDeleteMessageCallback(
   const string& job_id = update_job_status_context.request->job_id();
   if (!delete_messasge_context.result.Successful()) {
     auto execution_result = delete_messasge_context.result;
-    ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
-                  execution_result,
-                  "Failed to update job status due to job message deletion "
-                  "failed. Job id; %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
+                      execution_result,
+                      "Failed to update job status due to job message deletion "
+                      "failed. Job id; %s",
+                      job_id.c_str());
     FinishContext(execution_result, update_job_status_context, async_executor_);
     return;
   }
@@ -672,7 +680,7 @@ void JobClientProvider::UpsertUpdatedJobStatusJobItem(
       upsert_database_item_context);
 
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kJobClientProvider, update_job_status_context, execution_result,
         "Cannot upsert job into NoSQL database. Job id: %s", job_id.c_str());
     FinishContext(execution_result, update_job_status_context, async_executor_);
@@ -688,11 +696,11 @@ void JobClientProvider::OnUpsertUpdatedJobStatusJobItemCallback(
         upsert_database_item_context) noexcept {
   if (!upsert_database_item_context.result.Successful()) {
     auto execution_result = upsert_database_item_context.result;
-    ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
-                  execution_result,
-                  "Failed to update job status due to upsert updated job to "
-                  "NoSQL database failed. Job id: %s",
-                  update_job_status_context.request->job_id().c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_status_context, execution_result,
+        "Failed to update job status due to upsert updated job to "
+        "NoSQL database failed. Job id: %s",
+        update_job_status_context.request->job_id().c_str());
     FinishContext(execution_result, update_job_status_context, async_executor_);
     return;
   }
@@ -712,10 +720,11 @@ ExecutionResult JobClientProvider::UpdateJobVisibilityTimeout(
   if (job_id.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_MISSING_JOB_ID);
-    ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
-                  execution_result,
-                  "Failed to update visibility timeout due to missing job id "
-                  "in the request.");
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_visibility_timeout_context,
+        execution_result,
+        "Failed to update visibility timeout due to missing job id "
+        "in the request.");
     update_job_visibility_timeout_context.result = execution_result;
     update_job_visibility_timeout_context.Finish();
     return execution_result;
@@ -727,11 +736,12 @@ ExecutionResult JobClientProvider::UpdateJobVisibilityTimeout(
       duration.seconds() > kMaximumVisibilityTimeoutInSeconds) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_INVALID_DURATION);
-    ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
-                  execution_result,
-                  "Failed to update visibility timeout due to invalid duration "
-                  "in the request. Job id: %s, duration: %d",
-                  job_id.c_str(), duration.seconds());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_visibility_timeout_context,
+        execution_result,
+        "Failed to update visibility timeout due to invalid duration "
+        "in the request. Job id: %s, duration: %d",
+        job_id.c_str(), duration.seconds());
     update_job_visibility_timeout_context.result = execution_result;
     update_job_visibility_timeout_context.Finish();
     return execution_result;
@@ -742,11 +752,12 @@ ExecutionResult JobClientProvider::UpdateJobVisibilityTimeout(
   if (receipt_info.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_INVALID_RECEIPT_INFO);
-    ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
-                  execution_result,
-                  "Failed to update visibility timeout due to missing receipt "
-                  "info in the request. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_visibility_timeout_context,
+        execution_result,
+        "Failed to update visibility timeout due to missing receipt "
+        "info in the request. Job id: %s",
+        job_id.c_str());
     update_job_visibility_timeout_context.result = execution_result;
     update_job_visibility_timeout_context.Finish();
     return execution_result;
@@ -776,11 +787,12 @@ void JobClientProvider::OnGetJobItemForUpdateVisibilityTimeoutCallback(
       update_job_visibility_timeout_context.request->job_id();
   if (!get_database_item_context.result.Successful()) {
     auto execution_result = get_database_item_context.result;
-    ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
-                  execution_result,
-                  "Failed to update job visibility timeout due to get job from "
-                  "NoSQL database failed. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_visibility_timeout_context,
+        execution_result,
+        "Failed to update job visibility timeout due to get job from "
+        "NoSQL database failed. Job id: %s",
+        job_id.c_str());
     FinishContext(execution_result, update_job_visibility_timeout_context,
                   async_executor_);
     return;
@@ -789,10 +801,10 @@ void JobClientProvider::OnGetJobItemForUpdateVisibilityTimeoutCallback(
   const auto& item = get_database_item_context.response->item();
   auto job_or = JobClientUtils::ConvertDatabaseItemToJob(item);
   if (!job_or.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
-                  job_or.result(),
-                  "Cannot convert database item to job. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
+                      job_or.result(),
+                      "Cannot convert database item to job. Job id: %s",
+                      job_id.c_str());
     FinishContext(job_or.result(), update_job_visibility_timeout_context,
                   async_executor_);
     return;
@@ -802,11 +814,11 @@ void JobClientProvider::OnGetJobItemForUpdateVisibilityTimeoutCallback(
                                    ->most_recent_updated_time()) {
     auto execution_result =
         FailureExecutionResult(SC_JOB_CLIENT_PROVIDER_UPDATION_CONFLICT);
-    ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
-                  execution_result,
-                  "Failed to update job visibility timeout due to job is "
-                  "already updated by another request. Job id: %s",
-                  job_id.c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
+                      execution_result,
+                      "Failed to update job visibility timeout due to job is "
+                      "already updated by another request. Job id: %s",
+                      job_id.c_str());
     FinishContext(execution_result, update_job_visibility_timeout_context,
                   async_executor_);
     return;
@@ -847,11 +859,12 @@ void JobClientProvider::OnUpdateMessageVisibilityTimeoutCallback(
       update_job_visibility_timeout_context.request->release_job_id();
   if (!update_message_visibility_timeout_context.result.Successful()) {
     auto execution_result = update_message_visibility_timeout_context.result;
-    ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
-                  execution_result,
-                  "Failed to update job visibility timeout due to update job "
-                  "message visibility tiemout failed. Job id; %s",
-                  job_id->c_str());
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_visibility_timeout_context,
+        execution_result,
+        "Failed to update job visibility timeout due to update job "
+        "message visibility tiemout failed. Job id; %s",
+        job_id->c_str());
     FinishContext(execution_result, update_job_visibility_timeout_context,
                   async_executor_);
     return;
@@ -878,10 +891,10 @@ void JobClientProvider::OnUpdateMessageVisibilityTimeoutCallback(
   auto execution_result = nosql_database_client_provider_->UpsertDatabaseItem(
       upsert_database_item_context);
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
-                  execution_result,
-                  "Cannot upsert job into NoSQL database. Job id: %s",
-                  job_id->c_str());
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_visibility_timeout_context,
+                      execution_result,
+                      "Cannot upsert job into NoSQL database. Job id: %s",
+                      job_id->c_str());
     FinishContext(execution_result, update_job_visibility_timeout_context,
                   async_executor_);
     return;
@@ -897,7 +910,7 @@ void JobClientProvider::OnUpsertUpdatedJobVisibilityTimeoutJobItemCallback(
         upsert_database_item_context) noexcept {
   if (!upsert_database_item_context.result.Successful()) {
     auto execution_result = upsert_database_item_context.result;
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kJobClientProvider, update_job_visibility_timeout_context,
         execution_result,
         "Failed to update job visibility timeout due to upsert updated job to "

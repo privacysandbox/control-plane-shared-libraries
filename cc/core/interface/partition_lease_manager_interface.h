@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "core/interface/partition_interface.h"
+#include "core/interface/partition_types.h"
 #include "core/interface/service_interface.h"
 #include "core/interface/type_def.h"
 

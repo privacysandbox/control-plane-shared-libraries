@@ -1052,19 +1052,19 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithJobDeletionSuccess) {
               UpsertDatabaseItem(HasUpsertItemParamsForJobStatusUpdates(
                   kJobsTableName, kJobId, JobStatus::JOB_STATUS_SUCCESS,
                   kDefaultTimestampValueInString)))
-      .WillOnce([&job_updated_time_in_request](
-                    auto& upsert_database_item_context) {
-        auto updated_time_in_string =
-            upsert_database_item_context.request->new_attributes(1)
-                .value_string();
-        TimeUtil::FromString(updated_time_in_string,
-                             &job_updated_time_in_request);
-        upsert_database_item_context.response =
-            make_shared<UpsertDatabaseItemResponse>();
-        upsert_database_item_context.result = SuccessExecutionResult();
-        upsert_database_item_context.Finish();
-        return SuccessExecutionResult();
-      });
+      .WillOnce(
+          [&job_updated_time_in_request](auto& upsert_database_item_context) {
+            auto updated_time_in_string =
+                upsert_database_item_context.request->new_attributes(1)
+                    .value_string();
+            TimeUtil::FromString(updated_time_in_string,
+                                 &job_updated_time_in_request);
+            upsert_database_item_context.response =
+                make_shared<UpsertDatabaseItemResponse>();
+            upsert_database_item_context.result = SuccessExecutionResult();
+            upsert_database_item_context.Finish();
+            return SuccessExecutionResult();
+          });
 
   *update_job_status_context_.request->mutable_job_id() = kJobId;
   update_job_status_context_.request->set_job_status(
@@ -1117,19 +1117,19 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithNoJobDeletionSuccess) {
               UpsertDatabaseItem(HasUpsertItemParamsForJobStatusUpdates(
                   kJobsTableName, kJobId, JobStatus::JOB_STATUS_PROCESSING,
                   kDefaultTimestampValueInString)))
-      .WillOnce([&job_updated_time_in_request](
-                    auto& upsert_database_item_context) {
-        auto updated_time_in_string =
-            upsert_database_item_context.request->new_attributes(1)
-                .value_string();
-        TimeUtil::FromString(updated_time_in_string,
-                             &job_updated_time_in_request);
-        upsert_database_item_context.response =
-            make_shared<UpsertDatabaseItemResponse>();
-        upsert_database_item_context.result = SuccessExecutionResult();
-        upsert_database_item_context.Finish();
-        return SuccessExecutionResult();
-      });
+      .WillOnce(
+          [&job_updated_time_in_request](auto& upsert_database_item_context) {
+            auto updated_time_in_string =
+                upsert_database_item_context.request->new_attributes(1)
+                    .value_string();
+            TimeUtil::FromString(updated_time_in_string,
+                                 &job_updated_time_in_request);
+            upsert_database_item_context.response =
+                make_shared<UpsertDatabaseItemResponse>();
+            upsert_database_item_context.result = SuccessExecutionResult();
+            upsert_database_item_context.Finish();
+            return SuccessExecutionResult();
+          });
 
   *update_job_status_context_.request->mutable_job_id() = kJobId;
   update_job_status_context_.request->set_job_status(

@@ -47,9 +47,10 @@ cc_library(
         "//cc/core/logger/src/log_providers:log_providers_lib",
         "//cc/core/logger/src/log_providers/syslog:syslog_lib",
         "//cc/core/message_router/src:message_router_lib",
+        "//cc/cpio/client_providers/auth_token_provider/src:auth_token_provider_select_lib",
         "//cc/cpio/client_providers/cloud_initializer/src:cloud_initializer_lib",
-        "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_lib",
-        "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_lib",
+        "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_select_lib",
+        "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_select_lib",
         "//cc/public/cpio/interface:type_def",
     ],
 )

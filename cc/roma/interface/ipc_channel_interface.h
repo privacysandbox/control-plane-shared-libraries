@@ -44,6 +44,10 @@ class IpcChannelInterface : public core::ServiceInterface {
   virtual core::ExecutionResult PopResponse(
       std::unique_ptr<TResponse>& response) = 0;
 
+  /// Try to pop a response on dispatcher side.
+  virtual core::ExecutionResult TryPopResponse(
+      std::unique_ptr<TResponse>& response) = 0;
+
   // Virtual destructor to avoid memleaks.
   virtual ~IpcChannelInterface() {}
 };  // class IpcChannelInterface

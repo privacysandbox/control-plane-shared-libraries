@@ -128,8 +128,8 @@ ExecutionResult GcpAuthTokenProvider::Init() noexcept {
   if (!http_client_) {
     auto execution_result = FailureExecutionResult(
         SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_INITIALIZATION_FAILED);
-    ERROR(kGcpAuthTokenProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Http client cannot be nullptr.");
+    SCP_ERROR(kGcpAuthTokenProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Http client cannot be nullptr.");
     return execution_result;
   }
 
@@ -168,8 +168,9 @@ ExecutionResult GcpAuthTokenProvider::GetSessionToken(
 
   auto execution_result = http_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, execution_result,
-                  "Failed to perform http request to fetch access token.");
+    SCP_ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context,
+                      execution_result,
+                      "Failed to perform http request to fetch access token.");
 
     get_token_context.result = execution_result;
     get_token_context.Finish();
@@ -184,9 +185,9 @@ void GcpAuthTokenProvider::OnGetSessionTokenCallback(
         get_token_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
   if (!http_client_context.result.Successful()) {
-    ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context,
-                  http_client_context.result,
-                  "Failed to get access token from Instance Metadata server");
+    SCP_ERROR_CONTEXT(
+        kGcpAuthTokenProvider, get_token_context, http_client_context.result,
+        "Failed to get access token from Instance Metadata server");
 
     get_token_context.result = http_client_context.result;
     get_token_context.Finish();
@@ -201,8 +202,9 @@ void GcpAuthTokenProvider::OnGetSessionTokenCallback(
   } catch (...) {
     auto result = RetryExecutionResult(
         SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_BAD_SESSION_TOKEN);
-    ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, result,
-                  "Received http response could not be parsed into a JSON.");
+    SCP_ERROR_CONTEXT(
+        kGcpAuthTokenProvider, get_token_context, result,
+        "Received http response could not be parsed into a JSON.");
     get_token_context.result = result;
     get_token_context.Finish();
     return;
@@ -215,7 +217,7 @@ void GcpAuthTokenProvider::OnGetSessionTokenCallback(
               })) {
     auto result = RetryExecutionResult(
         SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_BAD_SESSION_TOKEN);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpAuthTokenProvider, get_token_context, result,
         "Received http response does not contain all the necessary fields.");
     get_token_context.result = result;
@@ -279,9 +281,9 @@ void GcpAuthTokenProvider::OnGetSessionTokenForTargetAudienceCallback(
   if (token_parts.size() != kExpectedTokenPartsSize) {
     auto result = RetryExecutionResult(
         SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_BAD_SESSION_TOKEN);
-    ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, result,
-                  "Received token does not have %d parts.",
-                  kExpectedTokenPartsSize);
+    SCP_ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, result,
+                      "Received token does not have %d parts.",
+                      kExpectedTokenPartsSize);
     get_token_context.result = result;
     get_token_context.Finish();
     return;
@@ -291,9 +293,9 @@ void GcpAuthTokenProvider::OnGetSessionTokenForTargetAudienceCallback(
   // string.
   auto padded_jwt_or = PadBase64Encoding(token_parts[1]);
   if (!padded_jwt_or.Successful()) {
-    ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context,
-                  padded_jwt_or.result(),
-                  "Received JWT cannot be padded correctly.");
+    SCP_ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context,
+                      padded_jwt_or.result(),
+                      "Received JWT cannot be padded correctly.");
     get_token_context.result = padded_jwt_or.result();
     get_token_context.Finish();
     return;
@@ -301,8 +303,8 @@ void GcpAuthTokenProvider::OnGetSessionTokenForTargetAudienceCallback(
   string decoded_json_str;
   if (auto decode_result = Base64Decode(*padded_jwt_or, decoded_json_str);
       !decode_result.Successful()) {
-    ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, decode_result,
-                  "Received token JWT could not be decoded.");
+    SCP_ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, decode_result,
+                      "Received token JWT could not be decoded.");
     get_token_context.result = decode_result;
     get_token_context.Finish();
     return;
@@ -314,8 +316,8 @@ void GcpAuthTokenProvider::OnGetSessionTokenForTargetAudienceCallback(
   } catch (...) {
     auto result = RetryExecutionResult(
         SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_BAD_SESSION_TOKEN);
-    ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, result,
-                  "Received JWT could not be parsed into a JSON.");
+    SCP_ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, result,
+                      "Received JWT could not be parsed into a JSON.");
     get_token_context.result = result;
     get_token_context.Finish();
     return;
@@ -328,8 +330,9 @@ void GcpAuthTokenProvider::OnGetSessionTokenForTargetAudienceCallback(
                    })) {
     auto result = RetryExecutionResult(
         SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_BAD_SESSION_TOKEN);
-    ERROR_CONTEXT(kGcpAuthTokenProvider, get_token_context, result,
-                  "Received JWT does not contain all the necessary fields.");
+    SCP_ERROR_CONTEXT(
+        kGcpAuthTokenProvider, get_token_context, result,
+        "Received JWT does not contain all the necessary fields.");
     get_token_context.result = result;
     get_token_context.Finish();
     return;

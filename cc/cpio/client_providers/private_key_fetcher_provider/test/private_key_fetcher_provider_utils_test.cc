@@ -332,8 +332,7 @@ TEST(PrivateKeyFetchingClientUtilsTest, CreateHttpRequestForMaxAgeSeconds) {
   PrivateKeyFetchingClientUtils::CreateHttpRequest(request, http_request);
 
   EXPECT_EQ(http_request.method, HttpMethod::GET);
-  EXPECT_EQ(*http_request.path,
-            string(kPrivateKeyBaseUri) + "/encryptionKeys:recent");
+  EXPECT_EQ(*http_request.path, string(kPrivateKeyBaseUri) + ":recent");
   EXPECT_EQ(*http_request.query, "maxAgeSeconds=1000000");
 }
 
@@ -360,8 +359,8 @@ TEST(PrivateKeyFetchingClientUtilsTest, ParseMultiplePrivateKeysSuccess) {
     })";
   string key_1 = R"({"name": "encryptionKeys/111111",)";
   string key_2 = R"({"name": "encryptionKeys/222222",)";
-  string bytes_str = R"({"encryptionKeys": [)" + key_1 + one_key_without_name +
-                     "," + key_2 + one_key_without_name + "]}";
+  string bytes_str = R"({"keys": [)" + key_1 + one_key_without_name + "," +
+                     key_2 + one_key_without_name + "]}";
 
   PrivateKeyFetchingResponse response;
   auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(

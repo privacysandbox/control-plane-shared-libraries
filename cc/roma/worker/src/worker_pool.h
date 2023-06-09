@@ -105,10 +105,11 @@ class WorkerPool : public core::ServiceInterface {
 
   /// @brief  Number of processes which equals to the number of workers.
   const size_t num_processes_;
+
+  const Config config_;
+
   /// @brief A vector stores all worker instances.
   std::vector<std::unique_ptr<Worker>> workers_;
-  /// @brief User-registered C++/JS function bindings.
-  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings_;
 
   /// @brief memory segment to allocate the stop called flag.
   ipc::SharedMemorySegment stop_called_shm_segment_;

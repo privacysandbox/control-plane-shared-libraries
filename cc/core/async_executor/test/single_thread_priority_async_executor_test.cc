@@ -42,7 +42,6 @@ using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::nanoseconds;
 using std::chrono::seconds;
-using testing::Values;
 
 namespace google::scp::core::test {
 
@@ -137,48 +136,11 @@ TEST(SingleThreadPriorityAsyncExecutorTests, CountWorkSingleThread) {
     EXPECT_SUCCESS(executor.ScheduleFor([&]() { count++; }, 123456));
   }
   // Waits some time to finish the work.
-  WaitUntil([&]() { return count == queue_cap; });
+  WaitUntil([&]() { return count == queue_cap; }, seconds(30));
   EXPECT_EQ(count, queue_cap);
 
   executor.Stop();
 }
-
-class AffinityTest : public testing::TestWithParam<size_t> {
- protected:
-  size_t GetCpu() const { return GetParam(); }
-};
-
-TEST_P(AffinityTest, CountWorkSingleThreadWithAffinity) {
-  int queue_cap = 10;
-  SingleThreadPriorityAsyncExecutor executor(queue_cap, false, GetCpu());
-  executor.Init();
-  executor.Run();
-
-  atomic<int> count(0);
-  for (int i = 0; i < queue_cap; i++) {
-    EXPECT_SUCCESS(executor.ScheduleFor(
-        [&]() {
-          cpu_set_t cpuset;
-          CPU_ZERO(&cpuset);
-          pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-          if (GetCpu() < std::thread::hardware_concurrency()) {
-            EXPECT_NE(CPU_ISSET(GetCpu(), &cpuset), 0);
-          }
-          count++;
-        },
-        123456));
-  }
-  // Waits some time to finish the work.
-  WaitUntil([&]() { return count == queue_cap; });
-  EXPECT_EQ(count, queue_cap);
-
-  executor.Stop();
-}
-
-// The test should work for any value, even an invalid CPU #.
-INSTANTIATE_TEST_SUITE_P(SingleThreadPriorityAsyncExecutorTests, AffinityTest,
-                         Values(0, 1, std::thread::hardware_concurrency() - 1,
-                                std::thread::hardware_concurrency()));
 
 TEST(SingleThreadPriorityAsyncExecutorTests, OrderedTasksExecution) {
   int queue_cap = 10;
@@ -199,7 +161,7 @@ TEST(SingleThreadPriorityAsyncExecutorTests, OrderedTasksExecution) {
   executor.ScheduleFor([&]() { EXPECT_EQ(counter++, 0); },
                        task.GetExecutionTimestamp() + half_second);
 
-  WaitUntil([&]() { return counter == 3; });
+  WaitUntil([&]() { return counter == 3; }, seconds(30));
   executor.Stop();
 }
 
@@ -225,7 +187,7 @@ TEST(SingleThreadPriorityAsyncExecutorTests, AsyncContextCallback) {
       12345);
 
   // Waits some time to finish the work.
-  WaitUntil([&]() { return callback_count == 1; });
+  WaitUntil([&]() { return callback_count == 1; }, seconds(30));
 
   // Verifies the work is executed.
   EXPECT_EQ(*(context.response), "response");
@@ -254,7 +216,7 @@ TEST(SingleThreadPriorityAsyncExecutorTests, FinishWorkWhenStopInMiddle) {
   executor.Stop();
 
   // Waits some time to finish the work.
-  WaitUntil([&]() { return urgent_count == queue_cap; });
+  WaitUntil([&]() { return urgent_count == queue_cap; }, seconds(30));
 
   EXPECT_EQ(urgent_count, queue_cap);
 }

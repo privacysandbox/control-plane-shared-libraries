@@ -47,6 +47,7 @@ cc_library(
     }) + [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:async_context_lib",
+        "//cc/public/cpio/utils/metric_aggregation/interface:type_def",
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:type_def",

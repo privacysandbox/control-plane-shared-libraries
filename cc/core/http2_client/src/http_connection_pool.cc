@@ -142,9 +142,9 @@ ExecutionResult HttpConnectionPool::GetConnection(
         connections_.Erase(pair.first);
         return execution_result;
       }
-      INFO(kHttpConnection, kZeroUuid, kZeroUuid,
-           "Successfully initialized a connection %p for %s",
-           http_connection.get(), pair.first.c_str());
+      SCP_INFO(kHttpConnection, kZeroUuid, kZeroUuid,
+               "Successfully initialized a connection %p for %s",
+               http_connection.get(), pair.first.c_str());
     }
     http_connection_entry->is_initialized = true;
   }
@@ -198,7 +198,7 @@ void HttpConnectionPool::RecycleConnection(
   connection->Init();
   connection->Run();
 
-  INFO(kHttpConnection, common::kZeroUuid, common::kZeroUuid,
-       "Successfully recycled connection %p", connection.get());
+  SCP_INFO(kHttpConnection, common::kZeroUuid, common::kZeroUuid,
+           "Successfully recycled connection %p", connection.get());
 }
 }  // namespace google::scp::core

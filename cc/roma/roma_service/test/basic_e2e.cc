@@ -56,9 +56,20 @@ TEST(RomaBasicE2ETest, InitStop) {
   EXPECT_TRUE(status.ok());
 }
 
+TEST(RomaBasicE2ETest, ShouldFailToInitIfNotEnoughSystemMemory) {
+  Config config;
+  config.GetStartupMemoryCheckMinimumNeededValueKb = []() {
+    return UINT64_MAX;
+  };
+
+  auto status = RomaInit(config);
+
+  EXPECT_FALSE(status.ok());
+}
+
 TEST(RomaBasicE2ETest, ExecuteCode) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -111,7 +122,7 @@ TEST(RomaBasicE2ETest, ExecuteCode) {
 
 TEST(RomaBasicE2ETest, BatchExecute) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -167,7 +178,7 @@ TEST(RomaBasicE2ETest, BatchExecute) {
 
 TEST(RomaBasicE2ETest, ExecuteCodeConcurrently) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -236,7 +247,7 @@ TEST(RomaBasicE2ETest, StringInStringOutFunctionBindingRegistration) {
 
   // Create config object and add function registration object to it
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   config.RegisterFunctionBinding(std::move(function_object));
 
   auto status = RomaInit(config);
@@ -300,7 +311,7 @@ TEST(RomaBasicE2ETest,
 
   // Create config object and add function registration object to it
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   config.RegisterFunctionBinding(std::move(function_object));
 
   auto status = RomaInit(config);
@@ -376,7 +387,7 @@ TEST(RomaBasicE2ETest,
 
   // Create config object and add function registration object to it
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   config.RegisterFunctionBinding(std::move(function_object));
 
   auto status = RomaInit(config);
@@ -449,7 +460,7 @@ TEST(RomaBasicE2ETest, StringInStringOutRegisterMultipleFunctions) {
 
   // Create config object and add function registration objects to it
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   config.RegisterFunctionBinding(std::move(function_object1));
   config.RegisterFunctionBinding(std::move(function_object2));
 
@@ -534,7 +545,7 @@ TEST(RomaBasicE2ETest, ListsOfStringInMapOfStringOutFunctionRegistration) {
 
   // Create config object and add function registration object to it
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   config.RegisterFunctionBinding(std::move(function_object));
 
   auto status = RomaInit(config);
@@ -606,7 +617,7 @@ TEST(RomaBasicE2ETest, ListsOfStringInMapOfStringOutFunctionRegistration) {
 
 TEST(RomaBasicE2ETest, CppCompiledStringInputStringOutputWasm) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -663,7 +674,7 @@ TEST(RomaBasicE2ETest, CppCompiledStringInputStringOutputWasm) {
 
 TEST(RomaBasicE2ETest, RustCompiledStringInputStringOutputWasm) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -720,7 +731,7 @@ TEST(RomaBasicE2ETest, RustCompiledStringInputStringOutputWasm) {
 
 TEST(RomaBasicE2ETest, ExecuteCodeWithBadInput) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -770,7 +781,7 @@ TEST(RomaBasicE2ETest, ExecuteCodeWithBadInput) {
 
 TEST(RomaBasicE2ETest, CppCompiledListOfStringInputListOfStringOutputWasm) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -830,7 +841,7 @@ TEST(RomaBasicE2ETest, CppCompiledListOfStringInputListOfStringOutputWasm) {
 
 TEST(RomaBasicE2ETest, RustCompiledListOfStringInputListOfStringOutputWasm) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -909,7 +920,7 @@ TEST(RomaBasicE2ETest, EmptyWasmAndEmptyJsInCodeObject) {
 
 TEST(RomaBasicE2ETest, CodeObjMissingVersionNumber) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -947,7 +958,7 @@ TEST(RomaBasicE2ETest, ExecutionObjMissingVersionNumber) {
 
 TEST(RomaBasicE2ETest, WasmBatchWithMissingVersionNumber) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -999,7 +1010,7 @@ TEST(RomaBasicE2ETest, WasmBatchWithMissingVersionNumber) {
 
 TEST(RomaBasicE2ETest, ExecutionObjMissingHandlerName) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -1073,7 +1084,7 @@ TEST(RomaBasicE2ETest, WasmBatchWithMissingHandlerName) {
  */
 TEST(RomaBasicE2ETest, WasmAllocationShouldFailWhenAllocatingTooMuch) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -1131,7 +1142,7 @@ TEST(RomaBasicE2ETest, WasmAllocationShouldFailWhenAllocatingTooMuch) {
  */
 TEST(RomaBasicE2ETest, WasmAllocationShouldWorkWhenAllocatingWithinBounds) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -1195,7 +1206,7 @@ TEST(RomaBasicE2ETest, WasmAllocationShouldWorkWhenAllocatingWithinBounds) {
  */
 TEST(RomaBasicE2ETest, WasmReturnsBadPointerWhenAStringIsExpected) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -1365,7 +1376,7 @@ TEST(RomaBasicE2ETest, ExecuteInvocationRequestSharedInput) {
 
 TEST(RomaBasicE2ETest, BatchExecuteInvocationRequestSharedInput) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -1414,6 +1425,91 @@ TEST(RomaBasicE2ETest, BatchExecuteInvocationRequestSharedInput) {
   WaitUntil([&]() { return load_finished.load(); });
   WaitUntil([&]() { return execute_finished.load(); });
   EXPECT_EQ(res_count.load(), batch_size);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(RomaBasicE2ETest, ExecuteCodeWithConfiguredHeap) {
+  Config config;
+  config.number_of_workers = 2;
+  config.ConfigureJsEngineResourceConstraints(1, 15);
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+  atomic<int> execute_finished = 0;
+
+  // Load code to workers.
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // The required JS code execution heap size depends on the input.
+    code_obj->js = R"""(
+        function Handler(input) {
+          const bigObject = [];
+          for (let i = 0; i < 1024*512*Number(input); i++) {
+            var person = {
+            name: 'test',
+            age: 24,
+            };
+            bigObject.push(person);
+          }
+          return 233;
+        }
+      )""";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // An input that is too large will cause an OOM.
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("10");
+
+    status = Execute(
+        move(execution_obj),
+        [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+          EXPECT_FALSE(resp->ok());
+          EXPECT_EQ(resp->status().message(),
+                    "The work item has already been worked on. This implies "
+                    "the worker initially died while handling this item.");
+          execute_finished.fetch_add(1);
+        });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // With smaller inputs, the execution should succeed.
+  for (auto i = 0; i < 3; i++) {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("1");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         EXPECT_EQ(code_resp.resp, R"(233)");
+                       }
+                       execute_finished++;
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load() == 4; }, 300s);
 
   status = RomaStop();
   EXPECT_TRUE(status.ok());

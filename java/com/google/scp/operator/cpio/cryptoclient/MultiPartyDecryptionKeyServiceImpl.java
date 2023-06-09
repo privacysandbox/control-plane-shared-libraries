@@ -38,6 +38,7 @@ import com.google.scp.operator.cpio.cryptoclient.Annotations.CoordinatorAAead;
 import com.google.scp.operator.cpio.cryptoclient.Annotations.CoordinatorBAead;
 import com.google.scp.operator.cpio.cryptoclient.EncryptionKeyFetchingService.EncryptionKeyFetchingServiceException;
 import com.google.scp.operator.cpio.cryptoclient.model.ErrorReason;
+import com.google.scp.shared.api.exception.ServiceException;
 import com.google.scp.shared.crypto.tink.CloudAeadSelector;
 import com.google.scp.shared.util.KeySplitUtil;
 import java.io.IOException;
@@ -95,7 +96,11 @@ public final class MultiPartyDecryptionKeyServiceImpl implements DecryptionKeySe
     try {
       return decypterCache.get(keyId);
     } catch (ExecutionException | UncheckedExecutionException e) {
-      throw new KeyFetchException("Failed to get key ID: " + keyId, ErrorReason.UNKNOWN_ERROR, e);
+      ErrorReason reason = ErrorReason.UNKNOWN_ERROR;
+      if (e.getCause() instanceof KeyFetchException) {
+        reason = ((KeyFetchException) e.getCause()).getReason();
+      }
+      throw new KeyFetchException("Failed to get key with id: " + keyId, reason, e);
     }
   }
 
@@ -127,7 +132,11 @@ public final class MultiPartyDecryptionKeyServiceImpl implements DecryptionKeySe
               "Unsupported encryption key type.", ErrorReason.UNKNOWN_ERROR);
       }
 
-    } catch (IOException | GeneralSecurityException | EncryptionKeyFetchingServiceException e) {
+    } catch (EncryptionKeyFetchingServiceException e) {
+      throw generateKeyFetchException(e);
+    } catch (GeneralSecurityException e) {
+      throw new KeyFetchException(e, ErrorReason.KEY_DECRYPTION_ERROR);
+    } catch (IOException e) {
       throw new KeyFetchException("Failed to fetch key ID: " + keyId, ErrorReason.UNKNOWN_ERROR, e);
     }
   }
@@ -170,5 +179,23 @@ public final class MultiPartyDecryptionKeyServiceImpl implements DecryptionKeySe
         .filter(keyData -> !keyData.getKeyMaterial().isEmpty())
         .findFirst()
         .get();
+  }
+
+  private static KeyFetchException generateKeyFetchException(
+      EncryptionKeyFetchingServiceException e) {
+    if (e.getCause() instanceof ServiceException) {
+      switch (((ServiceException) e.getCause()).getErrorCode()) {
+        case NOT_FOUND:
+          return new KeyFetchException(e, ErrorReason.KEY_NOT_FOUND);
+        case PERMISSION_DENIED:
+        case UNAUTHENTICATED:
+          return new KeyFetchException(e, ErrorReason.PERMISSION_DENIED);
+        case INTERNAL:
+          return new KeyFetchException(e, ErrorReason.INTERNAL);
+        default:
+          return new KeyFetchException(e, ErrorReason.UNKNOWN_ERROR);
+      }
+    }
+    return new KeyFetchException(e, ErrorReason.UNKNOWN_ERROR);
   }
 }

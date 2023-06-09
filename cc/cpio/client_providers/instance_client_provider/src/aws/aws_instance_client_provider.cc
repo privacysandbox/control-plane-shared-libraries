@@ -197,9 +197,10 @@ ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceResourceNameSync(
           request, response);
 
   if (!execution_result.Successful()) {
-    ERROR(kAwsInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run async function GetCurrentInstanceResourceName for "
-          "current instance resource name");
+    SCP_ERROR(kAwsInstanceClientProvider, kZeroUuid, kZeroUuid,
+              execution_result,
+              "Failed to run async function GetCurrentInstanceResourceName for "
+              "current instance resource name");
     return execution_result;
   }
 
@@ -221,9 +222,9 @@ ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceResourceName(
       auth_token_provider_->GetSessionToken(get_token_context);
   if (!execution_result.Successful()) {
     get_resource_name_context.result = execution_result;
-    ERROR_CONTEXT(kAwsInstanceClientProvider, get_resource_name_context,
-                  get_resource_name_context.result,
-                  "Failed to get the session token for current instance.");
+    SCP_ERROR_CONTEXT(kAwsInstanceClientProvider, get_resource_name_context,
+                      get_resource_name_context.result,
+                      "Failed to get the session token for current instance.");
     get_resource_name_context.Finish();
 
     return execution_result;
@@ -239,8 +240,9 @@ void AwsInstanceClientProvider::OnGetSessionTokenCallback(
     AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
         get_token_context) noexcept {
   if (!get_token_context.result.Successful()) {
-    ERROR_CONTEXT(kAwsInstanceClientProvider, get_resource_name_context,
-                  get_token_context.result, "Failed to get the access token.");
+    SCP_ERROR_CONTEXT(kAwsInstanceClientProvider, get_resource_name_context,
+                      get_token_context.result,
+                      "Failed to get the access token.");
     get_resource_name_context.result = get_token_context.result;
     get_resource_name_context.Finish();
     return;
@@ -262,10 +264,10 @@ void AwsInstanceClientProvider::OnGetSessionTokenCallback(
 
   auto execution_result = http1_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kAwsInstanceClientProvider, get_resource_name_context,
-                  execution_result,
-                  "Failed to perform http request to get the current instance "
-                  "resource id.");
+    SCP_ERROR_CONTEXT(
+        kAwsInstanceClientProvider, get_resource_name_context, execution_result,
+        "Failed to perform http request to get the current instance "
+        "resource id.");
     get_resource_name_context.result = execution_result;
     get_resource_name_context.Finish();
     return;
@@ -278,9 +280,9 @@ void AwsInstanceClientProvider::OnGetInstanceResourceNameCallback(
         get_resource_name_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
   if (!http_client_context.result.Successful()) {
-    ERROR_CONTEXT(kAwsInstanceClientProvider, get_resource_name_context,
-                  http_client_context.result,
-                  "Failed to get the current instance resource id.");
+    SCP_ERROR_CONTEXT(kAwsInstanceClientProvider, get_resource_name_context,
+                      http_client_context.result,
+                      "Failed to get the current instance resource id.");
     get_resource_name_context.result = http_client_context.result;
     get_resource_name_context.Finish();
     return;
@@ -295,9 +297,10 @@ void AwsInstanceClientProvider::OnGetInstanceResourceNameCallback(
         json::parse(http_client_context.response->body.bytes->begin(),
                     http_client_context.response->body.bytes->end());
   } catch (...) {
-    ERROR_CONTEXT(kAwsInstanceClientProvider, get_resource_name_context,
-                  malformed_failure,
-                  "Received http response could not be parsed into a JSON.");
+    SCP_ERROR_CONTEXT(
+        kAwsInstanceClientProvider, get_resource_name_context,
+        malformed_failure,
+        "Received http response could not be parsed into a JSON.");
     get_resource_name_context.result = malformed_failure;
     get_resource_name_context.Finish();
     return;
@@ -308,7 +311,7 @@ void AwsInstanceClientProvider::OnGetInstanceResourceNameCallback(
               [&json_response](const char* const component) {
                 return json_response.contains(component);
               })) {
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsInstanceClientProvider, get_resource_name_context,
         malformed_failure,
         "Received http response doesn't contain the required fields.");
@@ -342,10 +345,11 @@ ExecutionResult AwsInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
           request, response);
 
   if (!execution_result.Successful()) {
-    ERROR(kAwsInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run async function GetInstanceDetailsByResourceName for "
-          "resource %s",
-          request.instance_resource_name().c_str());
+    SCP_ERROR(
+        kAwsInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
+        "Failed to run async function GetInstanceDetailsByResourceName for "
+        "resource %s",
+        request.instance_resource_name().c_str());
     return execution_result;
   }
 
@@ -363,7 +367,7 @@ ExecutionResult AwsInstanceClientProvider::GetInstanceDetailsByResourceName(
       get_details_context.request->instance_resource_name(), details);
   if (!execution_result.Successful()) {
     get_details_context.result = execution_result;
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsInstanceClientProvider, get_details_context,
         get_details_context.result,
         "Get tags request failed due to invalid resource name %s",
@@ -375,7 +379,7 @@ ExecutionResult AwsInstanceClientProvider::GetInstanceDetailsByResourceName(
   auto ec2_client_or = GetEC2ClientByRegion(details.region);
   if (!ec2_client_or.Successful()) {
     get_details_context.result = ec2_client_or.result();
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsInstanceClientProvider, get_details_context,
         get_details_context.result,
         "Get tags request failed to create EC2Client for resource name %s",
@@ -406,7 +410,7 @@ void AwsInstanceClientProvider::OnDescribeInstancesAsyncCallback(
     const auto& error_type = outcome.GetError().GetErrorType();
     auto result = EC2ErrorConverter::ConvertEC2Error(
         error_type, outcome.GetError().GetMessage());
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsInstanceClientProvider, get_details_context, result,
         "Describe instances request failed for instance %s",
         get_details_context.request->instance_resource_name().c_str());
@@ -418,7 +422,7 @@ void AwsInstanceClientProvider::OnDescribeInstancesAsyncCallback(
       outcome.GetResult().GetReservations()[0].GetInstances().size() != 1) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_INSTANCE_CLIENT_PROVIDER_DESCRIBE_INSTANCES_RESPONSE_MALFORMED);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsInstanceClientProvider, get_details_context, execution_result,
         "Describe instances response data size doesn't match with "
         "one instance request for instance %s",
@@ -462,10 +466,10 @@ ExecutionResult AwsInstanceClientProvider::GetTagsByResourceName(
       get_tags_context.request->resource_name(), details);
   if (!execution_result.Successful()) {
     get_tags_context.result = execution_result;
-    ERROR_CONTEXT(kAwsInstanceClientProvider, get_tags_context,
-                  get_tags_context.result,
-                  "Get tags request failed due to invalid resource name %s",
-                  get_tags_context.request->resource_name().c_str());
+    SCP_ERROR_CONTEXT(kAwsInstanceClientProvider, get_tags_context,
+                      get_tags_context.result,
+                      "Get tags request failed due to invalid resource name %s",
+                      get_tags_context.request->resource_name().c_str());
     get_tags_context.Finish();
     return execution_result;
   }
@@ -473,7 +477,7 @@ ExecutionResult AwsInstanceClientProvider::GetTagsByResourceName(
   auto ec2_client_or = GetEC2ClientByRegion(details.region);
   if (!ec2_client_or.Successful()) {
     get_tags_context.result = ec2_client_or.result();
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsInstanceClientProvider, get_tags_context, get_tags_context.result,
         "Get tags request failed to create EC2Client for resource name %s",
         get_tags_context.request->resource_name().c_str());
@@ -505,9 +509,9 @@ void AwsInstanceClientProvider::OnDescribeTagsAsyncCallback(
     const auto& error_type = outcome.GetError().GetErrorType();
     auto result = EC2ErrorConverter::ConvertEC2Error(
         error_type, outcome.GetError().GetMessage());
-    ERROR_CONTEXT(kAwsInstanceClientProvider, get_tags_context, result,
-                  "Get tags request failed for resource %s",
-                  get_tags_context.request->resource_name().c_str());
+    SCP_ERROR_CONTEXT(kAwsInstanceClientProvider, get_tags_context, result,
+                      "Get tags request failed for resource %s",
+                      get_tags_context.request->resource_name().c_str());
     FinishContext(result, get_tags_context, cpu_async_executor_);
     return;
   }

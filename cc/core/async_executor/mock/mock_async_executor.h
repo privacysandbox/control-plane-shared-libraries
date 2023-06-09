@@ -42,11 +42,6 @@ class MockAsyncExecutor : public core::AsyncExecutorInterface {
     return SuccessExecutionResult();
   }
 
-  ExecutionResult Schedule(const AsyncOperation& work, AsyncPriority priority,
-                           AsyncExecutorAffinitySetting) noexcept override {
-    return Schedule(work, priority);
-  }
-
   ExecutionResult ScheduleFor(const AsyncOperation& work,
                               Timestamp timestamp) noexcept override {
     if (schedule_for_mock) {
@@ -58,11 +53,6 @@ class MockAsyncExecutor : public core::AsyncExecutorInterface {
     return SuccessExecutionResult();
   }
 
-  ExecutionResult ScheduleFor(const AsyncOperation& work, Timestamp timestamp,
-                              AsyncExecutorAffinitySetting) noexcept override {
-    return ScheduleFor(work, timestamp);
-  }
-
   ExecutionResult ScheduleFor(
       const AsyncOperation& work, Timestamp timestamp,
       std::function<bool()>& cancellation_callback) noexcept override {
@@ -72,12 +62,6 @@ class MockAsyncExecutor : public core::AsyncExecutorInterface {
 
     work();
     return SuccessExecutionResult();
-  }
-
-  ExecutionResult ScheduleFor(const AsyncOperation& work, Timestamp timestamp,
-                              std::function<bool()>& cancellation_callback,
-                              AsyncExecutorAffinitySetting) noexcept override {
-    return ScheduleFor(work, timestamp, cancellation_callback);
   }
 
   std::function<ExecutionResult(const AsyncOperation& work)> schedule_mock;

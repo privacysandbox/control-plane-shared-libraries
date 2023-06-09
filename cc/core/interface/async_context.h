@@ -99,10 +99,10 @@ struct AsyncContext {
         // typeid(TRequest).name() is an approximation of the context's template
         // types mangled in compiler defined format, mainly for debugging
         // purposes.
-        ERROR_CONTEXT("AsyncContext", (*this), result,
-                      "AsyncContext Finished. Mangled RequestType: '%s', "
-                      "Mangled ResponseType: '%s'",
-                      typeid(TRequest).name(), typeid(TResponse).name());
+        SCP_ERROR_CONTEXT("AsyncContext", (*this), result,
+                          "AsyncContext Finished. Mangled RequestType: '%s', "
+                          "Mangled ResponseType: '%s'",
+                          typeid(TRequest).name(), typeid(TResponse).name());
       }
       callback(*this);
     }

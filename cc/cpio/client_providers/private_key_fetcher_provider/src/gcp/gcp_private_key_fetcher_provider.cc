@@ -59,8 +59,8 @@ ExecutionResult GcpPrivateKeyFetcherProvider::Init() noexcept {
   if (!auth_token_provider_) {
     auto execution_result = FailureExecutionResult(
         SC_GCP_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND);
-    ERROR(kGcpPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get credentials provider.");
+    SCP_ERROR(kGcpPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
+              execution_result, "Failed to get credentials provider.");
     return execution_result;
   }
 
@@ -90,7 +90,7 @@ void GcpPrivateKeyFetcherProvider::OnGetSessionTokenCallback(
     AsyncContext<GetSessionTokenForTargetAudienceRequest,
                  GetSessionTokenResponse>& get_token_context) noexcept {
   if (!get_token_context.result.Successful()) {
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpPrivateKeyFetcherProvider, sign_request_context,
         get_token_context.result,
         "Failed to get the access token for audience target %s.",

@@ -22,26 +22,11 @@
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/http_types.h"
 #include "core/interface/partition_interface.h"
+#include "core/interface/partition_types.h"
 #include "core/interface/service_interface.h"
 #include "core/interface/type_def.h"
 
 namespace google::scp::core {
-
-/**
- * @brief Request's Partition endpoint info
- *
- */
-struct RequestPartitionEndpointInfo : public RequestEndpointInfo {
-  RequestPartitionEndpointInfo(const std::shared_ptr<core::Uri>& uri,
-                               const PartitionId& partition_id,
-                               bool is_local_endpoint)
-      : RequestEndpointInfo(uri, is_local_endpoint),
-        partition_id_(partition_id) {}
-
-  const PartitionId partition_id_;
-};
-
-typedef std::string PartitionAddressUri;
 
 /**
  * @brief Information about Partition to be loaded/unloaded
@@ -54,7 +39,7 @@ struct PartitionMetadata {
         partition_type(partition_type),
         partition_address_uri(partition_address_uri) {}
 
-  PartitionId Id() { return partition_id; }
+  PartitionId Id() const { return partition_id; }
 
   const PartitionId partition_id;
   const PartitionType partition_type;
@@ -77,7 +62,7 @@ class PartitionManagerInterface : public ServiceInterface {
    * @return ExecutionResult
    */
   virtual ExecutionResult LoadPartition(
-      PartitionMetadata partitionInfo) noexcept = 0;
+      const PartitionMetadata& partitionInfo) noexcept = 0;
 
   /**
    * @brief Unloads a partition.
@@ -86,7 +71,7 @@ class PartitionManagerInterface : public ServiceInterface {
    * @return ExecutionResult
    */
   virtual ExecutionResult UnloadPartition(
-      PartitionMetadata partitionInfo) noexcept = 0;
+      const PartitionMetadata& partitionInfo) noexcept = 0;
 
   /**
    * @brief Update the partition's address of a partition.
@@ -97,8 +82,8 @@ class PartitionManagerInterface : public ServiceInterface {
    * @param partitionInfo
    * @return ExecutionResult
    */
-  virtual core::ExecutionResult RefreshPartitionAddress(
-      const core::PartitionMetadata& partition_address) noexcept = 0;
+  virtual ExecutionResult RefreshPartitionAddress(
+      const PartitionMetadata& partition_address) noexcept = 0;
 
   /**
    * @brief Get the Partition Address shared_ptr. Shared_ptr is returned to
@@ -106,19 +91,19 @@ class PartitionManagerInterface : public ServiceInterface {
    * incoming requests.
    *
    * @param partition_id
-   * @return core::ExecutionResultOr<core::PartitionAddressUri>
+   * @return ExecutionResultOr<PartitionAddressUri>
    */
-  virtual core::ExecutionResultOr<std::shared_ptr<core::PartitionAddressUri>>
-  GetPartitionAddress(const core::PartitionId& partition_id) noexcept = 0;
+  virtual ExecutionResultOr<std::shared_ptr<PartitionAddressUri>>
+  GetPartitionAddress(const PartitionId& partition_id) noexcept = 0;
 
   /**
    * @brief Get the Partition Type
    *
    * @param partition_id
-   * @return core::ExecutionResultOr<core::PartitionType>
+   * @return ExecutionResultOr<PartitionType>
    */
-  virtual core::ExecutionResultOr<core::PartitionType> GetPartitionType(
-      const core::PartitionId& partition_id) noexcept = 0;
+  virtual ExecutionResultOr<PartitionType> GetPartitionType(
+      const PartitionId& partition_id) noexcept = 0;
 
   /**
    * @brief Get the Partition object for the Partition ID if already loaded. The

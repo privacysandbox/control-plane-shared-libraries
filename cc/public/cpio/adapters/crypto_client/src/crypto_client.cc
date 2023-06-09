@@ -61,8 +61,8 @@ CryptoClient::CryptoClient(const std::shared_ptr<CryptoClientOptions>& options)
 ExecutionResult CryptoClient::Init() noexcept {
   auto execution_result = crypto_client_provider_->Init();
   if (!execution_result.Successful()) {
-    ERROR(kCryptoClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to initialize CryptoClientProvider.");
+    SCP_ERROR(kCryptoClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to initialize CryptoClientProvider.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }
@@ -70,8 +70,8 @@ ExecutionResult CryptoClient::Init() noexcept {
 ExecutionResult CryptoClient::Run() noexcept {
   auto execution_result = crypto_client_provider_->Run();
   if (!execution_result.Successful()) {
-    ERROR(kCryptoClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run CryptoClientProvider.");
+    SCP_ERROR(kCryptoClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to run CryptoClientProvider.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }
@@ -79,8 +79,8 @@ ExecutionResult CryptoClient::Run() noexcept {
 ExecutionResult CryptoClient::Stop() noexcept {
   auto execution_result = crypto_client_provider_->Stop();
   if (!execution_result.Successful()) {
-    ERROR(kCryptoClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to stop CryptoClientProvider.");
+    SCP_ERROR(kCryptoClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to stop CryptoClientProvider.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }

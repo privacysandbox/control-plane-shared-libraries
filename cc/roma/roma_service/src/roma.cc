@@ -17,8 +17,11 @@
 #include "roma/interface/roma.h"
 
 #include <memory>
+#include <thread>
 #include <utility>
 #include <vector>
+
+#include "core/os/src/linux/system_resource_info_provider_linux.h"
 
 #if defined(_SCP_ROMA_SANDBOXED_LIBRARY)
 #include "roma/sandbox/roma_service/src/roma_service.h"
@@ -32,10 +35,17 @@ using google::scp::roma::roma_service::RomaService;
 using absl::OkStatus;
 using absl::Status;
 using absl::StatusCode;
+using google::scp::core::os::linux::SystemResourceInfoProviderLinux;
 using std::make_unique;
 using std::move;
 using std::unique_ptr;
 using std::vector;
+
+// This value does not account for runtime memory usage and is only a generic
+// estimate based on the memory needed by roma and the steady-state memory
+// needed by v8.
+static constexpr uint64_t kDefaultMinimumStatupMemoryNeededPerWorkerKb =
+    400 * 1024;
 
 namespace google::scp::roma {
 namespace {
@@ -91,9 +101,44 @@ Status BatchExecuteInternal(vector<RequestT>& batch,
   }
   return OkStatus();
 }
+
+static bool RomaHasEnoughMemoryForStartup(const Config& config) {
+  if (!config.enable_startup_memory_check) {
+    return true;
+  }
+
+  SystemResourceInfoProviderLinux mem_info;
+  auto available_memory_or = mem_info.GetAvailableMemoryKb();
+  if (!available_memory_or.result().Successful()) {
+    // Failing to read the meminfo file should not stop startup.
+    // This mem check is a best-effort check.
+    return true;
+  }
+
+  if (config.GetStartupMemoryCheckMinimumNeededValueKb) {
+    return config.GetStartupMemoryCheckMinimumNeededValueKb() <
+           *available_memory_or;
+  }
+
+  auto cpu_count = std::thread::hardware_concurrency();
+  auto num_processes =
+      (config.number_of_workers > 0 && config.number_of_workers <= cpu_count)
+          ? config.number_of_workers
+          : cpu_count;
+
+  auto minimum_memory_needed =
+      num_processes * kDefaultMinimumStatupMemoryNeededPerWorkerKb;
+
+  return minimum_memory_needed < *available_memory_or;
+}
 }  // namespace
 
 Status RomaInit(const Config& config) {
+  if (!RomaHasEnoughMemoryForStartup(config)) {
+    return Status(StatusCode::kInternal,
+                  "Roma startup failed due to insufficient system memory.");
+  }
+
   auto* roma_service = RomaService::Instance(config);
   auto result = roma_service->Init();
   if (!result.Successful()) {

@@ -98,7 +98,7 @@ class ExecutionUtilsTest : public ::testing::Test {
       v8::V8::Initialize();
     }
 
-    config.NumberOfWorkers = 1;
+    config.number_of_workers = 1;
 
     Isolate::CreateParams create_params;
     create_params.array_buffer_allocator =

@@ -54,7 +54,7 @@ class WorkerPoolTest : public ::testing::Test {
       v8::V8::InitializePlatform(platform_.get());
       v8::V8::Initialize();
     }
-    config.NumberOfWorkers = 5;
+    config.number_of_workers = 5;
   }
 
   Config config;

@@ -163,6 +163,8 @@ struct GetTransactionStatusRequest {
   /// In the case of remote transaction, the transaction secret will provide
   /// other participants to inquiry or update the state of a transaction.
   std::shared_ptr<std::string> transaction_secret;
+  /// The origin of the transaction aka domain name of the caller.
+  std::shared_ptr<std::string> transaction_origin;
 };
 
 /**

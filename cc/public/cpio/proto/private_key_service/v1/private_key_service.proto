@@ -48,15 +48,16 @@ message PrivateKey {
   google.protobuf.Timestamp creation_time = 5;
 }
 
-// Request to list private keys by key IDs.
+// Request to list private keys by key IDs or age.
 message ListPrivateKeysRequest {
   // Given key IDs. If set, don't honor the max_age_seconds filter.
   repeated string key_ids = 1;
-  // Given age. TODO: document the cap and default value once it is determined in KeyService.
+  // Given age. It should be positive integer.
+  // If the the key_ids filter is not set, max_age_seconds will be used.
   int64 max_age_seconds = 2;
 }
 
-// Response of listing private keys by key IDs.
+// Response of listing private keys by key IDs or age.
 message ListPrivateKeysResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;

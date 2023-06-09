@@ -19,7 +19,6 @@
 #pragma once
 
 #include "core/interface/http_types.h"
-#include "core/interface/request_route_resolver_interface.h"
 #include "core/interface/service_interface.h"
 #include "core/interface/transaction_manager_interface.h"
 

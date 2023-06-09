@@ -16,6 +16,9 @@ syntax = "proto3";
 
 package google.scp.core.common.proto;
 
+option java_outer_classname = "CommonProto";
+option java_package = "com.google.scp.core";
+
 // For faster allocations of sub-messages.
 option cc_enable_arenas = true;
 

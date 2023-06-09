@@ -60,7 +60,6 @@ cc_library(
             "//cc/core/interface:interface_lib",
             "//cc/core/utils/src:core_utils",
             "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
-            "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_lib",
             "//cc/public/cpio/interface:cpio_errors",
             "//cc/public/cpio/interface:type_def",
             "@tink_cc",

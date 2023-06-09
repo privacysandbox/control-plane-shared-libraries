@@ -35,7 +35,7 @@ namespace google::scp::roma::sandbox::roma_service {
 RomaService* RomaService::instance_ = nullptr;
 
 ExecutionResult RomaService::Init() noexcept {
-  size_t concurrency = config_.NumberOfWorkers;
+  size_t concurrency = config_.number_of_workers;
   if (concurrency == 0) {
     concurrency = thread::hardware_concurrency();
   }

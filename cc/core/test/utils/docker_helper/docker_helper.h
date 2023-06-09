@@ -66,4 +66,14 @@ std::string BuildStartContainerCmd(
     const std::map<std::string, std::string>& environment_variables =
         std::map<std::string, std::string>({}),
     const std::string& addition_args = "");
+
+/**
+ * @brief Get the Ip Address of a docker container.
+ *
+ * @param network_name the network the container is in.
+ * @param container_name the container name.
+ * @return std::string the returned IP address.
+ */
+std::string GetIpAddress(const std::string& network_name,
+                         const std::string& container_name);
 }  // namespace google::scp::core::test

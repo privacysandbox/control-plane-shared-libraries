@@ -139,6 +139,15 @@ class WorkContainer : public ShmAllocated {
   core::ExecutionResult GetCompleted(std::unique_ptr<WorkItem>& work_item);
 
   /**
+   * @brief Try to get a completed work item, effectively removing it from the
+   * container. Not thread safe. Expected to be single-threaded.
+   *
+   * @param work_item
+   * @return core::ExecutionResult
+   */
+  core::ExecutionResult TryGetCompleted(std::unique_ptr<WorkItem>& work_item);
+
+  /**
    * @brief Get the approximate number of items in the container.
    *
    * @return size_t

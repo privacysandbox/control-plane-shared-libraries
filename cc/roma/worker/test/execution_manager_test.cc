@@ -78,7 +78,7 @@ class ExecutionManagerTest : public ::testing::Test {
       v8::V8::InitializePlatform(platform_.get());
       v8::V8::Initialize();
     }
-    config.NumberOfWorkers = 1;
+    config.number_of_workers = 1;
   }
 
   void GetCodeObj(CodeObject& code_obj, string js = std::string(),
@@ -110,7 +110,9 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeMixedWithGlobalWebAssembly) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
 
   // JS code has global WebAssembly variable which is updated by Handler.
   string js = R"(
@@ -135,11 +137,7 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeMixedWithGlobalWebAssembly) {
     auto roma_code_obj = RomaCodeObj(code_obj);
 
     RomaString err_msg;
-    vector<shared_ptr<FunctionBindingObjectBase>> function_bindings;
-
-    intptr_t external_refs[] = {0};
-    auto result =
-        helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
+    auto result = helper.Create(roma_code_obj, err_msg);
     EXPECT_SUCCESS(result) << GetErrorMessage(result.status_code);
     EXPECT_EQ(err_msg, WasmUnCompilableError);
   }
@@ -172,7 +170,9 @@ TEST_F(ExecutionManagerTest, CreateAndProcessWasmCode) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
   // taken from:
   // https://github.com/v8/v8/blob/master/samples/hello-world.cc#L66
   char wasm_bin[] = {0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01,
@@ -189,11 +189,7 @@ TEST_F(ExecutionManagerTest, CreateAndProcessWasmCode) {
     auto roma_code_obj = RomaCodeObj(code_obj);
 
     RomaString err_msg;
-    vector<shared_ptr<FunctionBindingObjectBase>> function_bindings;
-
-    intptr_t external_refs[] = {0};
-    auto result =
-        helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
+    auto result = helper.Create(roma_code_obj, err_msg);
     EXPECT_SUCCESS(result);
   }
 
@@ -224,7 +220,9 @@ TEST_F(ExecutionManagerTest, UnknownWasmReturnType) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
   // taken from:
   // https://github.com/v8/v8/blob/master/samples/hello-world.cc#L66
   char wasm_bin[] = {0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01,
@@ -241,11 +239,7 @@ TEST_F(ExecutionManagerTest, UnknownWasmReturnType) {
     auto roma_code_obj = RomaCodeObj(code_obj);
 
     RomaString err_msg;
-    vector<shared_ptr<FunctionBindingObjectBase>> function_bindings;
-
-    intptr_t external_refs[] = {0};
-    auto result =
-        helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
+    auto result = helper.Create(roma_code_obj, err_msg);
     EXPECT_SUCCESS(result);
   }
 
@@ -288,7 +282,9 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsMixedWithLocalWebAssembly) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
 
   // Creates a blob.
   {
@@ -311,11 +307,7 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsMixedWithLocalWebAssembly) {
     auto roma_code_obj = RomaCodeObj(code_obj);
 
     RomaString err_msg;
-    vector<shared_ptr<FunctionBindingObjectBase>> function_bindings;
-
-    intptr_t external_refs[] = {0};
-    auto result =
-        helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
+    auto result = helper.Create(roma_code_obj, err_msg);
     EXPECT_SUCCESS(result);
   }
 
@@ -344,7 +336,9 @@ TEST_F(ExecutionManagerTest, DescribeThrowError) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
 
   // Creates a blob success.
   {
@@ -356,11 +350,7 @@ TEST_F(ExecutionManagerTest, DescribeThrowError) {
     auto roma_code_obj = RomaCodeObj(code_obj);
 
     RomaString err_msg;
-    vector<shared_ptr<FunctionBindingObjectBase>> function_bindings;
-
-    intptr_t external_refs[] = {0};
-    auto result =
-        helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
+    auto result = helper.Create(roma_code_obj, err_msg);
     EXPECT_SUCCESS(result);
   }
 
@@ -389,7 +379,9 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCode) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
 
   // Creates a blob.
   {
@@ -403,11 +395,7 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCode) {
     auto roma_code_obj = RomaCodeObj(code_obj);
 
     RomaString err_msg;
-    vector<shared_ptr<FunctionBindingObjectBase>> function_bindings;
-
-    intptr_t external_refs[] = {0};
-    auto result =
-        helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
+    auto result = helper.Create(roma_code_obj, err_msg);
     EXPECT_SUCCESS(result);
   }
 
@@ -436,7 +424,9 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeWithInvalidInput) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
 
   // Creates a blob.
   {
@@ -450,11 +440,7 @@ TEST_F(ExecutionManagerTest, ProcessJsCodeWithInvalidInput) {
     auto roma_code_obj = RomaCodeObj(code_obj);
 
     RomaString err_msg;
-    vector<shared_ptr<FunctionBindingObjectBase>> function_bindings;
-
-    intptr_t external_refs[] = {0};
-    auto result =
-        helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
+    auto result = helper.Create(roma_code_obj, err_msg);
     EXPECT_SUCCESS(result);
   }
 
@@ -498,7 +484,9 @@ TEST_F(ExecutionManagerTest, UnSetIsolate) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
 
   InvocationRequestSharedInput ext_obj;
   auto input = vector<string>();
@@ -517,7 +505,9 @@ TEST_F(ExecutionManagerTest, UnmatchedCodeVersionNum) {
   AutoInitRunStop auto_init_run_stop(*manager);
   auto role_id = RoleId(0, false);
   IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  ExecutionManager helper;
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
 
   // Creates a blob.
   {
@@ -531,11 +521,7 @@ TEST_F(ExecutionManagerTest, UnmatchedCodeVersionNum) {
     auto roma_code_obj = RomaCodeObj(code_obj);
 
     RomaString err_msg;
-    vector<shared_ptr<FunctionBindingObjectBase>> function_bindings;
-
-    intptr_t external_refs[] = {0};
-    auto result =
-        helper.Create(roma_code_obj, err_msg, function_bindings, external_refs);
+    auto result = helper.Create(roma_code_obj, err_msg);
     EXPECT_SUCCESS(result);
   }
 
@@ -559,6 +545,69 @@ TEST_F(ExecutionManagerTest, UnmatchedCodeVersionNum) {
                               SC_ROMA_V8_WORKER_UNMATCHED_CODE_VERSION_NUM));
       }
     }
+  }
+
+  EXPECT_SUCCESS(helper.Stop());
+}
+
+TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCodeWithHeapConfig) {
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
+  AutoInitRunStop auto_init_run_stop(*manager);
+  auto role_id = RoleId(0, false);
+  IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
+
+  // Config v8 heap size limit to 30MB.
+  JsEngineResourceConstraints v8_resource_constraints;
+  v8_resource_constraints.initial_heap_size_in_mb = 1;
+  v8_resource_constraints.maximum_heap_size_in_mb = 30;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
+
+  // Creates a blob.
+  {
+    CodeObject code_obj;
+    // JS code has global variable which is updated by Handler.
+    string js = R"""(
+        function Handler() {
+          const bigObject = [];
+          for (let i = 0; i < 1024*1024; i++) {
+            var person = {
+            name: 'test',
+            age: 24,
+            };
+            bigObject.push(person);
+          }
+          return 233;
+        }
+      )""";
+
+    GetCodeObj(code_obj, js);
+    auto roma_code_obj = RomaCodeObj(code_obj);
+
+    RomaString err_msg;
+    auto result = helper.Create(roma_code_obj, err_msg);
+    EXPECT_SUCCESS(result);
+  }
+
+  // Check v8 Heap size limit which should equal to the setting.
+  v8::HeapStatistics v8_heap_stats;
+  helper.GetV8HeapStatistics(v8_heap_stats);
+  EXPECT_EQ(v8_heap_stats.heap_size_limit(), 30 * kMB);
+
+  // Process the code.
+  {
+    InvocationRequestSharedInput ext_obj;
+    auto input = vector<string>();
+    GetExecutionObj(ext_obj, input);
+    auto roma_code_obj = RomaCodeObj(ext_obj);
+
+    RomaString output;
+    RomaString err_msg;
+    auto result = helper.Process(roma_code_obj, output, err_msg);
+    EXPECT_SUCCESS(result);
+
+    auto expected = to_string(233);
+    EXPECT_EQ(output, expected.c_str());
   }
 
   EXPECT_SUCCESS(helper.Stop());

@@ -23,41 +23,6 @@
 #include <vector>
 
 namespace google::scp::cpio {
-using MetricNamespace = std::string;
-using MetricName = std::string;
-using MetricValue = std::string;
-using MetricLabels = std::map<std::string, std::string>;
-
-/// Supported metric units.
-enum class MetricUnit {
-  kSeconds = 1,
-  kMicroseconds = 2,
-  kMilliseconds = 3,
-  kBits = 4,
-  kKilobits = 5,
-  kMegabits = 6,
-  kGigabits = 7,
-  kTerabits = 8,
-  kBytes = 9,
-  kKilobytes = 10,
-  kMegabytes = 11,
-  kGigabytes = 12,
-  kTerabytes = 13,
-  kCount = 14,
-  kPercent = 15,
-  kBitsPerSecond = 16,
-  kKilobitsPerSecond = 17,
-  kMegabitsPerSecond = 18,
-  kGigabitsPerSecond = 19,
-  kTerabitsPerSecond = 20,
-  kBytesPerSecond = 21,
-  kKilobytesPerSecond = 22,
-  kMegabytesPerSecond = 23,
-  kGigabytesPerSecond = 24,
-  kTerabytesPerSecond = 25,
-  kCountPerSecond = 26,
-};
-
 /// Configurations for MetricClient.
 struct MetricClientOptions {
   virtual ~MetricClientOptions() = default;

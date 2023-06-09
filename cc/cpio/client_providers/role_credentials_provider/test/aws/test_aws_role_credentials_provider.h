@@ -29,13 +29,16 @@ namespace google::scp::cpio::client_providers {
 /// RoleCredentialsProviderOptions for testing on AWS.
 struct TestAwsRoleCredentialsProviderOptions
     : public RoleCredentialsProviderOptions {
+  TestAwsRoleCredentialsProviderOptions() = default;
+
   explicit TestAwsRoleCredentialsProviderOptions(
       const TestCpioOptions& cpio_options)
       : sts_endpoint_override(
             std::make_shared<std::string>(cpio_options.sts_endpoint_override)) {
   }
 
-  std::shared_ptr<std::string> sts_endpoint_override;
+  std::shared_ptr<std::string> sts_endpoint_override =
+      std::make_shared<std::string>();
 };
 
 /*! @copydoc AwsRoleCredentialsProvider

@@ -70,6 +70,9 @@ class IpcChannel : public IpcChannelInterface<Request, Response> {
   core::ExecutionResult PopResponse(
       std::unique_ptr<Response>& response) override;
 
+  core::ExecutionResult TryPopResponse(
+      std::unique_ptr<Response>& response) override;
+
   void ReleaseLocks();
 
   /**

@@ -27,7 +27,7 @@ cc_library(
     ],
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/cpio/client_providers/instance_client_provider/src/gcp:gcp_instance_client_provider",
+        "//cc/cpio/client_providers/instance_client_provider/src/gcp:gcp_instance_client_provider_lib",
         "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/nosql_database_client_provider/src/common:nosql_database_provider_common_lib",
         "//cc/cpio/common/src/gcp:gcp_utils_lib",

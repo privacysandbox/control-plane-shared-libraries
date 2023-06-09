@@ -113,16 +113,16 @@ ExecutionResult AwsS3ClientProvider::Init() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_);
   if (!region_code_or.Successful()) {
-    ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, region_code_or.result(),
-          "Failed to get region code for current instance");
+    SCP_ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, region_code_or.result(),
+              "Failed to get region code for current instance");
     return region_code_or.result();
   }
 
   auto client_or = s3_factory_->CreateClient(
       *CreateClientConfiguration(*region_code_or), io_async_executor_);
   if (!client_or.Successful()) {
-    ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, client_or.result(),
-          "Failed creating AWS S3 client.");
+    SCP_ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, client_or.result(),
+              "Failed creating AWS S3 client.");
     return client_or.result();
   }
   s3_client_ = std::move(*client_or);
@@ -144,8 +144,8 @@ ExecutionResult AwsS3ClientProvider::GetBlob(
       request.blob_metadata().blob_name().empty()) {
     get_blob_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kAwsS3Provider, get_blob_context, get_blob_context.result,
-                  "Get blob request is missing bucket or blob name");
+    SCP_ERROR_CONTEXT(kAwsS3Provider, get_blob_context, get_blob_context.result,
+                      "Get blob request is missing bucket or blob name");
     get_blob_context.Finish();
     return get_blob_context.result;
   }
@@ -153,9 +153,10 @@ ExecutionResult AwsS3ClientProvider::GetBlob(
                                       request.byte_range().end_byte_index()) {
     get_blob_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kAwsS3Provider, get_blob_context, get_blob_context.result,
-                  "Get blob request provides begin_byte_index that is larger "
-                  "than end_byte_index");
+    SCP_ERROR_CONTEXT(
+        kAwsS3Provider, get_blob_context, get_blob_context.result,
+        "Get blob request provides begin_byte_index that is larger "
+        "than end_byte_index");
     get_blob_context.Finish();
     return get_blob_context.result;
   }
@@ -189,10 +190,10 @@ void AwsS3ClientProvider::OnGetObjectCallback(
     get_blob_context.result = AwsS3Utils::ConvertS3ErrorToExecutionResult(
         get_object_outcome.GetError().GetErrorType());
 
-    ERROR_CONTEXT(kAwsS3Provider, get_blob_context, get_blob_context.result,
-                  "Get blob request failed. Error code: %d, message: %s",
-                  get_object_outcome.GetError().GetResponseCode(),
-                  get_object_outcome.GetError().GetMessage().c_str());
+    SCP_ERROR_CONTEXT(kAwsS3Provider, get_blob_context, get_blob_context.result,
+                      "Get blob request failed. Error code: %d, message: %s",
+                      get_object_outcome.GetError().GetResponseCode(),
+                      get_object_outcome.GetError().GetMessage().c_str());
     FinishContext(get_blob_context.result, get_blob_context,
                   cpu_async_executor_, AsyncPriority::High);
     return;
@@ -233,8 +234,9 @@ ExecutionResult AwsS3ClientProvider::ListBlobsMetadata(
   if (request.blob_metadata().bucket_name().empty()) {
     list_blobs_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kAwsS3Provider, list_blobs_context, list_blobs_context.result,
-                  "List blobs metadata request failed. Bucket name empty.");
+    SCP_ERROR_CONTEXT(kAwsS3Provider, list_blobs_context,
+                      list_blobs_context.result,
+                      "List blobs metadata request failed. Bucket name empty.");
     list_blobs_context.Finish();
     return list_blobs_context.result;
   }
@@ -242,9 +244,10 @@ ExecutionResult AwsS3ClientProvider::ListBlobsMetadata(
       request.max_page_size() > kListBlobsMetadataMaxResults) {
     list_blobs_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kAwsS3Provider, list_blobs_context, list_blobs_context.result,
-                  "List blobs metadata request failed. Max page size cannot be "
-                  "greater than 1000.");
+    SCP_ERROR_CONTEXT(
+        kAwsS3Provider, list_blobs_context, list_blobs_context.result,
+        "List blobs metadata request failed. Max page size cannot be "
+        "greater than 1000.");
     return list_blobs_context.result;
   }
   String bucket_name(list_blobs_context.request->blob_metadata().bucket_name());
@@ -285,11 +288,11 @@ void AwsS3ClientProvider::OnListObjectsMetadataCallback(
     list_blobs_metadata_context.result =
         AwsS3Utils::ConvertS3ErrorToExecutionResult(
             list_objects_outcome.GetError().GetErrorType());
-    ERROR_CONTEXT(kAwsS3Provider, list_blobs_metadata_context,
-                  list_blobs_metadata_context.result,
-                  "List blobs request failed. Error code: %d, message: %s",
-                  list_objects_outcome.GetError().GetResponseCode(),
-                  list_objects_outcome.GetError().GetMessage().c_str());
+    SCP_ERROR_CONTEXT(kAwsS3Provider, list_blobs_metadata_context,
+                      list_blobs_metadata_context.result,
+                      "List blobs request failed. Error code: %d, message: %s",
+                      list_objects_outcome.GetError().GetResponseCode(),
+                      list_objects_outcome.GetError().GetMessage().c_str());
     FinishContext(list_blobs_metadata_context.result,
                   list_blobs_metadata_context, cpu_async_executor_,
                   AsyncPriority::High);
@@ -325,9 +328,9 @@ ExecutionResult AwsS3ClientProvider::PutBlob(
       request.blob().data().empty()) {
     put_blob_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kAwsS3Provider, put_blob_context, put_blob_context.result,
-                  "Put blob request failed. Ensure that bucket name, blob "
-                  "name, and data are present.");
+    SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_context, put_blob_context.result,
+                      "Put blob request failed. Ensure that bucket name, blob "
+                      "name, and data are present.");
     put_blob_context.Finish();
     return put_blob_context.result;
   }
@@ -342,8 +345,8 @@ ExecutionResult AwsS3ClientProvider::PutBlob(
   string md5_checksum;
   auto execution_result = CalculateMd5Hash(request.blob().data(), md5_checksum);
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kAwsS3Provider, put_blob_context, execution_result,
-                  "MD5 Hash generation failed");
+    SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_context, execution_result,
+                      "MD5 Hash generation failed");
     put_blob_context.result = execution_result;
     put_blob_context.Finish();
     return execution_result;
@@ -352,8 +355,8 @@ ExecutionResult AwsS3ClientProvider::PutBlob(
   string base64_md5_checksum;
   execution_result = Base64Encode(md5_checksum, base64_md5_checksum);
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kAwsS3Provider, put_blob_context, execution_result,
-                  "Encoding MD5 to base64 failed");
+    SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_context, execution_result,
+                      "Encoding MD5 to base64 failed");
     put_blob_context.result = execution_result;
     put_blob_context.Finish();
     return execution_result;
@@ -384,10 +387,10 @@ void AwsS3ClientProvider::OnPutObjectCallback(
   if (!put_object_outcome.IsSuccess()) {
     put_blob_context.result = AwsS3Utils::ConvertS3ErrorToExecutionResult(
         put_object_outcome.GetError().GetErrorType());
-    ERROR_CONTEXT(kAwsS3Provider, put_blob_context, put_blob_context.result,
-                  "Put blob request failed. Error code: %d, message: %s",
-                  put_object_outcome.GetError().GetResponseCode(),
-                  put_object_outcome.GetError().GetMessage().c_str());
+    SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_context, put_blob_context.result,
+                      "Put blob request failed. Error code: %d, message: %s",
+                      put_object_outcome.GetError().GetResponseCode(),
+                      put_object_outcome.GetError().GetMessage().c_str());
     FinishContext(put_blob_context.result, put_blob_context,
                   cpu_async_executor_, AsyncPriority::High);
     return;
@@ -412,9 +415,9 @@ ExecutionResult AwsS3ClientProvider::DeleteBlob(
       request.blob_metadata().blob_name().empty()) {
     delete_blob_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kAwsS3Provider, delete_blob_context,
-                  delete_blob_context.result,
-                  "Delete blob request failed. Missing bucket or blob name.");
+    SCP_ERROR_CONTEXT(
+        kAwsS3Provider, delete_blob_context, delete_blob_context.result,
+        "Delete blob request failed. Missing bucket or blob name.");
     delete_blob_context.Finish();
     return delete_blob_context.result;
   }
@@ -442,12 +445,12 @@ void AwsS3ClientProvider::OnDeleteObjectCallback(
   if (!delete_object_outcome.IsSuccess()) {
     delete_blob_context.result = AwsS3Utils::ConvertS3ErrorToExecutionResult(
         delete_object_outcome.GetError().GetErrorType());
-    ERROR_CONTEXT(kAwsS3Provider, delete_blob_context,
-                  delete_blob_context.result,
-                  "Delete blob request failed. Error code: %d, "
-                  "message: %s",
-                  delete_object_outcome.GetError().GetResponseCode(),
-                  delete_object_outcome.GetError().GetMessage().c_str());
+    SCP_ERROR_CONTEXT(kAwsS3Provider, delete_blob_context,
+                      delete_blob_context.result,
+                      "Delete blob request failed. Error code: %d, "
+                      "message: %s",
+                      delete_object_outcome.GetError().GetResponseCode(),
+                      delete_object_outcome.GetError().GetMessage().c_str());
     FinishContext(delete_blob_context.result, delete_blob_context,
                   cpu_async_executor_, AsyncPriority::High);
     return;
@@ -461,7 +464,7 @@ void AwsS3ClientProvider::OnDeleteObjectCallback(
 #ifndef TEST_CPIO
 ExecutionResultOr<shared_ptr<S3Client>> AwsS3Factory::CreateClient(
     ClientConfiguration& client_config,
-    shared_ptr<AsyncExecutorInterface> async_executor) noexcept {
+    const shared_ptr<AsyncExecutorInterface>& async_executor) noexcept {
   client_config.maxConnections = kMaxConcurrentConnections;
   client_config.executor = make_shared<AwsAsyncExecutor>(async_executor);
 
@@ -472,8 +475,9 @@ shared_ptr<BlobStorageClientProviderInterface>
 BlobStorageClientProviderFactory::Create(
     shared_ptr<BlobStorageClientOptions> options,
     shared_ptr<InstanceClientProviderInterface> instance_client,
-    shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
-    shared_ptr<core::AsyncExecutorInterface> io_async_executor) noexcept {
+    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>&
+        io_async_executor) noexcept {
   return make_shared<AwsS3ClientProvider>(
       options, instance_client, cpu_async_executor, io_async_executor);
 }

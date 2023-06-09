@@ -99,7 +99,6 @@ def sdk_image(
             container_files.append(b)
 
         # This is to support using enclave KMS cli
-        container_files.append("@kmstool_enclave//file")
         container_files.append("@kmstool_enclave_cli//file")
         container_tars.append(Label("//operator/worker/aws:libnsm-tar"))
 

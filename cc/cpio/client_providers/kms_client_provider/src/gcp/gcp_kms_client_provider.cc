@@ -78,8 +78,8 @@ ExecutionResult GcpKmsClientProvider::Decrypt(
   if (ciphertext.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_GCP_KMS_CLIENT_PROVIDER_CIPHERTEXT_NOT_FOUND);
-    ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get cipher text from decryption request.");
+    SCP_ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get cipher text from decryption request.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -89,8 +89,8 @@ ExecutionResult GcpKmsClientProvider::Decrypt(
   if (key_arn.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_GCP_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND);
-    ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get Key Arn from decryption request.");
+    SCP_ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get Key Arn from decryption request.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -101,8 +101,8 @@ ExecutionResult GcpKmsClientProvider::Decrypt(
                                  decrypt_context.request->account_identity(),
                                  decrypt_context.request->key_resource_name());
   if (!aead_or.Successful()) {
-    ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, aead_or.result(),
-          "Failed to get Aead.");
+    SCP_ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, aead_or.result(),
+              "Failed to get Aead.");
     decrypt_context.result = aead_or.result();
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -113,8 +113,8 @@ ExecutionResult GcpKmsClientProvider::Decrypt(
   if (!execution_result.Successful()) {
     auto execution_result = FailureExecutionResult(
         SC_GCP_KMS_CLIENT_PROVIDER_BASE64_DECODING_FAILED);
-    ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to decode the ciphertext using base64.");
+    SCP_ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to decode the ciphertext using base64.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -125,9 +125,9 @@ ExecutionResult GcpKmsClientProvider::Decrypt(
   if (!decrypt_or.ok()) {
     auto execution_result =
         FailureExecutionResult(SC_GCP_KMS_CLIENT_PROVIDER_DECRYPTION_FAILED);
-    ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Aead Decryption failed with error %s.",
-          decrypt_or.status().ToString().c_str());
+    SCP_ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Aead Decryption failed with error %s.",
+              decrypt_or.status().ToString().c_str());
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -152,8 +152,8 @@ ExecutionResultOr<shared_ptr<Aead>> GcpKmsAeadProvider::CreateAead(
   if (!aead_result.ok()) {
     auto execution_result =
         FailureExecutionResult(SC_GCP_KMS_CLIENT_PROVIDER_CREATE_AEAD_FAILED);
-    ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get Key Arn.");
+    SCP_ERROR(kGcpKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get Key Arn.");
     return execution_result;
   }
   return move(*aead_result);

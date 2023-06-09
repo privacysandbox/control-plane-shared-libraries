@@ -55,7 +55,7 @@ TEST(SandboxedServiceTest, InitStop) {
 
 TEST(SandboxedServiceTest, ExecuteCode) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -108,7 +108,7 @@ TEST(SandboxedServiceTest, ExecuteCode) {
 
 TEST(SandboxedServiceTest, BatchExecute) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
@@ -164,7 +164,7 @@ TEST(SandboxedServiceTest, BatchExecute) {
 
 TEST(SandboxedServiceTest, ExecuteCodeConcurrently) {
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 

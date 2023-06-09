@@ -50,7 +50,7 @@ TestAwsBlobStorageClientProvider::CreateClientConfiguration(
 
 ExecutionResultOr<shared_ptr<S3Client>> AwsS3Factory::CreateClient(
     ClientConfiguration& client_config,
-    shared_ptr<AsyncExecutorInterface> async_executor) noexcept {
+    const shared_ptr<AsyncExecutorInterface>& async_executor) noexcept {
   // Should disable virtual host, otherwise, our path-style url will not work.
   return make_shared<S3Client>(
       client_config, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
@@ -61,8 +61,8 @@ shared_ptr<BlobStorageClientProviderInterface>
 BlobStorageClientProviderFactory::Create(
     shared_ptr<BlobStorageClientOptions> options,
     shared_ptr<InstanceClientProviderInterface> instance_client_provider,
-    shared_ptr<AsyncExecutorInterface> cpu_async_executor,
-    shared_ptr<AsyncExecutorInterface> io_async_executor) noexcept {
+    const shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
   return make_shared<TestAwsBlobStorageClientProvider>(
       dynamic_pointer_cast<TestAwsBlobStorageClientOptions>(options),
       instance_client_provider, cpu_async_executor, io_async_executor);

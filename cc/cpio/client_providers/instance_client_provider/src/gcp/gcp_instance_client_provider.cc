@@ -198,9 +198,10 @@ ExecutionResult GcpInstanceClientProvider::GetCurrentInstanceResourceNameSync(
           request, response);
 
   if (!execution_result.Successful()) {
-    ERROR(kGcpInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run async function GetCurrentInstanceResourceName for "
-          "current instance resource name");
+    SCP_ERROR(kGcpInstanceClientProvider, kZeroUuid, kZeroUuid,
+              execution_result,
+              "Failed to run async function GetCurrentInstanceResourceName for "
+              "current instance resource name");
     return execution_result;
   }
 
@@ -259,7 +260,7 @@ GcpInstanceClientProvider::MakeHttpRequestsForInstanceResourceName(
     if (instance_resource_name_tracker->got_failure.compare_exchange_strong(
             got_result, true)) {
       get_resource_name_context.result = execution_result;
-      ERROR_CONTEXT(
+      SCP_ERROR_CONTEXT(
           kGcpInstanceClientProvider, get_resource_name_context,
           get_resource_name_context.result,
           "Failed to perform http request to fetch resource id with uri %s",
@@ -292,7 +293,7 @@ void GcpInstanceClientProvider::OnGetInstanceResourceName(
     if (instance_resource_name_tracker->got_failure.compare_exchange_strong(
             got_result, true)) {
       get_resource_name_context.result = result;
-      ERROR_CONTEXT(
+      SCP_ERROR_CONTEXT(
           kGcpInstanceClientProvider, get_resource_name_context,
           get_resource_name_context.result,
           "Failed to perform http request to fetch resource id with uri %s",
@@ -343,10 +344,10 @@ ExecutionResult GcpInstanceClientProvider::GetTagsByResourceName(
       auth_token_provider_->GetSessionToken(get_token_context);
   if (!execution_result.Successful()) {
     get_tags_context.result = execution_result;
-    ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
-                  get_tags_context.result,
-                  "Failed to get the tags for resource %s",
-                  get_tags_context.request->resource_name().c_str());
+    SCP_ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
+                      get_tags_context.result,
+                      "Failed to get the tags for resource %s",
+                      get_tags_context.request->resource_name().c_str());
     get_tags_context.Finish();
 
     return execution_result;
@@ -361,10 +362,10 @@ void GcpInstanceClientProvider::OnGetSessionTokenForTagsCallback(
     AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
         get_token_context) noexcept {
   if (!get_token_context.result.Successful()) {
-    ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
-                  get_token_context.result,
-                  "Failed to get the access token for resource %s",
-                  get_tags_context.request->resource_name().c_str());
+    SCP_ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
+                      get_token_context.result,
+                      "Failed to get the access token for resource %s",
+                      get_tags_context.request->resource_name().c_str());
     get_tags_context.result = get_token_context.result;
     get_tags_context.Finish();
     return;
@@ -393,11 +394,11 @@ void GcpInstanceClientProvider::OnGetSessionTokenForTagsCallback(
   auto execution_result = http2_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
     get_tags_context.result = execution_result;
-    ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
-                  get_tags_context.result,
-                  "Failed to perform http request to get the tags "
-                  "of resource %s",
-                  get_tags_context.request->resource_name().c_str());
+    SCP_ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
+                      get_tags_context.result,
+                      "Failed to perform http request to get the tags "
+                      "of resource %s",
+                      get_tags_context.request->resource_name().c_str());
     get_tags_context.Finish();
     return;
   }
@@ -408,7 +409,7 @@ void GcpInstanceClientProvider::OnGetTagsByResourceNameCallback(
         get_tags_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
   if (!http_client_context.result.Successful()) {
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpInstanceClientProvider, get_tags_context,
         http_client_context.result,
         "Failed to perform http request to get the tags for resource %s",
@@ -427,11 +428,11 @@ void GcpInstanceClientProvider::OnGetTagsByResourceNameCallback(
         json::parse(http_client_context.response->body.bytes->begin(),
                     http_client_context.response->body.bytes->end());
   } catch (...) {
-    ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
-                  malformed_failure,
-                  "Received http response could not be parsed into a JSON for "
-                  "resource %s",
-                  get_tags_context.request->resource_name().c_str());
+    SCP_ERROR_CONTEXT(
+        kGcpInstanceClientProvider, get_tags_context, malformed_failure,
+        "Received http response could not be parsed into a JSON for "
+        "resource %s",
+        get_tags_context.request->resource_name().c_str());
     get_tags_context.result = malformed_failure;
     get_tags_context.Finish();
     return;
@@ -447,11 +448,11 @@ void GcpInstanceClientProvider::OnGetTagsByResourceNameCallback(
   }
 
   if (!json_response.contains(kTagBindingsListKey)) {
-    ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
-                  malformed_failure,
-                  "Received http response doesn't contain the required fields "
-                  "for resource %s",
-                  get_tags_context.request->resource_name().c_str());
+    SCP_ERROR_CONTEXT(
+        kGcpInstanceClientProvider, get_tags_context, malformed_failure,
+        "Received http response doesn't contain the required fields "
+        "for resource %s",
+        get_tags_context.request->resource_name().c_str());
     get_tags_context.result = malformed_failure;
     get_tags_context.Finish();
     return;
@@ -463,11 +464,11 @@ void GcpInstanceClientProvider::OnGetTagsByResourceNameCallback(
                 [&tag_binding](const char* const component) {
                   return tag_binding.contains(component);
                 })) {
-      ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
-                    malformed_failure,
-                    "Received http response doesn't contain the required "
-                    "fields for resource %s",
-                    get_tags_context.request->resource_name().c_str());
+      SCP_ERROR_CONTEXT(kGcpInstanceClientProvider, get_tags_context,
+                        malformed_failure,
+                        "Received http response doesn't contain the required "
+                        "fields for resource %s",
+                        get_tags_context.request->resource_name().c_str());
       get_tags_context.result = malformed_failure;
       get_tags_context.Finish();
       return;
@@ -501,10 +502,11 @@ ExecutionResult GcpInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
           request, response);
 
   if (!execution_result.Successful()) {
-    ERROR(kGcpInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run async function GetInstanceDetailsByResourceName for "
-          "resource %s",
-          request.instance_resource_name().c_str());
+    SCP_ERROR(
+        kGcpInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
+        "Failed to run async function GetInstanceDetailsByResourceName for "
+        "resource %s",
+        request.instance_resource_name().c_str());
     return execution_result;
   }
 
@@ -521,7 +523,7 @@ ExecutionResult GcpInstanceClientProvider::GetInstanceDetailsByResourceName(
       GcpInstanceClientUtils::ValidateInstanceResourceNameFormat(
           get_instance_details_context.request->instance_resource_name());
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpInstanceClientProvider, get_instance_details_context,
         execution_result,
         "Failed to parse instance resource ID from instance resource name %s",
@@ -540,7 +542,7 @@ ExecutionResult GcpInstanceClientProvider::GetInstanceDetailsByResourceName(
   execution_result = auth_token_provider_->GetSessionToken(get_token_context);
   if (!execution_result.Successful()) {
     get_instance_details_context.result = execution_result;
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpInstanceClientProvider, get_instance_details_context,
         get_instance_details_context.result,
         "Failed to perform http request to get the details "
@@ -561,8 +563,9 @@ void GcpInstanceClientProvider::OnGetSessionTokenForInstanceDetailsCallback(
     AsyncContext<GetSessionTokenRequest, GetSessionTokenResponse>&
         get_token_context) noexcept {
   if (!get_token_context.result.Successful()) {
-    ERROR_CONTEXT(kGcpInstanceClientProvider, get_instance_details_context,
-                  get_token_context.result, "Failed to get the access token.");
+    SCP_ERROR_CONTEXT(kGcpInstanceClientProvider, get_instance_details_context,
+                      get_token_context.result,
+                      "Failed to get the access token.");
     get_instance_details_context.result = get_token_context.result;
     get_instance_details_context.Finish();
     return;
@@ -591,7 +594,7 @@ void GcpInstanceClientProvider::OnGetSessionTokenForInstanceDetailsCallback(
   auto execution_result = http2_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
     get_instance_details_context.result = execution_result;
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpInstanceClientProvider, get_instance_details_context,
         get_instance_details_context.result,
         "Failed to perform http request to get the details "
@@ -608,7 +611,7 @@ void GcpInstanceClientProvider::OnGetInstanceDetailsCallback(
         get_instance_details_context,
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
   if (!http_client_context.result.Successful()) {
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpInstanceClientProvider, get_instance_details_context,
         http_client_context.result,
         "Failed to perform http request to get the details "
@@ -627,9 +630,9 @@ void GcpInstanceClientProvider::OnGetInstanceDetailsCallback(
   } catch (...) {
     auto result = FailureExecutionResult(
         SC_GCP_INSTANCE_CLIENT_INSTANCE_DETAILS_RESPONSE_MALFORMED);
-    ERROR_CONTEXT(kGcpInstanceClientProvider, get_instance_details_context,
-                  result,
-                  "Received http response could not be parsed into a JSON.");
+    SCP_ERROR_CONTEXT(
+        kGcpInstanceClientProvider, get_instance_details_context, result,
+        "Received http response could not be parsed into a JSON.");
     get_instance_details_context.result = result;
     get_instance_details_context.Finish();
     return;
@@ -642,7 +645,7 @@ void GcpInstanceClientProvider::OnGetInstanceDetailsCallback(
               })) {
     auto result = FailureExecutionResult(
         SC_GCP_INSTANCE_CLIENT_INSTANCE_DETAILS_RESPONSE_MALFORMED);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpInstanceClientProvider, get_instance_details_context, result,
         "Received http response doesn't contain the required fields.");
     get_instance_details_context.result = result;

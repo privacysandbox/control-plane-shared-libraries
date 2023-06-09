@@ -40,6 +40,7 @@ pkg_tar(
         "WORKSPACE",
         "build_defs",
         "cc",
+        "javatests",
         "licenses",
         "operator",
     ] + glob(["*.bzl"]),

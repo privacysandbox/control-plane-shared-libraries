@@ -56,7 +56,6 @@ def java_enclave_image(
 
     container_files = [
         jar_target,
-        "@kmstool_enclave//file",
         "@kmstool_enclave_cli//file",
     ] + additional_files
 

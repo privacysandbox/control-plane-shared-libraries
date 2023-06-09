@@ -25,6 +25,7 @@ import com.google.scp.operator.cpio.blobstorageclient.model.DataLocation;
 import com.google.scp.operator.cpio.blobstorageclient.model.DataLocation.BlobStoreDataLocation;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.Optional;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -39,6 +40,8 @@ import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
  * service.
  */
 public final class S3BlobStorageClient implements BlobStorageClient {
+  private static String ACCOUNT_IDENTITY_NOT_SUPPORTED_MESSAGE =
+      "Use of account identity is currently not supported for S3BlobStorageClient.";
 
   private final S3Client client;
   // Indicate whether to use http partial request in getBlob function.
@@ -88,6 +91,12 @@ public final class S3BlobStorageClient implements BlobStorageClient {
   }
 
   @Override
+  public InputStream getBlob(DataLocation location, Optional<String> accountIdentity)
+      throws BlobStorageClientException {
+    throw new UnsupportedOperationException(ACCOUNT_IDENTITY_NOT_SUPPORTED_MESSAGE);
+  }
+
+  @Override
   public void putBlob(DataLocation location, Path filePath) throws BlobStorageClientException {
     BlobStoreDataLocation blobLocation = location.blobStoreDataLocation();
     try {
@@ -97,6 +106,12 @@ public final class S3BlobStorageClient implements BlobStorageClient {
     } catch (SdkException exception) {
       throw new BlobStorageClientException(exception);
     }
+  }
+
+  @Override
+  public void putBlob(DataLocation location, Path filePath, Optional<String> accountIdentity)
+      throws BlobStorageClientException {
+    throw new UnsupportedOperationException(ACCOUNT_IDENTITY_NOT_SUPPORTED_MESSAGE);
   }
 
   @Override
@@ -111,6 +126,12 @@ public final class S3BlobStorageClient implements BlobStorageClient {
     } catch (SdkException exception) {
       throw new BlobStorageClientException(exception);
     }
+  }
+
+  @Override
+  public void deleteBlob(DataLocation location, Optional<String> accountIdentity)
+      throws BlobStorageClientException {
+    throw new UnsupportedOperationException(ACCOUNT_IDENTITY_NOT_SUPPORTED_MESSAGE);
   }
 
   @Override
@@ -129,5 +150,11 @@ public final class S3BlobStorageClient implements BlobStorageClient {
     } catch (SdkException exception) {
       throw new BlobStorageClientException(exception);
     }
+  }
+
+  @Override
+  public ImmutableList<String> listBlobs(DataLocation location, Optional<String> accountIdentity)
+      throws BlobStorageClientException {
+    throw new UnsupportedOperationException(ACCOUNT_IDENTITY_NOT_SUPPORTED_MESSAGE);
   }
 }

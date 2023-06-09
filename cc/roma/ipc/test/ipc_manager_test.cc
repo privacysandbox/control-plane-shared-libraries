@@ -37,7 +37,7 @@ using common::RoleId;
 
 TEST(IpcManagerTest, ExplicitShare) {
   Config config;
-  config.NumberOfWorkers = 5;
+  config.number_of_workers = 5;
 
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> manager(IpcManager::Create(config));
@@ -70,7 +70,7 @@ TEST(IpcManagerTest, ExplicitShare) {
 
 TEST(IpcManagerTest, AccessFault) {
   Config config;
-  config.NumberOfWorkers = 5;
+  config.number_of_workers = 5;
   // using a unique_ptr so that we deallocate after test done
   unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);

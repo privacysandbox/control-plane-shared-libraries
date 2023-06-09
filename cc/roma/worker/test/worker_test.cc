@@ -81,7 +81,7 @@ class WorkerTest : public ::testing::Test {
       v8::V8::InitializePlatform(platform_.get());
       v8::V8::Initialize();
     }
-    config.NumberOfWorkers = 1;
+    config.number_of_workers = 1;
   }
 
   Config config;
@@ -214,7 +214,7 @@ TEST_F(WorkerTest, ExecuteJsOrWasmOrJsMixedWithWasmCode) {
     }
   }
 
-  Worker v8_worker(role_id);
+  Worker v8_worker(role_id, config);
   EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
@@ -316,7 +316,7 @@ TEST_F(WorkerTest, CleanCompiledDefaultContext) {
     }
   }
 
-  Worker v8_worker(role_id);
+  Worker v8_worker(role_id, config);
   EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
@@ -390,7 +390,7 @@ TEST_F(WorkerTest, TimeoutTrueInfiniteLoop) {
     ipc.PushRequest(move(request));
   }
 
-  Worker v8_worker(role_id);
+  Worker v8_worker(role_id, config);
   EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
@@ -458,7 +458,7 @@ TEST_F(WorkerTest, DefaultExecutionTimeout) {
     }
   }
 
-  Worker v8_worker(role_id);
+  Worker v8_worker(role_id, config);
   EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
@@ -546,7 +546,7 @@ TEST_F(WorkerTest, CustomizedExecuteTimeout) {
     }
   }
 
-  Worker v8_worker(role_id);
+  Worker v8_worker(role_id, config);
   EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
@@ -584,7 +584,7 @@ TEST_F(WorkerTest, CustomizedExecuteTimeout) {
   waitpid(child_pid, &child_exit_status, 0);
 }
 
-TEST_F(WorkerTest, FailedWithUnmatchVersionNum) {
+TEST_F(WorkerTest, FailedWithUnmatchedVersionNum) {
   unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);
 
@@ -623,7 +623,7 @@ TEST_F(WorkerTest, FailedWithUnmatchVersionNum) {
     }
   }
 
-  Worker v8_worker(role_id);
+  Worker v8_worker(role_id, config);
   EXPECT_SUCCESS(v8_worker.Init());
 
   auto func = [&]() {
@@ -661,4 +661,85 @@ TEST_F(WorkerTest, FailedWithUnmatchVersionNum) {
   int child_exit_status;
   waitpid(child_pid, &child_exit_status, 0);
 }
+
+/**
+ * @brief In this unit test, the v8 heap limit configuration is too small. When
+ * the code is executed, the v8 execution crashes and also turn down the host
+ * process. The host process is the child process of the unit test. After the
+ * child process dies, the main process of the unit test is fine, and `Worker`
+ * can stop successfully.
+ */
+TEST_F(WorkerTest, ConfigSmallV8HeapForWorkerAndExecutionGetOOM) {
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
+  AutoInitRunStop auto_init_run_stop(*manager);
+
+  auto role_id = RoleId(0, false);
+  auto& ipc = IpcManager::Instance()->GetIpcChannel(role_id);
+  IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
+  {
+    CodeObject obj;
+    obj.id = "id";
+    obj.version_num = 1;
+    // This JS execution requires a heap size of 30MB.
+    obj.js = R"""(
+        function Handler() {
+          const bigObject = [];
+          for (let i = 0; i < 1024*1024; i++) {
+            var person = {
+            name: 'test',
+            age: 24,
+            };
+            bigObject.push(person);
+          }
+          return 233;
+        }
+      )""";
+    Callback callback;
+    auto request = make_unique<Request>(make_unique<CodeObject>(obj), callback,
+                                        RequestType::kUpdate);
+    ipc.PushRequest(move(request));
+  }
+
+  {
+    InvocationRequestSharedInput obj;
+    obj.id = "id";
+    obj.version_num = 1;
+    obj.handler_name = "Handler";
+    Callback callback;
+    auto request =
+        make_unique<Request>(make_unique<InvocationRequestSharedInput>(obj),
+                             callback, RequestType::kExecute);
+    ipc.PushRequest(move(request));
+  }
+
+  // Configure a worker with an insufficient heap and the execution will OOM.
+  Config config1;
+  config1.ConfigureJsEngineResourceConstraints(1, 10);
+  Worker v8_worker(role_id, config1);
+  EXPECT_SUCCESS(v8_worker.Init());
+
+  auto func = [&]() {
+    IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
+    return v8_worker.Run();
+  };
+  pid_t child_pid;
+  Process::Create(func, child_pid);
+
+  // The response for the request of code update.
+  unique_ptr<Response> response;
+  EXPECT_SUCCESS(ipc.PopResponse(response));
+  EXPECT_SUCCESS(response->result);
+
+  // Wait for child process exit.
+  int child_exit_status;
+  waitpid(child_pid, &child_exit_status, 0);
+
+  // Try to pop response failed as there is no response in worker container.
+  EXPECT_FALSE(ipc.TryPopResponse(response).Successful());
+
+  // After child process exit, worker parent process still alive.
+  EXPECT_SUCCESS(v8_worker.Stop());
+  manager->ReleaseLocks();
+}
+
 }  // namespace google::scp::roma::worker::test

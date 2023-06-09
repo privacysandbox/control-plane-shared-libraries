@@ -96,8 +96,8 @@ void AwsMetricClientProvider::CreateClientConfiguration(
 ExecutionResult AwsMetricClientProvider::Run() noexcept {
   auto execution_result = MetricClientProvider::Run();
   if (!execution_result.Successful()) {
-    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to initialize MetricClientProvider");
+    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to initialize MetricClientProvider");
     return execution_result;
   }
 
@@ -105,14 +105,14 @@ ExecutionResult AwsMetricClientProvider::Run() noexcept {
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
 
   if (!region_code_or.Successful()) {
-    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
-          region_code_or.result(),
-          "Failed to get region code for current instance");
+    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
+              region_code_or.result(),
+              "Failed to get region code for current instance");
     return region_code_or.result();
   }
 
-  INFO(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
-       "GetCurrentRegionCode: %s", region_code_or->c_str());
+  SCP_INFO(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
+           "GetCurrentRegionCode: %s", region_code_or->c_str());
 
   shared_ptr<ClientConfiguration> client_config;
   CreateClientConfiguration(make_shared<string>(move(*region_code_or)),
@@ -136,8 +136,8 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
       metric_requests_vector->size() > 1) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_METRIC_CLIENT_PROVIDER_SHOULD_ENABLE_BATCH_RECORDING);
-    ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Should enable batch recording");
+    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Should enable batch recording");
     return execution_result;
   }
 
@@ -164,8 +164,8 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
 
     // Skips the context that failed in ParseRequestToDatum().
     if (!result.Successful()) {
-      ERROR_CONTEXT(kAwsMetricClientProvider, context, result,
-                    "Invalid metric.");
+      SCP_ERROR_CONTEXT(kAwsMetricClientProvider, context, result,
+                        "Invalid metric.");
       continue;
     }
 
@@ -177,8 +177,8 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
     if (datums_payload > kAwsPayloadSizeLimit) {
       context.result = FailureExecutionResult(
           SC_AWS_METRIC_CLIENT_PROVIDER_REQUEST_PAYLOAD_OVERSIZE);
-      ERROR_CONTEXT(kAwsMetricClientProvider, context, context.result,
-                    "Invalid metric.");
+      SCP_ERROR_CONTEXT(kAwsMetricClientProvider, context, context.result,
+                        "Invalid metric.");
       context.Finish();
       continue;
     }
@@ -241,8 +241,9 @@ void AwsMetricClientProvider::OnPutMetricDataAsyncCallback(
   // watch out HttpResponseCode::REQUEST_ENTITY_TOO_LARGE.
   auto result = CloudWatchErrorConverter::ConvertCloudWatchError(
       outcome.GetError().GetErrorType(), outcome.GetError().GetMessage());
-  ERROR_CONTEXT(kAwsMetricClientProvider, metric_requests_vector.back(), result,
-                "The error is %s", outcome.GetError().GetMessage().c_str());
+  SCP_ERROR_CONTEXT(kAwsMetricClientProvider, metric_requests_vector.back(),
+                    result, "The error is %s",
+                    outcome.GetError().GetMessage().c_str());
   for (auto& record_metric_context : metric_requests_vector) {
     FinishContext(result, record_metric_context, async_executor_);
   }

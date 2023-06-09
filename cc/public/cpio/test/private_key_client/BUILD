@@ -15,6 +15,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "test_aws_private_key_client_options",
+    hdrs = [
+        "test_aws_private_key_client_options.h",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/public/cpio/interface/private_key_client:type_def",
+    ],
+)
+
+cc_library(
     name = "test_private_key_client",
     srcs = ["//cc/public/cpio/adapters/private_key_client/src:private_key_client_srcs"],
     hdrs =

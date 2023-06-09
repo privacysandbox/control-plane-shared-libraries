@@ -106,6 +106,34 @@ ExecutionResult WorkContainer::GetCompleted(unique_ptr<WorkItem>& work_item) {
   return SuccessExecutionResult();
 }
 
+ExecutionResult WorkContainer::TryGetCompleted(
+    unique_ptr<WorkItem>& work_item) {
+  auto ctx = SharedMemoryPool::SwitchTo(mem_pool_);
+
+  // We need to check the stop flag twice. This is so that if the semaphore is
+  // being held and it was released for the sole purpose of stopping, then this
+  // is picked up. And also so that subsequent calls to this function after
+  // it's been stopped (if any), don't block.
+  if (stop_.load()) {
+    return FailureExecutionResult(SC_ROMA_WORK_CONTAINER_STOPPED);
+  }
+  auto result = complete_semaphore_.TryWait();
+  RETURN_IF_FAILURE(result);
+
+  if (stop_.load()) {
+    return FailureExecutionResult(SC_ROMA_WORK_CONTAINER_STOPPED);
+  }
+
+  work_item.swap(items_[get_complete_index_++]);
+  get_complete_index_ = get_complete_index_ % capacity_;
+
+  size_--;
+
+  space_available_semaphore_.Signal();
+
+  return SuccessExecutionResult();
+}
+
 size_t WorkContainer::Size() {
   return size_.load();
 }

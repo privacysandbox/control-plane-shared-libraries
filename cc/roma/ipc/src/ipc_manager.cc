@@ -36,16 +36,17 @@ thread_local RoleId IpcManager::my_thread_role_;
 IpcManager::IpcManager(Config config) {
   auto cpu_count = thread::hardware_concurrency();
   num_processes_ =
-      (config.NumberOfWorkers > 0 && config.NumberOfWorkers <= cpu_count)
-          ? config.NumberOfWorkers
+      (config.number_of_workers > 0 && config.number_of_workers <= cpu_count)
+          ? config.number_of_workers
           : cpu_count;
 
-  shm_segment_size_ = config.IpcMemorySizeMb > 0
-                          ? config.IpcMemorySizeMb * 1024 * 1024
+  shm_segment_size_ = config.ipc_memory_size_in_mb > 0
+                          ? config.ipc_memory_size_in_mb * kMB
                           : kSharedMemorySegmentSize;
 
-  worker_queue_capacity_ =
-      config.QueueMaxItems > 0 ? config.QueueMaxItems : kWorkerQueueCapacity;
+  worker_queue_capacity_ = config.worker_queue_max_items > 0
+                               ? config.worker_queue_max_items
+                               : kWorkerQueueCapacity;
 }
 
 ExecutionResult IpcManager::Init() noexcept {

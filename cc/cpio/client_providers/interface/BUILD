@@ -43,6 +43,7 @@ cc_library(
         "//cc/public/cpio/proto/private_key_service/v1:private_key_service_cc_proto",
         "//cc/public/cpio/proto/public_key_service/v1:public_key_service_cc_proto",
         "//cc/public/cpio/proto/queue_service/v1:queue_service_cc_proto",
+        "//cc/public/cpio/utils/metric_aggregation/interface:type_def",
         "@com_google_protobuf//:protobuf",
     ],
 )

@@ -17,12 +17,10 @@
 #include <atomic>
 #include <condition_variable>
 #include <functional>
-#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <thread>
-#include <utility>
 #include <vector>
 
 #include "core/interface/async_context.h"
@@ -98,36 +96,23 @@ class AsyncExecutor : public AsyncExecutorInterface {
   ExecutionResult Schedule(const AsyncOperation& work,
                            AsyncPriority priority) noexcept override;
 
-  ExecutionResult Schedule(
-      const AsyncOperation& work, AsyncPriority priority,
-      AsyncExecutorAffinitySetting affinity) noexcept override;
-
   ExecutionResult ScheduleFor(const AsyncOperation& work,
                               Timestamp timestamp) noexcept override;
 
   ExecutionResult ScheduleFor(
       const AsyncOperation& work, Timestamp timestamp,
-      AsyncExecutorAffinitySetting affinity) noexcept override;
-
-  ExecutionResult ScheduleFor(
-      const AsyncOperation& work, Timestamp timestamp,
       std::function<bool()>& cancellation_callback) noexcept override;
-
-  ExecutionResult ScheduleFor(
-      const AsyncOperation& work, Timestamp timestamp,
-      std::function<bool()>& cancellation_callback,
-      AsyncExecutorAffinitySetting affinity) noexcept override;
 
  protected:
   using UrgentTaskExecutor = SingleThreadPriorityAsyncExecutor;
   using NormalTaskExecutor = SingleThreadAsyncExecutor;
 
   template <class TaskExecutorType>
-  ExecutionResultOr<std::shared_ptr<TaskExecutorType>> PickTaskExecutor(
-      AsyncExecutorAffinitySetting affinity,
+  ExecutionResult PickTaskExecutor(
       const std::vector<std::shared_ptr<TaskExecutorType>>& task_executor_pool,
       TaskExecutorPoolType task_executor_pool_type,
-      TaskLoadBalancingScheme task_load_balancing_scheme);
+      TaskLoadBalancingScheme task_load_balancing_scheme,
+      std::shared_ptr<TaskExecutorType>& task_executor);
 
   /**
    * @brief While it is true, the thread pool will keep listening and
@@ -145,12 +130,6 @@ class AsyncExecutor : public AsyncExecutorInterface {
   std::vector<std::shared_ptr<UrgentTaskExecutor>> urgent_task_executor_pool_;
   /// Executor pool for normal work.
   std::vector<std::shared_ptr<NormalTaskExecutor>> normal_task_executor_pool_;
-  /// A map of (normal executor and urgent executor) thread IDs and their
-  /// corresponding executors (the normal executor and then the urgent executor
-  /// with the same affinity).
-  std::map<std::thread::id, std::pair<std::shared_ptr<NormalTaskExecutor>,
-                                      std::shared_ptr<UrgentTaskExecutor>>>
-      thread_id_to_executor_map_;
   /// Load balancing scheme to distribute incoming tasks on to the thread pool
   /// threads.
   TaskLoadBalancingScheme task_load_balancing_scheme_;

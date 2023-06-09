@@ -39,7 +39,8 @@ template <typename TRequest, typename TResponse>
 void OnExecutionCallback(Callback<TResponse>& client_callback,
                          core::AsyncContext<TRequest, TResponse>& context) {
   if (!context.result.Successful()) {
-    ERROR_CONTEXT(kCpioClient, context, context.result, "Failed to execute.");
+    SCP_ERROR_CONTEXT(kCpioClient, context, context.result,
+                      "Failed to execute.");
     client_callback(core::utils::ConvertToPublicExecutionResult(context.result),
                     TResponse());
     return;

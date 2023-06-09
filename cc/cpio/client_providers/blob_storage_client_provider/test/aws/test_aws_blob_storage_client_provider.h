@@ -35,8 +35,8 @@ class TestAwsBlobStorageClientProvider : public AwsS3ClientProvider {
       const std::shared_ptr<TestAwsBlobStorageClientOptions>& options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider,
-      std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
-      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor)
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
       : AwsS3ClientProvider(options, instance_client_provider,
                             cpu_async_executor, io_async_executor),
         test_options_(options) {}

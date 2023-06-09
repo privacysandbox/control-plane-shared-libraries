@@ -18,7 +18,6 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
-#include <optional>
 
 #include "core/common/concurrent_queue/src/concurrent_queue.h"
 #include "core/interface/async_executor_interface.h"
@@ -32,15 +31,13 @@ namespace google::scp::core {
  */
 class SingleThreadAsyncExecutor : ServiceInterface {
  public:
-  explicit SingleThreadAsyncExecutor(
-      size_t queue_cap, bool drop_tasks_on_stop = false,
-      std::optional<size_t> affinity_cpu_number = std::nullopt)
+  explicit SingleThreadAsyncExecutor(size_t queue_cap,
+                                     bool drop_tasks_on_stop = false)
       : is_running_(false),
         worker_thread_started_(false),
         worker_thread_stopped_(false),
         queue_cap_(queue_cap),
-        drop_tasks_on_stop_(drop_tasks_on_stop),
-        affinity_cpu_number_(affinity_cpu_number) {}
+        drop_tasks_on_stop_(drop_tasks_on_stop) {}
 
   ExecutionResult Init() noexcept override;
 
@@ -57,12 +54,6 @@ class SingleThreadAsyncExecutor : ServiceInterface {
    */
   ExecutionResult Schedule(const AsyncOperation& work,
                            AsyncPriority priority) noexcept;
-
-  /**
-   * @brief Returns the ID of the spawned thread object to enable looking it up
-   * via thread IDs later.
-   */
-  ExecutionResultOr<std::thread::id> GetThreadId() const;
 
  private:
   /// Starts the internal worker thread.
@@ -82,8 +73,6 @@ class SingleThreadAsyncExecutor : ServiceInterface {
   size_t queue_cap_;
   /// Indicates whether the async executor should ignore the pending tasks.
   bool drop_tasks_on_stop_;
-  /// An optional CPU to have an affinity for.
-  std::optional<size_t> affinity_cpu_number_;
   /// Queue for accepting the incoming normal priority tasks.
   std::shared_ptr<common::ConcurrentQueue<std::shared_ptr<AsyncTask>>>
       normal_pri_queue_;
@@ -92,8 +81,6 @@ class SingleThreadAsyncExecutor : ServiceInterface {
       high_pri_queue_;
   /// A unique pointer to the working thread.
   std::unique_ptr<std::thread> working_thread_;
-  /// The ID of the working_thread_.
-  std::thread::id working_thread_id_;
   /**
    * @brief Used in combination with the condition variable for signaling the
    * thread that an element is pushed to the queue.

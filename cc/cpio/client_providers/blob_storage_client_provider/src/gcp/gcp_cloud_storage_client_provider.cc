@@ -153,17 +153,18 @@ ExecutionResult GcpCloudStorageClientProvider::Init() noexcept {
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_);
   if (!project_id_or.Successful()) {
-    ERROR(kGcpCloudStorageClientProvider, kZeroUuid, kZeroUuid,
-          project_id_or.result(),
-          "Failed to get project ID for current instance");
+    SCP_ERROR(kGcpCloudStorageClientProvider, kZeroUuid, kZeroUuid,
+              project_id_or.result(),
+              "Failed to get project ID for current instance");
     return project_id_or.result();
   }
 
   auto client_or =
       cloud_storage_factory_->CreateClient(options_, *project_id_or);
   if (!client_or.Successful()) {
-    ERROR(kGcpCloudStorageClientProvider, kZeroUuid, kZeroUuid,
-          client_or.result(), "Failed creating Google Cloud Storage client.");
+    SCP_ERROR(kGcpCloudStorageClientProvider, kZeroUuid, kZeroUuid,
+              client_or.result(),
+              "Failed creating Google Cloud Storage client.");
     return client_or.result();
   }
   cloud_storage_client_shared_ = std::move(*client_or);
@@ -185,9 +186,9 @@ ExecutionResult GcpCloudStorageClientProvider::GetBlob(
       request.blob_metadata().blob_name().empty()) {
     get_blob_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_context,
-                  get_blob_context.result,
-                  "Get blob request is missing bucket or blob name");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_context,
+                      get_blob_context.result,
+                      "Get blob request is missing bucket or blob name");
     get_blob_context.Finish();
     return get_blob_context.result;
   }
@@ -195,10 +196,11 @@ ExecutionResult GcpCloudStorageClientProvider::GetBlob(
                                       request.byte_range().end_byte_index()) {
     get_blob_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_context,
-                  get_blob_context.result,
-                  "Get blob request provides begin_byte_index that is larger "
-                  "than end_byte_index");
+    SCP_ERROR_CONTEXT(
+        kGcpCloudStorageClientProvider, get_blob_context,
+        get_blob_context.result,
+        "Get blob request provides begin_byte_index that is larger "
+        "than end_byte_index");
     get_blob_context.Finish();
     return get_blob_context.result;
   }
@@ -209,9 +211,9 @@ ExecutionResult GcpCloudStorageClientProvider::GetBlob(
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
     get_blob_context.result = schedule_result;
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_context,
-                  get_blob_context.result,
-                  "Get blob request failed to be scheduled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_context,
+                      get_blob_context.result,
+                      "Get blob request failed to be scheduled");
     get_blob_context.Finish();
     return schedule_result;
   }
@@ -277,9 +279,9 @@ ExecutionResult GcpCloudStorageClientProvider::GetBlobStream(
       request.blob_metadata().blob_name().empty()) {
     get_blob_stream_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
-                  get_blob_stream_context.result,
-                  "Get blob stream request is missing bucket or blob name");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
+                      get_blob_stream_context.result,
+                      "Get blob stream request is missing bucket or blob name");
     get_blob_stream_context.Finish();
     return get_blob_stream_context.result;
   }
@@ -287,7 +289,7 @@ ExecutionResult GcpCloudStorageClientProvider::GetBlobStream(
                                       request.byte_range().end_byte_index()) {
     get_blob_stream_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpCloudStorageClientProvider, get_blob_stream_context,
         get_blob_stream_context.result,
         "Get blob stream request provides begin_byte_index that is larger "
@@ -302,9 +304,9 @@ ExecutionResult GcpCloudStorageClientProvider::GetBlobStream(
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
     get_blob_stream_context.result = schedule_result;
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
-                  get_blob_stream_context.result,
-                  "Get blob stream request failed to be scheduled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
+                      get_blob_stream_context.result,
+                      "Get blob stream request failed to be scheduled");
     get_blob_stream_context.Finish();
     return schedule_result;
   }
@@ -323,8 +325,8 @@ void GcpCloudStorageClientProvider::GetBlobStreamInternal(
   if (get_blob_stream_context.IsCancelled()) {
     auto result = FailureExecutionResult(
         SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_CANCELLED);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
-                  result, "Get blob stream request was cancelled.");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
+                      result, "Get blob stream request was cancelled.");
     FinishStreamingContext(result, get_blob_stream_context,
                            cpu_async_executor_);
     return;
@@ -337,8 +339,8 @@ void GcpCloudStorageClientProvider::GetBlobStreamInternal(
 
   auto push_result = get_blob_stream_context.TryPushResponse(move(response));
   if (!push_result.Successful()) {
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
-                  push_result, "Failed to push new message.");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
+                      push_result, "Failed to push new message.");
     FinishStreamingContext(push_result, get_blob_stream_context,
                            cpu_async_executor_);
     return;
@@ -352,7 +354,7 @@ void GcpCloudStorageClientProvider::GetBlobStreamInternal(
       AsyncPriority::Normal);
   if (!schedule_result.Successful()) {
     get_blob_stream_context.result = schedule_result;
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpCloudStorageClientProvider, get_blob_stream_context,
         get_blob_stream_context.result,
         "Get blob stream process next message failed to be scheduled");
@@ -373,9 +375,9 @@ void GcpCloudStorageClientProvider::GetBlobStreamInternal(
       AsyncPriority::Normal);
   if (!schedule_result.Successful()) {
     get_blob_stream_context.result = schedule_result;
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
-                  get_blob_stream_context.result,
-                  "Get blob stream follow up read failed to be scheduled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, get_blob_stream_context,
+                      get_blob_stream_context.result,
+                      "Get blob stream follow up read failed to be scheduled");
     FinishStreamingContext(schedule_result, get_blob_stream_context,
                            cpu_async_executor_);
   }
@@ -411,8 +413,8 @@ GcpCloudStorageClientProvider::InitGetBlobStreamTracker(
   if (!blob_stream.size()) {
     auto result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_ERROR_GETTING_BLOB);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, context, result,
-                  "Get blob stream request failed. Message: size missing.");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, context, result,
+                      "Get blob stream request failed. Message: size missing.");
     FinishStreamingContext(result, context, cpu_async_executor_);
     return result;
   }
@@ -475,19 +477,20 @@ ExecutionResult GcpCloudStorageClientProvider::ListBlobsMetadata(
   if (request.blob_metadata().bucket_name().empty()) {
     list_blobs_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, list_blobs_context,
-                  list_blobs_context.result,
-                  "List blobs metadata request failed. Bucket name empty.");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, list_blobs_context,
+                      list_blobs_context.result,
+                      "List blobs metadata request failed. Bucket name empty.");
     list_blobs_context.Finish();
     return list_blobs_context.result;
   }
   if (request.has_max_page_size() && request.max_page_size() > 1000) {
     list_blobs_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, list_blobs_context,
-                  list_blobs_context.result,
-                  "List blobs metadata request failed. Max page size cannot be "
-                  "greater than 1000.");
+    SCP_ERROR_CONTEXT(
+        kGcpCloudStorageClientProvider, list_blobs_context,
+        list_blobs_context.result,
+        "List blobs metadata request failed. Max page size cannot be "
+        "greater than 1000.");
     return list_blobs_context.result;
   }
 
@@ -497,9 +500,9 @@ ExecutionResult GcpCloudStorageClientProvider::ListBlobsMetadata(
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
     list_blobs_context.result = schedule_result;
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, list_blobs_context,
-                  list_blobs_context.result,
-                  "List blobs metadata request failed to be scheduled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, list_blobs_context,
+                      list_blobs_context.result,
+                      "List blobs metadata request failed to be scheduled");
     list_blobs_context.Finish();
     return schedule_result;
   }
@@ -536,11 +539,11 @@ void GcpCloudStorageClientProvider::ListBlobsMetadataInternal(
       auto execution_result =
           GcpCloudStorageUtils::ConvertCloudStorageErrorToExecutionResult(
               object_metadata.status().code());
-      ERROR_CONTEXT(kGcpCloudStorageClientProvider, list_blobs_context,
-                    execution_result,
-                    "List blobs request failed. Error code: %d, message: %s",
-                    object_metadata.status().code(),
-                    object_metadata.status().message().c_str());
+      SCP_ERROR_CONTEXT(
+          kGcpCloudStorageClientProvider, list_blobs_context, execution_result,
+          "List blobs request failed. Error code: %d, message: %s",
+          object_metadata.status().code(),
+          object_metadata.status().message().c_str());
       FinishContext(execution_result, list_blobs_context, cpu_async_executor_);
       return;
     }
@@ -580,10 +583,10 @@ ExecutionResult GcpCloudStorageClientProvider::PutBlob(
       request.blob().data().empty()) {
     put_blob_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_context,
-                  put_blob_context.result,
-                  "Put blob request failed. Ensure that bucket name, blob "
-                  "name, and data are present.");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_context,
+                      put_blob_context.result,
+                      "Put blob request failed. Ensure that bucket name, blob "
+                      "name, and data are present.");
     return put_blob_context.result;
   }
 
@@ -593,9 +596,9 @@ ExecutionResult GcpCloudStorageClientProvider::PutBlob(
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
     put_blob_context.result = schedule_result;
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_context,
-                  put_blob_context.result,
-                  "Put blob request failed to be scheduled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_context,
+                      put_blob_context.result,
+                      "Put blob request failed to be scheduled");
     put_blob_context.Finish();
     return schedule_result;
   }
@@ -613,11 +616,11 @@ void GcpCloudStorageClientProvider::PutBlobInternal(
       request.blob().metadata().blob_name(), request.blob().data(),
       MD5HashValue(md5_hash));
   if (!object_metadata) {
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_context,
-                  put_blob_context.result,
-                  "Put blob request failed. Error code: %d, message: %s",
-                  object_metadata.status().code(),
-                  object_metadata.status().message().c_str());
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_context,
+                      put_blob_context.result,
+                      "Put blob request failed. Error code: %d, message: %s",
+                      object_metadata.status().code(),
+                      object_metadata.status().message().c_str());
     auto execution_result =
         GcpCloudStorageUtils::ConvertCloudStorageErrorToExecutionResult(
             object_metadata.status().code());
@@ -638,7 +641,7 @@ ExecutionResult GcpCloudStorageClientProvider::PutBlobStream(
       request.blob_portion().data().empty()) {
     put_blob_stream_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpCloudStorageClientProvider, put_blob_stream_context,
         put_blob_stream_context.result,
         "Put blob stream request failed. Ensure that bucket name, blob "
@@ -653,9 +656,9 @@ ExecutionResult GcpCloudStorageClientProvider::PutBlobStream(
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
     put_blob_stream_context.result = schedule_result;
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
-                  put_blob_stream_context.result,
-                  "Put blob stream request failed to be scheduled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
+                      put_blob_stream_context.result,
+                      "Put blob stream request failed to be scheduled");
     put_blob_stream_context.Finish();
     return schedule_result;
   }
@@ -674,10 +677,10 @@ void GcpCloudStorageClientProvider::InitPutBlobStream(
                       : kDefaultStreamKeepaliveNanos;
   if (duration > kMaximumStreamKeepaliveNanos) {
     auto result = FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
-                  result,
-                  "Supplied keepalive duration is greater than the maximum of "
-                  "10 minutes.");
+    SCP_ERROR_CONTEXT(
+        kGcpCloudStorageClientProvider, put_blob_stream_context, result,
+        "Supplied keepalive duration is greater than the maximum of "
+        "10 minutes.");
     FinishStreamingContext(result, put_blob_stream_context,
                            cpu_async_executor_);
     return;
@@ -723,8 +726,8 @@ void GcpCloudStorageClientProvider::PutBlobStreamInternal(
     cloud_storage_client.DeleteResumableUpload(session_id);
     auto result = FailureExecutionResult(
         SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_CANCELLED);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
-                  result, "Put blob stream request was cancelled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
+                      result, "Put blob stream request was cancelled");
     FinishStreamingContext(result, put_blob_stream_context,
                            cpu_async_executor_);
     return;
@@ -743,7 +746,7 @@ void GcpCloudStorageClientProvider::PutBlobStreamInternal(
         result =
             GcpCloudStorageUtils::ConvertCloudStorageErrorToExecutionResult(
                 object_metadata.status().code());
-        ERROR_CONTEXT(
+        SCP_ERROR_CONTEXT(
             kGcpCloudStorageClientProvider, put_blob_stream_context, result,
             "Put blob stream request failed. Error code: %d, message: %s",
             object_metadata.status().code(),
@@ -759,8 +762,8 @@ void GcpCloudStorageClientProvider::PutBlobStreamInternal(
         tracker->expiry_time_ns) {
       auto result = FailureExecutionResult(
           SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_EXPIRED);
-      ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
-                    result, "Put blob stream session expired.");
+      SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
+                        result, "Put blob stream session expired.");
       auto session_id =
           tracker->session_id.value_or(tracker->stream.resumable_session_id());
       // Cancel any outstanding uploads.
@@ -783,9 +786,9 @@ void GcpCloudStorageClientProvider::PutBlobStreamInternal(
             .count());
     if (!schedule_result.Successful()) {
       put_blob_stream_context.result = schedule_result;
-      ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
-                    put_blob_stream_context.result,
-                    "Put blob stream request failed to be scheduled");
+      SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
+                        put_blob_stream_context.result,
+                        "Put blob stream request failed to be scheduled");
       FinishStreamingContext(schedule_result, put_blob_stream_context,
                              cpu_async_executor_);
     }
@@ -796,10 +799,10 @@ void GcpCloudStorageClientProvider::PutBlobStreamInternal(
           tracker->bucket_name ||
       request->blob_portion().metadata().blob_name() != tracker->blob_name) {
     auto result = FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
-                  result,
-                  "Enqueued message does not specify the same blob (bucket "
-                  "name, blob name) as previously.");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
+                      result,
+                      "Enqueued message does not specify the same blob (bucket "
+                      "name, blob name) as previously.");
     FinishStreamingContext(result, put_blob_stream_context,
                            cpu_async_executor_);
     return;
@@ -817,9 +820,9 @@ void GcpCloudStorageClientProvider::PutBlobStreamInternal(
       AsyncPriority::Normal);
   if (!schedule_result.Successful()) {
     put_blob_stream_context.result = schedule_result;
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
-                  put_blob_stream_context.result,
-                  "Put blob stream request failed to be scheduled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, put_blob_stream_context,
+                      put_blob_stream_context.result,
+                      "Put blob stream request failed to be scheduled");
     FinishStreamingContext(schedule_result, put_blob_stream_context,
                            cpu_async_executor_);
   }
@@ -833,9 +836,10 @@ ExecutionResult GcpCloudStorageClientProvider::DeleteBlob(
       request.blob_metadata().blob_name().empty()) {
     delete_blob_context.result =
         FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, delete_blob_context,
-                  delete_blob_context.result,
-                  "Delete blob request failed. Missing bucket or blob name.");
+    SCP_ERROR_CONTEXT(
+        kGcpCloudStorageClientProvider, delete_blob_context,
+        delete_blob_context.result,
+        "Delete blob request failed. Missing bucket or blob name.");
     delete_blob_context.Finish();
     return delete_blob_context.result;
   }
@@ -846,9 +850,9 @@ ExecutionResult GcpCloudStorageClientProvider::DeleteBlob(
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
     delete_blob_context.result = schedule_result;
-    ERROR_CONTEXT(kGcpCloudStorageClientProvider, delete_blob_context,
-                  delete_blob_context.result,
-                  "Delete blob request failed to be scheduled");
+    SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, delete_blob_context,
+                      delete_blob_context.result,
+                      "Delete blob request failed to be scheduled");
     delete_blob_context.Finish();
     return schedule_result;
   }
@@ -863,9 +867,9 @@ void GcpCloudStorageClientProvider::DeleteBlobInternal(
       delete_blob_context.request->blob_metadata().bucket_name(),
       delete_blob_context.request->blob_metadata().blob_name());
   if (!status.ok()) {
-    DEBUG_CONTEXT(kGcpCloudStorageClientProvider, delete_blob_context,
-                  "Delete blob request failed. Error code: %d, message: %s",
-                  status.code(), status.message().c_str());
+    SCP_DEBUG_CONTEXT(kGcpCloudStorageClientProvider, delete_blob_context,
+                      "Delete blob request failed. Error code: %d, message: %s",
+                      status.code(), status.message().c_str());
     auto execution_result =
         GcpCloudStorageUtils::ConvertCloudStorageErrorToExecutionResult(
             status.code());
@@ -896,8 +900,9 @@ shared_ptr<BlobStorageClientProviderInterface>
 BlobStorageClientProviderFactory::Create(
     shared_ptr<BlobStorageClientOptions> options,
     shared_ptr<InstanceClientProviderInterface> instance_client,
-    shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
-    shared_ptr<core::AsyncExecutorInterface> io_async_executor) noexcept {
+    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>&
+        io_async_executor) noexcept {
   return make_shared<GcpCloudStorageClientProvider>(
       options, instance_client, cpu_async_executor, io_async_executor);
 }

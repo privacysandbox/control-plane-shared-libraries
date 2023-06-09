@@ -43,8 +43,8 @@ class GcpCloudStorageClientProvider
   explicit GcpCloudStorageClientProvider(
       std::shared_ptr<BlobStorageClientOptions> options,
       std::shared_ptr<InstanceClientProviderInterface> instance_client,
-      std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
-      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor,
       std::shared_ptr<GcpCloudStorageFactory> cloud_storage_factory =
           std::make_shared<GcpCloudStorageFactory>())
       : options_(options),
@@ -243,9 +243,9 @@ class GcpCloudStorageClientProvider
     auto result = core::SuccessExecutionResult();
     if (!status.ok()) {
       result = common::GcpUtils::GcpErrorConverter(status);
-      ERROR_CONTEXT(kGcpCloudStorageClientProvider, context, result,
-                    "Blob stream failed. Message: %s.",
-                    status.message().c_str());
+      SCP_ERROR_CONTEXT(kGcpCloudStorageClientProvider, context, result,
+                        "Blob stream failed. Message: %s.",
+                        status.message().c_str());
       if constexpr (is_get_blob) {
         FinishContext(result, context, cpu_async_executor_);
       } else {

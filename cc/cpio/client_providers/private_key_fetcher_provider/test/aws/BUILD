@@ -33,3 +33,21 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "test_aws_private_key_fetcher_provider_lib",
+    srcs = [
+        "test_aws_private_key_fetcher_provider.cc",
+        "test_aws_private_key_fetcher_provider.h",
+        "//cc/cpio/client_providers/interface:private_key_fetcher_provider_interface.h",
+        "//cc/cpio/client_providers/private_key_fetcher_provider/src/aws:aws_private_key_fetcher_provider_srcs",
+    ],
+    copts = [
+        "-DTEST_CPIO=1",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/http2_client/src:http2_client_lib",
+        "//cc/cpio/client_providers/private_key_fetcher_provider/src/aws:aws_private_key_fetcher_provider_lib",
+    ],
+)

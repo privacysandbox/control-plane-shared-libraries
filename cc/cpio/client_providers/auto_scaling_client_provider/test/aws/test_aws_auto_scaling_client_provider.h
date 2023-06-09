@@ -34,8 +34,10 @@ class TestAwsAutoScalingClientProvider : public AwsAutoScalingClientProvider {
   explicit TestAwsAutoScalingClientProvider(
       const std::shared_ptr<TestAwsAutoScalingClientOptions>& test_options,
       const std::shared_ptr<InstanceClientProviderInterface>&
-          instance_client_provider)
-      : AwsAutoScalingClientProvider(test_options, instance_client_provider),
+          instance_client_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
+      : AwsAutoScalingClientProvider(test_options, instance_client_provider,
+                                     io_async_executor),
         test_options_(test_options) {}
 
  private:

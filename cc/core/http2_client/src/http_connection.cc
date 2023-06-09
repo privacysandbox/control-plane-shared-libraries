@@ -99,9 +99,9 @@ ExecutionResult HttpConnection::Init() noexcept {
     if (ec.failed()) {
       auto result =
           FailureExecutionResult(errors::SC_HTTP2_CLIENT_TLS_CTX_ERROR);
-      ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result,
-            "Failed to initialize with tls ctx error %s.",
-            ec.message().c_str());
+      SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result,
+                "Failed to initialize with tls ctx error %s.",
+                ec.message().c_str());
       return result;
     }
 
@@ -119,12 +119,13 @@ ExecutionResult HttpConnection::Init() noexcept {
   } catch (...) {
     auto result = FailureExecutionResult(
         errors::SC_HTTP2_CLIENT_CONNECTION_INITIALIZATION_FAILED);
-    ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result, "Failed to initialize.");
+    SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result,
+              "Failed to initialize.");
     return result;
   }
 
-  INFO(kHttp2Client, kZeroUuid, kZeroUuid, "Initialized connection with ID: %p",
-       this);
+  SCP_INFO(kHttp2Client, kZeroUuid, kZeroUuid,
+           "Initialized connection with ID: %p", this);
 }
 
 ExecutionResult HttpConnection::Run() noexcept {
@@ -145,7 +146,8 @@ ExecutionResult HttpConnection::Stop() noexcept {
     // the session.
     post(*io_service_, [this]() {
       session_->shutdown();
-      INFO(kHttp2Client, kZeroUuid, kZeroUuid, "Session is being shutdown.");
+      SCP_INFO(kHttp2Client, kZeroUuid, kZeroUuid,
+               "Session is being shutdown.");
     });
   }
 
@@ -157,7 +159,7 @@ ExecutionResult HttpConnection::Stop() noexcept {
     // stop io_service_.
     post(*io_service_, [this]() {
       io_service_->stop();
-      INFO(kHttp2Client, kZeroUuid, kZeroUuid, "IO service is stopping.");
+      SCP_INFO(kHttp2Client, kZeroUuid, kZeroUuid, "IO service is stopping.");
     });
 
     if (worker_->joinable()) {
@@ -171,15 +173,15 @@ ExecutionResult HttpConnection::Stop() noexcept {
   } catch (...) {
     auto result =
         FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_STOP_FAILED);
-    ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result, "Failed to stop.");
+    SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result, "Failed to stop.");
     return result;
   }
 }
 
 void HttpConnection::OnConnectionCreated(tcp::resolver::iterator) noexcept {
   post(*io_service_, [this]() mutable {
-    INFO(kHttp2Client, kZeroUuid, kZeroUuid,
-         "Connection %p for host %s is established.", this, host_.c_str());
+    SCP_INFO(kHttp2Client, kZeroUuid, kZeroUuid,
+             "Connection %p for host %s is established.", this, host_.c_str());
     is_ready_ = true;
   });
 }
@@ -188,8 +190,8 @@ void HttpConnection::OnConnectionError() noexcept {
   post(*io_service_, [this]() mutable {
     auto failure =
         FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
-    ERROR(kHttp2Client, kZeroUuid, kZeroUuid, failure,
-          "Connection %p for host %s got an error.", this, host_.c_str());
+    SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, failure,
+              "Connection %p for host %s got an error.", this, host_.c_str());
 
     is_ready_ = false;
     is_dropped_ = true;
@@ -202,8 +204,8 @@ void HttpConnection::CancelPendingCallbacks() noexcept {
   vector<Uuid> keys;
   auto execution_result = pending_network_calls_.Keys(keys);
   if (!execution_result.Successful()) {
-    ERROR(kHttp2Client, kZeroUuid, kZeroUuid, execution_result,
-          "Cannot get the list of pending callbacks for the connection.");
+    SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, execution_result,
+              "Cannot get the list of pending callbacks for the connection.");
     return;
   }
 
@@ -212,8 +214,8 @@ void HttpConnection::CancelPendingCallbacks() noexcept {
     execution_result = pending_network_calls_.Find(key, http_context);
 
     if (!execution_result.Successful()) {
-      ERROR(kHttp2Client, kZeroUuid, kZeroUuid, execution_result,
-            "Cannot get the callback for the pending call connection.");
+      SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, execution_result,
+                "Cannot get the callback for the pending call connection.");
       continue;
     }
 
@@ -232,8 +234,8 @@ void HttpConnection::CancelPendingCallbacks() noexcept {
           FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
     }
 
-    ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
-                  "Pending callback context is dropped.");
+    SCP_ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
+                      "Pending callback context is dropped.");
     http_context.Finish();
   }
 }
@@ -257,8 +259,8 @@ ExecutionResult HttpConnection::Execute(
   if (!is_ready_) {
     auto failure =
         RetryExecutionResult(errors::SC_HTTP2_CLIENT_NO_CONNECTION_ESTABLISHED);
-    ERROR_CONTEXT(kHttp2Client, http_context, failure,
-                  "The connection isn't ready.");
+    SCP_ERROR_CONTEXT(kHttp2Client, http_context, failure,
+                      "The connection isn't ready.");
     return failure;
   }
 
@@ -292,8 +294,8 @@ void HttpConnection::SendHttpRequest(
 
     http_context.result = FailureExecutionResult(
         errors::SC_HTTP2_CLIENT_HTTP_METHOD_NOT_SUPPORTED);
-    ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
-                  "Failed as request method not supported.");
+    SCP_ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
+                      "Failed as request method not supported.");
     FinishContext(http_context.result, http_context, async_executor_);
     return;
   }
@@ -324,8 +326,8 @@ void HttpConnection::SendHttpRequest(
       return;
     }
 
-    ERROR_CONTEXT(kHttp2Client, http_context, uri.result(),
-                  "Failed escaping URI.");
+    SCP_ERROR_CONTEXT(kHttp2Client, http_context, uri.result(),
+                      "Failed escaping URI.");
     FinishContext(uri.result(), http_context, async_executor_);
     return;
   }
@@ -339,9 +341,9 @@ void HttpConnection::SendHttpRequest(
 
     http_context.result = RetryExecutionResult(
         errors::SC_HTTP2_CLIENT_FAILED_TO_ISSUE_HTTP_REQUEST);
-    ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
-                  "Http request failed for the client with error code %s!",
-                  ec.message().c_str());
+    SCP_ERROR_CONTEXT(kHttp2Client, http_context, http_context.result,
+                      "Http request failed for the client with error code %s!",
+                      ec.message().c_str());
 
     FinishContext(http_context.result, http_context, async_executor_);
 
@@ -369,8 +371,9 @@ void HttpConnection::OnRequestResponseClosed(
   // `!error_code` means no error during on_close.
   if (!error_code) {
     http_context.result = result;
-    DEBUG_CONTEXT(kHttp2Client, http_context, "Response has status code: %d",
-                  static_cast<int>(http_context.response->code));
+    SCP_DEBUG_CONTEXT(kHttp2Client, http_context,
+                      "Response has status code: %d",
+                      static_cast<int>(http_context.response->code));
   } else {
     // `!result.Successful() && result != FailureExecutionResult(SC_UNKNOWN)`
     // means http_context got failure response code.
@@ -380,11 +383,12 @@ void HttpConnection::OnRequestResponseClosed(
       http_context.result = RetryExecutionResult(
           errors::SC_HTTP2_CLIENT_HTTP_REQUEST_CLOSE_ERROR);
     }
-    DEBUG_CONTEXT(kHttp2Client, http_context,
-                  "Http request failed request on_close with error code %s, "
-                  "and the context response has status code: %d",
-                  to_string(error_code).c_str(),
-                  static_cast<int>(http_context.response->code));
+    SCP_DEBUG_CONTEXT(
+        kHttp2Client, http_context,
+        "Http request failed request on_close with error code %s, "
+        "and the context response has status code: %d",
+        to_string(error_code).c_str(),
+        static_cast<int>(http_context.response->code));
   }
 
   FinishContext(http_context.result, http_context, async_executor_);
@@ -403,11 +407,11 @@ void HttpConnection::OnResponseCallback(
     for (auto header : http_response.header()) {
       headers_string += header.first + " " + header.second.value + "|";
     }
-    DEBUG_CONTEXT(kHttp2Client, http_context,
-                  "Http response is not OK. Endpoint: %s, status code: %d, "
-                  "Headers: %s",
-                  http_context.request->path->c_str(),
-                  http_response.status_code(), headers_string.c_str());
+    SCP_DEBUG_CONTEXT(kHttp2Client, http_context,
+                      "Http response is not OK. Endpoint: %s, status code: %d, "
+                      "Headers: %s",
+                      http_context.request->path->c_str(),
+                      http_response.status_code(), headers_string.c_str());
   }
 
   for (const auto& [header, value] : http_response.header()) {

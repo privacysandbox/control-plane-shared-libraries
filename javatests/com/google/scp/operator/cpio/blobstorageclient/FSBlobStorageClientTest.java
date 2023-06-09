@@ -19,6 +19,7 @@ package com.google.scp.operator.cpio.blobstorageclient;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.scp.operator.cpio.blobstorageclient.BlobStorageClient.getDataLocation;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertThrows;
 
 import com.google.acai.Acai;
 import com.google.common.collect.ImmutableList;
@@ -271,6 +272,13 @@ public class FSBlobStorageClientTest {
                 blob1.getFileName().toString(),
                 blob2.getFileName().toString(),
                 blob3.getFileName().toString()));
+  }
+
+  @Test
+  public void listBlobs_nonexistentBucket() {
+    assertThrows(
+        BlobStorageClientException.class,
+        () -> fsBlobStorageClient.listBlobs(getDataLocation("fakeBucket", "blob-1")));
   }
 
   public static final class TestEnv extends AbstractModule {

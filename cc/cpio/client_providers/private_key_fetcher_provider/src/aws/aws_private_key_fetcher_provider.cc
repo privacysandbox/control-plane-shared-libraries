@@ -70,8 +70,8 @@ ExecutionResult AwsPrivateKeyFetcherProvider::Init() noexcept {
   if (!role_credentials_provider_) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND);
-    ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get credentials provider.");
+    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
+              execution_result, "Failed to get credentials provider.");
     return execution_result;
   }
 
@@ -102,8 +102,8 @@ void AwsPrivateKeyFetcherProvider::
             get_session_credentials_context) noexcept {
   auto execution_result = get_session_credentials_context.result;
   if (!execution_result.Successful()) {
-    ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get AWS credentials.");
+    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
+              execution_result, "Failed to get AWS credentials.");
     sign_request_context.result = get_session_credentials_context.result;
     sign_request_context.Finish();
     return;
@@ -139,8 +139,9 @@ ExecutionResult AwsPrivateKeyFetcherProvider::SignHttpRequestUsingV4Signer(
                             *http_request->path)) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_INVALID_URI);
-    ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to sign HTTP request for an invalid URI.");
+    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
+              execution_result,
+              "Failed to sign HTTP request for an invalid URI.");
     return execution_result;
   }
   http_request->headers->insert({string("Host"), host});
@@ -150,6 +151,7 @@ ExecutionResult AwsPrivateKeyFetcherProvider::SignHttpRequestUsingV4Signer(
   return signer.SignRequest(*http_request, headers_to_sign);
 }
 
+#ifndef TEST_CPIO
 std::shared_ptr<PrivateKeyFetcherProviderInterface>
 PrivateKeyFetcherProviderFactory::Create(
     const shared_ptr<HttpClientInterface>& http_client,
@@ -159,4 +161,5 @@ PrivateKeyFetcherProviderFactory::Create(
   return make_shared<AwsPrivateKeyFetcherProvider>(http_client,
                                                    role_credentials_provider);
 }
+#endif
 }  // namespace google::scp::cpio::client_providers

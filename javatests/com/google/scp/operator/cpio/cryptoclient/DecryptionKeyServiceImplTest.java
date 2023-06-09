@@ -17,6 +17,8 @@
 package com.google.scp.operator.cpio.cryptoclient;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -25,7 +27,10 @@ import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.HybridDecrypt;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.scp.operator.cpio.cryptoclient.DecryptionKeyService.KeyFetchException;
+import com.google.scp.operator.cpio.cryptoclient.model.ErrorReason;
 import com.google.scp.operator.cpio.cryptoclient.testing.FakePrivateKeyFetchingService;
+import com.google.scp.shared.api.model.Code;
 import com.google.scp.shared.testutils.crypto.MockTinkUtils;
 import java.util.UUID;
 import org.junit.Before;
@@ -68,6 +73,100 @@ public class DecryptionKeyServiceImplTest {
         decryptionKeyServiceImpl.getDecrypter(UUID.randomUUID().toString());
     assertThat(actualHybridDecrypt.decrypt(cipheredText, new byte[] {}))
         .isEqualTo(plaintext.getBytes());
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_NOT_FOUND() throws Exception {
+    keyFetchingService.setExceptionContents(Code.NOT_FOUND, /* message= */ "");
+    keyFetchingService.setResponse(mockTinkUtils.getAeadKeySetJson());
+    when(aead.decrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getDecryptedKey());
+    when(aead.encrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getEncryptedKey());
+    String plaintext = "test_plaintext";
+    byte[] cipheredText = mockTinkUtils.getCiphertext(plaintext);
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class,
+            () -> decryptionKeyServiceImpl.getDecrypter(UUID.randomUUID().toString()));
+
+    assertEquals(exception.getReason(), ErrorReason.KEY_NOT_FOUND);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_PERMISSION_DENIED() throws Exception {
+    keyFetchingService.setExceptionContents(Code.PERMISSION_DENIED, /* message= */ "");
+    keyFetchingService.setResponse(mockTinkUtils.getAeadKeySetJson());
+    when(aead.decrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getDecryptedKey());
+    when(aead.encrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getEncryptedKey());
+    String plaintext = "test_plaintext";
+    byte[] cipheredText = mockTinkUtils.getCiphertext(plaintext);
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class,
+            () -> decryptionKeyServiceImpl.getDecrypter(UUID.randomUUID().toString()));
+
+    assertEquals(exception.getReason(), ErrorReason.PERMISSION_DENIED);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_INTERNAL() throws Exception {
+    keyFetchingService.setExceptionContents(Code.INTERNAL, /* message= */ "");
+    keyFetchingService.setResponse(mockTinkUtils.getAeadKeySetJson());
+    when(aead.decrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getDecryptedKey());
+    when(aead.encrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getEncryptedKey());
+    String plaintext = "test_plaintext";
+    byte[] cipheredText = mockTinkUtils.getCiphertext(plaintext);
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class,
+            () -> decryptionKeyServiceImpl.getDecrypter(UUID.randomUUID().toString()));
+
+    assertEquals(exception.getReason(), ErrorReason.INTERNAL);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_default() throws Exception {
+    keyFetchingService.setExceptionContents(Code.UNKNOWN, /* message= */ "");
+    keyFetchingService.setResponse(mockTinkUtils.getAeadKeySetJson());
+    when(aead.decrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getDecryptedKey());
+    when(aead.encrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getEncryptedKey());
+    String plaintext = "test_plaintext";
+    byte[] cipheredText = mockTinkUtils.getCiphertext(plaintext);
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class,
+            () -> decryptionKeyServiceImpl.getDecrypter(UUID.randomUUID().toString()));
+
+    assertEquals(exception.getReason(), ErrorReason.UNKNOWN_ERROR);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_UNKNOWN() throws Exception {
+    keyFetchingService.setResponse("bad test string");
+    when(aead.decrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getDecryptedKey());
+    when(aead.encrypt(any(byte[].class), any(byte[].class)))
+        .thenReturn(mockTinkUtils.getEncryptedKey());
+    String plaintext = "test_plaintext";
+    byte[] cipheredText = mockTinkUtils.getCiphertext(plaintext);
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class,
+            () -> decryptionKeyServiceImpl.getDecrypter(UUID.randomUUID().toString()));
+
+    assertEquals(exception.getReason(), ErrorReason.UNKNOWN_ERROR);
   }
 
   private static final class TestEnv extends AbstractModule {

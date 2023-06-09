@@ -14,13 +14,18 @@
 
 #include "docker_helper.h"
 
+#include <cstdio>
 #include <iostream>
 #include <map>
+#include <stdexcept>
 #include <string>
 
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 
+using std::array;
 using std::map;
+using std::runtime_error;
 using std::string;
 
 // localstack version is pinned so that tests are repeatable
@@ -141,5 +146,36 @@ int StopContainer(const std::string& container_name) {
 
 std::string BuildStopContainerCmd(const std::string& container_name) {
   return absl::StrFormat("docker rm -f %s", container_name);
+}
+
+std::string GetIpAddress(const std::string& network_name,
+                         const std::string& container_name) {
+  char buffer[20];
+  string result;
+  string command =
+      absl::StrCat("docker inspect -f '{{ .NetworkSettings.Networks.",
+                   network_name, ".IPAddress }}' ", container_name);
+  auto pipe = popen(command.c_str(), "r");
+  if (!pipe) {
+    throw runtime_error("Failed to fetch IP address for container!");
+    return "";
+  }
+
+  while (fgets(buffer, 20, pipe) != nullptr) {
+    result += buffer;
+  }
+
+  auto return_status = pclose(pipe);
+  if (return_status == EXIT_FAILURE) {
+    throw runtime_error(
+        "Failed to close pipe to fetch IP address for container!");
+    return "";
+  }
+
+  auto length = result.length();
+  if (result.back() == '\n') {
+    length -= 1;
+  }
+  return result.substr(0, length);
 }
 }  // namespace google::scp::core::test

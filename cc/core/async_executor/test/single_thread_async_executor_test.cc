@@ -40,7 +40,6 @@ using std::chrono::duration_cast;
 using std::chrono::high_resolution_clock;
 using std::chrono::nanoseconds;
 using std::chrono::seconds;
-using testing::Values;
 
 namespace google::scp::core::test {
 TEST(SingleThreadAsyncExecutorTests, CannotInitWithTooBigQueueCap) {
@@ -154,44 +153,6 @@ TEST(SingleThreadAsyncExecutorTests, CountWorkSingleThread) {
   }
   executor.Stop();
 }
-
-class AffinityTest : public testing::TestWithParam<size_t> {
- protected:
-  size_t GetCpu() const { return GetParam(); }
-};
-
-TEST_P(AffinityTest, CountWorkSingleThreadWithAffinity) {
-  int queue_cap = 10;
-  SingleThreadAsyncExecutor executor(queue_cap, false, GetCpu());
-  executor.Init();
-  executor.Run();
-  {
-    atomic<int> count(0);
-    for (int i = 0; i < queue_cap / 2; i++) {
-      executor.Schedule(
-          [&]() {
-            cpu_set_t cpuset;
-            CPU_ZERO(&cpuset);
-            pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-            if (GetCpu() < std::thread::hardware_concurrency()) {
-              EXPECT_NE(CPU_ISSET(GetCpu(), &cpuset), 0);
-            }
-            count++;
-          },
-          AsyncPriority::Normal);
-      executor.Schedule([&]() { count++; }, AsyncPriority::High);
-    }
-    // Waits some time to finish the work.
-    WaitUntil([&]() { return count == queue_cap; });
-    EXPECT_EQ(count, queue_cap);
-  }
-  executor.Stop();
-}
-
-// The test should work for any value, even an invalid CPU #.
-INSTANTIATE_TEST_SUITE_P(SingleThreadAsyncExecutorTests, AffinityTest,
-                         Values(0, 1, std::thread::hardware_concurrency() - 1,
-                                std::thread::hardware_concurrency()));
 
 TEST(SingleThreadAsyncExecutorTests, CannotScheduleHiPri) {
   int queue_cap = 50;

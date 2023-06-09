@@ -34,7 +34,7 @@ filegroup(
 )
 
 cc_library(
-    name = "gcp_instance_client_provider",
+    name = "gcp_instance_client_provider_lib",
     srcs = [
         "error_codes.h",
         "gcp_instance_client_provider.cc",

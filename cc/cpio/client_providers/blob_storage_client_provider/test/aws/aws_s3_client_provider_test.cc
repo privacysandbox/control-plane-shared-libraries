@@ -99,7 +99,7 @@ class MockAwsS3Factory : public AwsS3Factory {
   MOCK_METHOD(core::ExecutionResultOr<std::shared_ptr<Aws::S3::S3Client>>,
               CreateClient,
               (ClientConfiguration&,
-               std::shared_ptr<core::AsyncExecutorInterface>),
+               const std::shared_ptr<core::AsyncExecutorInterface>&),
               (noexcept, override));
 };
 

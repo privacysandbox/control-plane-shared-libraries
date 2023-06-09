@@ -18,7 +18,13 @@ package com.google.scp.operator.cpio.cryptoclient.model;
 
 /** Error reasons for crypto client. */
 public enum ErrorReason {
-  // Permission was denied.
+  // Internal error, caused by unexpected server-side exceptions.
+  INTERNAL,
+  // Unable to decrypt key, caused by error in KMS tool
+  KEY_DECRYPTION_ERROR,
+  // Key not found error, caused by HTTP 404 error on private key endpoint when key is not found
+  KEY_NOT_FOUND,
+  // Permission was denied, caused by HTTP 403 error on private key endpoint.
   PERMISSION_DENIED,
   // An unknown fatal error occurred.
   UNKNOWN_ERROR,

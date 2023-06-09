@@ -68,7 +68,7 @@ using std::vector;
 
 namespace {
 constexpr char kEncryptionKeyPrefix[] = "encryptionKeys/";
-constexpr char kEncryptionKeysLabel[] = "encryptionKeys";
+constexpr char kEncryptionKeysLabel[] = "keys";
 constexpr char kResourceNameLabel[] = "name";
 constexpr char kEncryptionKeyType[] = "encryptionKeyType";
 constexpr char kMultiPartyEnum[] = "MULTI_PARTY_HYBRID_EVEN_KEYSPLIT";
@@ -81,7 +81,7 @@ constexpr char kKeyData[] = "keyData";
 constexpr char kPublicKeySignature[] = "publicKeySignature";
 constexpr char kKeyEncryptionKeyUri[] = "keyEncryptionKeyUri";
 constexpr char kKeyMaterial[] = "keyMaterial";
-constexpr char kListKeysByTimeUri[] = "/encryptionKeys:recent";
+constexpr char kListKeysByTimeUri[] = ":recent";
 constexpr char kMaxAgeSecondsQueryParameter[] = "maxAgeSeconds=";
 }  // namespace
 

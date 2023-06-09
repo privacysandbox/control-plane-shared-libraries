@@ -52,8 +52,8 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
   GcpSpannerClientProvider(
       std::shared_ptr<InstanceClientProviderInterface> instance_client,
       std::shared_ptr<NoSQLDatabaseClientOptions> client_options,
-      std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
-      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor,
       std::shared_ptr<SpannerFactory> spanner_factory =
           std::make_shared<SpannerFactory>())
       : instance_client_(instance_client),
@@ -212,7 +212,7 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
   std::shared_ptr<NoSQLDatabaseClientOptions> client_options_;
 
   /// An instance of the async executor.
-  std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
+  const std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
       io_async_executor_;
 
   /// An instance of the GCP Spanner client. To enable thread safety of the

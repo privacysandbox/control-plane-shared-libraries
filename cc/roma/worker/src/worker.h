@@ -38,11 +38,7 @@ class Worker : public core::ServiceInterface {
   /// @brief Construct a new Worker object.
   /// @param role_id the role_id of the worker.
   /// @param function_bindings registered function bindings
-  explicit Worker(
-      common::RoleId role_id,
-      const std::vector<std::shared_ptr<FunctionBindingObjectBase>>&
-          function_bindings =
-              std::vector<std::shared_ptr<FunctionBindingObjectBase>>());
+  explicit Worker(common::RoleId role_id, const Config& config);
 
   /// @brief Construct a V8 isolate for this worker.
   /// @return the execution result.
@@ -115,15 +111,7 @@ class Worker : public core::ServiceInterface {
 
   /// @brief The execution manager leverages V8 API to persist code and
   /// execute requests.
-  ExecutionManager execution_manager_;
-
-  /// @brief User-registered C++/JS function bindings
-  const std::vector<std::shared_ptr<FunctionBindingObjectBase>>&
-      function_bindings_;
-
-  /// @brief These are external references (pointers to data outside of the v8
-  /// heap) which are needed for serialization of the v8 snapshot.
-  std::vector<intptr_t> external_references_;
+  std::unique_ptr<ExecutionManager> execution_manager_;
 
   /// @brief The PID of this worker process after being forked.
   std::atomic<pid_t>* worker_process_id_;

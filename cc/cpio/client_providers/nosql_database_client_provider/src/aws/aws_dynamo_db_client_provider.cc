@@ -101,8 +101,8 @@ AwsDynamoDBClientProvider::CreateClientConfig() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_);
   if (!region_code_or.Successful()) {
-    ERROR(kDynamoDB, kZeroUuid, kZeroUuid, region_code_or.result(),
-          "Failed to get region code for current instance");
+    SCP_ERROR(kDynamoDB, kZeroUuid, kZeroUuid, region_code_or.result(),
+              "Failed to get region code for current instance");
     return region_code_or.result();
   }
   client_config.region = (*region_code_or).c_str();
@@ -113,15 +113,15 @@ AwsDynamoDBClientProvider::CreateClientConfig() noexcept {
 ExecutionResult AwsDynamoDBClientProvider::Init() noexcept {
   auto config_or = CreateClientConfig();
   if (!config_or.Successful()) {
-    ERROR(kDynamoDB, kZeroUuid, kZeroUuid, config_or.result(),
-          "Error creating ClientConfig");
+    SCP_ERROR(kDynamoDB, kZeroUuid, kZeroUuid, config_or.result(),
+              "Error creating ClientConfig");
     return config_or.result();
   }
 
   auto client_or = dynamo_db_factory_->CreateClient(*config_or);
   if (!client_or.Successful()) {
-    ERROR(kDynamoDB, kZeroUuid, kZeroUuid, client_or.result(),
-          "Error creating DynamoDBClient");
+    SCP_ERROR(kDynamoDB, kZeroUuid, kZeroUuid, client_or.result(),
+              "Error creating DynamoDBClient");
     return client_or.result();
   }
 
@@ -222,11 +222,11 @@ void AwsDynamoDBClientProvider::OnGetDatabaseItemCallback(
   if (!outcome.IsSuccess()) {
     auto result = AwsDynamoDBUtils::ConvertDynamoErrorToExecutionResult(
         outcome.GetError().GetErrorType());
-    ERROR_CONTEXT(kDynamoDB, get_database_item_context, result,
-                  "Get database item request failed. Error code: %d, "
-                  "message: %s",
-                  outcome.GetError().GetResponseCode(),
-                  outcome.GetError().GetMessage().c_str());
+    SCP_ERROR_CONTEXT(kDynamoDB, get_database_item_context, result,
+                      "Get database item request failed. Error code: %d, "
+                      "message: %s",
+                      outcome.GetError().GetResponseCode(),
+                      outcome.GetError().GetMessage().c_str());
     FinishContext(result, get_database_item_context, cpu_async_executor_);
     return;
   }
@@ -237,7 +237,7 @@ void AwsDynamoDBClientProvider::OnGetDatabaseItemCallback(
   if (items.size() != 1) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_RECORD_NOT_FOUND);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kDynamoDB, get_database_item_context, result,
         "Found %d items when we were looking for exactly 1 in table %s",
         items.size(), request_table_name.c_str())
@@ -266,10 +266,11 @@ void AwsDynamoDBClientProvider::OnGetDatabaseItemCallback(
         attribute_key_value_pair.second);
 
     if (!attribute_or.Successful()) {
-      ERROR_CONTEXT(kDynamoDB, get_database_item_context, attribute_or.result(),
-                    "Error converting returned DynamoDB attribute to "
-                    "ItemAttribute for table %s",
-                    request_table_name.c_str());
+      SCP_ERROR_CONTEXT(kDynamoDB, get_database_item_context,
+                        attribute_or.result(),
+                        "Error converting returned DynamoDB attribute to "
+                        "ItemAttribute for table %s",
+                        request_table_name.c_str());
       FinishContext(attribute_or.result(), get_database_item_context,
                     cpu_async_executor_);
       return;
@@ -332,10 +333,10 @@ ExecutionResult AwsDynamoDBClientProvider::UpsertDatabaseItem(
               request.new_attributes(attribute_index));
       if (!attribute_value_or.Successful()) {
         upsert_database_item_context.result = attribute_value_or.result();
-        ERROR_CONTEXT(kDynamoDB, upsert_database_item_context,
-                      attribute_value_or.result(),
-                      "Error converting ItemAttribute type for table %s",
-                      request.key().table_name().c_str());
+        SCP_ERROR_CONTEXT(kDynamoDB, upsert_database_item_context,
+                          attribute_value_or.result(),
+                          "Error converting ItemAttribute type for table %s",
+                          request.key().table_name().c_str());
         upsert_database_item_context.Finish();
         return attribute_value_or.result();
       }
@@ -385,11 +386,11 @@ void AwsDynamoDBClientProvider::OnUpsertDatabaseItemCallback(
   if (!outcome.IsSuccess()) {
     result = AwsDynamoDBUtils::ConvertDynamoErrorToExecutionResult(
         outcome.GetError().GetErrorType());
-    ERROR_CONTEXT(kDynamoDB, upsert_database_item_context, result,
-                  "Upsert database item request failed. Error code: %d, "
-                  "message: %s",
-                  outcome.GetError().GetResponseCode(),
-                  outcome.GetError().GetMessage().c_str());
+    SCP_ERROR_CONTEXT(kDynamoDB, upsert_database_item_context, result,
+                      "Upsert database item request failed. Error code: %d, "
+                      "message: %s",
+                      outcome.GetError().GetResponseCode(),
+                      outcome.GetError().GetMessage().c_str());
   }
 
   FinishContext(result, upsert_database_item_context, cpu_async_executor_);

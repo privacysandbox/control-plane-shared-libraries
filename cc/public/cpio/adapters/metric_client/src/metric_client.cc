@@ -85,15 +85,15 @@ ExecutionResult MetricClient::CreateMetricClientProvider() noexcept {
 ExecutionResult MetricClient::Init() noexcept {
   auto execution_result = CreateMetricClientProvider();
   if (!execution_result.Successful()) {
-    ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create MetricClientProvider.");
+    SCP_ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to create MetricClientProvider.");
     return ConvertToPublicExecutionResult(execution_result);
   }
 
   execution_result = metric_client_provider_->Init();
   if (!execution_result.Successful()) {
-    ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to initialize MetricClient.");
+    SCP_ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to initialize MetricClient.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }
@@ -101,8 +101,8 @@ ExecutionResult MetricClient::Init() noexcept {
 ExecutionResult MetricClient::Run() noexcept {
   auto execution_result = metric_client_provider_->Run();
   if (!execution_result.Successful()) {
-    ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run MetricClient.");
+    SCP_ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to run MetricClient.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }
@@ -110,8 +110,8 @@ ExecutionResult MetricClient::Run() noexcept {
 ExecutionResult MetricClient::Stop() noexcept {
   auto execution_result = metric_client_provider_->Stop();
   if (!execution_result.Successful()) {
-    ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to stop MetricClient.");
+    SCP_ERROR(kMetricClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to stop MetricClient.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }

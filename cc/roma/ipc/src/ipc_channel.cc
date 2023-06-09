@@ -121,9 +121,16 @@ ExecutionResult IpcChannel::PushResponse(unique_ptr<Response> response) {
 ExecutionResult IpcChannel::PopResponse(unique_ptr<Response>& response) {
   unique_ptr<WorkItem> item;
   auto result = work_container_->GetCompleted(item);
-  if (!result.Successful()) {
-    return result;
-  }
+  RETURN_IF_FAILURE(result);
+  response = move(item->response);
+  response->request = move(item->request);
+  return SuccessExecutionResult();
+}
+
+ExecutionResult IpcChannel::TryPopResponse(unique_ptr<Response>& response) {
+  unique_ptr<WorkItem> item;
+  auto result = work_container_->TryGetCompleted(item);
+  RETURN_IF_FAILURE(result);
   response = move(item->response);
   response->request = move(item->request);
   return SuccessExecutionResult();

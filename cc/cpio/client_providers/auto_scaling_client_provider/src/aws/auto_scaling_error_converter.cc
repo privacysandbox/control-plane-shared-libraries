@@ -73,9 +73,9 @@ ExecutionResult AutoScalingErrorConverter::ConvertAutoScalingError(
       failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
   }
 
-  ERROR(kAutoScalingErrorConverter, kZeroUuid, kZeroUuid, failure,
-        "AWS cloud service error: code is %d, and error message is %s.",
-        error.GetErrorType(), error.GetMessage().c_str());
+  SCP_ERROR(kAutoScalingErrorConverter, kZeroUuid, kZeroUuid, failure,
+            "AWS cloud service error: code is %d, and error message is %s.",
+            error.GetErrorType(), error.GetMessage().c_str());
   return failure;
 }
 }  // namespace google::scp::cpio::client_providers

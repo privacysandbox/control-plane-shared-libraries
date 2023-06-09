@@ -34,8 +34,9 @@ class AsyncExecutorUtils {
     if (rc != 0) {
       auto result = FailureExecutionResult(
           errors::SC_ASYNC_EXECUTOR_UNABLE_TO_SET_AFFINITY);
-      ERROR(kAsyncExecutorUtils, common::kZeroUuid, common::kZeroUuid, result,
-            "SetAffinity pthread_setaffinity_np failed: %s", strerror(rc));
+      SCP_ERROR(kAsyncExecutorUtils, common::kZeroUuid, common::kZeroUuid,
+                result, "SetAffinity pthread_setaffinity_np failed: %s",
+                strerror(rc));
       return result;
     }
     return SuccessExecutionResult();

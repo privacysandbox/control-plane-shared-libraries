@@ -74,7 +74,7 @@ class AwsPrivateKeyFetcherProvider : public PrivateKeyFetcherProvider {
    * @param security_token AWS Security Token.
    * @param region AWS service region.
    */
-  core::ExecutionResult SignHttpRequestUsingV4Signer(
+  virtual core::ExecutionResult SignHttpRequestUsingV4Signer(
       std::shared_ptr<core::HttpRequest>& http_request,
       const std::string& access_key, const std::string& secret_key,
       const std::string& security_token, const std::string& region) noexcept;

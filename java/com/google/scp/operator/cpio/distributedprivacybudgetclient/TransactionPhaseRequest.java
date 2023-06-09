@@ -26,15 +26,14 @@ public abstract class TransactionPhaseRequest {
 
   static Builder builder() {
     return new AutoValue_TransactionPhaseRequest.Builder()
-        .setTransactionExecutionPhase(TransactionExecutionPhase.UNKNOWN);
+        .setTransactionPhase(TransactionPhase.UNKNOWN);
   }
 
   @AutoValue.Builder
   abstract static class Builder {
     abstract Builder setTransactionId(UUID transactionId);
 
-    abstract Builder setTransactionExecutionPhase(
-        TransactionExecutionPhase transactionExecutionPhase);
+    abstract Builder setTransactionPhase(TransactionPhase transactionPhase);
 
     abstract Builder setLastExecutionTimestamp(Timestamp lastExecutionTimestamp);
 
@@ -44,7 +43,7 @@ public abstract class TransactionPhaseRequest {
   // Id of the transaction.
   public abstract UUID transactionId();
   // The transaction phase to be executed.
-  public abstract TransactionExecutionPhase transactionExecutionPhase();
+  public abstract TransactionPhase transactionPhase();
   // The last execution time stamp of any phases of a transaction.
   public abstract Timestamp lastExecutionTimestamp();
 }

@@ -61,8 +61,8 @@ ExecutionResult PublicKeyClient::CreatePublicKeyClientProvider() noexcept {
   auto execution_result =
       GlobalCpio::GetGlobalCpio()->GetHttpClient(http_client);
   if (!execution_result.Successful()) {
-    ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get http client.");
+    SCP_ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get http client.");
   }
   public_key_client_provider_ =
       PublicKeyClientProviderFactory::Create(options_, http_client);
@@ -72,15 +72,15 @@ ExecutionResult PublicKeyClient::CreatePublicKeyClientProvider() noexcept {
 ExecutionResult PublicKeyClient::Init() noexcept {
   auto execution_result = CreatePublicKeyClientProvider();
   if (!execution_result.Successful()) {
-    ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create PublicKeyClientProvider.");
+    SCP_ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to create PublicKeyClientProvider.");
     return ConvertToPublicExecutionResult(execution_result);
   }
 
   execution_result = public_key_client_provider_->Init();
   if (!execution_result.Successful()) {
-    ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to initialize PublicKeyClientProvider.");
+    SCP_ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to initialize PublicKeyClientProvider.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }
@@ -88,8 +88,8 @@ ExecutionResult PublicKeyClient::Init() noexcept {
 ExecutionResult PublicKeyClient::Run() noexcept {
   auto execution_result = public_key_client_provider_->Run();
   if (!execution_result.Successful()) {
-    ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run PublicKeyClientProvider.");
+    SCP_ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to run PublicKeyClientProvider.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }
@@ -97,8 +97,8 @@ ExecutionResult PublicKeyClient::Run() noexcept {
 ExecutionResult PublicKeyClient::Stop() noexcept {
   auto execution_result = public_key_client_provider_->Stop();
   if (!execution_result.Successful()) {
-    ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to stop PublicKeyClientProvider.");
+    SCP_ERROR(kPublicKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to stop PublicKeyClientProvider.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }

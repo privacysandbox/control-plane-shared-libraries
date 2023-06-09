@@ -18,40 +18,64 @@
 
 #include <stddef.h>
 
+#include <functional>
 #include <memory>
 #include <vector>
 
 #include "function_binding_object.h"
 
 namespace google::scp::roma {
+static constexpr size_t kKB = 1024u;
+static constexpr size_t kMB = kKB * 1024;
+
+struct JsEngineResourceConstraints {
+  /**
+   * @brief The initial heap size. If left as zero, the default value will be
+   * used. By default, JS engine starts with a small heap and dynamically grows
+   * it to match the set of live objects. This may lead to ineffective garbage
+   * collections at startup if the live set is large. Setting the initial heap
+   * size avoids such garbage collections.
+   *
+   */
+  size_t initial_heap_size_in_mb = 0;
+
+  /**
+   * @brief The hard limit for the heap size. When the heap size approaches this
+   * limit, JS engine will perform series of garbage collections. If garbage
+   * collections do not help, the JS engine will crash with a fatal process out
+   * of memory.
+   *
+   */
+  size_t maximum_heap_size_in_mb = 0;
+};
+
 class Config {
  public:
   /**
    * @brief The number of workers that Roma will start. If no valid value is
-   * configured here, the default number of workedkrs (number of host CPUs) will
+   * configured here, the default number of workers (number of host CPUs) will
    * be started.
    *
    * NOTE: A valid value is [1, number_of_host_CPUs].
    */
-  size_t NumberOfWorkers = 0;
+  size_t number_of_workers = 0;
 
   /// @brief The size of worker queue, which caches the requests. Worker could
   /// process the item in the queue one by one. The default queue size is 100.
-  size_t QueueMaxItems = 0;
+  size_t worker_queue_max_items = 0;
 
   /**
    * @brief Shared memory size in MB per IPC. Shared memory is used to store
    * requests and responses shared between ROMA and worker processes. If
-   * IpcMemorySizeMb is not configured, a default value of 128MB will be set.
+   * ipc_memory_size_in_mb is not configured, a default value of 128MB will be
+   * set.
    *
    * NOTE: Small shared memory configurations can cause ROMA OOM error. The size
    * of the shared memory needs to be larger than worker_item_payload *
    * worker_queue_size. The content of worker_item_payload includes request and
    * response.
    */
-  size_t IpcMemorySizeMb = 0;
-
-  size_t ThreadsPerWorker = 0;
+  size_t ipc_memory_size_in_mb = 0;
 
   /**
    * @brief The maximum number of pages that the WASM memory can use. Each page
@@ -59,7 +83,24 @@ class Config {
    * default behavior is to use the maximum value allowed (up to 4GiB).
    *
    */
-  size_t MaxWasmMemoryNumberOfPages = 0;
+  size_t max_wasm_memory_number_of_pages = 0;
+
+  /**
+   * @brief Enable a memory check that will be performed upon initialization.
+   * If not enough memory is available, the service will fail to start.
+   *
+   */
+  bool enable_startup_memory_check = true;
+
+  /**
+   * @brief Function that can be set to overwrite the default memory check
+   * threshold. If this function returns a value that is equal to or smaller
+   * than the available system memory at the time of initialization, roma will
+   * fail to init. The default memory computation uses values based on
+   * the number of workers.
+   * The value returned should be in KB.
+   */
+  std::function<uint64_t()> GetStartupMemoryCheckMinimumNeededValueKb;
 
   /**
    * @brief Register a function binding object
@@ -88,10 +129,39 @@ class Config {
         function_bindings_.begin(), function_bindings_.end());
   }
 
+  /**
+   * Configures the constraints with reasonable default values based on the
+   * provided heap size limit. `initial_heap_size_in_bytes` should be smaller
+   * than `maximum_heap_size_in_bytes`.
+   *
+   * \param initial_heap_size_in_bytes The initial heap size or zero.
+   * \param maximum_heap_size_in_bytes The hard limit for the heap size.
+   */
+  void ConfigureJsEngineResourceConstraints(size_t initial_heap_size_in_mb,
+                                            size_t maximum_heap_size_in_mb) {
+    js_engine_resource_constraints_.initial_heap_size_in_mb =
+        initial_heap_size_in_mb;
+    js_engine_resource_constraints_.maximum_heap_size_in_mb =
+        maximum_heap_size_in_mb;
+  }
+
+  /**
+   * @brief Get JS engine resource constraints objects
+   *
+   * @param[out] js_engine_resource_constraints
+   */
+  void GetJsEngineResourceConstraints(
+      JsEngineResourceConstraints& js_engine_resource_constraints) const {
+    js_engine_resource_constraints = js_engine_resource_constraints_;
+  }
+
  private:
   /**
    * @brief User-registered function JS/C++ function bindings
    */
   std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings_;
+
+  /// v8 heap resource constraints.
+  JsEngineResourceConstraints js_engine_resource_constraints_;
 };
 }  // namespace google::scp::roma

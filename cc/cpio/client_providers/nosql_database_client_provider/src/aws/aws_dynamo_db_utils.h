@@ -106,18 +106,18 @@ class AwsDynamoDBUtils {
                         [](char c) { return c == '.'; })) {
           auto double_or = FromString<double>(number.c_str(), number.length());
           if (!double_or.Successful()) {
-            ERROR(kDynamoDbUtils, core::common::kZeroUuid,
-                  core::common::kZeroUuid, double_or.result(),
-                  "Failed converting AWS value to ItemAttribute");
+            SCP_ERROR(kDynamoDbUtils, core::common::kZeroUuid,
+                      core::common::kZeroUuid, double_or.result(),
+                      "Failed converting AWS value to ItemAttribute");
             return double_or.result();
           }
           return *double_or;
         }
         auto int_or = FromString<int>(number.c_str(), number.length());
         if (!int_or.Successful()) {
-          ERROR(kDynamoDbUtils, core::common::kZeroUuid,
-                core::common::kZeroUuid, int_or.result(),
-                "Failed converting AWS value to ItemAttribute");
+          SCP_ERROR(kDynamoDbUtils, core::common::kZeroUuid,
+                    core::common::kZeroUuid, int_or.result(),
+                    "Failed converting AWS value to ItemAttribute");
           return int_or.result();
         }
         return *int_or;
@@ -222,9 +222,9 @@ class AwsDynamoDBUtils {
     auto part_key_val_or =
         ConvertItemAttributeToDynamoDBType(request.key().partition_key());
     if (!part_key_val_or.Successful()) {
-      ERROR_CONTEXT(kDynamoDbUtils, context, part_key_val_or.result(),
-                    "Error converting partition key type for table %s",
-                    request.key().table_name().c_str());
+      SCP_ERROR_CONTEXT(kDynamoDbUtils, context, part_key_val_or.result(),
+                        "Error converting partition key type for table %s",
+                        request.key().table_name().c_str());
       return part_key_val_or.result();
     }
     key_container.partition_key_val = std::move(*part_key_val_or);
@@ -238,9 +238,9 @@ class AwsDynamoDBUtils {
       auto sort_key_val_or =
           ConvertItemAttributeToDynamoDBType(request.key().sort_key());
       if (!sort_key_val_or.Successful()) {
-        ERROR_CONTEXT(kDynamoDbUtils, context, sort_key_val_or.result(),
-                      "Error converting sort key type for table %s",
-                      request.key().table_name().c_str());
+        SCP_ERROR_CONTEXT(kDynamoDbUtils, context, sort_key_val_or.result(),
+                          "Error converting sort key type for table %s",
+                          request.key().table_name().c_str());
         return sort_key_val_or.result();
       }
       key_container.sort_key_val = std::move(*sort_key_val_or);
@@ -280,9 +280,9 @@ class AwsDynamoDBUtils {
       auto attribute_value_or = ConvertItemAttributeToDynamoDBType(
           request.required_attributes(attribute_index));
       if (!attribute_value_or.Successful()) {
-        ERROR_CONTEXT(kDynamoDbUtils, context, attribute_value_or.result(),
-                      "Error converting attribute type for table %s",
-                      request.key().table_name().c_str());
+        SCP_ERROR_CONTEXT(kDynamoDbUtils, context, attribute_value_or.result(),
+                          "Error converting attribute type for table %s",
+                          request.key().table_name().c_str());
         return attribute_value_or.result();
       }
 

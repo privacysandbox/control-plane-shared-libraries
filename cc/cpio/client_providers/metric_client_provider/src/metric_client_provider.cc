@@ -74,8 +74,8 @@ ExecutionResult MetricClientProvider::Init() noexcept {
       metric_batching_options_->metric_namespace.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET);
-    ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Invalid namespace.");
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Invalid namespace.");
     return execution_result;
   }
 
@@ -92,8 +92,8 @@ ExecutionResult MetricClientProvider::Run() noexcept {
   if (is_running_) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_ALREADY_RUNNING);
-    ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run MetricClientProvider.");
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to run MetricClientProvider.");
     return execution_result;
   }
 
@@ -129,8 +129,8 @@ ExecutionResult MetricClientProvider::PutMetrics(
   if (!is_running_) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING);
-    ERROR_CONTEXT(kMetricClientProvider, record_metric_context,
-                  execution_result, "Failed to record metric.");
+    SCP_ERROR_CONTEXT(kMetricClientProvider, record_metric_context,
+                      execution_result, "Failed to record metric.");
     record_metric_context.result = execution_result;
     record_metric_context.Finish();
     return execution_result;
@@ -139,8 +139,8 @@ ExecutionResult MetricClientProvider::PutMetrics(
   auto execution_result = MetricClientUtils::ValidateRequest(
       *record_metric_context.request, metric_batching_options_);
   if (!execution_result.Successful()) {
-    ERROR_CONTEXT(kMetricClientProvider, record_metric_context,
-                  execution_result, "Invalid metric.");
+    SCP_ERROR_CONTEXT(kMetricClientProvider, record_metric_context,
+                      execution_result, "Invalid metric.");
     record_metric_context.result = execution_result;
     record_metric_context.Finish();
     return execution_result;
@@ -182,8 +182,8 @@ void MetricClientProvider::RunMetricsBatchPush() noexcept {
   }
   auto execution_result = MetricsBatchPush(requests_vector_copy);
   if (!execution_result.Successful()) {
-    ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to push metrics in batch.");
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to push metrics in batch.");
   }
   return;
 }
@@ -192,8 +192,8 @@ ExecutionResult MetricClientProvider::ScheduleMetricsBatchPush() noexcept {
   if (!is_running_) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING);
-    ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to schedule metric batch push.");
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to schedule metric batch push.");
     return execution_result;
   }
   auto next_push_time =
@@ -210,8 +210,8 @@ ExecutionResult MetricClientProvider::ScheduleMetricsBatchPush() noexcept {
       },
       next_push_time, current_cancellation_callback_);
   if (!execution_result.Successful()) {
-    ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to schedule metric batch push.");
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to schedule metric batch push.");
   }
   return execution_result;
 }

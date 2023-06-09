@@ -52,9 +52,9 @@ using google::cmrt::sdk::parameter_service::v1::GetParameterRequest;
 using google::cmrt::sdk::parameter_service::v1::GetParameterResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::AsyncExecutorInterface;
-using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
+using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::errors::SC_AWS_INTERNAL_SERVICE_ERROR;
 using google::scp::core::errors::
     SC_AWS_PARAMETER_CLIENT_PROVIDER_INVALID_PARAMETER_NAME;
@@ -88,10 +88,11 @@ constexpr char kParameterValue[] = "value";
 namespace google::scp::cpio::client_providers::test {
 class MockSSMClientFactory : public SSMClientFactory {
  public:
-  MOCK_METHOD(std::shared_ptr<Aws::SSM::SSMClient>, CreateSSMClient,
-              (Aws::Client::ClientConfiguration & client_config,
-               std::shared_ptr<core::AsyncExecutorInterface> io_async_executor),
-              (noexcept, override));
+  MOCK_METHOD(
+      std::shared_ptr<Aws::SSM::SSMClient>, CreateSSMClient,
+      (Aws::Client::ClientConfiguration & client_config,
+       const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor),
+      (noexcept, override));
 };
 
 class AwsParameterClientProviderTest : public ::testing::Test {
@@ -117,7 +118,7 @@ class AwsParameterClientProviderTest : public ::testing::Test {
 
     MockAsyncExecutor mock_io_async_executor;
     shared_ptr<AsyncExecutorInterface> io_async_executor =
-            make_shared<MockAsyncExecutor>(move(mock_io_async_executor));
+        make_shared<MockAsyncExecutor>(move(mock_io_async_executor));
 
     client_ = make_unique<AwsParameterClientProvider>(
         make_shared<ParameterClientOptions>(), mock_instance_client_,

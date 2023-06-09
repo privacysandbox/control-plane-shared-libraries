@@ -105,9 +105,11 @@ namespace google::scp::cpio::client_providers::gcp_queue_client::test {
 
 class MockGcpPubSubStubFactory : public GcpPubSubStubFactory {
  public:
-  MOCK_METHOD(shared_ptr<Publisher::StubInterface>, CreatePublisherStub, (),
+  MOCK_METHOD(shared_ptr<Publisher::StubInterface>, CreatePublisherStub,
+              (const std::shared_ptr<QueueClientOptions>&),
               (noexcept, override));
-  MOCK_METHOD(shared_ptr<Subscriber::StubInterface>, CreateSubscriberStub, (),
+  MOCK_METHOD(shared_ptr<Subscriber::StubInterface>, CreateSubscriberStub,
+              (const std::shared_ptr<QueueClientOptions>&),
               (noexcept, override));
 };
 

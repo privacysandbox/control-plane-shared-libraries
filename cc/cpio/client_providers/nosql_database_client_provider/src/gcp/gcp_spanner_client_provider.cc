@@ -124,8 +124,8 @@ ExecutionResult ValidateCreateTableRequest(
   if (create_table_context.request->key().table_name().empty()) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_EMPTY_TABLE_NAME);
-    ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
-                  "Cannot create a table without a name");
+    SCP_ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
+                      "Cannot create a table without a name");
     create_table_context.result = result;
     create_table_context.Finish();
     return result;
@@ -134,8 +134,8 @@ ExecutionResult ValidateCreateTableRequest(
   if (create_table_context.request->key().partition_key().name().empty()) {
     auto result = FailureExecutionResult(
         SC_NO_SQL_DATABASE_PROVIDER_INVALID_PARTITION_KEY_NAME);
-    ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
-                  "Cannot create a table without a partition key name");
+    SCP_ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
+                      "Cannot create a table without a partition key name");
     create_table_context.result = result;
     create_table_context.Finish();
     return result;
@@ -145,8 +145,8 @@ ExecutionResult ValidateCreateTableRequest(
       ItemAttribute::VALUE_NOT_SET) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_UNSET_KEY_TYPE);
-    ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
-                  "Cannot create a table without a partition key type");
+    SCP_ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
+                      "Cannot create a table without a partition key type");
     create_table_context.result = result;
     create_table_context.Finish();
     return result;
@@ -156,8 +156,8 @@ ExecutionResult ValidateCreateTableRequest(
     if (create_table_context.request->key().sort_key().name().empty()) {
       auto result = FailureExecutionResult(
           SC_NO_SQL_DATABASE_PROVIDER_INVALID_SORT_KEY_NAME);
-      ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
-                    "Cannot create a table without a sort key name");
+      SCP_ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
+                        "Cannot create a table without a sort key name");
       create_table_context.result = result;
       create_table_context.Finish();
       return result;
@@ -167,8 +167,8 @@ ExecutionResult ValidateCreateTableRequest(
         ItemAttribute::VALUE_NOT_SET) {
       auto result =
           FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_UNSET_KEY_TYPE);
-      ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
-                    "Cannot create a table without a sort key type");
+      SCP_ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
+                        "Cannot create a table without a sort key type");
       create_table_context.result = result;
       create_table_context.Finish();
       return result;
@@ -277,23 +277,23 @@ ExecutionResult GcpSpannerClientProvider::Init() noexcept {
   if (cpu_async_executor_ == nullptr) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR);
-    ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, result,
-          "cpu_async_executor_ is null");
+    SCP_ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, result,
+              "cpu_async_executor_ is null");
     return result;
   }
   if (io_async_executor_ == nullptr) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR);
-    ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, result,
-          "io_async_executor_ is null");
+    SCP_ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, result,
+              "io_async_executor_ is null");
     return result;
   }
 
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_);
   if (!project_id_or.Successful()) {
-    ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, project_id_or.result(),
-          "Failed to get project ID for current instance");
+    SCP_ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, project_id_or.result(),
+              "Failed to get project ID for current instance");
     return project_id_or.result();
   }
 
@@ -305,8 +305,8 @@ ExecutionResult GcpSpannerClientProvider::Init() noexcept {
       *project_id_or, client_options_->instance_name,
       client_options_->database_name);
   if (!client_or.Successful()) {
-    ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, client_or.result(),
-          "Failed creating Spanner clients");
+    SCP_ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, client_or.result(),
+              "Failed creating Spanner clients");
     return client_or.result();
   }
   spanner_client_shared_ = client_or->first;
@@ -336,10 +336,10 @@ void GcpSpannerClientProvider::CreateTableAsync(
   auto update_result = spanner_database_client.UpdateDatabaseDdl(request).get();
   if (!update_result.ok()) {
     result = GcpUtils::GcpErrorConverter(update_result.status());
-    ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
-                  "Error creating table %s. Error: %s",
-                  create_table_context.request->key().table_name().c_str(),
-                  update_result.status().message().c_str());
+    SCP_ERROR_CONTEXT(kGcpSpanner, create_table_context, result,
+                      "Error creating table %s. Error: %s",
+                      create_table_context.request->key().table_name().c_str(),
+                      update_result.status().message().c_str());
   }
   FinishContext(result, create_table_context, cpu_async_executor_);
 }
@@ -354,9 +354,9 @@ ExecutionResult GcpSpannerClientProvider::CreateTable(
                create_table_context),
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
-    ERROR_CONTEXT(kGcpSpanner, create_table_context, schedule_result,
-                  "Error scheduling CreateTable for table %s",
-                  create_table_context.request->key().table_name().c_str());
+    SCP_ERROR_CONTEXT(kGcpSpanner, create_table_context, schedule_result,
+                      "Error scheduling CreateTable for table %s",
+                      create_table_context.request->key().table_name().c_str());
     create_table_context.result = schedule_result;
     create_table_context.Finish();
     return schedule_result;
@@ -378,10 +378,10 @@ void GcpSpannerClientProvider::DeleteTableAsync(
   auto update_result = spanner_database_client.UpdateDatabaseDdl(request).get();
   if (!update_result.ok()) {
     result = GcpUtils::GcpErrorConverter(update_result.status());
-    ERROR_CONTEXT(kGcpSpanner, delete_table_context, result,
-                  "Error deleting table %s. Error: %s",
-                  delete_table_context.request->table_name().c_str(),
-                  update_result.status().message().c_str());
+    SCP_ERROR_CONTEXT(kGcpSpanner, delete_table_context, result,
+                      "Error deleting table %s. Error: %s",
+                      delete_table_context.request->table_name().c_str(),
+                      update_result.status().message().c_str());
   }
   FinishContext(result, delete_table_context, cpu_async_executor_);
 }
@@ -392,8 +392,8 @@ ExecutionResult GcpSpannerClientProvider::DeleteTable(
   if (delete_table_context.request->table_name().empty()) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_EMPTY_TABLE_NAME);
-    ERROR_CONTEXT(kGcpSpanner, delete_table_context, result,
-                  "Cannot delete a table without a name");
+    SCP_ERROR_CONTEXT(kGcpSpanner, delete_table_context, result,
+                      "Cannot delete a table without a name");
     delete_table_context.result = result;
     delete_table_context.Finish();
     return result;
@@ -404,9 +404,9 @@ ExecutionResult GcpSpannerClientProvider::DeleteTable(
                delete_table_context),
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
-    ERROR_CONTEXT(kGcpSpanner, delete_table_context, schedule_result,
-                  "Error scheduling DeleteTable for table %s",
-                  delete_table_context.request->table_name().c_str());
+    SCP_ERROR_CONTEXT(kGcpSpanner, delete_table_context, schedule_result,
+                      "Error scheduling DeleteTable for table %s",
+                      delete_table_context.request->table_name().c_str());
     delete_table_context.result = schedule_result;
     delete_table_context.Finish();
     return schedule_result;
@@ -429,7 +429,7 @@ void GcpSpannerClientProvider::GetDatabaseItemAsync(
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_RECORD_NOT_FOUND);
     if (!row_it->ok()) {
       result = GcpUtils::GcpErrorConverter(row_it->status());
-      ERROR_CONTEXT(
+      SCP_ERROR_CONTEXT(
           kGcpSpanner, get_database_item_context, result,
           "Spanner get database item request failed for Database %s Table %s",
           client_options_->database_name.c_str(),
@@ -442,7 +442,7 @@ void GcpSpannerClientProvider::GetDatabaseItemAsync(
   const auto spanner_json_or = row_it->value().get<SpannerJson>(0);
   if (!spanner_json_or.ok()) {
     auto result = GcpUtils::GcpErrorConverter(spanner_json_or.status());
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpSpanner, get_database_item_context, result,
         "Spanner get JSON Value column failed for Database %s Table %s",
         client_options_->database_name.c_str(),
@@ -461,8 +461,8 @@ void GcpSpannerClientProvider::GetDatabaseItemAsync(
   } catch (...) {
     auto result = FailureExecutionResult(
         SC_NO_SQL_DATABASE_PROVIDER_JSON_FAILED_TO_PARSE);
-    ERROR_CONTEXT(kGcpSpanner, get_database_item_context, result,
-                  "Spanner parse JSON Value column failed.");
+    SCP_ERROR_CONTEXT(kGcpSpanner, get_database_item_context, result,
+                      "Spanner parse JSON Value column failed.");
     FinishContext(result, get_database_item_context, cpu_async_executor_);
     return;
   }
@@ -475,8 +475,8 @@ void GcpSpannerClientProvider::GetDatabaseItemAsync(
     if (!attribute_or.Successful()) {
       // If conversion fails, it is likely a list, struct, or other
       // unsupported type. Continue without failing.
-      ERROR_CONTEXT(kGcpSpanner, get_database_item_context,
-                    attribute_or.result(), "JSON field failed conversion");
+      SCP_ERROR_CONTEXT(kGcpSpanner, get_database_item_context,
+                        attribute_or.result(), "JSON field failed conversion");
       continue;
     }
     attribute_or->set_name(json_attr_name);
@@ -498,7 +498,7 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
     auto sort_key_str = request.key().has_sort_key()
                             ? request.key().sort_key().name().c_str()
                             : "<empty>";
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpSpanner, get_database_item_context, execution_result,
         "Failed validating Partition key (%s) and Sort key (%s) for table %s",
         request.key().partition_key().name().c_str(), sort_key_str,
@@ -526,9 +526,10 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
       GcpSpannerUtils::ConvertItemAttributeToSpannerValue(
           provided_partition_key);
   if (!spanner_part_key_val_or.Successful()) {
-    ERROR_CONTEXT(kGcpSpanner, get_database_item_context,
-                  spanner_part_key_val_or.result(),
-                  "Error converting provided partition key to Spanner value");
+    SCP_ERROR_CONTEXT(
+        kGcpSpanner, get_database_item_context,
+        spanner_part_key_val_or.result(),
+        "Error converting provided partition key to Spanner value");
     get_database_item_context.result = spanner_part_key_val_or.result();
     get_database_item_context.Finish();
     return spanner_part_key_val_or.result();
@@ -545,9 +546,9 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
         GcpSpannerUtils::ConvertItemAttributeToSpannerValue(
             request.key().sort_key());
     if (!spanner_sort_key_val_or.Successful()) {
-      ERROR_CONTEXT(kGcpSpanner, get_database_item_context,
-                    spanner_sort_key_val_or.result(),
-                    "Error converting provided sort key to Spanner value");
+      SCP_ERROR_CONTEXT(kGcpSpanner, get_database_item_context,
+                        spanner_sort_key_val_or.result(),
+                        "Error converting provided sort key to Spanner value");
       get_database_item_context.result = spanner_sort_key_val_or.result();
       get_database_item_context.Finish();
       return spanner_sort_key_val_or.result();
@@ -562,8 +563,8 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
   if (auto execution_result =
           AppendJsonWhereClauses(request.required_attributes(), params, query);
       !execution_result.Successful()) {
-    ERROR_CONTEXT(kGcpSpanner, get_database_item_context, execution_result,
-                  "Error appending JSON where clauses");
+    SCP_ERROR_CONTEXT(kGcpSpanner, get_database_item_context, execution_result,
+                      "Error appending JSON where clauses");
     get_database_item_context.result = execution_result;
     get_database_item_context.Finish();
     return execution_result;
@@ -574,8 +575,8 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
                get_database_item_context, move(query), move(params)),
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
-    ERROR_CONTEXT(kGcpSpanner, get_database_item_context, schedule_result,
-                  "Error scheduling GetDatabaseItem");
+    SCP_ERROR_CONTEXT(kGcpSpanner, get_database_item_context, schedule_result,
+                      "Error scheduling GetDatabaseItem");
     get_database_item_context.result = schedule_result;
     get_database_item_context.Finish();
     return schedule_result;
@@ -641,7 +642,7 @@ ExecutionResult GcpSpannerClientProvider::GetMergedJson(
   auto row_it = row_stream.begin();
   if (!row_it->ok()) {
     auto result = GcpUtils::GcpErrorConverter(row_it->status());
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpSpanner, upsert_database_item_context, result,
         "Spanner upsert SELECT statement failed for Database %s Table %s",
         client_options_->database_name.c_str(),
@@ -652,8 +653,8 @@ ExecutionResult GcpSpannerClientProvider::GetMergedJson(
     if (enforce_row_existence) {
       auto result =
           FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_RECORD_NOT_FOUND);
-      ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context, result,
-                    "Spanner update failed because row does not exist");
+      SCP_ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context, result,
+                        "Spanner update failed because row does not exist");
       return result;
     }
     // There's not existing row - that's OK, set spanner_json to have
@@ -671,7 +672,7 @@ ExecutionResult GcpSpannerClientProvider::GetMergedJson(
   if (!spanner_json_or.ok()) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_RECORD_CORRUPTED);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpSpanner, upsert_database_item_context, result,
         absl::StrFormat("Spanner get JSON Value column failed. Error code: %d, "
                         "message: %s",
@@ -685,8 +686,8 @@ ExecutionResult GcpSpannerClientProvider::GetMergedJson(
   } catch (...) {
     auto result = FailureExecutionResult(
         SC_NO_SQL_DATABASE_PROVIDER_JSON_FAILED_TO_PARSE);
-    ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context, result,
-                  "Failed to parse JSON value from string");
+    SCP_ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context, result,
+                      "Failed to parse JSON value from string");
     return result;
   }
 
@@ -760,10 +761,11 @@ void GcpSpannerClientProvider::UpsertDatabaseItemAsync(
   if (!commit_result_or.ok()) {
     auto result =
         RetryExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_RETRIABLE_ERROR);
-    ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context, result,
-                  "Spanner upsert commit failed. Error code: %d, message: %s",
-                  commit_result_or.status().code(),
-                  commit_result_or.status().message().c_str());
+    SCP_ERROR_CONTEXT(
+        kGcpSpanner, upsert_database_item_context, result,
+        "Spanner upsert commit failed. Error code: %d, message: %s",
+        commit_result_or.status().code(),
+        commit_result_or.status().message().c_str());
     FinishContext(result, upsert_database_item_context, cpu_async_executor_);
     return;
   }
@@ -781,7 +783,7 @@ ExecutionResult GcpSpannerClientProvider::UpsertDatabaseItem(
     auto sort_key_str = request.key().has_sort_key()
                             ? request.key().sort_key().name().c_str()
                             : "<empty>";
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kGcpSpanner, upsert_database_item_context, execution_result,
         "Failed validating Partition key (%s) and Sort key (%s) for table %s",
         request.key().partition_key().name().c_str(), sort_key_str,
@@ -805,9 +807,9 @@ ExecutionResult GcpSpannerClientProvider::UpsertDatabaseItem(
   auto select_options_or =
       UpsertSelectOptions::BuildUpsertSelectOptions(request);
   if (!select_options_or.Successful()) {
-    ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context,
-                  select_options_or.result(),
-                  "Failed building UpsertSelectOptions");
+    SCP_ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context,
+                      select_options_or.result(),
+                      "Failed building UpsertSelectOptions");
     upsert_database_item_context.result = select_options_or.result();
     upsert_database_item_context.Finish();
     return select_options_or.result();
@@ -821,10 +823,10 @@ ExecutionResult GcpSpannerClientProvider::UpsertDatabaseItem(
     auto json_attr_or =
         GcpSpannerUtils::ConvertItemAttributeToJsonType(new_attr);
     if (!json_attr_or.Successful()) {
-      ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context,
-                    json_attr_or.result(),
-                    "Error converting ItemAttribute to JSON for table %s",
-                    request.key().table_name().c_str());
+      SCP_ERROR_CONTEXT(kGcpSpanner, upsert_database_item_context,
+                        json_attr_or.result(),
+                        "Error converting ItemAttribute to JSON for table %s",
+                        request.key().table_name().c_str());
       upsert_database_item_context.result = json_attr_or.result();
       upsert_database_item_context.Finish();
       return json_attr_or.result();

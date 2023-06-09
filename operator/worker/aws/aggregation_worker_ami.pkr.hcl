@@ -28,6 +28,7 @@ locals {
   # List of additional systemd configuration to add to aggregate-worker.
   aggregate_worker_overrides = [
     {enable_worker_debug_mode} ? "Environment=ENABLE_WORKER_DEBUG_MODE=1" : "",
+    "TimeoutStartSec=600", # Extend start-up timeout for large memory Enclave.
   ]
 }
 

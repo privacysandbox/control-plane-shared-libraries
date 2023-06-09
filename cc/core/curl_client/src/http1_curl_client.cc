@@ -32,8 +32,8 @@ constexpr char kHttp1CurlClient[] = "Http1CurlClient";
 namespace google::scp::core {
 
 Http1CurlClient::Http1CurlClient(
-    shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
-    shared_ptr<AsyncExecutorInterface>& io_async_executor,
+    const shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor,
     shared_ptr<Http1CurlWrapperProvider> curl_wrapper_provider,
     common::RetryStrategyOptions retry_strategy_options)
     : curl_wrapper_provider_(curl_wrapper_provider),
@@ -63,8 +63,8 @@ ExecutionResult Http1CurlClient::PerformRequest(
         auto response_or = wrapper->PerformRequest(*http_context.request);
         if (!response_or.Successful()) {
           http_context.result = response_or.result();
-          ERROR_CONTEXT(kHttp1CurlClient, http_context, http_context.result,
-                        "wrapper PerformRequest failed.");
+          SCP_ERROR_CONTEXT(kHttp1CurlClient, http_context, http_context.result,
+                            "wrapper PerformRequest failed.");
           return response_or.result();
         }
 

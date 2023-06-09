@@ -59,9 +59,10 @@ ExecutionResult HttpClient::PerformRequest(
           return execution_result;
         }
 
-        INFO_CONTEXT(kHttpClient, http_context,
-                     "Executing request on connection %p. Retry count: %lld",
-                     http_connection.get(), http_context.retry_count);
+        SCP_INFO_CONTEXT(
+            kHttpClient, http_context,
+            "Executing request on connection %p. Retry count: %lld",
+            http_connection.get(), http_context.retry_count);
 
         return http_connection->Execute(http_context);
       });

@@ -40,8 +40,8 @@ class AwsDynamoDBClientProvider : public NoSQLDatabaseClientProviderInterface {
  public:
   AwsDynamoDBClientProvider(
       std::shared_ptr<InstanceClientProviderInterface> instance_client,
-      std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
-      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor,
       std::shared_ptr<DynamoDBFactory> dynamo_db_factory =
           std::make_shared<DynamoDBFactory>())
       : instance_client_(instance_client),
@@ -134,7 +134,7 @@ class AwsDynamoDBClientProvider : public NoSQLDatabaseClientProviderInterface {
   std::shared_ptr<InstanceClientProviderInterface> instance_client_;
 
   /// An instance fo the async executor.
-  std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
+  const std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
       io_async_executor_;
 
   std::shared_ptr<DynamoDBFactory> dynamo_db_factory_;

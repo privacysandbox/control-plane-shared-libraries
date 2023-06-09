@@ -55,9 +55,9 @@ ExecutionResult RomaService::Init() noexcept {
   v8::V8::InitializeExternalStartupData(my_path.get());
 
   // Set the max number of WASM memory pages
-  if (config_.MaxWasmMemoryNumberOfPages != 0) {
-    auto page_count =
-        min(config_.MaxWasmMemoryNumberOfPages, kMaxNumberOfWasm32BitMemPages);
+  if (config_.max_wasm_memory_number_of_pages != 0) {
+    auto page_count = min(config_.max_wasm_memory_number_of_pages,
+                          kMaxNumberOfWasm32BitMemPages);
     auto flag_value = string(kWasmMemPagesFlag) + to_string(page_count);
     v8::V8::SetFlagsFromString(flag_value.c_str());
   }

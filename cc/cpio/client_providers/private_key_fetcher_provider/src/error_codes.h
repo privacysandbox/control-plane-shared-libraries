@@ -33,7 +33,7 @@ DEFINE_ERROR_CODE(
 
 DEFINE_ERROR_CODE(SC_PRIVATE_KEY_FETCHER_PROVIDER_RESOURCE_NAME_NOT_FOUND,
                   SC_PRIVATE_KEY_FETCHER_PROVIDER, 0x0003,
-                  "Cannot find the resouce name", HttpStatusCode::NOT_FOUND)
+                  "Cannot find the resource name", HttpStatusCode::NOT_FOUND)
 DEFINE_ERROR_CODE(SC_PRIVATE_KEY_FETCHER_PROVIDER_ENCRYPTION_KEY_TYPE_NOT_FOUND,
                   SC_PRIVATE_KEY_FETCHER_PROVIDER, 0x0004,
                   "Cannot find encryption key type", HttpStatusCode::NOT_FOUND)

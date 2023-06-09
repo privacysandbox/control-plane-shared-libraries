@@ -84,15 +84,15 @@ ExecutionResult ParameterClient::CreateParameterClientProvider() noexcept {
 ExecutionResult ParameterClient::Init() noexcept {
   auto execution_result = CreateParameterClientProvider();
   if (!execution_result.Successful()) {
-    ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create ParameterClientProvider.");
+    SCP_ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to create ParameterClientProvider.");
     return ConvertToPublicExecutionResult(execution_result);
   }
 
   execution_result = parameter_client_provider_->Init();
   if (!execution_result.Successful()) {
-    ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to initialize ParameterClientProvider.");
+    SCP_ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to initialize ParameterClientProvider.");
     return execution_result;
   }
   return SuccessExecutionResult();
@@ -101,8 +101,8 @@ ExecutionResult ParameterClient::Init() noexcept {
 ExecutionResult ParameterClient::Run() noexcept {
   auto execution_result = parameter_client_provider_->Run();
   if (!execution_result.Successful()) {
-    ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run ParameterClientProvider.");
+    SCP_ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to run ParameterClientProvider.");
     return execution_result;
   }
   return SuccessExecutionResult();
@@ -111,8 +111,8 @@ ExecutionResult ParameterClient::Run() noexcept {
 ExecutionResult ParameterClient::Stop() noexcept {
   auto execution_result = parameter_client_provider_->Stop();
   if (!execution_result.Successful()) {
-    ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to stop ParameterClientProvider.");
+    SCP_ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to stop ParameterClientProvider.");
     return execution_result;
   }
   return SuccessExecutionResult();

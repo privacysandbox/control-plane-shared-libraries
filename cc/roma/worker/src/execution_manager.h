@@ -38,6 +38,11 @@ namespace google::scp::roma::worker {
  */
 class ExecutionManager : public core::ServiceInterface {
  public:
+  ExecutionManager(
+      const JsEngineResourceConstraints& v8_resource_constraints,
+      const std::vector<std::shared_ptr<FunctionBindingObjectBase>>&
+          function_bindings);
+
   ~ExecutionManager() {
     if (startup_data_.data) {
       delete[] startup_data_.data;
@@ -57,15 +62,10 @@ class ExecutionManager : public core::ServiceInterface {
    *
    * @param code_obj code object to be compiled and run.
    * @param err_msg Error message.
-   * @param function_bindings The registered function bindings.
-   * @param external_references The external references for the snapshot.
    * @return core::ExecutionResult
    */
-  core::ExecutionResult Create(
-      const ipc::RomaCodeObj& code_obj, common::RomaString& err_msg,
-      const std::vector<std::shared_ptr<FunctionBindingObjectBase>>&
-          function_bindings,
-      const intptr_t* external_references) noexcept;
+  core::ExecutionResult Create(const ipc::RomaCodeObj& code_obj,
+                               common::RomaString& err_msg) noexcept;
 
   /**
    * @brief Process the code_obj with the default context in the isolate created
@@ -91,6 +91,13 @@ class ExecutionManager : public core::ServiceInterface {
    */
   static void GlobalV8FunctionCallback(
       const v8::FunctionCallbackInfo<v8::Value>& info);
+
+  /**
+   * @brief Get V8 Heap Statistics information
+   *
+   * @param[out] v8_heap_stats
+   */
+  void GetV8HeapStatistics(v8::HeapStatistics& v8_heap_stats) noexcept;
 
  private:
   /**
@@ -156,6 +163,17 @@ class ExecutionManager : public core::ServiceInterface {
       const std::vector<std::shared_ptr<FunctionBindingObjectBase>>&
           function_bindings,
       v8::Local<v8::Context>& context) noexcept;
+
+  /// v8 heap resource constraints.
+  const JsEngineResourceConstraints v8_resource_constraints_;
+
+  /// @brief User-registered C++/JS function bindings
+  const std::vector<std::shared_ptr<FunctionBindingObjectBase>>
+      function_bindings_;
+
+  /// @brief These are external references (pointers to data outside of the v8
+  /// heap) which are needed for serialization of the v8 snapshot.
+  std::vector<intptr_t> external_references_;
 
   /// The type of the code content, including JavaScript,  WASM, and
   /// JavaScript Mixed with WASM.

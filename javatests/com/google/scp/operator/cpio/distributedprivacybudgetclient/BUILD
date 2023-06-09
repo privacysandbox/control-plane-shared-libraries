@@ -33,9 +33,11 @@ java_test(
         "//java/com/google/scp/operator/cpio/distributedprivacybudgetclient:distributed_privacy_budget_client",
         "//java/com/google/scp/shared/api/util",
         "//java/com/google/scp/shared/aws/util",
+        "//java/com/google/scp/shared/mapper",
         "//java/external:autovalue",
         "//java/external:autovalue_annotations",
         "//java/external:google_truth",
+        "//java/external:jackson_databind",
         "//java/external:mockito",
     ],
 )

@@ -43,8 +43,8 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
   explicit AwsS3ClientProvider(
       std::shared_ptr<BlobStorageClientOptions> options,
       std::shared_ptr<InstanceClientProviderInterface> instance_client,
-      std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
-      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor,
       std::shared_ptr<AwsS3Factory> s3_factory =
           std::make_shared<AwsS3Factory>())
       : instance_client_(instance_client),
@@ -188,7 +188,7 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
 
   /// Instances of the async executor for local compute and blocking IO
   /// operations respectively.
-  std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
+  const std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
       io_async_executor_;
 
   // An instance of the factory for Aws::S3::S3Client.
@@ -202,9 +202,9 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
 class AwsS3Factory {
  public:
   virtual core::ExecutionResultOr<std::shared_ptr<Aws::S3::S3Client>>
-  CreateClient(
-      Aws::Client::ClientConfiguration& client_config,
-      std::shared_ptr<core::AsyncExecutorInterface> async_executor) noexcept;
+  CreateClient(Aws::Client::ClientConfiguration& client_config,
+               const std::shared_ptr<core::AsyncExecutorInterface>&
+                   async_executor) noexcept;
 
   virtual ~AwsS3Factory() = default;
 };

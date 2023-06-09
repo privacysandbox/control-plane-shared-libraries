@@ -64,7 +64,7 @@ TEST(RomaBasicE2ETest,
 
   // Create config object and add function registration object to it
   Config config;
-  config.NumberOfWorkers = 2;
+  config.number_of_workers = 2;
   config.RegisterFunctionBinding(move(function_object));
 
   auto status = RomaInit(config);

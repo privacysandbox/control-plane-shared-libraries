@@ -17,7 +17,10 @@
 package com.google.scp.operator.cpio.cryptoclient;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,6 +36,11 @@ import com.google.protobuf.ByteString;
 import com.google.scp.coordinator.protos.keymanagement.shared.api.v1.EncryptionKeyProto.EncryptionKey;
 import com.google.scp.coordinator.protos.keymanagement.shared.api.v1.EncryptionKeyTypeProto.EncryptionKeyType;
 import com.google.scp.coordinator.protos.keymanagement.shared.api.v1.KeyDataProto.KeyData;
+import com.google.scp.operator.cpio.cryptoclient.DecryptionKeyService.KeyFetchException;
+import com.google.scp.operator.cpio.cryptoclient.EncryptionKeyFetchingService.EncryptionKeyFetchingServiceException;
+import com.google.scp.operator.cpio.cryptoclient.model.ErrorReason;
+import com.google.scp.shared.api.exception.ServiceException;
+import com.google.scp.shared.api.model.Code;
 import com.google.scp.shared.crypto.tink.CloudAeadSelector;
 import com.google.scp.shared.testutils.crypto.MockTinkUtils;
 import com.google.scp.shared.util.KeySplitUtil;
@@ -69,6 +77,74 @@ public class MultiPartyDecryptionKeyServiceImplTest {
             coordinatorBKeyFetchingService,
             aeadServicePrimary,
             aeadServiceSecondary);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_NOT_FOUND() throws Exception {
+    when(coordinatorAKeyFetchingService.fetchEncryptionKey(anyString()))
+        .thenThrow(
+            new EncryptionKeyFetchingServiceException(
+                new ServiceException(Code.NOT_FOUND, "test", "test")));
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class, () -> multiPartyDecryptionKeyServiceImpl.getDecrypter("123"));
+
+    assertEquals(exception.getReason(), ErrorReason.KEY_NOT_FOUND);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_PERMISSION_DENIED() throws Exception {
+    when(coordinatorAKeyFetchingService.fetchEncryptionKey(anyString()))
+        .thenThrow(
+            new EncryptionKeyFetchingServiceException(
+                new ServiceException(Code.PERMISSION_DENIED, "test", "test")));
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class, () -> multiPartyDecryptionKeyServiceImpl.getDecrypter("123"));
+
+    assertEquals(exception.getReason(), ErrorReason.PERMISSION_DENIED);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_INTERNAL() throws Exception {
+    when(coordinatorAKeyFetchingService.fetchEncryptionKey(anyString()))
+        .thenThrow(
+            new EncryptionKeyFetchingServiceException(
+                new ServiceException(Code.INTERNAL, "test", "test")));
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class, () -> multiPartyDecryptionKeyServiceImpl.getDecrypter("123"));
+
+    assertEquals(exception.getReason(), ErrorReason.INTERNAL);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_default() throws Exception {
+    when(coordinatorAKeyFetchingService.fetchEncryptionKey(anyString()))
+        .thenThrow(new EncryptionKeyFetchingServiceException(new Exception()));
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class, () -> multiPartyDecryptionKeyServiceImpl.getDecrypter("123"));
+
+    assertEquals(exception.getReason(), ErrorReason.UNKNOWN_ERROR);
+  }
+
+  @Test
+  public void getDecrypter_errorWithCode_UNKNOWN() throws Exception {
+    when(coordinatorAKeyFetchingService.fetchEncryptionKey(anyString()))
+        .thenThrow(
+            new EncryptionKeyFetchingServiceException(
+                new ServiceException(Code.UNKNOWN, "test", "test")));
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class, () -> multiPartyDecryptionKeyServiceImpl.getDecrypter("123"));
+
+    assertEquals(exception.getReason(), ErrorReason.UNKNOWN_ERROR);
   }
 
   @Test

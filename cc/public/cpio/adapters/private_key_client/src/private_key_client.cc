@@ -64,24 +64,24 @@ ExecutionResult PrivateKeyClient::CreatePrivateKeyClientProvider() noexcept {
   auto execution_result =
       GlobalCpio::GetGlobalCpio()->GetHttpClient(http_client);
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get http client.");
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get http client.");
     return execution_result;
   }
   shared_ptr<RoleCredentialsProviderInterface> role_credentials_provider;
   execution_result = GlobalCpio::GetGlobalCpio()->GetRoleCredentialsProvider(
       role_credentials_provider);
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get role credentials provider.");
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get role credentials provider.");
     return execution_result;
   }
   shared_ptr<AuthTokenProviderInterface> auth_token_provider;
   execution_result =
       GlobalCpio::GetGlobalCpio()->GetAuthTokenProvider(auth_token_provider);
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get role auth token provider.");
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get role auth token provider.");
     return execution_result;
   }
   private_key_client_provider_ = PrivateKeyClientProviderFactory::Create(
@@ -92,15 +92,15 @@ ExecutionResult PrivateKeyClient::CreatePrivateKeyClientProvider() noexcept {
 ExecutionResult PrivateKeyClient::Init() noexcept {
   auto execution_result = CreatePrivateKeyClientProvider();
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to create PrivateKeyClientProvider.");
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to create PrivateKeyClientProvider.");
     return ConvertToPublicExecutionResult(execution_result);
   }
 
   execution_result = private_key_client_provider_->Init();
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to initialize PrivateKeyClient.");
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to initialize PrivateKeyClient.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }
@@ -108,8 +108,8 @@ ExecutionResult PrivateKeyClient::Init() noexcept {
 ExecutionResult PrivateKeyClient::Run() noexcept {
   auto execution_result = private_key_client_provider_->Run();
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run PrivateKeyClient.");
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to run PrivateKeyClient.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }
@@ -117,8 +117,8 @@ ExecutionResult PrivateKeyClient::Run() noexcept {
 ExecutionResult PrivateKeyClient::Stop() noexcept {
   auto execution_result = private_key_client_provider_->Stop();
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to stop PrivateKeyClient.");
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to stop PrivateKeyClient.");
   }
   return ConvertToPublicExecutionResult(execution_result);
 }

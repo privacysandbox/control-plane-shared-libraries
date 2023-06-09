@@ -51,7 +51,7 @@ TEST(RomaBasicE2ETest,
      WasmAllocationShouldFailEvenIfModuleHasLargeMemoryWhenConfiguredToLower) {
   Config config;
   // 80 pages equals 5MiB since each page is 64KiB.
-  config.MaxWasmMemoryNumberOfPages = 80;
+  config.max_wasm_memory_number_of_pages = 80;
 
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());

@@ -29,7 +29,6 @@
 #include "cc/core/common/uuid/src/uuid.h"
 #include "core/async_executor/src/aws/aws_async_executor.h"
 #include "core/interface/async_context.h"
-#include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
 #include "cpio/common/src/aws/aws_utils.h"
 #include "public/core/interface/execution_result.h"
@@ -86,9 +85,9 @@ ExecutionResult AwsParameterClientProvider::Init() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
   if (!region_code_or.Successful()) {
-    ERROR(kAwsParameterClientProvider, kZeroUuid, kZeroUuid,
-          region_code_or.result(),
-          "Failed to get region code for current instance");
+    SCP_ERROR(kAwsParameterClientProvider, kZeroUuid, kZeroUuid,
+              region_code_or.result(),
+              "Failed to get region code for current instance");
     return region_code_or.result();
   }
 
@@ -112,9 +111,10 @@ ExecutionResult AwsParameterClientProvider::GetParameter(
   if (list_parameters_context.request->parameter_name().empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_PARAMETER_CLIENT_PROVIDER_INVALID_PARAMETER_NAME);
-    ERROR_CONTEXT(kAwsParameterClientProvider, list_parameters_context,
-                  execution_result, "Failed to get the parameter value for %s.",
-                  list_parameters_context.request->parameter_name().c_str());
+    SCP_ERROR_CONTEXT(
+        kAwsParameterClientProvider, list_parameters_context, execution_result,
+        "Failed to get the parameter value for %s.",
+        list_parameters_context.request->parameter_name().c_str());
     list_parameters_context.result = execution_result;
     list_parameters_context.Finish();
     return execution_result;
@@ -149,9 +149,10 @@ void AwsParameterClientProvider::OnGetParametersCallback(
   if (outcome.GetResult().GetParameters().size() < 1) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_PARAMETER_CLIENT_PROVIDER_PARAMETER_NOT_FOUND);
-    ERROR_CONTEXT(kAwsParameterClientProvider, list_parameters_context,
-                  execution_result, "Failed to get the parameter value for %s.",
-                  list_parameters_context.request->parameter_name().c_str());
+    SCP_ERROR_CONTEXT(
+        kAwsParameterClientProvider, list_parameters_context, execution_result,
+        "Failed to get the parameter value for %s.",
+        list_parameters_context.request->parameter_name().c_str());
     list_parameters_context.result = execution_result;
     list_parameters_context.Finish();
     return;
@@ -160,9 +161,10 @@ void AwsParameterClientProvider::OnGetParametersCallback(
   if (outcome.GetResult().GetParameters().size() > 1) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_PARAMETER_CLIENT_PROVIDER_MULTIPLE_PARAMETERS_FOUND);
-    ERROR_CONTEXT(kAwsParameterClientProvider, list_parameters_context,
-                  execution_result, "Failed to get the parameter value for %s.",
-                  list_parameters_context.request->parameter_name().c_str());
+    SCP_ERROR_CONTEXT(
+        kAwsParameterClientProvider, list_parameters_context, execution_result,
+        "Failed to get the parameter value for %s.",
+        list_parameters_context.request->parameter_name().c_str());
     list_parameters_context.result = execution_result;
     list_parameters_context.Finish();
     return;
@@ -177,7 +179,7 @@ void AwsParameterClientProvider::OnGetParametersCallback(
 
 shared_ptr<SSMClient> SSMClientFactory::CreateSSMClient(
     ClientConfiguration& client_config,
-    shared_ptr<AsyncExecutorInterface> io_async_executor) noexcept {
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
   client_config.executor = make_shared<AwsAsyncExecutor>(io_async_executor);
   return make_shared<SSMClient>(client_config);
 }

@@ -18,8 +18,8 @@
 #include <memory>
 #include <string>
 #include <thread>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/dynamodb/DynamoDBClient.h>
@@ -54,12 +54,12 @@ using Aws::SSM::Model::GetParametersRequest;
 using Aws::SSM::Model::PutParameterRequest;
 using Aws::Utils::CryptoBuffer;
 using std::make_shared;
+using std::move;
 using std::shared_ptr;
 using std::string;
 using std::vector;
 using std::chrono::milliseconds;
 using std::this_thread::sleep_for;
-using std::move;
 
 /// Fixed connect timeout to create an AWS client.
 const int kConnectTimeoutMs = 6000;

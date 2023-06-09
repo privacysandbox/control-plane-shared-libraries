@@ -133,7 +133,7 @@ class GcpQueueClientProvider : public QueueClientProviderInterface {
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
 
   /// The instance of the async executor.
-  std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
+  const std::shared_ptr<core::AsyncExecutorInterface>cpu_async_executor_,
       io_async_executor_;
 
   /// Project ID of current instance.
@@ -164,19 +164,23 @@ class GcpPubSubStubFactory {
   /**
    * @brief Creates Publisher Stub.
    *
+   * @param options the QueueClientOptions.
    * @return std::shared_ptr<google::pubsub::v1::Publisher::Stub> the creation
    * result.
    */
   virtual std::shared_ptr<google::pubsub::v1::Publisher::StubInterface>
-  CreatePublisherStub() noexcept;
+  CreatePublisherStub(
+      const std::shared_ptr<QueueClientOptions>& options) noexcept;
   /**
    * @brief Creates Subscriber Stub.
    *
+   * @param options the QueueClientOptions.
    * @return std::shared_ptr<google::pubsub::v1::Subscriber::Stub> the creation
    * result.
    */
   virtual std::shared_ptr<google::pubsub::v1::Subscriber::StubInterface>
-  CreateSubscriberStub() noexcept;
+  CreateSubscriberStub(
+      const std::shared_ptr<QueueClientOptions>& options) noexcept;
 
   virtual ~GcpPubSubStubFactory() = default;
 
@@ -184,10 +188,13 @@ class GcpPubSubStubFactory {
   /**
    * @brief Gets Pub/Sub Channel.
    *
+   * @param options the QueueClientOptions.
    * @return std::shared_ptr<grpc::Channel> the creation result.
    */
-  std::shared_ptr<grpc::Channel> GetPubSubChannel() noexcept;
+  virtual std::shared_ptr<grpc::Channel> GetPubSubChannel(
+      const std::shared_ptr<QueueClientOptions>& options) noexcept;
 
+ protected:
   // An Instance of the gRPC Channel for Publisher and Subscriber Stubs.
   std::shared_ptr<grpc::Channel> channel_;
 };

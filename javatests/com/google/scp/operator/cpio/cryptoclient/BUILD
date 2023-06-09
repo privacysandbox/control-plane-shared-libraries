@@ -51,6 +51,7 @@ java_test(
     srcs = ["DecryptionKeyServiceImplTest.java"],
     deps = [
         "//java/com/google/scp/operator/cpio/cryptoclient",
+        "//java/com/google/scp/shared/api/model",
         "//java/external:acai",
         "//java/external:google_truth",
         "//java/external:guice",
@@ -68,6 +69,8 @@ java_test(
         "//coordinator/protos/keymanagement/keyhosting/api/v1:java_proto",
         "//coordinator/protos/keymanagement/shared/api/v1:java_proto",
         "//java/com/google/scp/operator/cpio/cryptoclient",
+        "//java/com/google/scp/shared/api/exception",
+        "//java/com/google/scp/shared/api/model",
         "//java/com/google/scp/shared/crypto/tink",
         "//java/com/google/scp/shared/util",
         "//java/external:acai",

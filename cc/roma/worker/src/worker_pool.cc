@@ -43,11 +43,11 @@ static constexpr int kMaxRetriesToWaitForPidUpdate = 5;
 namespace google::scp::roma::worker {
 WorkerPool::WorkerPool(const Config& config)
     : num_processes_(IpcManager::Instance()->GetNumProcesses()),
+      config_(config),
       worker_starter_pid_(-1) {
   for (size_t i = 0; i < num_processes_; i++) {
     workers_.push_back(nullptr);
   }
-  config.GetFunctionBindings(function_bindings_);
 }
 
 ExecutionResult WorkerPool::Init() noexcept {
@@ -129,7 +129,7 @@ pid_t WorkerPool::GetWorkerStarterPid() {
 
 ExecutionResult WorkerPool::InitWorker(size_t index) {
   auto role_id = RoleId(index, false);
-  auto worker = make_unique<Worker>(role_id, function_bindings_);
+  auto worker = make_unique<Worker>(role_id, config_);
   workers_.at(index).swap(worker);
   auto result = workers_.at(index)->Init();
   if (!result) {

@@ -74,7 +74,6 @@ def cc_enclave_image(
 
     container_files = [
         Label("//cc/process_launcher:scp_process_launcher"),
-        "@kmstool_enclave//file",  # This is to support using enclave KMS cli
         "@kmstool_enclave_cli//file",
     ] + additional_files
 

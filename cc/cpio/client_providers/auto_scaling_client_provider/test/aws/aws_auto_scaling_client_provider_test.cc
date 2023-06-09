@@ -56,9 +56,11 @@ using google::cmrt::sdk::auto_scaling_service::v1::
 using google::cmrt::sdk::auto_scaling_service::v1::
     TryFinishInstanceTerminationResponse;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
+using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::errors::
     SC_AWS_AUTO_SCALING_CLIENT_PROVIDER_INSTANCE_NOT_FOUND;
 using google::scp::core::errors::
@@ -106,10 +108,12 @@ namespace google::scp::cpio::client_providers::test {
 
 class MockAutoScalingClientFactory : public AutoScalingClientFactory {
  public:
-  MOCK_METHOD(std::shared_ptr<Aws::AutoScaling::AutoScalingClient>,
-              CreateAutoScalingClient,
-              (const Aws::Client::ClientConfiguration& client_config),
-              (noexcept, override));
+  MOCK_METHOD(
+      std::shared_ptr<Aws::AutoScaling::AutoScalingClient>,
+      CreateAutoScalingClient,
+      (Aws::Client::ClientConfiguration & client_config,
+       const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor),
+      (noexcept, override));
 };
 
 class AwsAutoScalingClientProviderTest : public ::testing::Test {
@@ -135,7 +139,7 @@ class AwsAutoScalingClientProviderTest : public ::testing::Test {
 
     auto_scaling_client_provider_ = make_unique<AwsAutoScalingClientProvider>(
         make_shared<AutoScalingClientOptions>(), mock_instance_client_,
-        mock_auto_scaling_client_factory_);
+        mock_io_async_executor_, mock_auto_scaling_client_factory_);
     try_termination_context_.request =
         make_shared<TryFinishInstanceTerminationRequest>();
     try_termination_context_.request->set_instance_resource_id(
@@ -151,6 +155,8 @@ class AwsAutoScalingClientProviderTest : public ::testing::Test {
   shared_ptr<MockInstanceClientProvider> mock_instance_client_;
   shared_ptr<MockAutoScalingClient> mock_auto_scaling_client_;
   shared_ptr<MockAutoScalingClientFactory> mock_auto_scaling_client_factory_;
+  shared_ptr<MockAsyncExecutor> mock_io_async_executor_ =
+      make_shared<MockAsyncExecutor>();
   unique_ptr<AwsAutoScalingClientProvider> auto_scaling_client_provider_;
 
   AsyncContext<TryFinishInstanceTerminationRequest,
@@ -168,7 +174,7 @@ TEST_F(AwsAutoScalingClientProviderTest,
   mock_instance_client_->get_instance_resource_name_mock = failure_result;
   auto client = make_unique<AwsAutoScalingClientProvider>(
       make_shared<AutoScalingClientOptions>(), mock_instance_client_,
-      mock_auto_scaling_client_factory_);
+      mock_io_async_executor_, mock_auto_scaling_client_factory_);
 
   EXPECT_THAT(client->Init(), ResultIs(failure_result));
 }

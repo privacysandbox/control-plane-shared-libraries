@@ -26,6 +26,7 @@
 #include <aws/autoscaling/model/CompleteLifecycleActionRequest.h>
 #include <aws/autoscaling/model/DescribeAutoScalingInstancesRequest.h>
 
+#include "core/async_executor/src/aws/aws_async_executor.h"
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
 #include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
@@ -51,10 +52,12 @@ using google::cmrt::sdk::auto_scaling_service::v1::
 using google::cmrt::sdk::auto_scaling_service::v1::
     TryFinishInstanceTerminationResponse;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_AWS_AUTO_SCALING_CLIENT_PROVIDER_INSTANCE_NOT_FOUND;
@@ -91,14 +94,14 @@ ExecutionResult AwsAutoScalingClientProvider::Init() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
   if (!region_code_or.Successful()) {
-    ERROR(kAwsAutoScalingClientProvider, kZeroUuid, kZeroUuid,
-          region_code_or.result(),
-          "Failed to get region code for current instance");
+    SCP_ERROR(kAwsAutoScalingClientProvider, kZeroUuid, kZeroUuid,
+              region_code_or.result(),
+              "Failed to get region code for current instance");
     return region_code_or.result();
   }
 
   auto_scaling_client_ = auto_scaling_client_factory_->CreateAutoScalingClient(
-      *CreateClientConfiguration(*region_code_or));
+      *CreateClientConfiguration(*region_code_or), io_async_executor_);
 
   return SuccessExecutionResult();
 }
@@ -118,8 +121,8 @@ ExecutionResult AwsAutoScalingClientProvider::TryFinishInstanceTermination(
   if (try_termination_context.request->instance_resource_id().empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_AUTO_SCALING_CLIENT_PROVIDER_INSTANCE_RESOURCE_ID_REQUIRED);
-    ERROR_CONTEXT(kAwsAutoScalingClientProvider, try_termination_context,
-                  execution_result, "Invalid request.");
+    SCP_ERROR_CONTEXT(kAwsAutoScalingClientProvider, try_termination_context,
+                      execution_result, "Invalid request.");
     try_termination_context.result = execution_result;
     try_termination_context.Finish();
     return execution_result;
@@ -128,8 +131,8 @@ ExecutionResult AwsAutoScalingClientProvider::TryFinishInstanceTermination(
   if (try_termination_context.request->lifecycle_hook_name().empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_AUTO_SCALING_CLIENT_PROVIDER_LIFECYCLE_HOOK_NAME_REQUIRED);
-    ERROR_CONTEXT(kAwsAutoScalingClientProvider, try_termination_context,
-                  execution_result, "Invalid request.");
+    SCP_ERROR_CONTEXT(kAwsAutoScalingClientProvider, try_termination_context,
+                      execution_result, "Invalid request.");
     try_termination_context.result = execution_result;
     try_termination_context.Finish();
     return execution_result;
@@ -158,7 +161,7 @@ void AwsAutoScalingClientProvider::OnDescribeAutoScalingInstancesCallback(
   if (!outcome.IsSuccess()) {
     try_termination_context.result =
         AutoScalingErrorConverter::ConvertAutoScalingError(outcome.GetError());
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsAutoScalingClientProvider, try_termination_context,
         try_termination_context.result,
         "Failed to describe auto-scaling instance for %s.",
@@ -170,7 +173,7 @@ void AwsAutoScalingClientProvider::OnDescribeAutoScalingInstancesCallback(
   if (outcome.GetResult().GetAutoScalingInstances().empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_AUTO_SCALING_CLIENT_PROVIDER_INSTANCE_NOT_FOUND);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsAutoScalingClientProvider, try_termination_context,
         execution_result, "Failed to describe auto-scaling instance for %s.",
         try_termination_context.request->instance_resource_id().c_str());
@@ -182,7 +185,7 @@ void AwsAutoScalingClientProvider::OnDescribeAutoScalingInstancesCallback(
   if (outcome.GetResult().GetAutoScalingInstances().size() > 1) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_AUTO_SCALING_CLIENT_PROVIDER_MULTIPLE_INSTANCES_FOUND);
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsAutoScalingClientProvider, try_termination_context,
         execution_result, "Failed to describe auto-scaling instance for %s.",
         try_termination_context.request->instance_resource_id().c_str());
@@ -236,7 +239,7 @@ void AwsAutoScalingClientProvider::OnCompleteLifecycleActionCallback(
   if (!outcome.IsSuccess()) {
     try_termination_context.result =
         AutoScalingErrorConverter::ConvertAutoScalingError(outcome.GetError());
-    ERROR_CONTEXT(
+    SCP_ERROR_CONTEXT(
         kAwsAutoScalingClientProvider, try_termination_context,
         try_termination_context.result,
         "Failed to complete lifecycle action for %s.",
@@ -251,7 +254,9 @@ void AwsAutoScalingClientProvider::OnCompleteLifecycleActionCallback(
 }
 
 shared_ptr<AutoScalingClient> AutoScalingClientFactory::CreateAutoScalingClient(
-    const ClientConfiguration& client_config) noexcept {
+    ClientConfiguration& client_config,
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
+  client_config.executor = make_shared<AwsAsyncExecutor>(io_async_executor);
   return make_shared<AutoScalingClient>(client_config);
 }
 
@@ -259,10 +264,10 @@ shared_ptr<AutoScalingClient> AutoScalingClientFactory::CreateAutoScalingClient(
 shared_ptr<AutoScalingClientProviderInterface>
 AutoScalingClientProviderFactory::Create(
     const shared_ptr<AutoScalingClientOptions>& options,
-    const shared_ptr<InstanceClientProviderInterface>&
-        instance_client_provider) {
-  return make_shared<AwsAutoScalingClientProvider>(options,
-                                                   instance_client_provider);
+    const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor) {
+  return make_shared<AwsAutoScalingClientProvider>(
+      options, instance_client_provider, io_async_executor);
 }
 #endif
 }  // namespace google::scp::cpio::client_providers

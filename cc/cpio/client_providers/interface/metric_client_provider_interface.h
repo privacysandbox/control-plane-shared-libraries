@@ -26,6 +26,7 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/type_def.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
+#include "public/cpio/utils/metric_aggregation/interface/type_def.h"
 
 namespace google::scp::cpio::client_providers {
 

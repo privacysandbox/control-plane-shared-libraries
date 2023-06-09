@@ -119,8 +119,9 @@ class BlobStorageClientProviderFactory {
   static std::shared_ptr<BlobStorageClientProviderInterface> Create(
       std::shared_ptr<BlobStorageClientOptions> options,
       std::shared_ptr<InstanceClientProviderInterface> instance_client,
-      std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor,
-      std::shared_ptr<core::AsyncExecutorInterface> io_async_executor) noexcept;
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>&
+          io_async_executor) noexcept;
 };
 
 }  // namespace google::scp::cpio::client_providers

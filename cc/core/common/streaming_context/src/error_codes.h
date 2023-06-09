@@ -22,12 +22,12 @@ namespace google::scp::core::errors {
 /// Registers component code as 0x001A for concurrent queue.
 REGISTER_COMPONENT_CODE(SC_STREAMING_CONTEXT, 0x001A)
 
-DEFINE_ERROR_CODE(SC_STREAMING_CONTEXT_DONE, SC_STREAMING_CONTEXT,
-                  0x0001, "Streaming context is marked as done",
+DEFINE_ERROR_CODE(SC_STREAMING_CONTEXT_DONE, SC_STREAMING_CONTEXT, 0x0001,
+                  "Streaming context is marked as done",
                   HttpStatusCode::SERVICE_UNAVAILABLE)
 
-DEFINE_ERROR_CODE(SC_STREAMING_CONTEXT_CANCELLED, SC_STREAMING_CONTEXT,
-                  0x0002, "Streaming context is marked as cancelled",
+DEFINE_ERROR_CODE(SC_STREAMING_CONTEXT_CANCELLED, SC_STREAMING_CONTEXT, 0x0002,
+                  "Streaming context is marked as cancelled",
                   HttpStatusCode::SERVICE_UNAVAILABLE)
 
 }  // namespace google::scp::core::errors

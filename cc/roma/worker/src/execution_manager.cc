@@ -120,6 +120,23 @@ ExecutionResult GetTimeoutValue(const RomaCodeObj& code_obj,
 
 namespace google::scp::roma::worker {
 
+ExecutionManager::ExecutionManager(
+    const JsEngineResourceConstraints& v8_resource_constraints,
+    const std::vector<std::shared_ptr<FunctionBindingObjectBase>>&
+        function_bindings)
+    : v8_resource_constraints_(v8_resource_constraints),
+      function_bindings_(function_bindings) {
+  // Must add pointers that are not within the v8 heap to external_references_
+  // so that the snapshot serialization works.
+  external_references_.push_back(
+      reinterpret_cast<intptr_t>(ExecutionManager::GlobalV8FunctionCallback));
+  for (auto& func : function_bindings) {
+    external_references_.push_back(reinterpret_cast<intptr_t>(func.get()));
+  }
+  // Must be null terminated
+  external_references_.push_back(0);
+}
+
 ExecutionResult ExecutionManager::Init() noexcept {
   return SuccessExecutionResult();
 }
@@ -232,10 +249,8 @@ ExecutionResult ExecutionManager::CreateUnboundScript(
   return SuccessExecutionResult();
 }
 
-ExecutionResult ExecutionManager::Create(
-    const RomaCodeObj& code_obj, RomaString& err_msg,
-    const vector<shared_ptr<FunctionBindingObjectBase>>& function_bindings,
-    const intptr_t* external_references) noexcept {
+ExecutionResult ExecutionManager::Create(const RomaCodeObj& code_obj,
+                                         RomaString& err_msg) noexcept {
   // If there's any previous data, deallocate it.
   if (startup_data_.data) {
     delete[] startup_data_.data;
@@ -252,13 +267,13 @@ ExecutionResult ExecutionManager::Create(
   if (code_obj.JsIsEmpty() && !code_obj.WasmIsEmpty()) {
     code_type_ = CodeType::kWasm;
     wasm_code_ = code_obj.wasm;
-    CreateV8Isolate(external_references);
+    CreateV8Isolate(external_references_.data());
     code_version_num_ = code_obj.version_num;
     return SuccessExecutionResult();
   }
 
-  auto execution_result =
-      CreateSnapshot(code_obj, err_msg, function_bindings, external_references);
+  auto execution_result = CreateSnapshot(code_obj, err_msg, function_bindings_,
+                                         external_references_.data());
   if (!execution_result.Successful() && !CheckErrorWithWebAssembly(err_msg)) {
 #if defined(_SCP_ROMA_LOG_ERRORS)
     std::cout << "Error CreateSnapshot:" << err_msg << "\n" << std::endl;
@@ -269,7 +284,7 @@ ExecutionResult ExecutionManager::Create(
   code_type_ = CodeType::kJs;
 
   // Re-create v8_isolate_. UnboundScript needs to be created in v8_isolate_.
-  CreateV8Isolate(external_references);
+  CreateV8Isolate(external_references_.data());
 
   if (!execution_result.Successful() && CheckErrorWithWebAssembly(err_msg)) {
     execution_result = CreateUnboundScript(code_obj.js, err_msg);
@@ -455,12 +470,27 @@ ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
   return SuccessExecutionResult();
 }
 
+void ExecutionManager::GetV8HeapStatistics(
+    v8::HeapStatistics& v8_heap_stats) noexcept {
+  v8_isolate_->GetHeapStatistics(&v8_heap_stats);
+}
+
 void ExecutionManager::CreateV8Isolate(
     const intptr_t* external_references) noexcept {
   Isolate::CreateParams create_params;
   create_params.external_references = external_references;
 
-  // Config create_params with startup_data_ if startup_data_ is available.
+  // Configure v8 resource constraints if initial_heap_size_in_mb or
+  // maximum_heap_size_in_mb is nonzero.
+  if (v8_resource_constraints_.initial_heap_size_in_mb > 0 ||
+      v8_resource_constraints_.maximum_heap_size_in_mb > 0) {
+    create_params.constraints.ConfigureDefaultsFromHeapSize(
+        v8_resource_constraints_.initial_heap_size_in_mb * kMB,
+        v8_resource_constraints_.maximum_heap_size_in_mb * kMB);
+  }
+
+  // Configure create_params with startup_data_ if startup_data_ is
+  // available.
   if (startup_data_.raw_size > 0 && startup_data_.data != nullptr) {
     create_params.snapshot_blob = &startup_data_;
   }

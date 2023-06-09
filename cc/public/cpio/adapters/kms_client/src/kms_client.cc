@@ -53,16 +53,16 @@ ExecutionResult KmsClient::Init() noexcept {
       GlobalCpio::GetGlobalCpio()->GetRoleCredentialsProvider(
           role_credentials_provider);
   if (!execution_result.Successful()) {
-    ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get RoleCredentialsProvider.");
+    SCP_ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get RoleCredentialsProvider.");
     return execution_result;
   }
   kms_client_provider_ =
       KmsClientProviderFactory::Create(options_, role_credentials_provider);
   execution_result = kms_client_provider_->Init();
   if (!execution_result.Successful()) {
-    ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to initialize KmsClientProvider.");
+    SCP_ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to initialize KmsClientProvider.");
     return execution_result;
   }
   return SuccessExecutionResult();
@@ -71,8 +71,8 @@ ExecutionResult KmsClient::Init() noexcept {
 ExecutionResult KmsClient::Run() noexcept {
   auto execution_result = kms_client_provider_->Run();
   if (!execution_result.Successful()) {
-    ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to run KmsClientProvider.");
+    SCP_ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to run KmsClientProvider.");
     return execution_result;
   }
   return SuccessExecutionResult();
@@ -81,8 +81,8 @@ ExecutionResult KmsClient::Run() noexcept {
 ExecutionResult KmsClient::Stop() noexcept {
   auto execution_result = kms_client_provider_->Stop();
   if (!execution_result.Successful()) {
-    ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to stop KmsClientProvider.");
+    SCP_ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to stop KmsClientProvider.");
     return execution_result;
   }
   return SuccessExecutionResult();

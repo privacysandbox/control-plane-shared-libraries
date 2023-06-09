@@ -29,14 +29,6 @@ def enclaves_kmstools_libraries():
 
     maybe(
         http_file,
-        name = "kmstool_enclave",
-        downloaded_file_path = "kmstool_enclave",
-        executable = True,
-        urls = ["https://storage.googleapis.com/scp-dependencies/aws/2023-03-27/kmstool_enclave"],
-    )
-
-    maybe(
-        http_file,
         name = "libnsm",
         downloaded_file_path = "libnsm.so",
         executable = False,

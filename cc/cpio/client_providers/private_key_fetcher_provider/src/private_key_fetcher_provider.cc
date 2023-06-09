@@ -54,8 +54,8 @@ ExecutionResult PrivateKeyFetcherProvider::Init() noexcept {
   if (!http_client_) {
     auto execution_result = FailureExecutionResult(
         SC_PRIVATE_KEY_FETCHER_PROVIDER_HTTP_CLIENT_NOT_FOUND);
-    ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to get http client.");
+    SCP_ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
+              execution_result, "Failed to get http client.");
     return execution_result;
   }
   return SuccessExecutionResult();
@@ -88,8 +88,8 @@ void PrivateKeyFetcherProvider::SignHttpRequestCallback(
         sign_http_request_context) noexcept {
   auto execution_result = sign_http_request_context.result;
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to sign http request.");
+    SCP_ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
+              execution_result, "Failed to sign http request.");
     private_key_fetching_context.result = execution_result;
     private_key_fetching_context.Finish();
     return;
@@ -101,10 +101,11 @@ void PrivateKeyFetcherProvider::SignHttpRequestCallback(
            private_key_fetching_context, _1));
   execution_result = http_client_->PerformRequest(http_client_context);
   if (!execution_result.Successful()) {
-    ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid, execution_result,
-          "Failed to perform sign http request to reach endpoint %s.",
-          private_key_fetching_context.request->key_vending_endpoint
-              ->private_key_vending_service_endpoint.c_str());
+    SCP_ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
+              execution_result,
+              "Failed to perform sign http request to reach endpoint %s.",
+              private_key_fetching_context.request->key_vending_endpoint
+                  ->private_key_vending_service_endpoint.c_str());
     private_key_fetching_context.result = execution_result;
     private_key_fetching_context.Finish();
   }
@@ -116,9 +117,9 @@ void PrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
     AsyncContext<HttpRequest, HttpResponse>& http_client_context) noexcept {
   private_key_fetching_context.result = http_client_context.result;
   if (!http_client_context.result.Successful()) {
-    ERROR_CONTEXT(kPrivateKeyFetcherProvider, private_key_fetching_context,
-                  private_key_fetching_context.result,
-                  "Failed to fetch private key.");
+    SCP_ERROR_CONTEXT(kPrivateKeyFetcherProvider, private_key_fetching_context,
+                      private_key_fetching_context.result,
+                      "Failed to fetch private key.");
     private_key_fetching_context.Finish();
     return;
   }
@@ -127,9 +128,9 @@ void PrivateKeyFetcherProvider::PrivateKeyFetchingCallback(
   auto result = PrivateKeyFetchingClientUtils::ParsePrivateKey(
       http_client_context.response->body, response);
   if (!result.Successful()) {
-    ERROR_CONTEXT(kPrivateKeyFetcherProvider, private_key_fetching_context,
-                  private_key_fetching_context.result,
-                  "Failed to parse private key.");
+    SCP_ERROR_CONTEXT(kPrivateKeyFetcherProvider, private_key_fetching_context,
+                      private_key_fetching_context.result,
+                      "Failed to parse private key.");
     private_key_fetching_context.result = result;
     private_key_fetching_context.Finish();
     return;

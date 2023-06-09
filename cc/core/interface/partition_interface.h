@@ -22,8 +22,6 @@
 
 namespace google::scp::core {
 
-typedef common::Uuid PartitionId;
-
 /**
  * @brief Represents types of Partitions that can be loaded.
  *
