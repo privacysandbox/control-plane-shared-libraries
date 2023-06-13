@@ -47,7 +47,6 @@ cc_library(
         "test_aws_blob_storage_client_provider.cc",
         "test_aws_blob_storage_client_provider.h",
         "//cc/cpio/client_providers/blob_storage_client_provider/src/aws:aws_blob_storage_client_provider_srcs",
-        "//cc/cpio/client_providers/interface:blob_storage_client_provider_interface.h",
     ],
     copts = [
         "-DTEST_CPIO=1",

@@ -18,6 +18,9 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+#include <vector>
+
 #include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/sandbox/constants/constants.h"
 
@@ -27,11 +30,17 @@ using google::scp::roma::sandbox::constants::kRequestAction;
 using google::scp::roma::sandbox::constants::kRequestActionExecute;
 using google::scp::roma::sandbox::constants::kRequestType;
 using google::scp::roma::sandbox::constants::kRequestTypeJavascript;
+using std::string;
+using std::vector;
 
 namespace google::scp::roma::sandbox::worker_api::test {
 TEST(WorkerApiSapiTest, WorkerWorksThroughSandbox) {
-  WorkerApiSapi worker_api(worker::WorkerFactory::WorkerEngine::v8,
-                           false /*require_preload*/);
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = false;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  WorkerApiSapi worker_api(config);
 
   auto result = worker_api.Init();
   EXPECT_SUCCESS(result);
@@ -53,8 +62,12 @@ TEST(WorkerApiSapiTest, WorkerWorksThroughSandbox) {
 }
 
 TEST(WorkerApiSapiTest, WorkerWithInputsWorksThroughSandbox) {
-  WorkerApiSapi worker_api(worker::WorkerFactory::WorkerEngine::v8,
-                           false /*require_preload*/);
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = false;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  WorkerApiSapi worker_api(config);
 
   auto result = worker_api.Init();
   EXPECT_SUCCESS(result);

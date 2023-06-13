@@ -31,10 +31,10 @@ DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_INITIALIZE_SANDBOX,
                   "Could not initialize the SAPI sandbox.",
                   HttpStatusCode::BAD_REQUEST)
 
-DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_CREATE_IPC_PROTO,
-                  SC_ROMA_WORKER_API, 0x0003,
-                  "Could not create the IPC proto to send work to sandbox.",
-                  HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(
+    SC_ROMA_WORKER_API_COULD_NOT_CREATE_IPC_PROTO, SC_ROMA_WORKER_API, 0x0003,
+    "Could not create the IPC proto to send information to sandbox.",
+    HttpStatusCode::BAD_REQUEST)
 
 DEFINE_ERROR_CODE(
     SC_ROMA_WORKER_API_COULD_NOT_GET_PROTO_MESSAGE_AFTER_EXECUTION,
@@ -58,5 +58,15 @@ DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_STOP_WRAPPER_API,
 DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_RUN_CODE_THROUGH_WRAPPER_API,
                   SC_ROMA_WORKER_API, 0x0008,
                   "Could not run code through the wrapper API.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX,
+                  SC_ROMA_WORKER_API, 0x0009,
+                  "Could not transfer function comms fd to sandbox.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_RESTART_SANDBOX,
+                  SC_ROMA_WORKER_API, 0x000A,
+                  "Could not restart the sandbox after it died.",
                   HttpStatusCode::BAD_REQUEST)
 }  // namespace google::scp::core::errors

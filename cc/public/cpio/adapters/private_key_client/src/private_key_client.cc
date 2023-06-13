@@ -23,6 +23,7 @@
 #include "core/common/global_logger/src/global_logger.h"
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
+#include "core/interface/async_executor_interface.h"
 #include "core/interface/errors.h"
 #include "core/interface/http_client_interface.h"
 #include "core/utils/src/error_utils.h"
@@ -36,6 +37,7 @@
 using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysRequest;
 using google::cmrt::sdk::private_key_service::v1::ListPrivateKeysResponse;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::HttpClientInterface;
@@ -84,8 +86,17 @@ ExecutionResult PrivateKeyClient::CreatePrivateKeyClientProvider() noexcept {
               "Failed to get role auth token provider.");
     return execution_result;
   }
+  shared_ptr<AsyncExecutorInterface> io_async_executor;
+  execution_result =
+      GlobalCpio::GetGlobalCpio()->GetIoAsyncExecutor(io_async_executor);
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kPrivateKeyClient, kZeroUuid, kZeroUuid, execution_result,
+          "Failed to get IOAsyncExecutor.");
+    return execution_result;
+  }
   private_key_client_provider_ = PrivateKeyClientProviderFactory::Create(
-      options_, http_client, role_credentials_provider, auth_token_provider);
+      options_, http_client, role_credentials_provider, auth_token_provider,
+      io_async_executor);
   return SuccessExecutionResult();
 }
 

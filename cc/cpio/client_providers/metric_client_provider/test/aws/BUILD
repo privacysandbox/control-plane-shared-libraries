@@ -19,27 +19,16 @@ cc_library(
     srcs = [
         "test_aws_metric_client_provider.cc",
         "test_aws_metric_client_provider.h",
-        "//cc/cpio/client_providers/interface:metric_client_provider_interface.h",
-        "//cc/cpio/client_providers/metric_client_provider/src:metric_client_provider_srcs",
         "//cc/cpio/client_providers/metric_client_provider/src/aws:aws_metric_client_provider_srcs",
     ],
     copts = [
         "-DTEST_CPIO=1",
-        "-std=c++17",
     ],
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/core/interface:interface_lib",
-        "//cc/cpio/client_providers/global_cpio/test:test_global_cpio_lib",
-        "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
-        "//cc/cpio/client_providers/interface:type_def",
-        "//cc/cpio/common/src/aws:aws_utils_lib",
+        "//cc/cpio/client_providers/metric_client_provider/src/aws:aws_metric_client_provider_lib",
         "//cc/cpio/common/test/aws:test_aws_utils_lib",
-        "//cc/public/cpio/interface/metric_client:type_def",
-        "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/test/metric_client:test_aws_metric_client_options",
-        "@aws_sdk_cpp//:monitoring",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

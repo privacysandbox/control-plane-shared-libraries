@@ -36,6 +36,7 @@
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::GetErrorMessage;
+using google::scp::core::errors::SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_BAD_INPUT_ARGS;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_UNKNOWN_WASM_RETURN_TYPE;
@@ -61,7 +62,7 @@ using v8::Isolate;
 
 namespace google::scp::roma::worker::test {
 static constexpr char WasmUnCompilableError[] =
-    "8: ReferenceError: WebAssembly is not defined";
+    "line 8: Uncaught ReferenceError: WebAssembly is not defined";
 
 class ExecutionManagerTest : public ::testing::Test {
  protected:
@@ -367,7 +368,7 @@ TEST_F(ExecutionManagerTest, DescribeThrowError) {
       auto result = helper.Process(roma_code_obj, output, err_msg);
       EXPECT_EQ(result, FailureExecutionResult(
                             SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE));
-      EXPECT_EQ(err_msg, "2: TypeError");
+      EXPECT_EQ(err_msg, "line 2: Uncaught TypeError");
     }
   }
 
@@ -608,6 +609,327 @@ TEST_F(ExecutionManagerTest, CreateBlobAndProcessJsCodeWithHeapConfig) {
 
     auto expected = to_string(233);
     EXPECT_EQ(output, expected.c_str());
+  }
+
+  EXPECT_SUCCESS(helper.Stop());
+}
+
+TEST_F(ExecutionManagerTest, ExecuteAsyncCode) {
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
+  AutoInitRunStop auto_init_run_stop(*manager);
+  auto role_id = RoleId(0, false);
+  IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
+
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
+
+  // Creates a blob.
+  {
+    CodeObject code_obj;
+    // JS code with async handler.
+    string js = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+      function resolveAfterOneSecond() {
+        return new Promise((resolve) => {
+          sleep(1000);
+          resolve("some cool string");
+        });
+      }
+      async function Handler() {
+          const result = await resolveAfterOneSecond();
+          return result;
+      }
+    )JS_CODE";
+
+    GetCodeObj(code_obj, js);
+    auto roma_code_obj = RomaCodeObj(code_obj);
+
+    RomaString err_msg;
+    auto result = helper.Create(roma_code_obj, err_msg);
+    EXPECT_SUCCESS(result);
+  }
+
+  // Process the code.
+  {
+    InvocationRequestSharedInput ext_obj;
+    auto input = vector<string>();
+    GetExecutionObj(ext_obj, input);
+    auto roma_code_obj = RomaCodeObj(ext_obj);
+
+    RomaString output;
+    RomaString err_msg;
+    auto result = helper.Process(roma_code_obj, output, err_msg);
+    EXPECT_SUCCESS(result);
+
+    EXPECT_EQ(output, R"("some cool string")");
+  }
+
+  EXPECT_SUCCESS(helper.Stop());
+}
+
+TEST_F(ExecutionManagerTest, ExecuteAsyncCodeGotNotDefinedError) {
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
+  AutoInitRunStop auto_init_run_stop(*manager);
+  auto role_id = RoleId(0, false);
+  IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
+
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
+
+  // Creates a blob.
+  {
+    CodeObject code_obj;
+    // JS code async handler has undefined func name "setTimeout".
+    string js = R"JS_CODE(
+      function resolveAfterOneSecond() {
+        return new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      async function Handler() {
+          const result = await resolveAfterOneSecond();
+          return result;
+      }
+    )JS_CODE";
+
+    GetCodeObj(code_obj, js);
+    auto roma_code_obj = RomaCodeObj(code_obj);
+
+    RomaString err_msg;
+    auto result = helper.Create(roma_code_obj, err_msg);
+    EXPECT_SUCCESS(result);
+  }
+
+  // Process the code.
+  {
+    InvocationRequestSharedInput ext_obj;
+    auto input = vector<string>();
+    GetExecutionObj(ext_obj, input);
+    auto roma_code_obj = RomaCodeObj(ext_obj);
+
+    RomaString output;
+    RomaString err_msg;
+    auto result = helper.Process(roma_code_obj, output, err_msg);
+    EXPECT_THAT(result, ResultIs(FailureExecutionResult(
+                            SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED)));
+    EXPECT_EQ(err_msg,
+              R"(line 3: Uncaught ReferenceError: setTimeout is not defined)");
+  }
+
+  EXPECT_SUCCESS(helper.Stop());
+}
+
+TEST_F(ExecutionManagerTest, ExecuteAsyncCodeWithPromiseAllSuccess) {
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
+  AutoInitRunStop auto_init_run_stop(*manager);
+  auto role_id = RoleId(0, false);
+  IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
+
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
+
+  // Creates a blob.
+  {
+    CodeObject code_obj;
+    // JS code async handler has multiple promises.
+    string js = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+      function multiplePromises() {
+        const p1 = Promise.resolve("some");
+        const p2 = "cool";
+        const p3 = new Promise((resolve, reject) => {
+          sleep(1000);
+          resolve("string");
+        });
+
+        return Promise.all([p1, p2, p3]).then((values) => {
+          return values;
+        });
+      }
+      async function Handler() {
+          const result = await multiplePromises();
+          return result.join(" ");
+      }
+    )JS_CODE";
+
+    GetCodeObj(code_obj, js);
+    auto roma_code_obj = RomaCodeObj(code_obj);
+
+    RomaString err_msg;
+    auto result = helper.Create(roma_code_obj, err_msg);
+    EXPECT_SUCCESS(result);
+  }
+
+  // Process the code.
+  {
+    InvocationRequestSharedInput ext_obj;
+    auto input = vector<string>();
+    GetExecutionObj(ext_obj, input);
+    auto roma_code_obj = RomaCodeObj(ext_obj);
+
+    RomaString output;
+    RomaString err_msg;
+    auto result = helper.Process(roma_code_obj, output, err_msg);
+
+    EXPECT_SUCCESS(result);
+    EXPECT_EQ(output, R"("some cool string")");
+  }
+
+  EXPECT_SUCCESS(helper.Stop());
+}
+
+TEST_F(ExecutionManagerTest,
+       ExecuteAsyncCodeWithMultiplePromisesRejectedError) {
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
+  AutoInitRunStop auto_init_run_stop(*manager);
+  auto role_id = RoleId(0, false);
+  IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
+
+  // Config v8 heap size limit to 30MB.
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
+
+  // Creates a blob.
+  {
+    CodeObject code_obj;
+    // JS code has global variable which is updated by Handler.
+    string js = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+      function multiplePromises() {
+        const p1 = Promise.resolve("some");
+        const p2 = "cool";
+        const p3 = new Promise((resolve, reject) => {
+          sleep(1000);
+          reject("reject error from promise!");
+        });
+
+        return Promise.all([p1, p2, p3]).then((values) => {
+          return values;
+        });
+      }
+      async function Handler() {
+          const result = await multiplePromises();
+          return result.join(" ");
+      }
+    )JS_CODE";
+
+    GetCodeObj(code_obj, js);
+    auto roma_code_obj = RomaCodeObj(code_obj);
+
+    RomaString err_msg;
+    auto result = helper.Create(roma_code_obj, err_msg);
+    EXPECT_SUCCESS(result);
+  }
+
+  // Process the code.
+  {
+    InvocationRequestSharedInput ext_obj;
+    auto input = vector<string>();
+    GetExecutionObj(ext_obj, input);
+    auto roma_code_obj = RomaCodeObj(ext_obj);
+
+    RomaString output;
+    RomaString err_msg;
+    auto result = helper.Process(roma_code_obj, output, err_msg);
+    EXPECT_THAT(result, ResultIs(FailureExecutionResult(
+                            SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED)));
+    std::cout << err_msg << std::endl;
+    EXPECT_EQ(err_msg, R"(line 0: Uncaught reject error from promise!)");
+  }
+
+  EXPECT_SUCCESS(helper.Stop());
+}
+
+TEST_F(ExecutionManagerTest,
+       ExecuteAsyncCodeWithMultiplePromisesUndefinedError) {
+  unique_ptr<IpcManager> manager(IpcManager::Create(config));
+  AutoInitRunStop auto_init_run_stop(*manager);
+  auto role_id = RoleId(0, false);
+  IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
+
+  // Config v8 heap size limit to 30MB.
+  JsEngineResourceConstraints v8_resource_constraints;
+  std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings;
+  ExecutionManager helper(v8_resource_constraints, function_bindings);
+
+  // Creates a blob.
+  {
+    CodeObject code_obj;
+    // JS code has global variable which is updated by Handler.
+    string js = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+      function resolveAfterOneSecond() {
+        const p1 = Promise.resolve("some");
+        const p2 = "cool";
+        const p3 = new Promise((resolve, reject) => {
+          sleep(1000);
+          resolve("error from promise!");
+        });
+        const p4 = new Promise((resolve) => {
+          setTimeout(() => {
+            resolve("foo");
+          }, 300);
+        });
+
+        return Promise.all([p1, p2, p3, p4]).then((values) => {
+          return values.join(" ");
+        });
+      }
+      async function Handler() {
+          const result = await resolveAfterOneSecond();
+          return result;
+      }
+    )JS_CODE";
+
+    GetCodeObj(code_obj, js);
+    auto roma_code_obj = RomaCodeObj(code_obj);
+
+    RomaString err_msg;
+    auto result = helper.Create(roma_code_obj, err_msg);
+    EXPECT_SUCCESS(result);
+  }
+
+  // Process the code.
+  {
+    InvocationRequestSharedInput ext_obj;
+    auto input = vector<string>();
+    GetExecutionObj(ext_obj, input);
+    auto roma_code_obj = RomaCodeObj(ext_obj);
+
+    RomaString output;
+    RomaString err_msg;
+    auto result = helper.Process(roma_code_obj, output, err_msg);
+    EXPECT_THAT(result, ResultIs(FailureExecutionResult(
+                            SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED)));
+    std::cout << err_msg << std::endl;
+    EXPECT_EQ(err_msg,
+              R"(line 17: Uncaught ReferenceError: setTimeout is not defined)");
   }
 
   EXPECT_SUCCESS(helper.Stop());

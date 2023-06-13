@@ -107,3 +107,18 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "async_executor_utils_test",
+    size = "small",
+    srcs = ["async_executor_utils_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/async_executor/src:core_async_executor_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

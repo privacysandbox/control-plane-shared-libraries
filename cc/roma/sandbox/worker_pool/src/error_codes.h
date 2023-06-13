@@ -16,18 +16,13 @@
 
 #pragma once
 
-#include <memory>
-
-#include "core/interface/service_interface.h"
+#include "core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
-#include "roma/sandbox/worker_api/src/worker_api.h"
 
-namespace google::scp::roma::sandbox::worker_pool {
-class WorkerPool : public core::ServiceInterface {
- public:
-  virtual size_t GetPoolSize() noexcept = 0;
-
-  virtual core::ExecutionResultOr<std::shared_ptr<worker_api::WorkerApi>>
-  GetWoker(size_t index) noexcept = 0;
-};
-}  // namespace google::scp::roma::sandbox::worker_pool
+namespace google::scp::core::errors {
+REGISTER_COMPONENT_CODE(SC_ROMA_WORKER_POOL, 0x0CF0)
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_POOL_WORKER_INDEX_OUT_OF_BOUNDS,
+                  SC_ROMA_WORKER_POOL, 0x0001,
+                  "The worker index was out of bounds.",
+                  HttpStatusCode::BAD_REQUEST)
+}  // namespace google::scp::core::errors

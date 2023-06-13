@@ -256,7 +256,9 @@ ExecutionResult TeeAwsKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
 std::shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
     const shared_ptr<KmsClientOptions>& options,
     const shared_ptr<RoleCredentialsProviderInterface>&
-        role_credentials_provider) noexcept {
+        role_credentials_provider,
+    const shared_ptr<core::AsyncExecutorInterface>&
+        io_async_executor) noexcept {
   return make_shared<TeeAwsKmsClientProvider>(role_credentials_provider);
 }
 #endif

@@ -49,15 +49,15 @@ using google::scp::roma::sandbox::js_engine::RomaJsEngineCompilationContext;
 
 namespace google::scp::roma::sandbox::worker {
 ExecutionResult Worker::Init() noexcept {
-  return SuccessExecutionResult();
+  return js_engine_->Init();
 }
 
 ExecutionResult Worker::Run() noexcept {
-  return SuccessExecutionResult();
+  return js_engine_->Run();
 }
 
 ExecutionResult Worker::Stop() noexcept {
-  return SuccessExecutionResult();
+  return js_engine_->Stop();
 }
 
 static ExecutionResultOr<string> GetValueFromMetadata(

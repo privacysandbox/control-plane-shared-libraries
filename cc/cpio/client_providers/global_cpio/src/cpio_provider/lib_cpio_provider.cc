@@ -382,10 +382,13 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
 }
 
 shared_ptr<RoleCredentialsProviderInterface>
-LibCpioProvider::CreateRoleCredentialsProvider() noexcept {
+LibCpioProvider::CreateRoleCredentialsProvider(
+    const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
+    const shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
   return RoleCredentialsProviderFactory::Create(
-      make_shared<RoleCredentialsProviderOptions>(), instance_client_provider_,
-      cpu_async_executor_);
+      make_shared<RoleCredentialsProviderOptions>(), instance_client_provider,
+      cpu_async_executor, io_async_executor);
 }
 
 ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
@@ -396,11 +399,20 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
     return SuccessExecutionResult();
   }
 
-  shared_ptr<AsyncExecutorInterface> async_executor;
-  auto execution_result = LibCpioProvider::GetCpuAsyncExecutor(async_executor);
+  shared_ptr<AsyncExecutorInterface> cpu_async_executor;
+  auto execution_result =
+      LibCpioProvider::GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
     SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
-              "Failed to get asynce executor.");
+              "Failed to get cpu async executor.");
+    return execution_result;
+  }
+
+  shared_ptr<AsyncExecutorInterface> io_async_executor;
+  execution_result = LibCpioProvider::GetIoAsyncExecutor(io_async_executor);
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+              "Failed to get io async executor.");
     return execution_result;
   }
 
@@ -412,7 +424,8 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
     return execution_result;
   }
 
-  role_credentials_provider_ = CreateRoleCredentialsProvider();
+  role_credentials_provider_ = CreateRoleCredentialsProvider(
+      instance_client, cpu_async_executor, io_async_executor);
   execution_result = role_credentials_provider_->Init();
   if (!execution_result.Successful()) {
     SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,

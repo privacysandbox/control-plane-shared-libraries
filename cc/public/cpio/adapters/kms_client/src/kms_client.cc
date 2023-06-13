@@ -30,6 +30,7 @@
 using google::cmrt::sdk::kms_service::v1::DecryptRequest;
 using google::cmrt::sdk::kms_service::v1::DecryptResponse;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
@@ -57,8 +58,16 @@ ExecutionResult KmsClient::Init() noexcept {
               "Failed to get RoleCredentialsProvider.");
     return execution_result;
   }
-  kms_client_provider_ =
-      KmsClientProviderFactory::Create(options_, role_credentials_provider);
+  shared_ptr<AsyncExecutorInterface> io_async_executor;
+  execution_result =
+      GlobalCpio::GetGlobalCpio()->GetIoAsyncExecutor(io_async_executor);
+  if (!execution_result.Successful()) {
+    SCP_ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,
+          "Failed to get IOAsyncExecutor.");
+    return execution_result;
+  }
+  kms_client_provider_ = KmsClientProviderFactory::Create(
+      options_, role_credentials_provider, io_async_executor);
   execution_result = kms_client_provider_->Init();
   if (!execution_result.Successful()) {
     SCP_ERROR(kKmsClient, kZeroUuid, kZeroUuid, execution_result,

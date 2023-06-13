@@ -28,7 +28,7 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/core/utils/src:core_utils",
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
-        "//cc/cpio/client_providers/kms_client_provider/src:kms_client_provider_lib",
+        "//cc/cpio/client_providers/kms_client_provider/src:kms_client_provider_select_lib",
         "//cc/public/cpio/interface:type_def",
     ],
 )

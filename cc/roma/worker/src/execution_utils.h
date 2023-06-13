@@ -138,5 +138,15 @@ class ExecutionUtils {
   static v8::Local<v8::Value> ReadFromWasmMemory(
       v8::Isolate* isolate, v8::Local<v8::Context>& context, int32_t offset,
       WasmDataType read_value_type);
+
+  /**
+   * @brief Extract the error message from v8::Message object.
+   *
+   * @param isolate
+   * @param message
+   * @return std::string
+   */
+  static std::string ExtractMessage(v8::Isolate* isolate,
+                                    v8::Local<v8::Message> message) noexcept;
 };
 }  // namespace google::scp::roma::worker

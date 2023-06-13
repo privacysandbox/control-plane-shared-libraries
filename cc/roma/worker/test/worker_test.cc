@@ -507,17 +507,19 @@ TEST_F(WorkerTest, CustomizedExecuteTimeout) {
       CodeObject obj;
       obj.id = "id";
       obj.version_num = 1;
-      obj.js =
-          "function sleep(milliseconds) {"
-          "const date = Date.now();"
-          "let currentDate = null;"
-          "do {"
-          "currentDate = Date.now();"
-          "} while (currentDate - date < milliseconds);"
-          "}"
-          "function Handler(a) {"
-          "sleep(200);"
-          "return a;}";
+      obj.js = R"""(
+          function sleep(milliseconds) {
+            const date = Date.now();
+            let currentDate = null;
+            do {
+              currentDate = Date.now();
+            } while (currentDate - date < milliseconds);
+          }
+          function Handler(a) {
+            sleep(200);
+            return a;
+          }
+        )""";
       auto request =
           make_unique<Request>(make_unique<CodeObject>(obj), callback);
       EXPECT_SUCCESS(ipc.TryAcquirePushRequest());
@@ -598,10 +600,14 @@ TEST_F(WorkerTest, FailedWithUnmatchedVersionNum) {
       CodeObject obj;
       obj.id = "id";
       obj.version_num = 1;
-      obj.js =
-          "let increase = 0;"
-          "function Handler(a, b) { increase += 1; "
-          "var match = a + b+ increase -1; return match; }";
+      obj.js = R"""(
+          let increase = 0;
+          function Handler(a, b) {
+            increase += 1;
+            var match = a + b + increase -1;
+            return match;
+          }
+        )""";
       auto request =
           make_unique<Request>(make_unique<CodeObject>(obj), callback);
       EXPECT_SUCCESS(ipc.TryAcquirePushRequest());

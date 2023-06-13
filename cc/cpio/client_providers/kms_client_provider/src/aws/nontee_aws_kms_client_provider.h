@@ -46,8 +46,10 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
    */
   explicit NonteeAwsKmsClientProvider(
       const std::shared_ptr<RoleCredentialsProviderInterface>&
-          role_credentials_provider)
-      : role_credentials_provider_(role_credentials_provider) {}
+          role_credentials_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
+      : role_credentials_provider_(role_credentials_provider),
+        io_async_executor_(io_async_executor) {}
 
   NonteeAwsKmsClientProvider() = delete;
 
@@ -156,5 +158,8 @@ class NonteeAwsKmsClientProvider : public KmsClientProviderInterface {
   /// Credentials provider.
   const std::shared_ptr<RoleCredentialsProviderInterface>
       role_credentials_provider_;
+
+  /// The instance of the io async executor.
+  const std::shared_ptr<core::AsyncExecutorInterface> io_async_executor_;
 };
 }  // namespace google::scp::cpio::client_providers

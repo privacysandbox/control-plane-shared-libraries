@@ -21,7 +21,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "include/v8.h"
 #include "public/core/interface/execution_result.h"
 #include "roma/config/src/type_converter.h"
 #include "roma/sandbox/logging/src/logging.h"
@@ -44,6 +43,8 @@ using google::scp::core::errors::SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_COMPILING_SCRIPT;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_RUNNING_SCRIPT;
+using google::scp::core::errors::SC_ROMA_V8_ENGINE_ISOLATE_ALREADY_INITIALIZED;
+using google::scp::core::errors::SC_ROMA_V8_ENGINE_ISOLATE_NOT_INITIALIZED;
 using google::scp::roma::sandbox::js_engine::JsExecutionResponse;
 using google::scp::roma::sandbox::js_engine::RomaJsEngineCompilationContext;
 using std::make_shared;
@@ -68,46 +69,26 @@ using v8::Undefined;
 using v8::Value;
 
 namespace google::scp::roma::sandbox::js_engine::v8_js_engine {
+static ExecutionResultOr<Isolate*> CreateIsolate() {
+  Isolate::CreateParams params;
+  params.array_buffer_allocator = ArrayBuffer::Allocator::NewDefaultAllocator();
+  auto isolate = Isolate::New(params);
 
-class AutoDisposingIsolate {
- public:
-  AutoDisposingIsolate() { isolate_ = nullptr; }
-
-  ~AutoDisposingIsolate() {
-    if (isolate_) {
-      isolate_->Dispose();
-      isolate_ = nullptr;
-    }
+  if (!isolate) {
+    return FailureExecutionResult(SC_ROMA_V8_ENGINE_COULD_NOT_CREATE_ISOLATE);
   }
 
-  Isolate* GetIsolate() { return isolate_; }
-
-  static ExecutionResultOr<shared_ptr<AutoDisposingIsolate>> Create() {
-    auto auto_isolate = make_shared<AutoDisposingIsolate>();
-    auto isolate_or = CreateIsolate();
-    RETURN_IF_FAILURE(isolate_or.result());
-    auto_isolate->isolate_ = *isolate_or;
-    return auto_isolate;
-  }
-
-  static ExecutionResultOr<Isolate*> CreateIsolate() {
-    Isolate::CreateParams params;
-    params.array_buffer_allocator =
-        ArrayBuffer::Allocator::NewDefaultAllocator();
-    auto isolate = Isolate::New(params);
-
-    if (!isolate) {
-      return FailureExecutionResult(SC_ROMA_V8_ENGINE_COULD_NOT_CREATE_ISOLATE);
-    }
-
-    return isolate;
-  }
-
- private:
-  Isolate* isolate_;
-};
+  return isolate;
+}
 
 ExecutionResult V8JsEngine::Init() noexcept {
+  if (v8_isolate_) {
+    return FailureExecutionResult(
+        SC_ROMA_V8_ENGINE_ISOLATE_ALREADY_INITIALIZED);
+  }
+  auto isolate_or = CreateIsolate();
+  RETURN_IF_FAILURE(isolate_or.result());
+  v8_isolate_ = *isolate_or;
   return SuccessExecutionResult();
 }
 
@@ -116,6 +97,10 @@ ExecutionResult V8JsEngine::Run() noexcept {
 }
 
 ExecutionResult V8JsEngine::Stop() noexcept {
+  if (v8_isolate_) {
+    v8_isolate_->Dispose();
+    v8_isolate_ = nullptr;
+  }
   return SuccessExecutionResult();
 }
 
@@ -176,6 +161,10 @@ ExecutionResultOr<JsExecutionResponse> V8JsEngine::CompileAndRunJs(
     const string& code, const string& function_name,
     const vector<string>& input,
     const RomaJsEngineCompilationContext& context) noexcept {
+  if (!v8_isolate_) {
+    return FailureExecutionResult(SC_ROMA_V8_ENGINE_ISOLATE_NOT_INITIALIZED);
+  }
+
   string input_code;
   RomaJsEngineCompilationContext out_context;
   // For now we just store and reuse the actual code as context.
@@ -189,9 +178,7 @@ ExecutionResultOr<JsExecutionResponse> V8JsEngine::CompileAndRunJs(
     out_context.context = make_shared<string>(code);
   }
 
-  auto auto_isolate_or = AutoDisposingIsolate::Create();
-  RETURN_IF_FAILURE(auto_isolate_or.result());
-  auto isolate = (*auto_isolate_or)->GetIsolate();
+  auto isolate = v8_isolate_;
 
   string execution_response_string;
   vector<string> errors;
@@ -204,6 +191,10 @@ ExecutionResultOr<JsExecutionResponse> V8JsEngine::CompileAndRunJs(
   {
     Local<Context> context(isolate->GetCurrentContext());
     TryCatch try_catch(isolate);
+
+    for (auto& visitor : isolate_visitors_) {
+      visitor->Visit(isolate);
+    }
 
     auto js_source =
         TypeConverter<string>::ToV8(isolate, input_code).As<String>();

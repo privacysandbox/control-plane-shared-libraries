@@ -26,6 +26,7 @@
 #include <aws/kms/KMSClient.h>
 #include <aws/kms/KMSErrors.h>
 
+#include "core/async_executor/mock/mock_async_executor.h"
 #include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"
 #include "core/utils/src/base64.h"
@@ -50,8 +51,10 @@ using crypto::tink::Aead;
 using google::cmrt::sdk::kms_service::v1::DecryptRequest;
 using google::cmrt::sdk::kms_service::v1::DecryptResponse;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionStatus;
 using google::scp::core::FailureExecutionResult;
+using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::test::ResultIs;
 using google::scp::core::utils::Base64Decode;
 
@@ -126,19 +129,21 @@ class TeeAwsKmsClientProviderTest : public ::testing::Test {
 
     mock_credentials_provider_ = make_shared<MockRoleCredentialsProvider>();
     client_ = make_unique<MockNonteeAwsKmsClientProviderWithOverrides>(
-        mock_credentials_provider_, mock_kms_client_);
+        mock_credentials_provider_, mock_kms_client_, mock_io_async_executor_);
   }
 
   void TearDown() override { EXPECT_SUCCESS(client_->Stop()); }
 
   unique_ptr<MockNonteeAwsKmsClientProviderWithOverrides> client_;
   shared_ptr<MockKMSClient> mock_kms_client_;
+  shared_ptr<MockAsyncExecutor> mock_io_async_executor_ =
+      make_shared<MockAsyncExecutor>();
   shared_ptr<RoleCredentialsProviderInterface> mock_credentials_provider_;
 };
 
 TEST_F(TeeAwsKmsClientProviderTest, MissingCredentialsProvider) {
   client_ = make_unique<MockNonteeAwsKmsClientProviderWithOverrides>(
-      nullptr, mock_kms_client_);
+      nullptr, mock_kms_client_, mock_io_async_executor_);
 
   EXPECT_THAT(client_->Init(),
               ResultIs(FailureExecutionResult(

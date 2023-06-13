@@ -25,6 +25,7 @@ cc_test(
     ],
     deps = [
         "//cc:cc_base_include_dir",
+        "//cc/core/async_executor/mock:core_async_executor_mock",
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/cpio/client_providers/kms_client_provider/mock/aws:aws_kms_client_provider_mock",

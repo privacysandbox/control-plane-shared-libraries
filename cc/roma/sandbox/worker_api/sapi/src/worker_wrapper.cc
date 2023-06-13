@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "core/interface/errors.h"
+#include "roma/sandbox/worker_api/sapi/src/worker_init_params.pb.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_params.pb.h"
 #include "roma/sandbox/worker_factory/src/worker_factory.h"
 
@@ -40,22 +41,41 @@ using std::vector;
 
 shared_ptr<Worker> worker_;
 
-StatusCode Init(int worker_factory_engine, bool require_preload) {
+StatusCode Init(worker_api::WorkerInitParamsProto* init_params) {
   if (worker_) {
     Stop();
   }
 
-  WorkerFactory::FactoryParams params{
-      .engine = static_cast<WorkerFactory::WorkerEngine>(worker_factory_engine),
-      .require_preload = require_preload,
-  };
-  auto worker_or = WorkerFactory::Create(params);
+  auto worker_engine = static_cast<WorkerFactory::WorkerEngine>(
+      init_params->worker_factory_js_engine());
+
+  WorkerFactory::FactoryParams factory_params;
+  factory_params.engine = worker_engine;
+  factory_params.require_preload =
+      init_params->require_code_preload_for_execution();
+
+  if (worker_engine == WorkerFactory::WorkerEngine::v8) {
+    vector<string> native_js_function_names(
+        init_params->native_js_function_names().begin(),
+        init_params->native_js_function_names().end());
+
+    WorkerFactory::V8WorkerEngineParams v8_params{
+        .native_js_function_comms_fd =
+            init_params->native_js_function_comms_fd(),
+        .native_js_function_names = native_js_function_names,
+    };
+
+    factory_params.v8_worker_engine_params = v8_params;
+  }
+
+  auto worker_or = WorkerFactory::Create(factory_params);
   if (!worker_or.result().Successful()) {
     return worker_or.result().status_code;
   }
 
   worker_ = *worker_or;
-  return SC_OK;
+
+  return worker_->Init().status_code;
 }
 
 StatusCode Run() {

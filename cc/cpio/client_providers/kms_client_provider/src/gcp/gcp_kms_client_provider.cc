@@ -36,6 +36,7 @@ using google::cloud::kms::MakeKeyManagementServiceConnection;
 using google::cmrt::sdk::kms_service::v1::DecryptRequest;
 using google::cmrt::sdk::kms_service::v1::DecryptResponse;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::ExecutionResult;
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;
@@ -163,7 +164,8 @@ ExecutionResultOr<shared_ptr<Aead>> GcpKmsAeadProvider::CreateAead(
 shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
     const shared_ptr<KmsClientOptions>& options,
     const shared_ptr<RoleCredentialsProviderInterface>&
-        role_credentials_provider) noexcept {
+        role_credentials_provider,
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
   return make_shared<GcpKmsClientProvider>();
 }
 #endif

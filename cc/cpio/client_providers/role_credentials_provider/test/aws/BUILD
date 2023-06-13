@@ -45,6 +45,7 @@ cc_test(
     ],
     deps = [
         "//cc:cc_base_include_dir",
+        "//cc/core/async_executor/mock:core_async_executor_mock",
         "//cc/core/interface:interface_lib",
         "//cc/cpio/client_providers/role_credentials_provider/src/aws:aws_role_credentials_provider_lib",
         "//cc/cpio/common/src/aws:aws_utils_lib",

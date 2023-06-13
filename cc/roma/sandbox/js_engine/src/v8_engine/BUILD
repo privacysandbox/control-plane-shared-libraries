@@ -34,6 +34,7 @@ cc_library(
         "//cc/roma/config/src:roma_config_lib",
         "//cc/roma/sandbox/js_engine/src:roma_js_engine_lib",
         "//cc/roma/sandbox/logging/src:roma_logging_lib",
+        "//cc/roma/sandbox/native_function_binding/src:roma_native_function_binding_lib",
         "//cc/roma/wasm/src:roma_wasm_lib",
         "@v8//:v8_icu",
     ],

@@ -90,4 +90,7 @@ DEFINE_ERROR_CODE(SC_ROMA_V8_WORKER_ITEM_WORKED_ON_BEFORE, SC_ROMA_V8_WORKER,
                   "The work item has already been worked on. This implies the "
                   "worker initially died while handling this item.",
                   HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED, SC_ROMA_V8_WORKER,
+                  0x0015, "The code object async function execution failed.",
+                  HttpStatusCode::BAD_REQUEST)
 }  // namespace google::scp::core::errors

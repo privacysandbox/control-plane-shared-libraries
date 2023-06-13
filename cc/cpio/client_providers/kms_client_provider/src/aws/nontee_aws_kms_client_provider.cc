@@ -22,6 +22,7 @@
 #include <aws/core/auth/AWSCredentialsProvider.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 
+#include "core/async_executor/src/aws/aws_async_executor.h"
 #include "core/utils/src/base64.h"
 #include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
@@ -41,6 +42,7 @@ using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_AWS_KMS_CLIENT_PROVIDER_ASSUME_ROLE_NOT_FOUND;
@@ -261,7 +263,10 @@ void NonteeAwsKmsClientProvider::GetSessionCredentialsCallbackToCreateKms(
 shared_ptr<ClientConfiguration>
 NonteeAwsKmsClientProvider::CreateClientConfiguration(
     const string& region) noexcept {
-  return common::CreateClientConfiguration(make_shared<string>(region));
+  auto client_config =
+      common::CreateClientConfiguration(make_shared<string>(region));
+  client_config->executor = make_shared<AwsAsyncExecutor>(io_async_executor_);
+  return client_config;
 }
 
 shared_ptr<KMSClient> NonteeAwsKmsClientProvider::GetKmsClient(
@@ -275,8 +280,11 @@ shared_ptr<KMSClient> NonteeAwsKmsClientProvider::GetKmsClient(
 std::shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
     const shared_ptr<KmsClientOptions>& options,
     const shared_ptr<RoleCredentialsProviderInterface>&
-        role_credentials_provider) noexcept {
-  return make_shared<NonteeAwsKmsClientProvider>(role_credentials_provider);
+        role_credentials_provider,
+    const shared_ptr<core::AsyncExecutorInterface>&
+        io_async_executor) noexcept {
+  return make_shared<NonteeAwsKmsClientProvider>(role_credentials_provider,
+                                                 io_async_executor);
 }
 #endif
 }  // namespace google::scp::cpio::client_providers

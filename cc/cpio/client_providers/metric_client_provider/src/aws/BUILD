@@ -18,10 +18,6 @@ cc_library(
     name = "aws_metric_client_provider_lib",
     srcs = [
         ":aws_metric_client_provider_srcs",
-        "//cc/cpio/client_providers/metric_client_provider/src:metric_client_provider_srcs",
-    ],
-    copts = [
-        "-std=c++17",
     ],
     deps = [
         "//cc:cc_base_include_dir",
@@ -32,6 +28,7 @@ cc_library(
         "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
         "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/interface:type_def",
+        "//cc/cpio/client_providers/metric_client_provider/src:metric_client_provider_lib",
         "//cc/cpio/common/src/aws:aws_utils_lib",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:cpio_errors",

@@ -56,4 +56,32 @@ DEFINE_ERROR_CODE(SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT,
                   SC_ROMA_V8_ENGINE, 0x0008,
                   "Error parsing input as valid JSON.",
                   HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_V8_ENGINE_COULD_NOT_REGISTER_FUNCTION_BINDING,
+                  SC_ROMA_V8_ENGINE, 0x0009,
+                  "Error while registering function binding in v8 context.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(
+    SC_ROMA_V8_ENGINE_ISOLATE_ALREADY_INITIALIZED, SC_ROMA_V8_ENGINE, 0x000A,
+    "The v8 isolate has already been initialized before call to Init.",
+    HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_V8_ENGINE_ISOLATE_NOT_INITIALIZED, SC_ROMA_V8_ENGINE,
+                  0x000B,
+                  "The v8 isolate has not been initialized. The module has not "
+                  "been initialized.",
+                  HttpStatusCode::BAD_REQUEST)
+
+REGISTER_COMPONENT_CODE(SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING, 0x0A01)
+
+DEFINE_ERROR_CODE(SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING_INVALID_ISOLATE,
+                  SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING, 0x0001,
+                  "The v8 isolate passed to the visitor is invalid.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING_EMPTY_CONTEXT,
+                  SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING, 0x0002,
+                  "The v8 context in the isolate is empty.",
+                  HttpStatusCode::BAD_REQUEST)
 }  // namespace google::scp::core::errors

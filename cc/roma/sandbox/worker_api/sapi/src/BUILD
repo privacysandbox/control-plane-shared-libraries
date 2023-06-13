@@ -24,6 +24,13 @@ sapi_proto_library(
     alwayslink = 1,
 )
 
+sapi_proto_library(
+    name = "worker_init_params_proto",
+    srcs = ["worker_init_params.proto"],
+    visibility = ["//visibility:public"],
+    alwayslink = 1,
+)
+
 cc_library(
     name = "roma_worker_wrapper_lib",
     srcs = [
@@ -33,6 +40,7 @@ cc_library(
     ],
     copts = ["-std=c++17"],
     deps = [
+        ":worker_init_params_cc_proto",
         ":worker_params_cc_proto",
         "//cc:cc_base_include_dir",
         "//cc/roma/sandbox/worker_factory/src:roma_worker_factory_lib",
@@ -52,6 +60,7 @@ sapi_library(
     lib_name = "WorkerWrapper",
     namespace = "google::scp::roma::sandbox::worker_api",
     deps = [
+        ":worker_init_params_cc_proto",
         ":worker_params_cc_proto",
         "//cc/core/interface:interface_lib",
     ],
@@ -69,6 +78,7 @@ cc_library(
     ],
     deps = [
         ":roma_worker_wrapper_lib-sapi",
+        ":worker_init_params_cc_proto",
         ":worker_params_cc_proto",
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",

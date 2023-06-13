@@ -27,7 +27,6 @@
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"
 #include "cpio/client_providers/interface/private_key_client_provider_interface.h"
 #include "cpio/client_providers/interface/private_key_fetcher_provider_interface.h"
-#include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 

@@ -29,6 +29,7 @@
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::errors::SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_BAD_INPUT_ARGS;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_BIND_UNBOUND_SCRIPT_FAILED;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE;
@@ -59,7 +60,9 @@ using v8::Int32;
 using v8::Isolate;
 using v8::JSON;
 using v8::Local;
+using v8::Message;
 using v8::ObjectTemplate;
+using v8::Promise;
 using v8::SnapshotCreator;
 using v8::StartupData;
 using v8::String;
@@ -373,6 +376,32 @@ ExecutionResult ExecutionManager::SetUpContextAndGetHandler(
   return SuccessExecutionResult();
 }
 
+static ExecutionResult V8PromiseHandle(v8::Isolate* isolate,
+                                       Local<Value>& result,
+                                       RomaString& err_msg) {
+  // We don't need a callback handler for now. The default handler will wrap
+  // the successful result of Promise::kFulfilled and the exception message of
+  // Promise::kRejected.
+  auto promise = result.As<v8::Promise>();
+
+  // Wait until promise state isn't pending.
+  while (promise->State() == v8::Promise::kPending) {
+    isolate->PerformMicrotaskCheckpoint();
+  }
+
+  if (promise->State() == v8::Promise::kRejected) {
+    // Extract the exception message from a rejected promise.
+    const Local<Message> message =
+        v8::Exception::CreateMessage(isolate, promise->Result());
+    err_msg = ExecutionUtils::ExtractMessage(isolate, message);
+    promise->MarkAsHandled();
+    return FailureExecutionResult(SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED);
+  }
+
+  result = promise->Result();
+  return SuccessExecutionResult();
+}
+
 ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
                                           RomaString& output,
                                           RomaString& err_msg) noexcept {
@@ -451,6 +480,15 @@ ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
     auto offset = result.As<Int32>()->Value();
     result = ExecutionUtils::ReadFromWasmMemory(v8_isolate_, context, offset,
                                                 code_obj.wasm_return_type);
+  }
+
+  if (result->IsPromise()) {
+    execution_result = V8PromiseHandle(v8_isolate_, result, err_msg);
+#if defined(_SCP_ROMA_LOG_ERRORS)
+    std::cout << "Error from V8 Promise execution: " << err_msg << "\n"
+              << std::endl;
+#endif
+    RETURN_IF_FAILURE(execution_result);
   }
 
   // Fetch execution result and handle exceptions.

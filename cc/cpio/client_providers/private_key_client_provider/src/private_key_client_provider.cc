@@ -372,9 +372,11 @@ PrivateKeyClientProviderFactory::Create(
     const shared_ptr<core::HttpClientInterface>& http_client,
     const shared_ptr<RoleCredentialsProviderInterface>&
         role_credentials_provider,
-    const shared_ptr<AuthTokenProviderInterface>& auth_token_provider) {
+    const shared_ptr<AuthTokenProviderInterface>& auth_token_provider,
+    const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
   auto kms_client_provider = KmsClientProviderFactory::Create(
-      make_shared<KmsClientOptions>(), role_credentials_provider);
+      make_shared<KmsClientOptions>(), role_credentials_provider,
+      io_async_executor);
   // TODO: provide AuthTokenProvider in lib_cpio_provider.
   auto private_key_fetcher = PrivateKeyFetcherProviderFactory::Create(
       http_client, role_credentials_provider, auth_token_provider);

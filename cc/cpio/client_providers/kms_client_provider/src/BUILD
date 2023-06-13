@@ -15,53 +15,41 @@
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
-    name = "kms_client_provider_lib",
+    name = "kms_client_provider_select_lib",
     srcs =
-        select({
-            "//cc/public/cpio/interface:aws_cpio_lib_inside_tee": [
-                "//cc/cpio/client_providers/kms_client_provider/src/aws:tee_aws_kms_client_provider_srcs",
-            ],
-            "//cc/public/cpio/interface:aws_cpio_lib_outside_tee": [
-                "//cc/cpio/client_providers/kms_client_provider/src/aws:nontee_aws_kms_client_provider_srcs",
-            ],
-            "//cc/public/cpio/interface:gcp_cpio_lib_inside_tee": [
-                "//cc/cpio/client_providers/kms_client_provider/src/gcp:tee_gcp_kms_client_provider_srcs",
-            ],
-            "//cc/public/cpio/interface:gcp_cpio_lib_outside_tee": [
-                "//cc/cpio/client_providers/kms_client_provider/src/gcp:nontee_gcp_kms_client_provider_srcs",
-            ],
-        }) + ["//cc/cpio/client_providers/interface:kms_client_provider_interface.h"],
-    copts = [
-        "-std=c++17",
-    ],
+        select(
+            {
+                "//cc/public/cpio/interface:aws_cpio_lib_inside_tee": [
+                    "//cc/cpio/client_providers/kms_client_provider/src/aws:tee_aws_kms_client_provider_srcs",
+                ],
+                "//cc/public/cpio/interface:aws_cpio_lib_outside_tee": [
+                    "//cc/cpio/client_providers/kms_client_provider/src/aws:nontee_aws_kms_client_provider_srcs",
+                ],
+                "//cc/public/cpio/interface:gcp_cpio_lib_inside_tee": [
+                    "//cc/cpio/client_providers/kms_client_provider/src/gcp:tee_gcp_kms_client_provider_srcs",
+                ],
+                "//cc/public/cpio/interface:gcp_cpio_lib_outside_tee": [
+                    "//cc/cpio/client_providers/kms_client_provider/src/gcp:nontee_gcp_kms_client_provider_srcs",
+                ],
+            },
+            no_match_error = "Please build for AWS or GCP, inside TEE or outside TEE",
+        ),
     deps =
-        select({
-            "//cc/public/cpio/interface:aws_cpio_lib_inside_tee": [
-            ],
-            "//cc/public/cpio/interface:aws_cpio_lib_outside_tee": [
-                "@aws_sdk_cpp//:kms",
-            ],
-            "//cc/public/cpio/interface:gcp_cpio_lib_inside_tee": [
-                "//cc/cpio/client_providers/kms_client_provider/interface/gcp:gcp_kms_client_provider_interface",
-                "@com_github_googleapis_google_cloud_cpp//:kms",
-                "@com_google_absl//absl/strings",
-                "@nlohmann_json//:lib",
-            ],
-            "//cc/public/cpio/interface:gcp_cpio_lib_outside_tee": [
-                "//cc/cpio/client_providers/kms_client_provider/interface/gcp:gcp_kms_client_provider_interface",
-                "@com_github_googleapis_google_cloud_cpp//:kms",
-                "@com_google_absl//absl/strings",
-                "@nlohmann_json//:lib",
-            ],
-        }) + [
-            "//cc:cc_base_include_dir",
-            "//cc/core/common/uuid/src:uuid_lib",
-            "//cc/core/interface:async_context_lib",
-            "//cc/core/interface:interface_lib",
-            "//cc/core/utils/src:core_utils",
-            "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
-            "//cc/public/cpio/interface:cpio_errors",
-            "//cc/public/cpio/interface:type_def",
-            "@tink_cc",
-        ],
+        select(
+            {
+                "//cc/public/cpio/interface:aws_cpio_lib_inside_tee": [
+                    "//cc/cpio/client_providers/kms_client_provider/src/aws:tee_aws_kms_client_provider_lib",
+                ],
+                "//cc/public/cpio/interface:aws_cpio_lib_outside_tee": [
+                    "//cc/cpio/client_providers/kms_client_provider/src/aws:nontee_aws_kms_client_provider_lib",
+                ],
+                "//cc/public/cpio/interface:gcp_cpio_lib_inside_tee": [
+                    "//cc/cpio/client_providers/kms_client_provider/src/gcp:tee_gcp_kms_client_provider_lib",
+                ],
+                "//cc/public/cpio/interface:gcp_cpio_lib_outside_tee": [
+                    "//cc/cpio/client_providers/kms_client_provider/src/gcp:nontee_gcp_kms_client_provider_lib",
+                ],
+            },
+            no_match_error = "Please build for AWS or GCP, inside TEE or outside TEE",
+        ),
 )

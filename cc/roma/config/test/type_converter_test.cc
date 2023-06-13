@@ -20,20 +20,26 @@
 
 #include <stdint.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <libplatform/libplatform.h>
 
 #include "include/v8.h"
 #include "roma/common/src/containers.h"
 
 using std::make_unique;
+using std::sort;
 using std::string;
 using std::to_string;
 using std::unique_ptr;
+using std::unordered_map;
 using std::vector;
+using ::testing::ElementsAreArray;
 using v8::Array;
 using v8::Context;
 using v8::HandleScope;
@@ -239,6 +245,53 @@ static void AssertMapOfStringEquality(Isolate* isolate,
   }
 }
 
+static void AssertUnorderedMapOfStringEquality(
+    Isolate* isolate, unordered_map<string, string>& map,
+    Local<v8::Map>& v8_map) {
+  EXPECT_EQ(map.size(), v8_map->Size());
+
+  // This turns the map into an array of size Size()*2, where index N is a key,
+  // and N+1 is the value for the given key.
+  auto v8_map_as_array = v8_map->AsArray();
+  vector<string> native_map_keys;
+  vector<string> native_map_vals;
+  for (auto& kvp : map) {
+    native_map_keys.push_back(kvp.first);
+    native_map_vals.push_back(kvp.second);
+  }
+
+  vector<string> v8_map_keys;
+  vector<string> v8_map_vals;
+  for (size_t i = 0; i < v8_map_as_array->Length(); i += 2) {
+    auto key_index = i;
+    auto value_index = i + 1;
+
+    auto v8_key = v8_map_as_array->Get(isolate->GetCurrentContext(), key_index)
+                      .ToLocalChecked()
+                      .As<String>();
+    auto v8_val =
+        v8_map_as_array->Get(isolate->GetCurrentContext(), value_index)
+            .ToLocalChecked()
+            .As<String>();
+
+    string v8_map_key_converted;
+    TypeConverter<string>::FromV8(isolate, v8_key, &v8_map_key_converted);
+    v8_map_keys.push_back(v8_map_key_converted);
+
+    string v8_map_val_converted;
+    TypeConverter<string>::FromV8(isolate, v8_val, &v8_map_val_converted);
+    v8_map_vals.push_back(v8_map_val_converted);
+  }
+
+  sort(native_map_keys.begin(), native_map_keys.end());
+  sort(native_map_vals.begin(), native_map_vals.end());
+  sort(v8_map_keys.begin(), v8_map_keys.end());
+  sort(v8_map_vals.begin(), v8_map_vals.end());
+
+  EXPECT_THAT(native_map_keys, ElementsAreArray(v8_map_keys));
+  EXPECT_THAT(native_map_vals, ElementsAreArray(v8_map_vals));
+}
+
 TEST_F(TypeConverterTest, MapOfStringStringToV8Map) {
   Isolate::Scope isolate_scope(isolate_);
   HandleScope handle_scope(isolate_);
@@ -286,6 +339,34 @@ TEST_F(TypeConverterTest, v8MapToMapOfStringString) {
   AssertMapOfStringEquality(isolate_, map, v8_map);
 }
 
+TEST_F(TypeConverterTest, v8MapToUnorderedMapOfStringString) {
+  Isolate::Scope isolate_scope(isolate_);
+  HandleScope handle_scope(isolate_);
+  // Array allocation requires a context
+  Local<Context> context = Context::New(isolate_);
+  Context::Scope context_scope(context);
+
+  Local<v8::Map> v8_map = v8::Map::New(isolate_);
+  v8_map
+      ->Set(context, String::NewFromUtf8Literal(isolate_, "key1"),
+            String::NewFromUtf8Literal(isolate_, "val1"))
+      .ToLocalChecked();
+  v8_map
+      ->Set(context, String::NewFromUtf8Literal(isolate_, "key2"),
+            String::NewFromUtf8Literal(isolate_, "val2"))
+      .ToLocalChecked();
+  v8_map
+      ->Set(context, String::NewFromUtf8Literal(isolate_, "key3"),
+            String::NewFromUtf8Literal(isolate_, "val3"))
+      .ToLocalChecked();
+
+  unordered_map<string, string> map;
+  EXPECT_TRUE((TypeConverter<unordered_map<string, string>>::FromV8(
+      isolate_, v8_map, &map)));
+
+  AssertUnorderedMapOfStringEquality(isolate_, map, v8_map);
+}
+
 TEST_F(TypeConverterTest,
        v8MapToMapOfStringStringShouldFailWithUnsupportedTypeVal) {
   Isolate::Scope isolate_scope(isolate_);
@@ -305,6 +386,27 @@ TEST_F(TypeConverterTest,
       isolate_, v8_map, &map)));
 
   EXPECT_EQ(map.Size(), 0);
+}
+
+TEST_F(TypeConverterTest,
+       v8MapToUnorderedMapOfStringStringShouldFailWithUnsupportedTypeVal) {
+  Isolate::Scope isolate_scope(isolate_);
+  HandleScope handle_scope(isolate_);
+  // Array allocation requires a context
+  Local<Context> context = Context::New(isolate_);
+  Context::Scope context_scope(context);
+
+  Local<v8::Map> v8_map = v8::Map::New(isolate_);
+  v8_map
+      ->Set(context, String::NewFromUtf8Literal(isolate_, "key1"),
+            Number::New(isolate_, 1))
+      .ToLocalChecked();
+
+  unordered_map<string, string> map;
+  EXPECT_FALSE((TypeConverter<unordered_map<string, string>>::FromV8(
+      isolate_, v8_map, &map)));
+
+  EXPECT_EQ(map.size(), 0);
 }
 
 TEST_F(TypeConverterTest,
@@ -343,6 +445,41 @@ TEST_F(TypeConverterTest,
 }
 
 TEST_F(TypeConverterTest,
+       v8MapToUnorderedMapOfStringStringShouldFailWithUnsupportedTypeKey) {
+  Isolate::Scope isolate_scope(isolate_);
+  HandleScope handle_scope(isolate_);
+  // Array allocation requires a context
+  Local<Context> context = Context::New(isolate_);
+  Context::Scope context_scope(context);
+
+  Local<v8::Map> v8_map = v8::Map::New(isolate_);
+  v8_map
+      ->Set(context, String::NewFromUtf8Literal(isolate_, "key1"),
+            String::NewFromUtf8Literal(isolate_, "val1"))
+      .ToLocalChecked();
+  // Number key
+  v8_map
+      ->Set(context, Number::New(isolate_, 1),
+            String::NewFromUtf8Literal(isolate_, "val2"))
+      .ToLocalChecked();
+  v8_map
+      ->Set(context, String::NewFromUtf8Literal(isolate_, "key3"),
+            String::NewFromUtf8Literal(isolate_, "val3"))
+      .ToLocalChecked();
+  // Number value
+  v8_map
+      ->Set(context, String::NewFromUtf8Literal(isolate_, "key4"),
+            Number::New(isolate_, 1))
+      .ToLocalChecked();
+
+  unordered_map<string, string> map;
+  EXPECT_FALSE((TypeConverter<unordered_map<string, string>>::FromV8(
+      isolate_, v8_map, &map)));
+
+  EXPECT_EQ(map.size(), 0);
+}
+
+TEST_F(TypeConverterTest,
        v8MapToMapOfStringStringShouldFailWithUnsupportedMixedTypes) {
   Isolate::Scope isolate_scope(isolate_);
   HandleScope handle_scope(isolate_);
@@ -361,6 +498,27 @@ TEST_F(TypeConverterTest,
       isolate_, v8_map, &map)));
 
   EXPECT_EQ(map.Size(), 0);
+}
+
+TEST_F(TypeConverterTest,
+       v8MapToUnorderedMapOfStringStringShouldFailWithUnsupportedMixedTypes) {
+  Isolate::Scope isolate_scope(isolate_);
+  HandleScope handle_scope(isolate_);
+  // Array allocation requires a context
+  Local<Context> context = Context::New(isolate_);
+  Context::Scope context_scope(context);
+
+  Local<v8::Map> v8_map = v8::Map::New(isolate_);
+  v8_map
+      ->Set(context, Number::New(isolate_, 1),
+            String::NewFromUtf8Literal(isolate_, "val1"))
+      .ToLocalChecked();
+
+  unordered_map<string, string> map;
+  EXPECT_FALSE((TypeConverter<unordered_map<string, string>>::FromV8(
+      isolate_, v8_map, &map)));
+
+  EXPECT_EQ(map.size(), 0);
 }
 
 TEST_F(TypeConverterTest, NativeUint32ToV8) {

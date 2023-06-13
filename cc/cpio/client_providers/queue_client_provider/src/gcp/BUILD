@@ -19,9 +19,6 @@ cc_library(
     srcs = [
         ":gcp_queue_client_provider_srcs",
     ],
-    copts = [
-        "-std=c++17",
-    ],
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:async_context_lib",

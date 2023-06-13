@@ -15,9 +15,9 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
-    name = "worker_pool_implementation_test",
+    name = "worker_pool_api_sapi_test",
     size = "small",
-    srcs = ["worker_pool_implementation_test.cc"],
+    srcs = ["worker_pool_api_sapi_test.cc"],
     copts = [
         "-std=c++17",
     ],

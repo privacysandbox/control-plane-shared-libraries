@@ -15,40 +15,23 @@
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
-    name = "parameter_client_provider_lib",
-    srcs = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs"],
-        "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/parameter_client_provider/src/gcp:gcp_parameter_client_provider_srcs"],
-        "//conditions:default": ["//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs"],
-    }) + [
-        "//cc/cpio/client_providers/interface:parameter_client_provider_interface.h",
-    ],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": [
-            "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
-            "//cc/cpio/common/src/aws:aws_utils_lib",
-            "@aws_sdk_cpp//:core",
-            "@aws_sdk_cpp//:ssm",
-        ],
-        "//cc/public/cpio/interface:gcp_cpio_lib": [
-            "//cc/cpio/client_providers/instance_client_provider/src/gcp:gcp_instance_client_provider_lib",
-            "//cc/cpio/common/src/gcp:gcp_utils_lib",
-            "@com_github_googleapis_google_cloud_cpp//:secretmanager",
-        ],
-        "//conditions:default": [
-            "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
-            "//cc/cpio/common/src/aws:aws_utils_lib",
-            "@aws_sdk_cpp//:core",
-            "@aws_sdk_cpp//:ssm",
-        ],
-    }) + [
-        "//cc:cc_base_include_dir",
-        "//cc/cpio/client_providers/interface:type_def",
-        "//cc/public/cpio/interface:cpio_errors",
-        "//cc/public/cpio/interface/parameter_client:type_def",
-        "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
-    ],
+    name = "parameter_client_provider_select_lib",
+    srcs = select(
+        {
+            "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs"],
+            "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/parameter_client_provider/src/gcp:gcp_parameter_client_provider_srcs"],
+        },
+        no_match_error = "Please build for AWS or GCP",
+    ),
+    deps = select(
+        {
+            "//cc/public/cpio/interface:aws_cpio_lib": [
+                "//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_lib",
+            ],
+            "//cc/public/cpio/interface:gcp_cpio_lib": [
+                "//cc/cpio/client_providers/parameter_client_provider/src/gcp:gcp_parameter_client_provider_lib",
+            ],
+        },
+        no_match_error = "Please build for AWS or GCP",
+    ),
 )

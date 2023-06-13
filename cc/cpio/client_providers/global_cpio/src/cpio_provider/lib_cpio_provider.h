@@ -106,7 +106,12 @@ class LibCpioProvider : public CpioProviderInterface {
 
  private:
   virtual std::shared_ptr<RoleCredentialsProviderInterface>
-  CreateRoleCredentialsProvider() noexcept;
+  CreateRoleCredentialsProvider(
+      const std::shared_ptr<InstanceClientProviderInterface>&
+          instance_client_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>&
+          io_async_executor) noexcept;
 
   bool external_cpu_async_executor_is_set_;
   bool external_io_asycn_executor_is_set_;

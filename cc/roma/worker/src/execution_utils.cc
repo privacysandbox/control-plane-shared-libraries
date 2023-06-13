@@ -269,31 +269,13 @@ Local<Array> ExecutionUtils::InputToLocalArgv(
   return ParseAsJsInput(input);
 }
 
-static string DescribeError(Isolate* isolate, TryCatch* try_catch) noexcept {
-  auto context = isolate->GetCurrentContext();
-
-  auto exception = try_catch->Exception();
-  if (exception.IsEmpty()) {
-    return std::string();
-  }
-
-  Local<String> local_exception;
-  if (!exception->ToString(context).ToLocal(&local_exception)) {
-    return std::string();
-  }
+string ExecutionUtils::ExtractMessage(Isolate* isolate,
+                                      v8::Local<v8::Message> message) noexcept {
   string exception_msg;
-  TypeConverter<string>::FromV8(isolate, local_exception, &exception_msg);
-
-  const Local<Message> message = try_catch->Message();
-
-  // If there's no message, just return the exception_msg.
-  if (message.IsEmpty()) {
-    return exception_msg;
-  }
-
+  TypeConverter<string>::FromV8(isolate, message->Get(), &exception_msg);
   // We want to return a message of the form:
   //
-  //     7: ReferenceError: blah is not defined.
+  //     line 7: Uncaught ReferenceError: blah is not defined.
   //
   int line;
   // Sometimes for multi-line errors there is no line number.
@@ -301,7 +283,16 @@ static string DescribeError(Isolate* isolate, TryCatch* try_catch) noexcept {
     return absl::StrFormat("%s", exception_msg);
   }
 
-  return absl::StrFormat("%i: %s", line, exception_msg);
+  return absl::StrFormat("line %i: %s", line, exception_msg);
+}
+
+static string DescribeError(Isolate* isolate, TryCatch* try_catch) noexcept {
+  const Local<Message> message = try_catch->Message();
+  if (message.IsEmpty()) {
+    return std::string();
+  }
+
+  return ExecutionUtils::ExtractMessage(isolate, message);
 }
 
 ExecutionResult ExecutionUtils::ReportException(TryCatch* try_catch,

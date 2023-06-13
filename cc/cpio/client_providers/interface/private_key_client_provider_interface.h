@@ -60,6 +60,7 @@ class PrivateKeyClientProviderFactory {
       const std::shared_ptr<core::HttpClientInterface>& http_client,
       const std::shared_ptr<RoleCredentialsProviderInterface>&
           role_credentials_provider,
-      const std::shared_ptr<AuthTokenProviderInterface>& auth_token_provider);
+      const std::shared_ptr<AuthTokenProviderInterface>& auth_token_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor);
 };
 }  // namespace google::scp::cpio::client_providers

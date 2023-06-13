@@ -20,6 +20,7 @@
 
 #include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/sandbox/constants/constants.h"
+#include "roma/sandbox/worker_api/sapi/src/worker_init_params.pb.h"
 #include "roma/sandbox/worker_factory/src/worker_factory.h"
 
 using google::scp::roma::sandbox::constants::kCodeVersion;
@@ -32,9 +33,11 @@ using google::scp::roma::sandbox::worker::WorkerFactory;
 
 namespace google::scp::roma::sandbox::worker_api::test {
 TEST(WorkerWrapperTest, CanRunCodeThroughWrapperWithoutPreload) {
-  auto result =
-      ::Init(static_cast<int>(worker::WorkerFactory::WorkerEngine::v8),
-             false /*require_preload*/);
+  ::worker_api::WorkerInitParamsProto init_params;
+  init_params.set_worker_factory_js_engine(
+      static_cast<int>(worker::WorkerFactory::WorkerEngine::v8));
+  init_params.set_require_code_preload_for_execution(false);
+  auto result = ::Init(&init_params);
   EXPECT_EQ(SC_OK, result);
 
   result = ::Run();
@@ -58,9 +61,11 @@ TEST(WorkerWrapperTest, CanRunCodeThroughWrapperWithoutPreload) {
 }
 
 TEST(WorkerWrapperTest, FailsToRunCodeWhenPreloadIsRequiredAndExecuteIsSent) {
-  auto result =
-      ::Init(static_cast<int>(worker::WorkerFactory::WorkerEngine::v8),
-             true /*require_preload*/);
+  ::worker_api::WorkerInitParamsProto init_params;
+  init_params.set_worker_factory_js_engine(
+      static_cast<int>(worker::WorkerFactory::WorkerEngine::v8));
+  init_params.set_require_code_preload_for_execution(true);
+  auto result = ::Init(&init_params);
   EXPECT_EQ(SC_OK, result);
 
   result = ::Run();

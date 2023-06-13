@@ -44,7 +44,7 @@ cc_library(
         "//cc/core/logger/src:logger_lib",
         "//cc/core/logger/src/log_providers:log_providers_lib",
         "//cc/core/logger/src/log_providers/syslog:syslog_lib",
-        "//cc/cpio/client_providers/cloud_initializer/src:cloud_initializer_lib",
+        "//cc/cpio/client_providers/cloud_initializer/src:cloud_initializer_select_lib",
         "//cc/cpio/client_providers/global_cpio/test:test_global_cpio_lib",
         "//cc/cpio/client_providers/global_cpio/test:test_lib_cpio_provider",
         "//cc/public/cpio/core/src:cpio_utils_lib",

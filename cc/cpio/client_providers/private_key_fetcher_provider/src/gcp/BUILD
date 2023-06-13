@@ -18,10 +18,6 @@ cc_library(
     name = "gcp_private_key_fetcher_provider_lib",
     srcs = [
         ":gcp_private_key_fetcher_provider_srcs",
-        "//cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_srcs",
-    ],
-    copts = [
-        "-std=c++17",
     ],
     deps = [
         "//cc:cc_base_include_dir",
@@ -30,6 +26,7 @@ cc_library(
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/interface:type_def",
+        "//cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_lib",
         "//cc/public/cpio/interface/private_key_client:type_def",
     ],
 )

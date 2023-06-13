@@ -34,8 +34,8 @@
 #include "roma/interface/roma.h"
 #include "roma/sandbox/worker_api/src/worker_api.h"
 #include "roma/sandbox/worker_api/src/worker_api_sapi.h"
-#include "roma/sandbox/worker_pool/src/worker_pool_implementation.h"
-#include "roma/sandbox/worker_pool/src/worker_pool_interface.h"
+#include "roma/sandbox/worker_pool/src/worker_pool.h"
+#include "roma/sandbox/worker_pool/src/worker_pool_api_sapi.h"
 
 using absl::StatusOr;
 using google::scp::core::AsyncExecutor;
@@ -45,8 +45,9 @@ using google::scp::core::test::AutoInitRunStop;
 using google::scp::core::test::WaitUntil;
 using google::scp::roma::sandbox::worker_api::WorkerApi;
 using google::scp::roma::sandbox::worker_api::WorkerApiSapi;
+using google::scp::roma::sandbox::worker_api::WorkerApiSapiConfig;
 using google::scp::roma::sandbox::worker_pool::WorkerPool;
-using google::scp::roma::sandbox::worker_pool::WorkerPoolImplementation;
+using google::scp::roma::sandbox::worker_pool::WorkerPoolApiSapi;
 using std::atomic;
 using std::make_shared;
 using std::make_unique;
@@ -61,8 +62,17 @@ using std::vector;
 namespace google::scp::roma::sandbox::dispatcher::test {
 TEST(DispatcherTest, CanRunCode) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
+
+  vector<WorkerApiSapiConfig> configs;
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = true;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  configs.push_back(config);
+
   shared_ptr<WorkerPool> worker_pool =
-      make_shared<WorkerPoolImplementation<WorkerApiSapi>>(1);
+      make_shared<WorkerPoolApiSapi>(configs, 1);
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
@@ -110,8 +120,17 @@ TEST(DispatcherTest, CanRunCode) {
 
 TEST(DispatcherTest, CanHandleCodeFailures) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
+
+  vector<WorkerApiSapiConfig> configs;
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = true;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  configs.push_back(config);
+
   shared_ptr<WorkerPool> worker_pool =
-      make_shared<WorkerPoolImplementation<WorkerApiSapi>>(1);
+      make_shared<WorkerPoolApiSapi>(configs, 1);
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
@@ -140,8 +159,17 @@ TEST(DispatcherTest, CanHandleCodeFailures) {
 
 TEST(DispatcherTest, CanHandleExecuteWithoutLoadFailure) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
+
+  vector<WorkerApiSapiConfig> configs;
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = true;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  configs.push_back(config);
+
   shared_ptr<WorkerPool> worker_pool =
-      make_shared<WorkerPoolImplementation<WorkerApiSapi>>(1);
+      make_shared<WorkerPoolApiSapi>(configs, 1);
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
@@ -170,10 +198,20 @@ TEST(DispatcherTest, CanHandleExecuteWithoutLoadFailure) {
 
 TEST(DispatcherTest, BroadcastShouldUpdateAllWorkers) {
   const size_t number_of_workers = 5;
-
   auto async_executor = make_shared<AsyncExecutor>(number_of_workers, 100);
+
+  vector<WorkerApiSapiConfig> configs;
+  for (int i = 0; i < number_of_workers; i++) {
+    WorkerApiSapiConfig config;
+    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+    config.js_engine_require_code_preload = true;
+    config.native_js_function_comms_fd = -1;
+    config.native_js_function_names = vector<string>();
+    configs.push_back(config);
+  }
+
   shared_ptr<WorkerPool> worker_pool =
-      make_shared<WorkerPoolImplementation<WorkerApiSapi>>(number_of_workers);
+      make_shared<WorkerPoolApiSapi>(configs, number_of_workers);
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
@@ -228,10 +266,20 @@ TEST(DispatcherTest, BroadcastShouldUpdateAllWorkers) {
 
 TEST(DispatcherTest, BroadcastShouldExitGracefullyIfThereAreErrorsWithTheCode) {
   const size_t number_of_workers = 5;
-
   auto async_executor = make_shared<AsyncExecutor>(number_of_workers, 100);
+
+  vector<WorkerApiSapiConfig> configs;
+  for (int i = 0; i < number_of_workers; i++) {
+    WorkerApiSapiConfig config;
+    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+    config.js_engine_require_code_preload = true;
+    config.native_js_function_comms_fd = -1;
+    config.native_js_function_names = vector<string>();
+    configs.push_back(config);
+  }
+
   shared_ptr<WorkerPool> worker_pool =
-      make_shared<WorkerPoolImplementation<WorkerApiSapi>>(number_of_workers);
+      make_shared<WorkerPoolApiSapi>(configs, number_of_workers);
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
@@ -260,10 +308,20 @@ TEST(DispatcherTest, BroadcastShouldExitGracefullyIfThereAreErrorsWithTheCode) {
 
 TEST(DispatcherTest, DispatchBatchShouldExecuteAllRequests) {
   const size_t number_of_workers = 5;
-
   auto async_executor = make_shared<AsyncExecutor>(number_of_workers, 100);
+
+  vector<WorkerApiSapiConfig> configs;
+  for (int i = 0; i < number_of_workers; i++) {
+    WorkerApiSapiConfig config;
+    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+    config.js_engine_require_code_preload = true;
+    config.native_js_function_comms_fd = -1;
+    config.native_js_function_names = vector<string>();
+    configs.push_back(config);
+  }
+
   shared_ptr<WorkerPool> worker_pool =
-      make_shared<WorkerPoolImplementation<WorkerApiSapi>>(number_of_workers);
+      make_shared<WorkerPoolApiSapi>(configs, number_of_workers);
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 

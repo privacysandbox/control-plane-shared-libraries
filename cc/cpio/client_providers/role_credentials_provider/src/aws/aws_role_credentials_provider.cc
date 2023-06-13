@@ -39,10 +39,12 @@ using Aws::STS::STSClient;
 using Aws::STS::Model::AssumeRoleOutcome;
 using Aws::STS::Model::AssumeRoleRequest;
 using google::scp::core::AsyncContext;
+using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::AsyncPriority;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::common::TimeProvider;
 using google::scp::core::errors::
@@ -76,7 +78,7 @@ ExecutionResult AwsRoleCredentialsProvider::Init() noexcept {
     return execution_result;
   }
 
-  if (!cpu_async_executor_) {
+  if (!cpu_async_executor_ || !io_async_executor_) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_ROLE_CREDENTIALS_PROVIDER_INITIALIZATION_FAILED);
     SCP_ERROR(kAwsRoleCredentialsProvider, kZeroUuid, kZeroUuid,
@@ -94,6 +96,7 @@ ExecutionResult AwsRoleCredentialsProvider::Init() noexcept {
   }
 
   auto client_config = CreateClientConfiguration(*region_code_or);
+  client_config->executor = make_shared<AwsAsyncExecutor>(io_async_executor_);
   sts_client_ = make_shared<STSClient>(*client_config);
 
   auto timestamp =
@@ -181,9 +184,11 @@ std::shared_ptr<RoleCredentialsProviderInterface>
 RoleCredentialsProviderFactory::Create(
     const shared_ptr<RoleCredentialsProviderOptions>& options,
     const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
-    const shared_ptr<core::AsyncExecutorInterface>& async_executor) noexcept {
-  return make_shared<AwsRoleCredentialsProvider>(instance_client_provider,
-                                                 async_executor);
+    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>&
+        io_async_executor) noexcept {
+  return make_shared<AwsRoleCredentialsProvider>(
+      instance_client_provider, cpu_async_executor, io_async_executor);
 }
 #endif
 }  // namespace google::scp::cpio::client_providers

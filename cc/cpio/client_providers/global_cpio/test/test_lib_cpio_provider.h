@@ -18,7 +18,9 @@
 
 #include <memory>
 
+#include "core/interface/async_executor_interface.h"
 #include "cpio/client_providers/global_cpio/src/cpio_provider/lib_cpio_provider.h"
+#include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "public/cpio/test/global_cpio/test_cpio_options.h"
 
 namespace google::scp::cpio::client_providers {
@@ -31,7 +33,12 @@ class TestLibCpioProvider : public LibCpioProvider {
 
  private:
   std::shared_ptr<RoleCredentialsProviderInterface>
-  CreateRoleCredentialsProvider() noexcept override;
+  CreateRoleCredentialsProvider(
+      const std::shared_ptr<InstanceClientProviderInterface>&
+          instance_client_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>&
+          io_async_executor) noexcept override;
 
   std::shared_ptr<TestCpioOptions> test_options_;
 };

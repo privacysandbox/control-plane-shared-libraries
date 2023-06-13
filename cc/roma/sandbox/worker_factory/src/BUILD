@@ -32,6 +32,7 @@ cc_library(
         "//cc/public/core/interface:execution_result",
         "//cc/roma/sandbox/js_engine/src:roma_js_engine_lib",
         "//cc/roma/sandbox/js_engine/src/v8_engine:roma_v8_js_engine_lib",
+        "//cc/roma/sandbox/native_function_binding/src:roma_native_function_invoker_sapi_ipc_lib",
         "//cc/roma/sandbox/worker/src:roma_worker_lib",
     ],
 )

@@ -120,6 +120,268 @@ TEST(RomaBasicE2ETest, ExecuteCode) {
   EXPECT_TRUE(status.ok());
 }
 
+TEST(RomaBasicE2ETest, ExecuteAsyncCode) {
+  Config config;
+  config.number_of_workers = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+      function resolveAfterOneSecond() {
+        return new Promise((resolve) => {
+          sleep(1000);
+          resolve("some cool string");
+        });
+      }
+      async function Handler() {
+          const result = await resolveAfterOneSecond();
+          return result;
+      }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("some cool string")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(RomaBasicE2ETest, ExecuteAsyncCodeWithPromiseAllSuccess) {
+  Config config;
+  config.number_of_workers = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+      function multiplePromises() {
+        const p1 = Promise.resolve("some");
+        const p2 = "cool";
+        const p3 = new Promise((resolve, reject) => {
+          sleep(1000);
+          resolve("string");
+        });
+
+        return Promise.all([p1, p2, p3]).then((values) => {
+          return values;
+        });
+      }
+      async function Handler() {
+          const result = await multiplePromises();
+          return result.join(" ");
+      }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("some cool string")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(RomaBasicE2ETest, ExecuteAsyncCodeFailedWithUndefinedError) {
+  Config config;
+  config.number_of_workers = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // JS code async handler has undefined func name "setTimeout".
+    code_obj->js = R"JS_CODE(
+      function resolveAfterOneSecond() {
+        return new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      async function Handler() {
+          const result = await resolveAfterOneSecond();
+          return result;
+      }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status =
+        Execute(move(execution_obj),
+                [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                  EXPECT_FALSE(resp->ok());
+                  EXPECT_EQ(resp->status().message(),
+                            "The code object async function execution failed.");
+                  execute_finished.store(true);
+                });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(RomaBasicE2ETest, ExecuteAsyncCodeFailedWithPromiseRejected) {
+  Config config;
+  config.number_of_workers = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // JS code async handler has rejected promise.
+    code_obj->js = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+      function resolveAfterOneSecond() {
+        return new Promise((resolve, reject) => {
+          sleep(1000);
+          reject("reject error from promise!");
+        });
+      }
+      async function Handler() {
+          const result = await resolveAfterOneSecond();
+          return result;
+      }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status =
+        Execute(move(execution_obj),
+                [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                  EXPECT_FALSE(resp->ok());
+                  EXPECT_EQ(resp->status().message(),
+                            "The code object async function execution failed.");
+                  execute_finished.store(true);
+                });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
 TEST(RomaBasicE2ETest, BatchExecute) {
   Config config;
   config.number_of_workers = 2;

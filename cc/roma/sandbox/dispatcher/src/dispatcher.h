@@ -29,7 +29,7 @@
 #include "public/core/interface/execution_result.h"
 #include "roma/interface/roma.h"
 #include "roma/sandbox/worker_api/src/worker_api.h"
-#include "roma/sandbox/worker_pool/src/worker_pool_interface.h"
+#include "roma/sandbox/worker_pool/src/worker_pool.h"
 
 #include "error_codes.h"
 #include "request_converter.h"
@@ -169,7 +169,7 @@ class Dispatcher : public core::ServiceInterface {
           auto request = std::move(*shared_request);
           std::unique_ptr<absl::StatusOr<ResponseObject>> response_or;
 
-          auto worker_or = worker_pool_->GetWoker(index);
+          auto worker_or = worker_pool_->GetWorker(index);
           if (!worker_or.result().Successful()) {
             response_or = std::make_unique<absl::StatusOr<ResponseObject>>(
                 absl::Status(absl::StatusCode::kInternal,

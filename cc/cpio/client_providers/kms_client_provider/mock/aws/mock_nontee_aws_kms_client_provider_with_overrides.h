@@ -33,8 +33,10 @@ class MockNonteeAwsKmsClientProviderWithOverrides
   MockNonteeAwsKmsClientProviderWithOverrides(
       const std::shared_ptr<RoleCredentialsProviderInterface>&
           role_credential_provider,
-      const std::shared_ptr<Aws::KMS::KMSClient> mock_kms_client)
-      : NonteeAwsKmsClientProvider(role_credential_provider) {
+      const std::shared_ptr<Aws::KMS::KMSClient> mock_kms_client,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
+      : NonteeAwsKmsClientProvider(role_credential_provider,
+                                   io_async_executor) {
     kms_client_ = mock_kms_client;
   }
 

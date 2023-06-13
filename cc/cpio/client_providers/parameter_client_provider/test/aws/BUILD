@@ -19,25 +19,16 @@ cc_library(
     srcs = [
         "test_aws_parameter_client_provider.cc",
         "test_aws_parameter_client_provider.h",
-        "//cc/cpio/client_providers/interface:parameter_client_provider_interface.h",
         "//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_srcs",
     ],
     copts = [
         "-DTEST_CPIO=1",
-        "-std=c++17",
     ],
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/core/interface:interface_lib",
-        "//cc/core/message_router/src:message_router_lib",
-        "//cc/cpio/client_providers/global_cpio/test:test_global_cpio_lib",
-        "//cc/cpio/client_providers/instance_client_provider/src/aws:aws_instance_client_provider_lib",
-        "//cc/cpio/client_providers/interface:type_def",
-        "//cc/cpio/common/src/aws:aws_utils_lib",
+        "//cc/cpio/client_providers/parameter_client_provider/src/aws:aws_parameter_client_provider_lib",
         "//cc/cpio/common/test/aws:test_aws_utils_lib",
-        "//cc/public/cpio/proto/parameter_service/v1:parameter_service_cc_proto",
         "//cc/public/cpio/test/parameter_client:test_aws_parameter_client_options",
-        "@aws_sdk_cpp//:ssm",
     ],
 )
 

@@ -113,6 +113,7 @@ void GcpPrivateKeyFetcherProvider::OnGetSessionTokenCallback(
   sign_request_context.Finish();
 }
 
+#ifndef TEST_CPIO
 std::shared_ptr<PrivateKeyFetcherProviderInterface>
 PrivateKeyFetcherProviderFactory::Create(
     const shared_ptr<HttpClientInterface>& http_client,
@@ -122,4 +123,5 @@ PrivateKeyFetcherProviderFactory::Create(
   return make_shared<GcpPrivateKeyFetcherProvider>(http_client,
                                                    auth_token_provider);
 }
+#endif
 }  // namespace google::scp::cpio::client_providers

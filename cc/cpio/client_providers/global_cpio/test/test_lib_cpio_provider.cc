@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include "core/interface/async_executor_interface.h"
 #include "cpio/client_providers/global_cpio/src/cpio_provider/lib_cpio_provider.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 #include "public/cpio/interface/type_def.h"
@@ -32,6 +33,7 @@
 #error "Must provide AWS_TEST or GCP_TEST"
 #endif
 
+using google::scp::core::AsyncExecutorInterface;
 using std::make_shared;
 using std::make_unique;
 using std::shared_ptr;
@@ -51,11 +53,14 @@ TestLibCpioProvider::TestLibCpioProvider(
 }
 
 shared_ptr<RoleCredentialsProviderInterface>
-TestLibCpioProvider::CreateRoleCredentialsProvider() noexcept {
+TestLibCpioProvider::CreateRoleCredentialsProvider(
+    const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
+    const shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
 #if defined(AWS_TEST)
   return make_shared<TestAwsRoleCredentialsProvider>(
       make_shared<TestAwsRoleCredentialsProviderOptions>(*test_options_),
-      instance_client_provider_, cpu_async_executor_);
+      instance_client_provider, cpu_async_executor, io_async_executor);
 #elif defined(GCP_TEST)
   return make_shared<GcpRoleCredentialsProvider>();
 #endif

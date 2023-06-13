@@ -31,15 +31,15 @@ using std::string;
 
 namespace google::scp::roma::sandbox::worker_api {
 ExecutionResult WorkerApiSapi::Init() noexcept {
-  return sandbox_api_.Init();
+  return sandbox_api_->Init();
 }
 
 ExecutionResult WorkerApiSapi::Run() noexcept {
-  return sandbox_api_.Run();
+  return sandbox_api_->Run();
 }
 
 ExecutionResult WorkerApiSapi::Stop() noexcept {
-  return sandbox_api_.Stop();
+  return sandbox_api_->Stop();
 }
 
 ExecutionResultOr<WorkerApi::RunCodeResponse> WorkerApiSapi::RunCode(
@@ -53,7 +53,7 @@ ExecutionResultOr<WorkerApi::RunCodeResponse> WorkerApiSapi::RunCode(
     (*params_proto.mutable_metadata())[kv.first] = kv.second;
   }
 
-  auto result = sandbox_api_.RunCode(params_proto);
+  auto result = sandbox_api_->RunCode(params_proto);
   if (!result.Successful()) {
     return result;
   }

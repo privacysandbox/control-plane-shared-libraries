@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "function_binding_object.h"
+#include "function_binding_object_v2.h"
 
 namespace google::scp::roma {
 static constexpr size_t kKB = 1024u;
@@ -118,6 +119,18 @@ class Config {
   }
 
   /**
+   * @brief Register a function binding v2 object. Only supported with the
+   * sandboxed service.
+   *
+   * @param function_binding
+   */
+  void RegisterFunctionBinding(
+      std::unique_ptr<FunctionBindingObjectV2> function_binding) {
+    function_bindings_v2_.emplace_back(function_binding.get());
+    function_binding.release();
+  }
+
+  /**
    * @brief Get a copy of the registered function binding objects
    *
    * @param[out] function_bindings
@@ -127,6 +140,13 @@ class Config {
           function_bindings) const {
     function_bindings = std::vector<std::shared_ptr<FunctionBindingObjectBase>>(
         function_bindings_.begin(), function_bindings_.end());
+  }
+
+  void GetFunctionBindings(
+      std::vector<std::shared_ptr<FunctionBindingObjectV2>>& function_bindings)
+      const {
+    function_bindings = std::vector<std::shared_ptr<FunctionBindingObjectV2>>(
+        function_bindings_v2_.begin(), function_bindings_v2_.end());
   }
 
   /**
@@ -160,6 +180,11 @@ class Config {
    * @brief User-registered function JS/C++ function bindings
    */
   std::vector<std::shared_ptr<FunctionBindingObjectBase>> function_bindings_;
+
+  /**
+   * @brief User-registered function JS/C++ function bindings
+   */
+  std::vector<std::shared_ptr<FunctionBindingObjectV2>> function_bindings_v2_;
 
   /// v8 heap resource constraints.
   JsEngineResourceConstraints js_engine_resource_constraints_;

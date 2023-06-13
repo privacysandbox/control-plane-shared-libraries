@@ -43,6 +43,7 @@ cc_test(
         "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/sandbox/constants:roma_constants_lib",
         "//cc/roma/sandbox/worker_api/sapi/src:roma_worker_wrapper_lib",
+        "//cc/roma/sandbox/worker_api/sapi/src:worker_init_params_cc_proto",
         "//cc/roma/sandbox/worker_factory/src:roma_worker_factory_lib",
         "@com_google_googletest//:gtest_main",
     ],

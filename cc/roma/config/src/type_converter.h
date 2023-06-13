@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "include/v8.h"
@@ -144,6 +145,60 @@ struct TypeConverter<common::Map<std::string, std::string>> {
       }
 
       out->Set(key_str, val_str);
+    }
+
+    return true;
+  }
+};
+
+template <>
+struct TypeConverter<std::unordered_map<std::string, std::string>> {
+  static v8::Local<v8::Value> ToV8(
+      v8::Isolate* isolate, std::unordered_map<std::string, std::string>& val) {
+    auto map = v8::Map::New(isolate);
+
+    for (const auto& kvp : val) {
+      map->Set(isolate->GetCurrentContext(),
+               TypeConverter<std::string>::ToV8(isolate, kvp.first),
+               TypeConverter<std::string>::ToV8(isolate, kvp.second));
+    }
+
+    return map;
+  }
+
+  static bool FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val,
+                     std::unordered_map<std::string, std::string>* out) {
+    if (!out || val.IsEmpty() || !val->IsMap()) {
+      return false;
+    }
+
+    auto v8_map = val.As<v8::Map>();
+    // This turns the map into an array of size Size()*2, where index N is a
+    // key, and N+1 is the value for the given key.
+    auto map_as_array = v8_map->AsArray();
+
+    for (auto i = 0; i < map_as_array->Length(); i += 2) {
+      auto key_index = i;
+      auto value_index = i + 1;
+
+      auto key = map_as_array->Get(isolate->GetCurrentContext(), key_index)
+                     .ToLocalChecked();
+      auto value = map_as_array->Get(isolate->GetCurrentContext(), value_index)
+                       .ToLocalChecked();
+
+      std::string key_str;
+      std::string val_str;
+      bool key_conversion =
+          TypeConverter<std::string>::FromV8(isolate, key, &key_str);
+      bool value_conversion =
+          TypeConverter<std::string>::FromV8(isolate, value, &val_str);
+
+      if (!key_conversion || !value_conversion) {
+        out->clear();
+        return false;
+      }
+
+      (*out)[key_str] = val_str;
     }
 
     return true;

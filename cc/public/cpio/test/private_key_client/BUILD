@@ -24,22 +24,3 @@ cc_library(
         "//cc/public/cpio/interface/private_key_client:type_def",
     ],
 )
-
-cc_library(
-    name = "test_private_key_client",
-    srcs = ["//cc/public/cpio/adapters/private_key_client/src:private_key_client_srcs"],
-    hdrs =
-        [
-            "//cc/public/cpio/interface/private_key_client:private_key_client_interface.h",
-        ],
-    deps = [
-        "//cc:cc_base_include_dir",
-        "//cc/core/interface:async_context_lib",
-        "//cc/core/interface:interface_lib",
-        "//cc/core/utils/src:core_utils",
-        "//cc/cpio/client_providers/private_key_client_provider/test:test_private_key_client_provider_lib",
-        "//cc/public/cpio/adapters/common:adapter_utils",
-        "//cc/public/cpio/interface:type_def",
-        "//cc/public/cpio/interface/private_key_client:type_def",
-    ],
-)

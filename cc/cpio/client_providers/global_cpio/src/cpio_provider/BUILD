@@ -31,13 +31,7 @@ filegroup(
 
 cc_library(
     name = "cpio_provider_lib",
-    srcs = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": [":lib_cpio_provider_srcs"],
-        "//conditions:default": [":lib_cpio_provider_srcs"],
-    }) + ["//cc/cpio/client_providers/interface:cpio_provider_interface.h"],
-    copts = [
-        "-std=c++17",
-    ],
+    srcs = [":lib_cpio_provider_srcs"],
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/src:core_async_executor_lib",
@@ -48,8 +42,9 @@ cc_library(
         "//cc/core/logger/src/log_providers/syslog:syslog_lib",
         "//cc/core/message_router/src:message_router_lib",
         "//cc/cpio/client_providers/auth_token_provider/src:auth_token_provider_select_lib",
-        "//cc/cpio/client_providers/cloud_initializer/src:cloud_initializer_lib",
+        "//cc/cpio/client_providers/cloud_initializer/src:cloud_initializer_select_lib",
         "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_select_lib",
+        "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_select_lib",
         "//cc/public/cpio/interface:type_def",
     ],

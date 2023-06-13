@@ -22,8 +22,11 @@
 #include <vector>
 
 #include "include/libplatform/libplatform.h"
+#include "include/v8.h"
 #include "public/core/interface/execution_result.h"
 #include "roma/sandbox/js_engine/src/js_engine.h"
+
+#include "v8_isolate_visitor.h"
 
 namespace google::scp::roma::sandbox::js_engine::v8_js_engine {
 /**
@@ -32,6 +35,11 @@ namespace google::scp::roma::sandbox::js_engine::v8_js_engine {
  */
 class V8JsEngine : public JsEngine {
  public:
+  V8JsEngine(
+      const std::vector<std::shared_ptr<V8IsolateVisitor>>& isolate_visitors =
+          std::vector<std::shared_ptr<V8IsolateVisitor>>())
+      : isolate_visitors_(isolate_visitors) {}
+
   core::ExecutionResult Init() noexcept override;
 
   core::ExecutionResult Run() noexcept override;
@@ -50,5 +58,8 @@ class V8JsEngine : public JsEngine {
 
  protected:
   inline static std::unique_ptr<v8::Platform> v8_platform_;
+
+  v8::Isolate* v8_isolate_ = nullptr;
+  const std::vector<std::shared_ptr<V8IsolateVisitor>> isolate_visitors_;
 };
 }  // namespace google::scp::roma::sandbox::js_engine::v8_js_engine

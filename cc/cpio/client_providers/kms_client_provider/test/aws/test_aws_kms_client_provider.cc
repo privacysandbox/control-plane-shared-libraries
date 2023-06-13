@@ -48,9 +48,11 @@ TestAwsKmsClientProvider::CreateClientConfiguration(
 shared_ptr<KmsClientProviderInterface> KmsClientProviderFactory::Create(
     const shared_ptr<KmsClientOptions>& options,
     const shared_ptr<RoleCredentialsProviderInterface>&
-        role_credentials_provider) noexcept {
+        role_credentials_provider,
+    const std::shared_ptr<core::AsyncExecutorInterface>&
+        io_async_executor) noexcept {
   return make_shared<TestAwsKmsClientProvider>(
       dynamic_pointer_cast<TestAwsKmsClientOptions>(options),
-      role_credentials_provider);
+      role_credentials_provider, io_async_executor);
 }
 }  // namespace google::scp::cpio::client_providers

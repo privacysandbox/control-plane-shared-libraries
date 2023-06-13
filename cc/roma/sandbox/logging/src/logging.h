@@ -18,4 +18,6 @@
 
 #include <iostream>
 
+#if !defined(_ROMA_LOG_ERROR)
 #define _ROMA_LOG_ERROR(msg) std::cerr << msg << std::endl;
+#endif

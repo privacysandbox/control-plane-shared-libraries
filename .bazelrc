@@ -1,3 +1,15 @@
+# Address sanitizer
+# To apply ASAN check, use the command: bazel build/test --config=asan
+build:asan --strip=never
+build:asan --copt -fsanitize=address
+build:asan --copt -DADDRESS_SANITIZER
+build:asan --copt -g
+build:asan --copt -fno-omit-frame-pointer
+build:asan --linkopt -fsanitize=address
+# Run sudo apt-get install lld in case of error
+build:asan --linkopt=-fuse-ld=lld
+build:asan --action_env=ASAN_OPTIONS=detect_leaks=1:color=always
+
 build --java_language_version=11
 build --java_toolchain=@bazel_tools//tools/jdk:toolchain_java11
 build --javabase=@bazel_tools//tools/jdk:remote_jdk11

@@ -22,10 +22,11 @@
 #pragma once
 
 #include "public/core/interface/execution_result.h"
+#include "roma/sandbox/worker_api/sapi/src/worker_init_params.pb.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_params.pb.h"
 
-extern "C" google::scp::core::StatusCode Init(int worker_factory_engine,
-                                              bool require_preload);
+extern "C" google::scp::core::StatusCode Init(
+    worker_api::WorkerInitParamsProto* init_params);
 
 extern "C" google::scp::core::StatusCode Run();
 

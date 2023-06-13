@@ -22,6 +22,7 @@
 
 #include <chrono>
 
+#include "roma/sandbox/worker_api/sapi/src/worker_init_params.pb.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_params.pb.h"
 #include "sandboxed_api/sandbox2/policy.h"
 #include "sandboxed_api/sandbox2/policybuilder.h"
@@ -38,10 +39,13 @@ using google::scp::core::errors::
     SC_ROMA_WORKER_API_COULD_NOT_INITIALIZE_SANDBOX;
 using google::scp::core::errors::
     SC_ROMA_WORKER_API_COULD_NOT_INITIALIZE_WRAPPER_API;
+using google::scp::core::errors::SC_ROMA_WORKER_API_COULD_NOT_RESTART_SANDBOX;
 using google::scp::core::errors ::
     SC_ROMA_WORKER_API_COULD_NOT_RUN_CODE_THROUGH_WRAPPER_API;
 using google::scp::core::errors::SC_ROMA_WORKER_API_COULD_NOT_RUN_WRAPPER_API;
 using google::scp::core::errors::SC_ROMA_WORKER_API_COULD_NOT_STOP_WRAPPER_API;
+using google::scp::core::errors::
+    SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX;
 
 namespace google::scp::roma::sandbox::worker_api {
 
@@ -51,8 +55,35 @@ ExecutionResult WorkerSandboxApi::Init() noexcept {
     return FailureExecutionResult(
         SC_ROMA_WORKER_API_COULD_NOT_INITIALIZE_SANDBOX);
   }
-  auto status_or = worker_wrapper_api_->Init(static_cast<int>(worker_engine_),
-                                             require_preload_);
+
+  int remote_fd = kBadFd;
+  if (sapi_native_js_function_comms_fd_) {
+    auto transferred = worker_sapi_sandbox_->TransferToSandboxee(
+        sapi_native_js_function_comms_fd_.get());
+    if (!transferred.ok()) {
+      return FailureExecutionResult(
+          SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX);
+    }
+
+    remote_fd = sapi_native_js_function_comms_fd_->GetRemoteFd();
+  }
+
+  ::worker_api::WorkerInitParamsProto worker_init_params;
+  worker_init_params.set_worker_factory_js_engine(
+      static_cast<int>(worker_engine_));
+  worker_init_params.set_require_code_preload_for_execution(require_preload_);
+  worker_init_params.set_native_js_function_comms_fd(remote_fd);
+  worker_init_params.mutable_native_js_function_names()->Assign(
+      native_js_function_names_.begin(), native_js_function_names_.end());
+  auto sapi_proto =
+      sapi::v::Proto<::worker_api::WorkerInitParamsProto>::FromMessage(
+          worker_init_params);
+  if (!sapi_proto.ok()) {
+    return FailureExecutionResult(
+        SC_ROMA_WORKER_API_COULD_NOT_CREATE_IPC_PROTO);
+  }
+
+  auto status_or = worker_wrapper_api_->Init(sapi_proto->PtrBefore());
   if (!status_or.ok()) {
     return FailureExecutionResult(
         SC_ROMA_WORKER_API_COULD_NOT_INITIALIZE_WRAPPER_API);
@@ -83,13 +114,16 @@ ExecutionResult WorkerSandboxApi::Stop() noexcept {
     return FailureExecutionResult(*status_or);
   }
 
+  worker_sapi_sandbox_->Terminate();
+
   return SuccessExecutionResult();
 }
 
 ExecutionResult WorkerSandboxApi::RunCode(
     ::worker_api::WorkerParamsProto& params) noexcept {
   auto sapi_proto =
-      sapi::v::Proto<::worker_api::WorkerParamsProto>::FromMessage(params);
+      ::sapi::v::Proto<::worker_api::WorkerParamsProto>::FromMessage(params);
+
   if (!sapi_proto.ok()) {
     return FailureExecutionResult(
         SC_ROMA_WORKER_API_COULD_NOT_CREATE_IPC_PROTO);
@@ -97,6 +131,20 @@ ExecutionResult WorkerSandboxApi::RunCode(
 
   auto status_or = worker_wrapper_api_->RunCode(sapi_proto->PtrBoth());
   if (!status_or.ok()) {
+    // This means that the sandbox died so we need to restart it
+    if (!worker_sapi_sandbox_->is_active()) {
+      auto restarted =
+          worker_sapi_sandbox_->Restart(true /*attempt_graceful_exit*/);
+      if (!restarted.ok()) {
+        return FailureExecutionResult(
+            SC_ROMA_WORKER_API_COULD_NOT_RESTART_SANDBOX);
+      }
+      auto result = Init();
+      RETURN_IF_FAILURE(result);
+      result = Run();
+      RETURN_IF_FAILURE(result);
+    }
+
     return FailureExecutionResult(
         SC_ROMA_WORKER_API_COULD_NOT_RUN_CODE_THROUGH_WRAPPER_API);
   } else if (*status_or != SC_OK) {

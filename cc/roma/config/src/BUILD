@@ -28,6 +28,7 @@ cc_library(
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
         "//cc/roma/common/src:roma_common_lib",
+        "//cc/roma/interface:roma_function_binding_io_cc_proto",
         "@v8//:v8_icu",
     ],
 )

@@ -17,8 +17,10 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "roma_worker_pool_lib",
     srcs = [
-        "worker_pool_implementation.h",
-        "worker_pool_interface.h",
+        "error_codes.h",
+        "worker_pool.h",
+        "worker_pool_api_sapi.cc",
+        "worker_pool_api_sapi.h",
     ],
     copts = [
         "-std=c++17",
@@ -30,5 +32,6 @@ cc_library(
         "//cc/public/core/interface:execution_result",
         "//cc/roma/sandbox/constants:roma_constants_lib",
         "//cc/roma/sandbox/worker_api/src:roma_worker_api_lib",
+        "//cc/roma/sandbox/worker_api/src:roma_worker_api_sapi_lib",
     ],
 )

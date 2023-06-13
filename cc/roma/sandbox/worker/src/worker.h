@@ -34,8 +34,8 @@ class Worker : public core::ServiceInterface {
   explicit Worker(std::shared_ptr<js_engine::JsEngine> js_engine,
                   bool require_preload = true)
       : js_engine_(js_engine),
-        require_preload_(require_preload),
-        compilation_contexts_(5) {}
+        compilation_contexts_(5),
+        require_preload_(require_preload) {}
 
   core::ExecutionResult Init() noexcept override;
 

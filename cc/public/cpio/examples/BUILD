@@ -107,8 +107,8 @@ cc_binary(
         "//cc:cc_base_include_dir",
         "//cc/core/test/utils:utils_lib",
         "//cc/public/core/interface:errors",
+        "//cc/public/cpio/interface/private_key_client",
         "//cc/public/cpio/test/global_cpio:test_lib_cpio",
-        "//cc/public/cpio/test/private_key_client:test_private_key_client",
     ],
 )
 

@@ -49,8 +49,10 @@ class TestAwsRoleCredentialsProvider : public AwsRoleCredentialsProvider {
       const std::shared_ptr<TestAwsRoleCredentialsProviderOptions>& options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider,
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor)
-      : AwsRoleCredentialsProvider(instance_client_provider, async_executor),
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
+      : AwsRoleCredentialsProvider(instance_client_provider, cpu_async_executor,
+                                   io_async_executor),
         test_options_(options) {}
 
  protected:

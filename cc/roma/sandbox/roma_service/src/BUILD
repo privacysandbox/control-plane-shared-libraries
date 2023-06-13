@@ -17,6 +17,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "roma_service_lib",
     srcs = [
+        "error_codes.h",
         "roma_service.cc",
         "roma_service.h",
     ],
@@ -30,6 +31,7 @@ cc_library(
         "//cc/core/interface:type_def_lib",
         "//cc/public/core/interface:execution_result",
         "//cc/roma/sandbox/dispatcher/src:roma_dispatcher_lib",
+        "//cc/roma/sandbox/native_function_binding/src:roma_native_function_handler_sapi_ipc_lib",
         "//cc/roma/sandbox/worker_api/src:roma_worker_api_sapi_lib",
         "//cc/roma/sandbox/worker_pool/src:roma_worker_pool_lib",
     ],

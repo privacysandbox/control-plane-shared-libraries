@@ -17,27 +17,45 @@
 #include "worker_factory.h"
 
 #include <memory>
+#include <vector>
 
+#include "roma/sandbox/js_engine/src/v8_engine/v8_isolate_visitor.h"
+#include "roma/sandbox/js_engine/src/v8_engine/v8_isolate_visitor_function_binding.h"
 #include "roma/sandbox/js_engine/src/v8_engine/v8_js_engine.h"
+#include "roma/sandbox/native_function_binding/src/native_function_invoker_sapi_ipc.h"
+
+#include "error_codes.h"
 
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;
+using google::scp::core::errors::SC_ROMA_WORKER_FACTORY_UNKNOWN_ENGINE_TYPE;
+using google::scp::roma::sandbox::js_engine::v8_js_engine::V8IsolateVisitor;
+using google::scp::roma::sandbox::js_engine::v8_js_engine::
+    V8IsolateVisitorFunctionBinding;
 using google::scp::roma::sandbox::js_engine::v8_js_engine::V8JsEngine;
+using google::scp::roma::sandbox::native_function_binding::
+    NativeFunctionInvokerSapiIpc;
 using std::make_shared;
 using std::shared_ptr;
+using std::vector;
 
 namespace google::scp::roma::sandbox::worker {
-
 ExecutionResultOr<shared_ptr<Worker>> WorkerFactory::Create(
     const WorkerFactory::FactoryParams& params) {
   if (params.engine == WorkerFactory::WorkerEngine::v8) {
-    auto v8_engine = make_shared<V8JsEngine>();
+    auto native_function_invoker = make_shared<NativeFunctionInvokerSapiIpc>(
+        params.v8_worker_engine_params.native_js_function_comms_fd);
+    vector<shared_ptr<V8IsolateVisitor>> isolate_visitors = {
+        make_shared<V8IsolateVisitorFunctionBinding>(
+            params.v8_worker_engine_params.native_js_function_names,
+            native_function_invoker)};
+
+    auto v8_engine = make_shared<V8JsEngine>(isolate_visitors);
     v8_engine->OneTimeSetup();
     auto worker = make_shared<Worker>(v8_engine, params.require_preload);
     return worker;
-  } else {
-    // TODO: Add named error
-    throw FailureExecutionResult(SC_UNKNOWN);
   }
+
+  return FailureExecutionResult(SC_ROMA_WORKER_FACTORY_UNKNOWN_ENGINE_TYPE);
 }
 }  // namespace google::scp::roma::sandbox::worker

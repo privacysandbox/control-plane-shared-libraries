@@ -18,10 +18,18 @@
 
 #include <gtest/gtest.h>
 
+#include <signal.h>
+
+#include <string>
+#include <thread>
+#include <vector>
+
+#include "cc/roma/interface/function_binding_io.pb.h"
 #include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/sandbox/constants/constants.h"
 #include "roma/sandbox/worker_factory/src/worker_factory.h"
 
+using google::scp::roma::proto::FunctionBindingIoProto;
 using google::scp::roma::sandbox::constants::kCodeVersion;
 using google::scp::roma::sandbox::constants::kHandlerName;
 using google::scp::roma::sandbox::constants::kRequestAction;
@@ -29,11 +37,16 @@ using google::scp::roma::sandbox::constants::kRequestActionExecute;
 using google::scp::roma::sandbox::constants::kRequestType;
 using google::scp::roma::sandbox::constants::kRequestTypeJavascript;
 using google::scp::roma::sandbox::worker::WorkerFactory;
+using std::string;
+using std::thread;
+using std::vector;
 
 namespace google::scp::roma::sandbox::worker_api::test {
 TEST(WorkerSandboxApiTest, WorkerWorksThroughSandbox) {
   WorkerSandboxApi sandbox_api(WorkerFactory::WorkerEngine::v8,
-                               false /*require_preaload*/);
+                               false /*require_preload*/,
+                               -1 /*native_js_function_comms_fd*/,
+                               vector<string>() /*native_js_function_names*/);
 
   auto result = sandbox_api.Init();
   EXPECT_SUCCESS(result);
@@ -49,6 +62,105 @@ TEST(WorkerSandboxApiTest, WorkerWorksThroughSandbox) {
   (*params_proto.mutable_metadata())[kCodeVersion] = "1";
   (*params_proto.mutable_metadata())[kRequestAction] = kRequestActionExecute;
 
+  result = sandbox_api.RunCode(params_proto);
+  EXPECT_SUCCESS(result);
+  EXPECT_EQ(params_proto.response(), "\"Hi there from sandboxed JS :)\"");
+
+  result = sandbox_api.Stop();
+  EXPECT_SUCCESS(result);
+}
+
+TEST(WorkerSandboxApiTest, WorkerCanCallHooksThroughSandbox) {
+  int fds[2];
+  EXPECT_EQ(socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds), 0);
+
+  WorkerSandboxApi sandbox_api(
+      WorkerFactory::WorkerEngine::v8, false /*require_preload*/,
+      fds[1] /*native_js_function_comms_fd*/, {"my_great_func"});
+
+  auto result = sandbox_api.Init();
+  EXPECT_SUCCESS(result);
+
+  thread to_handle_function_call(
+      [](int fd) {
+        sandbox2::Comms comms(fd);
+        FunctionBindingIoProto io_proto;
+        EXPECT_TRUE(comms.RecvProtoBuf(&io_proto));
+
+        auto result = "from C++ " + io_proto.input_string();
+        io_proto.set_output_string(result);
+
+        EXPECT_TRUE(comms.SendProtoBuf(io_proto));
+      },
+      fds[0]);
+
+  result = sandbox_api.Run();
+  EXPECT_SUCCESS(result);
+
+  ::worker_api::WorkerParamsProto params_proto;
+  params_proto.set_code(
+      "function cool_func(input) { return my_great_func(input) };");
+  (*params_proto.mutable_metadata())[kRequestType] = kRequestTypeJavascript;
+  (*params_proto.mutable_metadata())[kHandlerName] = "cool_func";
+  (*params_proto.mutable_metadata())[kCodeVersion] = "1";
+  (*params_proto.mutable_metadata())[kRequestAction] = kRequestActionExecute;
+  params_proto.mutable_input()->Add("\"from JS\"");
+
+  result = sandbox_api.RunCode(params_proto);
+
+  to_handle_function_call.join();
+
+  EXPECT_SUCCESS(result);
+  EXPECT_EQ(params_proto.response(), "\"from C++ from JS\"");
+
+  result = sandbox_api.Stop();
+  EXPECT_SUCCESS(result);
+}
+
+class WorkerSandboxApiForTests : public WorkerSandboxApi {
+ public:
+  WorkerSandboxApiForTests(
+      const worker::WorkerFactory::WorkerEngine& worker_engine,
+      bool require_preload, int native_js_function_comms_fd,
+      const std::vector<std::string>& native_js_function_names)
+      : WorkerSandboxApi(worker_engine, require_preload,
+                         native_js_function_comms_fd,
+                         native_js_function_names) {}
+
+  ::sapi::Sandbox* GetUnderlyingSandbox() { return worker_sapi_sandbox_.get(); }
+};
+
+TEST(WorkerSandboxApiTest, SandboxShouldComeBackUpIfItDies) {
+  WorkerSandboxApiForTests sandbox_api(
+      WorkerFactory::WorkerEngine::v8, false /*require_preload*/,
+      -1 /*native_js_function_comms_fd*/,
+      vector<string>() /*native_js_function_names*/);
+
+  auto result = sandbox_api.Init();
+  EXPECT_SUCCESS(result);
+
+  result = sandbox_api.Run();
+  EXPECT_SUCCESS(result);
+
+  ::worker_api::WorkerParamsProto params_proto;
+  params_proto.set_code(
+      "function cool_func() { return \"Hi there from sandboxed JS :)\" }");
+  (*params_proto.mutable_metadata())[kRequestType] = kRequestTypeJavascript;
+  (*params_proto.mutable_metadata())[kHandlerName] = "cool_func";
+  (*params_proto.mutable_metadata())[kCodeVersion] = "1";
+  (*params_proto.mutable_metadata())[kRequestAction] = kRequestActionExecute;
+
+  int sandbox_pid = sandbox_api.GetUnderlyingSandbox()->pid();
+  EXPECT_EQ(0, kill(sandbox_pid, SIGKILL));
+  // Wait for the sandbox to die
+  while (sandbox_api.GetUnderlyingSandbox()->is_active()) {}
+
+  result = sandbox_api.RunCode(params_proto);
+
+  // We expect a failure since the worker process died
+  EXPECT_FALSE(result.Successful());
+
+  // Run code again and this time it should work
   result = sandbox_api.RunCode(params_proto);
   EXPECT_SUCCESS(result);
   EXPECT_EQ(params_proto.response(), "\"Hi there from sandboxed JS :)\"");

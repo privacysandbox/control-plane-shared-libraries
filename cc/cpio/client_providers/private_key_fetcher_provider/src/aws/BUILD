@@ -18,7 +18,6 @@ cc_library(
     name = "aws_private_key_fetcher_provider_lib",
     srcs = [
         ":aws_private_key_fetcher_provider_srcs",
-        "//cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_srcs",
     ],
     copts = [
         "-std=c++17",
@@ -29,6 +28,7 @@ cc_library(
         "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/interface:type_def",
+        "//cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_lib",
         "//cc/public/cpio/interface/private_key_client:type_def",
         "@boost//:system",
         "@com_github_nghttp2_nghttp2//:nghttp2",

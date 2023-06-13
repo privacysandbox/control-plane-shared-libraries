@@ -15,54 +15,42 @@
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
-    name = "private_key_fetcher_provider_lib",
-    srcs = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/private_key_fetcher_provider/src/aws:aws_private_key_fetcher_provider_srcs"],
-        "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/private_key_fetcher_provider/src/gcp:gcp_private_key_fetcher_provider_srcs"],
-        "//conditions:default": ["//cc/cpio/client_providers/private_key_fetcher_provider/src/aws:aws_private_key_fetcher_provider_srcs"],
-    }) + [
-        "private_key_fetcher_provider_srcs",
-        "//cc/cpio/client_providers/interface:private_key_fetcher_provider_interface.h",
-    ],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = select({
-        "//cc/public/cpio/interface:aws_cpio_lib": [
-            "@boost//:system",
-            "@com_github_nghttp2_nghttp2//:nghttp2",
-            "@nlohmann_json//:lib",
-        ],
-        "//cc/public/cpio/interface:gcp_cpio_lib": [
-        ],
-        "//conditions:default": [
-            "@boost//:system",
-            "@com_github_nghttp2_nghttp2//:nghttp2",
-        ],
-    }) + [
-        "//cc:cc_base_include_dir",
-        "//cc/core/http2_client/src:http2_client_lib",
-        "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
-        "//cc/cpio/client_providers/interface:type_def",
-        "//cc/public/cpio/interface/private_key_client:type_def",
-    ],
+    name = "private_key_fetcher_provider_select_lib",
+    srcs = select(
+        {
+            "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/private_key_fetcher_provider/src/aws:aws_private_key_fetcher_provider_srcs"],
+            "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/private_key_fetcher_provider/src/gcp:gcp_private_key_fetcher_provider_srcs"],
+        },
+        no_match_error = "Please build for AWS or GCP",
+    ),
+    deps = select(
+        {
+            "//cc/public/cpio/interface:aws_cpio_lib": [
+                "//cc/cpio/client_providers/private_key_fetcher_provider/src/aws:aws_private_key_fetcher_provider_lib",
+            ],
+            "//cc/public/cpio/interface:gcp_cpio_lib": [
+                "//cc/cpio/client_providers/private_key_fetcher_provider/src/gcp:gcp_private_key_fetcher_provider_lib",
+            ],
+        },
+        no_match_error = "Please build for AWS or GCP",
+    ),
 )
 
-exports_files([
-    "private_key_fetcher_provider.cc",
-    "private_key_fetcher_provider.h",
-    "private_key_fetcher_provider_utils.cc",
-    "private_key_fetcher_provider_utils.h",
-    "error_codes.h",
-])
-
-filegroup(
-    name = "private_key_fetcher_provider_srcs",
-    srcs = [
-        ":error_codes.h",
-        ":private_key_fetcher_provider.cc",
-        ":private_key_fetcher_provider.h",
-        ":private_key_fetcher_provider_utils.cc",
-        ":private_key_fetcher_provider_utils.h",
+cc_library(
+    name = "private_key_fetcher_provider_lib",
+    srcs = glob(
+        [
+            "*.cc",
+            "*.h",
+        ],
+    ),
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/http2_client/src:http2_client_lib",
+        "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
+        "//cc/cpio/client_providers/interface:type_def",
+        "//cc/public/cpio/interface:cpio_errors",
+        "//cc/public/cpio/interface/private_key_client:type_def",
+        "@nlohmann_json//:lib",
     ],
 )

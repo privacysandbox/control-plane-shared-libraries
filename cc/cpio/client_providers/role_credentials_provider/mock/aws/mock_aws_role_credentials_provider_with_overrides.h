@@ -35,6 +35,7 @@ class MockAwsRoleCredentialsProviderWithOverrides
   MockAwsRoleCredentialsProviderWithOverrides()
       : AwsRoleCredentialsProvider(
             std::make_shared<MockInstanceClientProvider>(),
+            std::make_shared<core::async_executor::mock::MockAsyncExecutor>(),
             std::make_shared<core::async_executor::mock::MockAsyncExecutor>()) {
   }
 

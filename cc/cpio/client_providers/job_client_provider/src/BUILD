@@ -16,17 +16,12 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
     name = "job_client_provider_lib",
-    srcs = [
-        "error_codes.h",
-        "job_client_provider.cc",
-        "job_client_provider.h",
-        "job_client_utils.cc",
-        "job_client_utils.h",
-        "//cc/cpio/client_providers/interface:job_client_provider_interface.h",
-    ],
-    copts = [
-        "-std=c++17",
-    ],
+    srcs = glob(
+        [
+            "*.cc",
+            "*.h",
+        ],
+    ),
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/common/serialization/src:serialization_lib",

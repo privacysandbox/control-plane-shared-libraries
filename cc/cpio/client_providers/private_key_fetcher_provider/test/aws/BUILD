@@ -39,7 +39,8 @@ cc_library(
     srcs = [
         "test_aws_private_key_fetcher_provider.cc",
         "test_aws_private_key_fetcher_provider.h",
-        "//cc/cpio/client_providers/interface:private_key_fetcher_provider_interface.h",
+        # Need to include the production src here,
+        # otherwise, it will fail with duplicate definition for test server.
         "//cc/cpio/client_providers/private_key_fetcher_provider/src/aws:aws_private_key_fetcher_provider_srcs",
     ],
     copts = [

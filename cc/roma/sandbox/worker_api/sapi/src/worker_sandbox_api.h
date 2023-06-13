@@ -21,6 +21,8 @@
 #include <linux/audit.h>
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "core/interface/service_interface.h"
 #include "roma/sandbox/worker_api/sapi/src/roma_worker_wrapper_lib-sapi.sapi.h"
@@ -30,6 +32,9 @@
 #include "sandboxed_api/sandbox2/policybuilder.h"
 
 namespace google::scp::roma::sandbox::worker_api {
+
+static constexpr int kBadFd = -1;
+
 /**
  * @brief Class used as the API from the parent/controlling process to call into
  * a SAPI sandbox containing a roma worker.
@@ -41,16 +46,26 @@ class WorkerSandboxApi : public core::ServiceInterface {
    * @brief Construct a new Worker Sandbox Api object.
    *
    * @param worker_engine The JS engine type used to build the worker.
-   * @param require_preload Whether code preloading is required for this
-   * engine.
+   * @param require_preload Whether code preloading is required for this engine.
+   * @param native_js_function_comms_fd Filed descriptor to be used for native
+   * function calls through the sandbox.
+   * @param native_js_function_names The names of the functions that should be
+   * registered to be available in JS.
    */
   WorkerSandboxApi(const worker::WorkerFactory::WorkerEngine& worker_engine,
-                   bool require_preload) {
+                   bool require_preload, int native_js_function_comms_fd,
+                   const std::vector<std::string>& native_js_function_names) {
     worker_sapi_sandbox_ = std::make_unique<WorkerSapiSandbox>();
     worker_wrapper_api_ =
         std::make_unique<WorkerWrapperApi>(worker_sapi_sandbox_.get());
     worker_engine_ = worker_engine;
     require_preload_ = require_preload;
+    native_js_function_comms_fd_ = native_js_function_comms_fd;
+    native_js_function_names_ = native_js_function_names;
+    if (native_js_function_comms_fd_ != kBadFd) {
+      sapi_native_js_function_comms_fd_ =
+          std::make_unique<sapi::v::Fd>(native_js_function_comms_fd_);
+    }
   }
 
   core::ExecutionResult Init() noexcept override;
@@ -60,7 +75,7 @@ class WorkerSandboxApi : public core::ServiceInterface {
   core::ExecutionResult Stop() noexcept override;
 
   /**
-   * @brief Send a reques to run code to a worker running within a sandbox.
+   * @brief Send a request to run code to a worker running within a sandbox.
    *
    * @param params Proto representing a request to the worker.
    * @return core::ExecutionResult
@@ -68,9 +83,9 @@ class WorkerSandboxApi : public core::ServiceInterface {
   core::ExecutionResult RunCode(
       ::worker_api::WorkerParamsProto& params) noexcept;
 
- private:
+ protected:
   /**
-   * @brief Class to allow overwriting the policy for the SAPI sanbox.
+   * @brief Class to allow overwriting the policy for the SAPI sandbox.
    *
    */
   class WorkerSapiSandbox : public WorkerWrapperSandbox {
@@ -105,5 +120,8 @@ class WorkerSandboxApi : public core::ServiceInterface {
   std::unique_ptr<WorkerWrapperApi> worker_wrapper_api_;
   worker::WorkerFactory::WorkerEngine worker_engine_;
   bool require_preload_;
+  int native_js_function_comms_fd_;
+  std::vector<std::string> native_js_function_names_;
+  std::unique_ptr<sapi::v::Fd> sapi_native_js_function_comms_fd_;
 };
 }  // namespace google::scp::roma::sandbox::worker_api

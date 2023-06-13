@@ -20,49 +20,37 @@ cc_library(
         "test_lib_cpio_provider.cc",
         "test_lib_cpio_provider.h",
         "//cc/cpio/client_providers/global_cpio/src/cpio_provider:lib_cpio_provider_srcs",
-        "//cc/cpio/client_providers/interface:cpio_provider_interface.h",
     ],
     copts =
-        select({
-            "//cc/public/cpio/interface:aws_cpio_lib": [
-                "-DAWS_TEST=1",
-            ],
-            "//cc/public/cpio/interface:gcp_cpio_lib": [
-                "-DGCP_TEST=1",
-            ],
-            "//conditions:default": [
-                "-DAWS_TEST=1",
-            ],
-        }) + [
+        select(
+            {
+                "//cc/public/cpio/interface:aws_cpio_lib": [
+                    "-DAWS_TEST=1",
+                ],
+                "//cc/public/cpio/interface:gcp_cpio_lib": [
+                    "-DGCP_TEST=1",
+                ],
+            },
+            no_match_error = "Please build for AWS or GCP",
+        ) + [
             "-DTEST_CPIO=1",
-            "-std=c++17",
         ],
     deps =
-        select({
-            "//cc/public/cpio/interface:aws_cpio_lib": [
-                "//cc/cpio/client_providers/instance_client_provider/test/aws:test_aws_instance_client_provider_lib",
-                "//cc/cpio/client_providers/role_credentials_provider/test/aws:test_aws_role_credentials_provider_lib",
-            ],
-            "//cc/public/cpio/interface:gcp_cpio_lib": [
-                "//cc/cpio/client_providers/instance_client_provider/test/gcp:test_gcp_instance_client_provider_lib",
-                "//cc/cpio/client_providers/role_credentials_provider/src/gcp:gcp_role_credentials_provider_lib",
-            ],
-            "//conditions:default": [
-                "//cc/cpio/client_providers/instance_client_provider/test/aws:test_aws_instance_client_provider_lib",
-            ],
-        }) + [
+        select(
+            {
+                "//cc/public/cpio/interface:aws_cpio_lib": [
+                    "//cc/cpio/client_providers/instance_client_provider/test/aws:test_aws_instance_client_provider_lib",
+                    "//cc/cpio/client_providers/role_credentials_provider/test/aws:test_aws_role_credentials_provider_lib",
+                ],
+                "//cc/public/cpio/interface:gcp_cpio_lib": [
+                    "//cc/cpio/client_providers/instance_client_provider/test/gcp:test_gcp_instance_client_provider_lib",
+                    "//cc/cpio/client_providers/role_credentials_provider/src/gcp:gcp_role_credentials_provider_lib",
+                ],
+            },
+            no_match_error = "Please build for AWS or GCP",
+        ) + [
             "//cc:cc_base_include_dir",
-            "//cc/core/async_executor/src:core_async_executor_lib",
-            "//cc/core/curl_client/src:http1_curl_client_lib",
-            "//cc/core/http2_client/src:http2_client_lib",
-            "//cc/core/logger/src:logger_lib",
-            "//cc/core/logger/src/log_providers:log_providers_lib",
-            "//cc/core/logger/src/log_providers/syslog:syslog_lib",
-            "//cc/core/message_router/src:message_router_lib",
-            "//cc/cpio/client_providers/cloud_initializer/src:cloud_initializer_lib",
-            "//cc/cpio/client_providers/instance_client_provider/src:instance_client_provider_select_lib",
-            "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_select_lib",
-            "//cc/public/cpio/interface:type_def",
+            "//cc/cpio/client_providers/global_cpio/src/cpio_provider:cpio_provider_lib",
             "//cc/public/cpio/test/global_cpio:test_cpio_options",
         ],
 )

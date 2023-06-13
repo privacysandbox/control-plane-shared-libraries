@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -32,4 +34,14 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],
+)
+
+proto_library(
+    name = "roma_function_binding_io_proto",
+    srcs = ["function_binding_io.proto"],
+)
+
+cc_proto_library(
+    name = "roma_function_binding_io_cc_proto",
+    deps = [":roma_function_binding_io_proto"],
 )

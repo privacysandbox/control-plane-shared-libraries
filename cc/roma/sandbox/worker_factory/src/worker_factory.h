@@ -17,6 +17,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "public/core/interface/execution_result.h"
 #include "roma/sandbox/worker/src/worker.h"
@@ -26,9 +28,15 @@ class WorkerFactory {
  public:
   enum class WorkerEngine { v8 };
 
+  struct V8WorkerEngineParams {
+    int native_js_function_comms_fd;
+    std::vector<std::string> native_js_function_names;
+  };
+
   struct FactoryParams {
-    WorkerEngine engine;
+    WorkerEngine engine = WorkerEngine::v8;
     bool require_preload = true;
+    V8WorkerEngineParams v8_worker_engine_params{};
   };
 
   static core::ExecutionResultOr<std::shared_ptr<Worker>> Create(

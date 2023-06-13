@@ -33,8 +33,10 @@ class TestAwsKmsClientProvider : public NonteeAwsKmsClientProvider {
   explicit TestAwsKmsClientProvider(
       const std::shared_ptr<TestAwsKmsClientOptions>& options,
       const std::shared_ptr<RoleCredentialsProviderInterface>&
-          role_credentials_provider)
-      : NonteeAwsKmsClientProvider(role_credentials_provider),
+          role_credentials_provider,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
+      : NonteeAwsKmsClientProvider(role_credentials_provider,
+                                   io_async_executor),
         test_options_(options) {}
 
  protected:
