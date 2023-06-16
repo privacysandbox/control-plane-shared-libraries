@@ -54,7 +54,6 @@ class V8EngineWorkerTest : public ::testing::Test {
 TEST_F(V8EngineWorkerTest, CanRunJsCode) {
   auto engine = make_shared<V8JsEngine>();
   Worker worker(engine, false /*require_preload*/);
-  AutoInitRunStop to_handle_engine(*engine);
   AutoInitRunStop to_handle_worker(worker);
 
   string js_code = "function hello_js() { return \"Hello World!\"; }";
@@ -77,7 +76,6 @@ TEST_F(V8EngineWorkerTest, CanRunJsCode) {
 TEST_F(V8EngineWorkerTest, CanRunMultipleVersionsOfTheCode) {
   auto engine = make_shared<V8JsEngine>();
   Worker worker(engine, true /*require_preload*/);
-  AutoInitRunStop to_handle_engine(*engine);
   AutoInitRunStop to_handle_worker(worker);
 
   // Load v1

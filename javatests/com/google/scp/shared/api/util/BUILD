@@ -57,6 +57,7 @@ java_test(
         "//java/external:apache_httpclient5",
         "//java/external:apache_httpcore5",
         "//java/external:aws_auth",
+        "//java/external:aws_sts",
         "//java/external:google_truth",
         "//java/external:mockito",
         "//java/external:mockito_inline",

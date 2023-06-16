@@ -23,6 +23,7 @@
 #include "include/v8.h"
 #include "roma/sandbox/native_function_binding/src/native_function_invoker.h"
 
+#include "error_codes.h"
 #include "v8_isolate_visitor.h"
 
 namespace google::scp::roma::sandbox::js_engine::v8_js_engine {

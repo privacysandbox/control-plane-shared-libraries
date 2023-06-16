@@ -29,9 +29,11 @@
 
 #include "core/test/utils/conditional_wait.h"
 #include "roma/interface/roma.h"
+#include "roma/wasm/test/testing_utils.h"
 
 using absl::StatusOr;
 using google::scp::core::test::WaitUntil;
+using google::scp::roma::wasm::testing::WasmTestingUtils;
 using std::atomic;
 using std::bind;
 using std::get;
@@ -563,4 +565,120 @@ TEST(SandboxedServiceTest, CanCallFunctionBindingThatDoesNotTakeAnyArguments) {
   status = RomaStop();
   EXPECT_TRUE(status.ok());
 }
+
+TEST(SandboxedServiceTest, CanExecuteWasmCode) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  auto wasm_bin = WasmTestingUtils::LoadWasmFile(
+      "./cc/roma/testing/cpp_wasm_string_in_string_out_example/"
+      "string_in_string_out.wasm");
+  auto wasm_code =
+      string(reinterpret_cast<char*>(wasm_bin.data()), wasm_bin.size());
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->wasm = wasm_code;
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("Foobar Hello World from WASM")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ExecuteCodeGotTimeoutError) {
+  Config config;
+  config.number_of_workers = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"""(
+    function sleep(milliseconds) {
+      const date = Date.now();
+      let currentDate = null;
+      do {
+        currentDate = Date.now();
+      } while (currentDate - date < milliseconds);
+    }
+    function hello_js() {
+        sleep(200);
+        return 0;
+      }
+    )""";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "hello_js";
+    execution_obj->tags[kTimeoutMsTag] = "100";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_FALSE(resp->ok());
+                       // Timeout error only shows in err_msg not result.
+                       EXPECT_EQ(resp->status().message(),
+                                 "Error when invoking the handler.");
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
 }  // namespace google::scp::roma::test

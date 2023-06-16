@@ -18,7 +18,7 @@ package worker_api;
 
 message WorkerParamsProto {
   // Input
-  string code = 1;
+  bytes code = 1;
   repeated string input = 2;
   map<string, string> metadata = 3;
 

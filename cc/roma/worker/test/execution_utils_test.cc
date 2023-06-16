@@ -214,23 +214,6 @@ class ExecutionUtilsTest : public ::testing::Test {
 
 unique_ptr<v8::Platform> ExecutionUtilsTest::platform_{nullptr};
 
-TEST_F(ExecutionUtilsTest, RomaStrToLocalStr) {
-  unique_ptr<IpcManager> manager(IpcManager::Create(config));
-  AutoInitRunStop auto_init_run_stop(*manager);
-  auto role_id = RoleId(0, false);
-  IpcManager::Instance()->SetUpIpcForMyProcess(role_id);
-  constexpr char test[] = "test_string";
-  {
-    Isolate::Scope isolate_scope(isolate_);
-    HandleScope handle_scope(isolate_);
-    RomaString data(test);
-    Local<String> local_output;
-    ExecutionUtils::RomaStrToLocalStr(data, local_output);
-    String::Utf8Value output(isolate_, local_output);
-    EXPECT_EQ(0, strcmp(*output, test));
-  }
-}
-
 TEST_F(ExecutionUtilsTest, InputToLocalArgv) {
   unique_ptr<IpcManager> manager(IpcManager::Create(config));
   AutoInitRunStop auto_init_run_stop(*manager);

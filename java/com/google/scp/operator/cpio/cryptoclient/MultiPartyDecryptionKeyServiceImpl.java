@@ -192,6 +192,9 @@ public final class MultiPartyDecryptionKeyServiceImpl implements DecryptionKeySe
           return new KeyFetchException(e, ErrorReason.PERMISSION_DENIED);
         case INTERNAL:
           return new KeyFetchException(e, ErrorReason.INTERNAL);
+        case UNAVAILABLE:
+        case DEADLINE_EXCEEDED:
+          return new KeyFetchException(e, ErrorReason.KEY_SERVICE_UNAVAILABLE);
         default:
           return new KeyFetchException(e, ErrorReason.UNKNOWN_ERROR);
       }

@@ -28,7 +28,15 @@
 #include "roma/config/src/config.h"
 
 namespace google::scp::roma {
-enum class WasmDataType { kUnknownType, kUint32, kString, kListOfString };
+enum class [[deprecated(
+    "Going forward, this value will be ignore and the only supported return "
+    "type will be string.")]] WasmDataType{kUnknownType, kUint32, kString,
+                                           kListOfString};
+/// @brief The key of timeout tag for request.
+static constexpr char kTimeoutMsTag[] = "TimeoutMs";
+/// @brief Default value for request execution timeout. If no timeout tag is
+/// set, the default value will be used.
+static constexpr int kDefaultExecutionTimeoutMs = 5000;
 
 // The code object containing untrusted code to be loaded into the Worker.
 struct CodeObject {
@@ -66,9 +74,12 @@ struct InvocationRequest {
   uint64_t version_num{0};
   // The signature of the handler function to invoke.
   std::string handler_name;
+
   // The return type of the WASM handler. For wasm source code execution, this
   // field is required.
-  WasmDataType wasm_return_type;
+  [[deprecated(
+      "Going forward, this value will be ignored and the only supported return "
+      "type will be string.")]] WasmDataType wasm_return_type;
   // Any key-value pair tags associated with this code object.
   absl::flat_hash_map<std::string, std::string> tags;
   // The input arguments to invoke the handler function.

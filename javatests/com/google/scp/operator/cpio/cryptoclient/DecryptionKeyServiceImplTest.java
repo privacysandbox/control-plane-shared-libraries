@@ -124,6 +124,30 @@ public class DecryptionKeyServiceImplTest {
   }
 
   @Test
+  public void getDecrypter_serviceNotAvailable_throwsServiceUnavailable() throws Exception {
+    keyFetchingService.setExceptionContents(Code.UNAVAILABLE, "Service Not Available");
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class,
+            () -> decryptionKeyServiceImpl.getDecrypter(UUID.randomUUID().toString()));
+
+    assertEquals(exception.getReason(), ErrorReason.KEY_SERVICE_UNAVAILABLE);
+  }
+
+  @Test
+  public void getDecrypter_serviceTimesOut_throwsServiceUnavailable() throws Exception {
+    keyFetchingService.setExceptionContents(Code.DEADLINE_EXCEEDED, "Deadline Exceeded");
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class,
+            () -> decryptionKeyServiceImpl.getDecrypter(UUID.randomUUID().toString()));
+
+    assertEquals(exception.getReason(), ErrorReason.KEY_SERVICE_UNAVAILABLE);
+  }
+
+  @Test
   public void getDecrypter_errorWithCode_UNKNOWN() throws Exception {
     keyFetchingService.setResponse("bad test string");
 

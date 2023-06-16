@@ -29,8 +29,8 @@ static constexpr char kRequestAction[] = "RequestAction";
 static constexpr char kRequestActionLoad[] = "Load";
 static constexpr char kRequestActionExecute[] = "Execute";
 
-static constexpr char kTagPrefix[] = "RomaTag";
-
 static constexpr char kFuctionBindingMetadataFunctionName[] =
     "roma.js_function_binding_name";
+
+static constexpr int kCodeVersionCacheSize = 5;
 }  // namespace google::scp::roma::sandbox::constants

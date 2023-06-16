@@ -40,6 +40,7 @@ using google::scp::roma::sandbox::js_engine::v8_js_engine::V8IsolateVisitor;
 using google::scp::roma::sandbox::js_engine::v8_js_engine::V8JsEngine;
 using google::scp::roma::sandbox::native_function_binding::
     NativeFunctionInvoker;
+
 using std::make_shared;
 using std::shared_ptr;
 using std::string;
@@ -80,13 +81,12 @@ TEST_F(V8IsolateVisitorFunctionBindingTest,
   isolate_visitors.push_back(visitor);
 
   V8JsEngine js_engine(isolate_visitors);
-  auto result = js_engine.Init();
-  EXPECT_SUCCESS(result);
+  AutoInitRunStop to_handle_engine(js_engine);
 
   EXPECT_CALL(*function_invoker, Invoke("cool_func", _))
       .WillOnce(Return(SuccessExecutionResult()));
 
   auto result_or = js_engine.CompileAndRunJs(
-      "function func() { cool_func(); return \"\"; }", "func", {});
+      "function func() { cool_func(); return \"\"; }", "func", {}, {});
 }
 }  // namespace google::scp::roma::sandbox::js_engine::test

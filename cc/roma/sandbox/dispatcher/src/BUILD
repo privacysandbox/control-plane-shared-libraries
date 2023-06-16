@@ -28,6 +28,7 @@ cc_library(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/src:core_async_executor_lib",
+        "//cc/core/common/lru_cache/src:lru_cache_lib",
         "//cc/core/interface:interface_lib",
         "//cc/core/interface:type_def_lib",
         "//cc/public/core/interface:execution_result",

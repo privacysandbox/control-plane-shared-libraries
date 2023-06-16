@@ -29,6 +29,7 @@
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::errors::GetErrorMessage;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_BAD_INPUT_ARGS;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_BIND_UNBOUND_SCRIPT_FAILED;
@@ -40,6 +41,8 @@ using google::scp::core::errors::SC_ROMA_V8_WORKER_UNKNOWN_WASM_RETURN_TYPE;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_UNMATCHED_CODE_VERSION_NUM;
 using google::scp::core::errors::
     SC_ROMA_V8_WORKER_UNSET_ISOLATE_WITH_PRELOADED_CODE;
+using google::scp::roma::kDefaultExecutionTimeoutMs;
+using google::scp::roma::kTimeoutMsTag;
 using google::scp::roma::common::RomaString;
 using google::scp::roma::ipc::RomaCodeObj;
 using google::scp::roma::worker::ExecutionUtils;
@@ -72,12 +75,6 @@ using v8::Undefined;
 using v8::Value;
 
 namespace {
-/// @brief The maximum execution time for each code object. Current default
-/// value is 5000 ms.
-constexpr int kMsExecutionTimeoutDefault = 5000;
-// TODO: This tag may need to be moved to where all request tag keys are
-// declared. Or enum type for tag key.
-constexpr char kTimeoutMsTag[] = "TimeoutMs";
 constexpr char kJsWasmMixedError[] =
     "ReferenceError: WebAssembly is not defined";
 
@@ -103,20 +100,19 @@ ExecutionResult GetTimeoutValue(const RomaCodeObj& code_obj,
                                 int& timeout_ms) noexcept {
   // Sets timeout_ms to default value. v8_execute_manager uses the
   // default value when no valid TimeoutMs tag found in code object.
-  timeout_ms = kMsExecutionTimeoutDefault;
   RomaString timeout_ms_value;
   RomaString timeout_ms_tag(kTimeoutMsTag);
   auto execution_result =
       code_obj.GetCodeObjTag(timeout_ms_tag, timeout_ms_value);
-  if (execution_result.Successful()) {
-    try {
-      timeout_ms = stoi(timeout_ms_value.c_str());
-    } catch (...) {
-      return FailureExecutionResult(
-          SC_ROMA_V8_WORKER_FAILED_TO_PARSE_TIMEOUT_TAG);
-    }
+  RETURN_IF_FAILURE(execution_result);
+
+  try {
+    timeout_ms = stoi(timeout_ms_value.c_str());
+    return SuccessExecutionResult();
+  } catch (...) {
+    return FailureExecutionResult(
+        SC_ROMA_V8_WORKER_FAILED_TO_PARSE_TIMEOUT_TAG);
   }
-  return SuccessExecutionResult();
 }
 
 }  // namespace
@@ -418,7 +414,14 @@ ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
   // Start execution_watchdog_ right before code object process.
   int timeout_ms;
   auto execution_result = GetTimeoutValue(code_obj, timeout_ms);
-  RETURN_IF_FAILURE(execution_result);
+  if (!execution_result.Successful()) {
+    timeout_ms = kDefaultExecutionTimeoutMs;
+#if defined(_SCP_ROMA_LOG_ERRORS)
+    std::cout << "Error GetTimeoutValue:"
+              << GetErrorMessage(execution_result.status_code) << "\n"
+              << std::endl;
+#endif
+  }
   execution_watchdog_->StartTimer(timeout_ms);
 
   Isolate::Scope isolate_scope(v8_isolate_);

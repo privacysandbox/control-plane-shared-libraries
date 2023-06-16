@@ -28,4 +28,6 @@ public enum ErrorReason {
   PERMISSION_DENIED,
   // An unknown fatal error occurred.
   UNKNOWN_ERROR,
+  // Service unresponsive or not available.
+  KEY_SERVICE_UNAVAILABLE,
 }

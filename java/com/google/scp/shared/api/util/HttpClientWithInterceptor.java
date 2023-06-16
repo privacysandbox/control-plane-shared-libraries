@@ -17,6 +17,7 @@
 package com.google.scp.shared.api.util;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -37,9 +38,11 @@ import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpRequestInterceptor;
+import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.Method;
 import org.apache.hc.core5.reactor.IOReactorStatus;
 import org.apache.hc.core5.util.Timeout;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 /**
  * This is a wrapper on top the bare-bones Apache HttpClient 5.0. Every request executed by the
@@ -51,9 +54,21 @@ public class HttpClientWithInterceptor {
   private static final Duration MAX_BACKOFF_INTERVAL = Duration.ofSeconds(30);
   private static final int BACKOFF_MULTIPLIER = 2;
   private static final int MAX_ATTEMPTS = 6;
-  private static final RetryRegistry RETRY_REGISTRY =
+
+  private static final ImmutableSet<Integer> RETRYABLE_HTTP_STATUS_CODES =
+      ImmutableSet.of(
+          HttpStatus.SC_REQUEST_TIMEOUT, // 408
+          HttpStatus.SC_TOO_MANY_REQUESTS, // 429
+          HttpStatus.SC_INTERNAL_SERVER_ERROR, // 500
+          HttpStatus.SC_BAD_GATEWAY, // 502
+          HttpStatus.SC_SERVICE_UNAVAILABLE, // 503
+          HttpStatus.SC_GATEWAY_TIMEOUT // 504
+          );
+
+  @VisibleForTesting
+  static final RetryRegistry RETRY_REGISTRY =
       RetryRegistry.of(
-          RetryConfig.custom()
+          RetryConfig.<SimpleHttpResponse>custom()
               .maxAttempts(MAX_ATTEMPTS)
               /*
                * Retries 5 times (in addition to initial attempt) with initial interval of 2s between calls.
@@ -62,8 +77,10 @@ public class HttpClientWithInterceptor {
               .intervalFunction(
                   IntervalFunction.ofExponentialBackoff(
                       INITIAL_BACKOFF_INTERVAL, BACKOFF_MULTIPLIER, MAX_BACKOFF_INTERVAL))
-              .retryExceptions(Exception.class)
+              .retryOnException(HttpClientWithInterceptor::retryOnExceptionPredicate)
+              .retryOnResult(response -> RETRYABLE_HTTP_STATUS_CODES.contains(response.getCode()))
               .build());
+
   private static final long REQUEST_TIMEOUT_DURATION = Duration.ofSeconds(60).toMillis();
   private static final RequestConfig REQUEST_CONFIG =
       RequestConfig.custom()
@@ -74,6 +91,20 @@ public class HttpClientWithInterceptor {
           // Timeout for waiting to get a response from the server
           .setResponseTimeout(Timeout.ofMilliseconds(REQUEST_TIMEOUT_DURATION))
           .build();
+
+  private static boolean retryOnExceptionPredicate(Throwable e) {
+    // If the HTTP error code is UNAUTHORIZED or FORBIDDEN in StsException, this
+    // likely means that the client is not able to get auth token from AWS STS.
+    // Don't retry in this case.
+    if (e instanceof StsException) {
+      StsException stsException = (StsException) e;
+      return stsException.statusCode() != HttpStatus.SC_UNAUTHORIZED
+          && stsException.statusCode() != HttpStatus.SC_FORBIDDEN;
+    }
+
+    // Otherwise, retry
+    return true;
+  }
 
   private final CloseableHttpAsyncClient httpClient;
   private final Retry retryConfig;
@@ -150,11 +181,30 @@ public class HttpClientWithInterceptor {
   private SimpleHttpResponse executeRequest(SimpleHttpRequest httpRequest) throws IOException {
     try {
       return Retry.decorateCheckedSupplier(
-              retryConfig,
-              () -> {
-                return httpClient.execute(httpRequest, null).get();
-              })
+              retryConfig, () -> httpClient.execute(httpRequest, null).get())
           .apply();
+    } catch (StsException e) {
+      // The HTTP request sent by HttpClientWithInterceptor can potentially be intercepted by
+      // other HTTP interceptor, such as AwsAuthTokenInterceptor. These interceptors can
+      // potentially throws some RuntimeException. StsException is a RuntimeException
+      // that might be thrown by AwsAuthTokenInterceptor when the interceptor is not able to get
+      // auth token (e.g. when the client can't assume another AWS role).
+
+      // If the HTTP error code is UNAUTHORIZED or FORBIDDEN, don't throw IOException so that
+      // PrivacyBudgetClientImpl and TransactionEngineImpl do not retry the HTTP request. These
+      // error codes are generally not retryable within a short period of time.
+      String errorMessage =
+          e.awsErrorDetails() != null
+              ? e.awsErrorDetails().errorMessage()
+              : "Unknown error message";
+      if (e.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
+        return SimpleHttpResponse.create(HttpStatus.SC_UNAUTHORIZED, errorMessage);
+      } else if (e.statusCode() == HttpStatus.SC_FORBIDDEN) {
+        return SimpleHttpResponse.create(HttpStatus.SC_FORBIDDEN, errorMessage);
+      }
+
+      // Other exception will be rethrown as IOException
+      throw new IOException(e);
     } catch (Throwable e) {
       /**
        * We wrap all exceptions coming out of this operation into an IOException because we believe

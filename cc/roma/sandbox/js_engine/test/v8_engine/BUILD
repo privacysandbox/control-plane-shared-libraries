@@ -21,10 +21,12 @@ cc_test(
     copts = [
         "-std=c++17",
     ],
+    data = ["//cc/roma/testing/cpp_wasm_string_in_string_out_example"],
     deps = [
         "//cc/core/test/utils:utils_lib",
         "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/sandbox/js_engine/src/v8_engine:roma_v8_js_engine_lib",
+        "//cc/roma/wasm/test:roma_wasm_testing_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )

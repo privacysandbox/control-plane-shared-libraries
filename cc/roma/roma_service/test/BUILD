@@ -79,10 +79,12 @@ cc_test(
     copts = [
         "-std=c++17",
     ],
+    data = ["//cc/roma/testing/cpp_wasm_string_in_string_out_example"],
     tags = ["manual"],
     deps = [
         "//cc/core/test/utils:utils_lib",
         "//cc/roma/roma_service/src:roma_service_lib",
+        "//cc/roma/wasm/test:roma_wasm_testing_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )

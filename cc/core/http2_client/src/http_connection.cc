@@ -315,8 +315,13 @@ void HttpConnection::SendHttpRequest(
             http_context.request->body.bytes->end()};
   }
 
+  // Erase the header if it is already present.
+  headers.erase(kContentLengthHeader);
   headers.insert(
       {string(kContentLengthHeader), {std::to_string(body.length()), false}});
+
+  // Erase the header if it is already present.
+  headers.erase(kClientActivityIdHeader);
   headers.insert({string(kClientActivityIdHeader),
                   {ToString(http_context.activity_id), false}});
 

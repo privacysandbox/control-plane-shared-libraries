@@ -348,8 +348,8 @@ rpmpack_dependencies()
 # Distroless image for running Java.
 container_pull(
     name = "java_base",
-    # Using SHA-256 for reproducibility. The tag is latest-amd64.
-    digest = "sha256:901215ab3ae619500f184668461cf901830e7a9707f8f9c016d9c08d8060db5a",
+    # Using SHA-256 for reproducibility. The tag is latest-amd64. Latest as of 2023-06-12.
+    digest = "sha256:1e4181aaff242e2b305bb4abbe811eb122d68ffd7fd87c25c19468a1bc387ce6",
     registry = "gcr.io",
     repository = "distroless/java17-debian11",
 )
@@ -377,11 +377,11 @@ container_pull(
 # Needed for reproducibly building AL2 binaries (e.g. //cc/aws/proxy)
 container_pull(
     name = "amazonlinux_2",
-    # Latest as of 2022-09-14.
-    digest = "sha256:ba4ab64a757797930ebb0cf40a41da433cb0531877a3a2376f5427e3fdf93694",
+    # Latest as of 2023-06-12.
+    digest = "sha256:cd3d9deffbb15db51382022a67ad717c02e0573c45c312713c046e4c2ac07771",
     registry = "index.docker.io",
     repository = "amazonlinux",
-    tag = "2.0.20220805.0",
+    tag = "2.0.20230530.0",
 )
 
 ########################################################################

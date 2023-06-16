@@ -25,6 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "core/async_executor/src/async_executor.h"
+#include "core/common/lru_cache/src/lru_cache.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "roma/interface/roma.h"
@@ -46,7 +47,8 @@ class Dispatcher : public core::ServiceInterface {
         worker_index_(0),
         pending_requests_(0),
         max_pending_requests_(max_pending_requests),
-        allow_dispatch_(true) {}
+        allow_dispatch_(true),
+        code_object_cache_(constants::kCodeVersionCacheSize) {}
 
   core::ExecutionResult Init() noexcept override;
 
@@ -159,6 +161,10 @@ class Dispatcher : public core::ServiceInterface {
     auto index = worker_index_.fetch_add(1);
     worker_index_ = worker_index_.load() % num_workers;
 
+    if constexpr (std::is_same<RequestT, CodeObject>::value) {
+      code_object_cache_.Set(request->version_num, *request);
+    }
+
     // This is a workaround to be able to register a lambda that needs to
     // capture a non-copy-constructible input (request)
     auto shared_request =
@@ -180,9 +186,23 @@ class Dispatcher : public core::ServiceInterface {
             return;
           }
 
+          if (!code_object_cache_.Contains(request->version_num)) {
+            response_or = std::make_unique<absl::StatusOr<ResponseObject>>(
+                absl::Status(absl::StatusCode::kInternal,
+                             "Could not find code version in cache."));
+            callback(::std::move(response_or));
+            pending_requests_--;
+            return;
+          }
+
+          auto request_type =
+              code_object_cache_.Get(request->version_num).js.empty()
+                  ? constants::kRequestTypeWasm
+                  : constants::kRequestTypeJavascript;
+
           auto run_code_request_or =
               request_converter::RequestConverter<RequestT>::FromUserProvided(
-                  request);
+                  request, request_type);
           if (!run_code_request_or.result().Successful()) {
             response_or = std::make_unique<absl::StatusOr<ResponseObject>>(
                 absl::Status(absl::StatusCode::kInternal,
@@ -228,5 +248,6 @@ class Dispatcher : public core::ServiceInterface {
   std::atomic<size_t> pending_requests_;
   const size_t max_pending_requests_;
   std::atomic<bool> allow_dispatch_;
+  core::common::LruCache<uint64_t, CodeObject> code_object_cache_;
 };
 }  // namespace google::scp::roma::sandbox::dispatcher

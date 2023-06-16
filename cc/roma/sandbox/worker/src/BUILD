@@ -15,11 +15,34 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "roma_worker_utils_lib",
+    srcs = glob(
+        [
+            "worker_utils.cc",
+            "worker_utils.h",
+            "error_codes.h",
+        ],
+    ),
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/interface:interface_lib",
+        "//cc/core/interface:type_def_lib",
+        "//cc/public/core/interface:execution_result",
+        "//cc/roma/config/src:roma_config_lib",
+        "//cc/roma/sandbox/constants:roma_constants_lib",
+    ],
+)
+
+cc_library(
     name = "roma_worker_lib",
     srcs = glob(
         [
-            "*.cc",
-            "*.h",
+            "error_codes.h",
+            "worker.cc",
+            "worker.h",
         ],
     ),
     copts = [
@@ -34,5 +57,6 @@ cc_library(
         "//cc/roma/config/src:roma_config_lib",
         "//cc/roma/sandbox/constants:roma_constants_lib",
         "//cc/roma/sandbox/js_engine/src:roma_js_engine_lib",
+        "//cc/roma/sandbox/worker/src:roma_worker_utils_lib",
     ],
 )

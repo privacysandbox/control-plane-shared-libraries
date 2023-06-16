@@ -1777,4 +1777,129 @@ TEST(RomaBasicE2ETest, ExecuteCodeWithConfiguredHeap) {
   EXPECT_TRUE(status.ok());
 }
 
+TEST(RomaBasicE2ETest, ExecuteCodeTimeout) {
+  Config config;
+  config.number_of_workers = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"""(
+    function sleep(milliseconds) {
+      const date = Date.now();
+      let currentDate = null;
+      do {
+        currentDate = Date.now();
+      } while (currentDate - date < milliseconds);
+    }
+    function hello_js() {
+        sleep(200);
+        return 0;
+      }
+    )""";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "hello_js";
+    execution_obj->tags[kTimeoutMsTag] = "100";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_FALSE(resp->ok());
+                       // Timeout error only shows in err_msg not result.
+                       EXPECT_EQ(resp->status().message(),
+                                 "Code object execute timeout.");
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(RomaBasicE2ETest, BatchExecuteTimeout) {
+  Config config;
+  config.number_of_workers = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<int> res_count(0);
+  size_t batch_size(5);
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"""(
+    function sleep(milliseconds) {
+      const date = Date.now();
+      let currentDate = null;
+      do {
+        currentDate = Date.now();
+      } while (currentDate - date < milliseconds);
+    }
+    function hello_js() {
+        sleep(200);
+        return 0;
+      }
+    )""";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = InvocationRequestSharedInput();
+    execution_obj.id = "foo";
+    execution_obj.version_num = 1;
+    execution_obj.handler_name = "hello_js";
+    execution_obj.tags[kTimeoutMsTag] = "100";
+
+    vector<InvocationRequestSharedInput> batch(batch_size, execution_obj);
+    status = BatchExecute(
+        batch,
+        [&](const std::vector<absl::StatusOr<ResponseObject>>& batch_resp) {
+          for (auto resp : batch_resp) {
+            EXPECT_FALSE(resp.ok());
+            // Timeout error only shows in err_msg not result.
+            EXPECT_EQ(resp.status().message(), "Code object execute timeout.");
+          }
+          res_count.store(batch_resp.size());
+          execute_finished.store(true);
+        });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); });
+  WaitUntil([&]() { return execute_finished.load(); });
+  EXPECT_EQ(res_count.load(), batch_size);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
 }  // namespace google::scp::roma::test

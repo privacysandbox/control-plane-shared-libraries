@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 #include "roma/interface/roma.h"
 #include "roma/sandbox/constants/constants.h"
@@ -31,7 +32,7 @@ namespace google::scp::roma::sandbox::dispatcher::request_converter {
  * @param request The input request.
  */
 template <typename RequestT>
-static void RunRequestFromInpuntRequestCommon(
+static void RunRequestFromInputRequestCommon(
     worker_api::WorkerApi::RunCodeRequest& run_code_request,
     const RequestT& request) {
   run_code_request
@@ -41,8 +42,7 @@ static void RunRequestFromInpuntRequestCommon(
       request->id;
 
   for (auto& kv : request->tags) {
-    auto prefix = google::scp::roma::sandbox::constants::kTagPrefix;
-    run_code_request.metadata[prefix + kv.first] = kv.second;
+    run_code_request.metadata[kv.first] = kv.second;
   }
 }
 
@@ -56,7 +56,7 @@ static void RunRequestFromInpuntRequestCommon(
 template <typename RequestT>
 static void InvocationRequestCommon(
     worker_api::WorkerApi::RunCodeRequest& run_code_request,
-    const RequestT& request) {
+    const RequestT& request, const std::string& request_type) {
   run_code_request
       .metadata[google::scp::roma::sandbox::constants::kRequestAction] =
       google::scp::roma::sandbox::constants::kRequestActionExecute;
@@ -65,9 +65,7 @@ static void InvocationRequestCommon(
       request->handler_name;
   run_code_request
       .metadata[google::scp::roma::sandbox::constants::kRequestType] =
-      request->wasm_return_type != WasmDataType::kUnknownType
-          ? google::scp::roma::sandbox::constants::kRequestTypeWasm
-          : google::scp::roma::sandbox::constants::kRequestTypeJavascript;
+      request_type;
 }
 
 template <typename T>
@@ -80,14 +78,15 @@ struct RequestConverter {};
 template <>
 struct RequestConverter<InvocationRequestStrInput> {
   static core::ExecutionResultOr<worker_api::WorkerApi::RunCodeRequest>
-  FromUserProvided(const std::unique_ptr<InvocationRequestStrInput>& request) {
+  FromUserProvided(const std::unique_ptr<InvocationRequestStrInput>& request,
+                   const std::string& request_type) {
     worker_api::WorkerApi::RunCodeRequest run_code_request;
-    RunRequestFromInpuntRequestCommon<
+    RunRequestFromInputRequestCommon<
         std::unique_ptr<InvocationRequestStrInput>>(run_code_request, request);
     for (auto& i : request->input) {
       run_code_request.input.push_back(i);
     }
-    InvocationRequestCommon(run_code_request, request);
+    InvocationRequestCommon(run_code_request, request, request_type);
 
     return run_code_request;
   }
@@ -100,16 +99,16 @@ struct RequestConverter<InvocationRequestStrInput> {
 template <>
 struct RequestConverter<InvocationRequestSharedInput> {
   static core::ExecutionResultOr<worker_api::WorkerApi::RunCodeRequest>
-  FromUserProvided(
-      const std::unique_ptr<InvocationRequestSharedInput>& request) {
+  FromUserProvided(const std::unique_ptr<InvocationRequestSharedInput>& request,
+                   const std::string& request_type) {
     worker_api::WorkerApi::RunCodeRequest run_code_request;
-    RunRequestFromInpuntRequestCommon<
+    RunRequestFromInputRequestCommon<
         std::unique_ptr<InvocationRequestSharedInput>>(run_code_request,
                                                        request);
     for (auto& i : request->input) {
       run_code_request.input.push_back(*i);
     }
-    InvocationRequestCommon(run_code_request, request);
+    InvocationRequestCommon(run_code_request, request, request_type);
 
     return run_code_request;
   }
@@ -122,18 +121,17 @@ struct RequestConverter<InvocationRequestSharedInput> {
 template <>
 struct RequestConverter<CodeObject> {
   static core::ExecutionResultOr<worker_api::WorkerApi::RunCodeRequest>
-  FromUserProvided(const std::unique_ptr<CodeObject>& request) {
+  FromUserProvided(const std::unique_ptr<CodeObject>& request,
+                   const std::string& request_type) {
     worker_api::WorkerApi::RunCodeRequest run_code_request;
-    RunRequestFromInpuntRequestCommon<std::unique_ptr<CodeObject>>(
+    RunRequestFromInputRequestCommon<std::unique_ptr<CodeObject>>(
         run_code_request, request);
     run_code_request
         .metadata[google::scp::roma::sandbox::constants::kRequestAction] =
         google::scp::roma::sandbox::constants::kRequestActionLoad;
     run_code_request
         .metadata[google::scp::roma::sandbox::constants::kRequestType] =
-        request->js.empty()
-            ? google::scp::roma::sandbox::constants::kRequestTypeWasm
-            : google::scp::roma::sandbox::constants::kRequestTypeJavascript;
+        request_type;
     run_code_request.code = request->js.empty() ? request->wasm : request->js;
 
     return run_code_request;

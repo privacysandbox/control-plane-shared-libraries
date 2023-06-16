@@ -24,7 +24,10 @@
 #include "core/common/lru_cache/src/lru_cache.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "roma/sandbox/constants/constants.h"
 #include "roma/sandbox/js_engine/src/js_engine.h"
+
+#include "error_codes.h"
 
 namespace google::scp::roma::sandbox::worker {
 /// @brief This class acts a single-threaded worker which receives work items
@@ -34,7 +37,7 @@ class Worker : public core::ServiceInterface {
   explicit Worker(std::shared_ptr<js_engine::JsEngine> js_engine,
                   bool require_preload = true)
       : js_engine_(js_engine),
-        compilation_contexts_(5),
+        compilation_contexts_(constants::kCodeVersionCacheSize),
         require_preload_(require_preload) {}
 
   core::ExecutionResult Init() noexcept override;
@@ -43,6 +46,14 @@ class Worker : public core::ServiceInterface {
 
   core::ExecutionResult Stop() noexcept override;
 
+  /**
+   * @brief Run code object with an internal JS/WASM engine.
+   *
+   * @param code The code to compile and run
+   * @param input The input to pass to the code
+   * @param metadata The metadata associated with the code request
+   * @return core::ExecutionResultOr<std::string>
+   */
   virtual core::ExecutionResultOr<std::string> RunCode(
       const std::string& code, const std::vector<std::string>& input,
       const std::unordered_map<std::string, std::string>& metadata);
@@ -50,7 +61,7 @@ class Worker : public core::ServiceInterface {
  private:
   std::shared_ptr<js_engine::JsEngine> js_engine_;
   /**
-   * @brief Used to keep track of compilation cotexts
+   * @brief Used to keep track of compilation contexts
    *
    */
   core::common::LruCache<std::string, js_engine::RomaJsEngineCompilationContext>

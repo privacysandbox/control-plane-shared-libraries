@@ -22,9 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "roma/sandbox/constants/constants.h"
-
-#include "error_codes.h"
+#include "roma/sandbox/worker/src/worker_utils.h"
 
 using std::string;
 using std::unordered_map;
@@ -36,7 +34,7 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_ROMA_WORKER_MISSING_CONTEXT_WHEN_EXECUTING;
 using google::scp::core::errors::SC_ROMA_WORKER_MISSING_METADATA_ITEM;
-using google::scp::core::errors::SC_ROMA_WORKER_WASM_NOT_SUPPORTED;
+using google::scp::core::errors::SC_ROMA_WORKER_REQUEST_TYPE_NOT_SUPPORTED;
 using google::scp::roma::sandbox::constants::kCodeVersion;
 using google::scp::roma::sandbox::constants::kHandlerName;
 using google::scp::roma::sandbox::constants::kRequestAction;
@@ -60,61 +58,61 @@ ExecutionResult Worker::Stop() noexcept {
   return js_engine_->Stop();
 }
 
-static ExecutionResultOr<string> GetValueFromMetadata(
-    const unordered_map<string, string>& metadata, const string& key) {
-  if (metadata.find(key) == metadata.end()) {
-    return FailureExecutionResult(SC_ROMA_WORKER_MISSING_METADATA_ITEM);
-  }
-
-  return metadata.at(key);
-}
-
 ExecutionResultOr<string> Worker::RunCode(
     const string& code, const vector<string>& input,
     const unordered_map<string, string>& metadata) {
-  auto request_type_or = GetValueFromMetadata(metadata, kRequestType);
+  auto request_type_or =
+      WorkerUtils::GetValueFromMetadata(metadata, kRequestType);
   RETURN_IF_FAILURE(request_type_or.result());
 
-  auto code_version_or = GetValueFromMetadata(metadata, kCodeVersion);
+  auto code_version_or =
+      WorkerUtils::GetValueFromMetadata(metadata, kCodeVersion);
   RETURN_IF_FAILURE(code_version_or.result());
 
-  auto action_or = GetValueFromMetadata(metadata, kRequestAction);
+  auto action_or = WorkerUtils::GetValueFromMetadata(metadata, kRequestAction);
   RETURN_IF_FAILURE(action_or.result());
 
+  string handler_name = "";
+  auto handler_name_or =
+      WorkerUtils::GetValueFromMetadata(metadata, kHandlerName);
+  // If we read the handler name successfully, let's store it.
+  // Else if we didn't read it and the request is not a load request,
+  // then return the failure.
+  if (handler_name_or.result().Successful()) {
+    handler_name = *handler_name_or;
+  } else if (*action_or != kRequestActionLoad) {
+    return handler_name_or.result();
+  }
+
+  RomaJsEngineCompilationContext context;
+  if (compilation_contexts_.Contains(*code_version_or)) {
+    context = compilation_contexts_.Get(*code_version_or);
+  } else if (require_preload_ && *action_or != kRequestActionLoad) {
+    // If we require preloads and we couldn't find a context and this is not a
+    // load request, then bail out. This is an execution without a previous
+    // load.
+    return FailureExecutionResult(
+        SC_ROMA_WORKER_MISSING_CONTEXT_WHEN_EXECUTING);
+  }
+
   if (*request_type_or == kRequestTypeJavascript) {
-    string handler_name = "";
-    auto handler_name_or = GetValueFromMetadata(metadata, kHandlerName);
-    // If we read the handler name successfully, let's store it.
-    // Else if we didn't read it and the request is not a load request,
-    // then return the failure.
-    if (handler_name_or.result().Successful()) {
-      handler_name = *handler_name_or;
-    } else if (*action_or != kRequestActionLoad) {
-      return handler_name_or.result();
-    }
-
-    RomaJsEngineCompilationContext context;
-    if (compilation_contexts_.Contains(*code_version_or)) {
-      context = compilation_contexts_.Get(*code_version_or);
-    } else if (require_preload_ && *action_or != kRequestActionLoad) {
-      // If we require preloads and we couldn't find a context and this is not a
-      // load request, then bail out. This is an execution without a previous
-      // load.
-      return FailureExecutionResult(
-          SC_ROMA_WORKER_MISSING_CONTEXT_WHEN_EXECUTING);
-    }
-
-    auto response_or =
-        js_engine_->CompileAndRunJs(code, handler_name, input, context);
+    auto response_or = js_engine_->CompileAndRunJs(code, handler_name, input,
+                                                   metadata, context);
     RETURN_IF_FAILURE(response_or.result());
 
     compilation_contexts_.Set(*code_version_or,
                               response_or->compilation_context);
+    return response_or->response;
+  } else if (*request_type_or == kRequestTypeWasm) {
+    auto response_or = js_engine_->CompileAndRunWasm(code, handler_name, input,
+                                                     metadata, context);
+    RETURN_IF_FAILURE(response_or.result());
 
+    compilation_contexts_.Set(*code_version_or,
+                              response_or->compilation_context);
     return response_or->response;
   }
 
-  // TODO: Handle WASM
-  return FailureExecutionResult(SC_ROMA_WORKER_WASM_NOT_SUPPORTED);
+  return FailureExecutionResult(SC_ROMA_WORKER_REQUEST_TYPE_NOT_SUPPORTED);
 }
 }  // namespace google::scp::roma::sandbox::worker

@@ -134,6 +134,34 @@ public class MultiPartyDecryptionKeyServiceImplTest {
   }
 
   @Test
+  public void getDecrypter_serviceNotAvailable_throwsServiceUnavailable() throws Exception {
+    when(coordinatorAKeyFetchingService.fetchEncryptionKey(anyString()))
+        .thenThrow(
+            new EncryptionKeyFetchingServiceException(
+                new ServiceException(Code.UNAVAILABLE, "test", "test")));
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class, () -> multiPartyDecryptionKeyServiceImpl.getDecrypter("123"));
+
+    assertEquals(exception.getReason(), ErrorReason.KEY_SERVICE_UNAVAILABLE);
+  }
+
+  @Test
+  public void getDecrypter_deadlineExceeded_throwsServiceUnavailable() throws Exception {
+    when(coordinatorAKeyFetchingService.fetchEncryptionKey(anyString()))
+        .thenThrow(
+            new EncryptionKeyFetchingServiceException(
+                new ServiceException(Code.DEADLINE_EXCEEDED, "test", "test")));
+
+    KeyFetchException exception =
+        assertThrows(
+            KeyFetchException.class, () -> multiPartyDecryptionKeyServiceImpl.getDecrypter("123"));
+
+    assertEquals(exception.getReason(), ErrorReason.KEY_SERVICE_UNAVAILABLE);
+  }
+
+  @Test
   public void getDecrypter_errorWithCode_UNKNOWN() throws Exception {
     when(coordinatorAKeyFetchingService.fetchEncryptionKey(anyString()))
         .thenThrow(

@@ -30,7 +30,11 @@ DEFINE_ERROR_CODE(SC_ROMA_WORKER_MISSING_CONTEXT_WHEN_EXECUTING, SC_ROMA_WORKER,
                   "Could not find a stored context for the execution request.",
                   HttpStatusCode::BAD_REQUEST)
 
-DEFINE_ERROR_CODE(SC_ROMA_WORKER_WASM_NOT_SUPPORTED, SC_ROMA_WORKER, 0x0003,
-                  "WASM code is not yet supported.",
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_REQUEST_TYPE_NOT_SUPPORTED, SC_ROMA_WORKER,
+                  0x0003, "The request type is not yet supported.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_STR_CONVERT_INT_FAIL, SC_ROMA_WORKER, 0x0004,
+                  "Cannot convert string to integer.",
                   HttpStatusCode::BAD_REQUEST)
 }  // namespace google::scp::core::errors

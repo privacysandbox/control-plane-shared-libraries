@@ -48,7 +48,7 @@ public class TransactionPhaseManagerImpl implements TransactionPhaseManager {
       case NOTSTARTED:
         return currentPhaseSucceeded ? TransactionPhase.BEGIN : TransactionPhase.END;
       case BEGIN:
-        return currentPhaseSucceeded ? TransactionPhase.PREPARE : TransactionPhase.END;
+        return currentPhaseSucceeded ? TransactionPhase.PREPARE : TransactionPhase.ABORT;
       case PREPARE:
         return currentPhaseSucceeded ? TransactionPhase.COMMIT : TransactionPhase.END;
       case COMMIT:

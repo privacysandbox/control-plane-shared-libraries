@@ -17,6 +17,7 @@
 #pragma once
 
 #include <list>
+#include <mutex>
 #include <tuple>
 #include <utility>
 
@@ -35,6 +36,52 @@ class LruCache {
   explicit LruCache(size_t capacity) : capacity_(capacity) {}
 
   void Set(const TKey& key, const TVal& value) {
+    std::lock_guard lock(data_mutex_);
+
+    InternalSet(key, value);
+  }
+
+  TVal& Get(const TKey& key) {
+    std::lock_guard lock(data_mutex_);
+
+    auto existing_element = data_[key];
+    auto value = std::get<1>(existing_element);
+    // Set to update the freshness of the element
+    InternalSet(key, value);
+    return std::get<1>(data_[key]);
+  }
+
+  size_t Size() {
+    std::lock_guard lock(data_mutex_);
+    return data_.size();
+  }
+
+  bool Contains(const TKey& key) {
+    std::lock_guard lock(data_mutex_);
+    return data_.contains(key);
+  }
+
+  void Clear() {
+    std::lock_guard lock(data_mutex_);
+    data_.clear();
+    freshness_list_.clear();
+  }
+
+ private:
+  const size_t capacity_;
+  absl::flat_hash_map<TKey,
+                      std::tuple<typename std::list<TKey>::iterator, TVal>>
+      data_;
+  /**
+   * @brief List to keep the order of access. Fresh items will be at the
+   * beginning, and stale items at the end. The last item is what would be
+   * removed if the cache reaches capacity.
+   *
+   */
+  std::list<TKey> freshness_list_;
+  std::mutex data_mutex_;
+
+  void InternalSet(const TKey& key, const TVal& value) {
     if (!data_.contains(key) && data_.size() == capacity_) {
       // If the element is not in the cache and we reached capacity, let's
       // remove the LRU element. We look at the list of freshness to determine
@@ -57,35 +104,5 @@ class LruCache {
     auto front_iterator = freshness_list_.begin();
     data_[key] = std::move(std::make_tuple(front_iterator, value));
   }
-
-  TVal& Get(const TKey& key) {
-    auto existing_element = data_[key];
-    auto value = std::get<1>(existing_element);
-    // Set to update the freshness of the element
-    Set(key, value);
-    return std::get<1>(data_[key]);
-  }
-
-  size_t Size() { return data_.size(); }
-
-  bool Contains(const TKey& key) { return data_.contains(key); }
-
-  void Clear() {
-    data_.clear();
-    freshness_list_.clear();
-  }
-
- private:
-  const size_t capacity_;
-  absl::flat_hash_map<TKey,
-                      std::tuple<typename std::list<TKey>::iterator, TVal>>
-      data_;
-  /**
-   * @brief List to keep the order of access. Fresh items will be at the
-   * beginning, and stale items at the end. The last item is what would be
-   * removed if the cache reaches capacity.
-   *
-   */
-  std::list<TKey> freshness_list_;
 };
 }  // namespace google::scp::core::common

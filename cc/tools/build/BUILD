@@ -39,6 +39,7 @@ download_pkgs(
         "git",
         "golang",
         "libcurl4-openssl-dev",
+        "lld",
         "make",
         "ninja-build",
         "openjdk-11-jre",

@@ -40,13 +40,13 @@ struct RomaJsEngineCompilationContext {
  * @brief The response returned by the JS engine on a code run.
  *
  */
-struct JsExecutionResponse {
+struct JsEngineExecutionResponse {
   /**
    * The compilation context that was generated when compiling the code
    */
   RomaJsEngineCompilationContext compilation_context;
   /**
-   * The response of the JS execution
+   * The response of the JS/WASM execution
    */
   std::string response;
 };
@@ -70,15 +70,37 @@ class JsEngine : public core::ServiceInterface {
    * @param code The code to compile and run (optional if context is valid)
    * @param function_name The name of the JS function to invoke
    * @param input The input to pass to the code
+   * @param metadata The metadata associated with the code request.
    * @param context A context which could be used to avoid recompiling the JS
    * code
    * @return Whether the operation succeeded or failed, and a result object
    * which contains the response from the JS code and a compilation context
    * which could be used to skip compilation of the same code.
    */
-  virtual core::ExecutionResultOr<JsExecutionResponse> CompileAndRunJs(
+  virtual core::ExecutionResultOr<JsEngineExecutionResponse> CompileAndRunJs(
       const std::string& code, const std::string& function_name,
       const std::vector<std::string>& input,
+      const std::unordered_map<std::string, std::string>& metadata,
+      const RomaJsEngineCompilationContext& context) noexcept = 0;
+
+  /**
+   * @brief Builds and runs the WASM binary provided as input, and returns a
+   * context which could be used to avoid recompilation. The context itself is
+   * optional.
+   * @param code The code to compile and run (optional if context is valid)
+   * @param function_name The name of the WASM function to invoke
+   * @param input The input to pass to the code
+   * @param metadata The metadata associated with the code request.
+   * @param context A context which could be used to avoid recompiling the JS
+   * code
+   * @return Whether the operation succeeded or failed, and a result object
+   * which contains the response from the WASM code and a compilation context
+   * which could be used to skip compilation of the same code.
+   */
+  virtual core::ExecutionResultOr<JsEngineExecutionResponse> CompileAndRunWasm(
+      const std::string& code, const std::string& function_name,
+      const std::vector<std::string>& input,
+      const std::unordered_map<std::string, std::string>& metadata,
       const RomaJsEngineCompilationContext& context) noexcept = 0;
 };
 }  // namespace google::scp::roma::sandbox::js_engine
