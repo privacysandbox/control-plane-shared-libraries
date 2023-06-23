@@ -204,6 +204,8 @@ struct ExecutionResult {
 
   bool Successful() const { return *this == SuccessExecutionResult(); }
 
+  bool Retryable() const { return this->status == ExecutionStatus::Retry; }
+
   explicit operator bool() const { return Successful(); }
 
   /// Status of the executed operation.

@@ -34,6 +34,7 @@ using std::atomic;
 using std::make_shared;
 using std::make_unique;
 using std::move;
+using std::shared_ptr;
 using std::unique_ptr;
 using std::vector;
 using std::chrono::milliseconds;
@@ -103,6 +104,45 @@ ExecutionResult Dispatcher::Broadcast(unique_ptr<CodeObject> code_object,
   }
 
   allow_dispatch_.store(true);
+  return SuccessExecutionResult();
+}
+
+ExecutionResult Dispatcher::ReloadCachedCodeObjects(
+    shared_ptr<worker_api::WorkerApi>& worker) {
+  auto all_cached_code_objects = code_object_cache_.GetAll();
+
+  pending_requests_ += all_cached_code_objects.size();
+
+  for (auto& kv : all_cached_code_objects) {
+    auto& cached_code = kv.second;
+    unique_ptr<CodeObject> ptr_cached_code;
+    ptr_cached_code.reset(&cached_code);
+
+    auto run_code_request_or =
+        request_converter::RequestConverter<CodeObject>::FromUserProvided(
+            ptr_cached_code, ptr_cached_code->js.empty()
+                                 ? constants::kRequestTypeWasm
+                                 : constants::kRequestTypeJavascript);
+
+    if (!run_code_request_or.result().Successful()) {
+      ptr_cached_code.release();
+      pending_requests_ -= all_cached_code_objects.size();
+      return run_code_request_or.result();
+    }
+
+    // Send the code objects to the worker again so it reloads its cache
+    auto run_code_result_or = worker->RunCode(*run_code_request_or);
+    if (!run_code_result_or.result().Successful()) {
+      ptr_cached_code.release();
+      pending_requests_ -= all_cached_code_objects.size();
+      return run_code_result_or.result();
+    }
+
+    ptr_cached_code.release();
+  }
+
+  pending_requests_ -= all_cached_code_objects.size();
+
   return SuccessExecutionResult();
 }
 }  // namespace google::scp::roma::sandbox::dispatcher

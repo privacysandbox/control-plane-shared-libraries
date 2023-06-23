@@ -168,4 +168,65 @@ TEST(WorkerSandboxApiTest, SandboxShouldComeBackUpIfItDies) {
   result = sandbox_api.Stop();
   EXPECT_SUCCESS(result);
 }
+
+TEST(WorkerSandboxApiTest,
+     SandboxShouldComeBackUpIfItDiesAndHooksShouldContinueWorking) {
+  int fds[2];
+  EXPECT_EQ(socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds), 0);
+
+  WorkerSandboxApiForTests sandbox_api(
+      WorkerFactory::WorkerEngine::v8, false /*require_preload*/,
+      fds[1] /*native_js_function_comms_fd*/,
+      {"my_great_func"} /*native_js_function_names*/);
+
+  auto result = sandbox_api.Init();
+  EXPECT_SUCCESS(result);
+
+  thread to_handle_function_call(
+      [](int fd) {
+        sandbox2::Comms comms(fd);
+        FunctionBindingIoProto io_proto;
+        EXPECT_TRUE(comms.RecvProtoBuf(&io_proto));
+
+        auto result = "from C++ hook :) " + io_proto.input_string();
+        io_proto.set_output_string(result);
+
+        EXPECT_TRUE(comms.SendProtoBuf(io_proto));
+      },
+      fds[0]);
+
+  result = sandbox_api.Run();
+  EXPECT_SUCCESS(result);
+
+  ::worker_api::WorkerParamsProto params_proto;
+  // Code calls a hook: "my_great_func"
+  params_proto.set_code(
+      "function cool_func(input) { return my_great_func(input) };");
+  (*params_proto.mutable_metadata())[kRequestType] = kRequestTypeJavascript;
+  (*params_proto.mutable_metadata())[kHandlerName] = "cool_func";
+  (*params_proto.mutable_metadata())[kCodeVersion] = "1";
+  (*params_proto.mutable_metadata())[kRequestAction] = kRequestActionExecute;
+  params_proto.mutable_input()->Add("\"from JS\"");
+
+  int sandbox_pid = sandbox_api.GetUnderlyingSandbox()->pid();
+  EXPECT_EQ(0, kill(sandbox_pid, SIGKILL));
+  // Wait for the sandbox to die
+  while (sandbox_api.GetUnderlyingSandbox()->is_active()) {}
+
+  result = sandbox_api.RunCode(params_proto);
+  // This is expected to fail since we killed the sandbox
+  EXPECT_FALSE(result.Successful());
+
+  // We run the code again and expect it to work this time around since the
+  // sandbox should have been restarted
+  result = sandbox_api.RunCode(params_proto);
+  EXPECT_SUCCESS(result);
+
+  to_handle_function_call.join();
+
+  EXPECT_EQ(params_proto.response(), "\"from C++ hook :) from JS\"");
+
+  result = sandbox_api.Stop();
+  EXPECT_SUCCESS(result);
+}
 }  // namespace google::scp::roma::sandbox::worker_api::test

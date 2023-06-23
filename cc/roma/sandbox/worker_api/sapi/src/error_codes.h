@@ -65,8 +65,12 @@ DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX,
                   "Could not transfer function comms fd to sandbox.",
                   HttpStatusCode::BAD_REQUEST)
 
-DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_RESTART_SANDBOX,
-                  SC_ROMA_WORKER_API, 0x000A,
-                  "Could not restart the sandbox after it died.",
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_UNINITIALIZED_SANDBOX, SC_ROMA_WORKER_API,
+                  0x000A,
+                  "Attempt to call API function with an uninitialized sandbox.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_WORKER_CRASHED, SC_ROMA_WORKER_API, 0x000B,
+                  "Sandbox worker crashed during execution of request.",
                   HttpStatusCode::BAD_REQUEST)
 }  // namespace google::scp::core::errors

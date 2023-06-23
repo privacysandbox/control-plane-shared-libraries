@@ -22,7 +22,6 @@
 #include <aws/core/Aws.h>
 #include <aws/core/client/ClientConfiguration.h>
 
-#include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "cpio/common/test/aws/test_aws_utils.h"
 #include "public/cpio/test/metric_client/test_aws_metric_client_options.h"

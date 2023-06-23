@@ -99,6 +99,12 @@ void SingleThreadPriorityAsyncExecutor::StartWorker() noexcept {
       update_wait_time_ = false;
     }
 
+    // Discard any cancelled tasks on top of the queue as an optimization to
+    // avoid waiting for the future to arrive on an already cancelled task
+    while (!queue_->empty() && queue_->top()->IsCancelled()) {
+      queue_->pop();
+    }
+
     if (queue_->size() == 0) {
       if (!is_running_) {
         break;

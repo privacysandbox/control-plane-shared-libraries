@@ -44,6 +44,13 @@ class WorkerApi : public core::ServiceInterface {
    * @note The implementation of this method must be thread safe.
    */
   virtual core::ExecutionResultOr<RunCodeResponse> RunCode(
-      const RunCodeRequest& request) = 0;
+      const RunCodeRequest& request) noexcept = 0;
+
+  /**
+   * @brief Terminate the underlying worker.
+   *
+   * @return core::ExecutionResult
+   */
+  virtual core::ExecutionResult Terminate() noexcept = 0;
 };
 }  // namespace google::scp::roma::sandbox::worker_api

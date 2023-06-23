@@ -39,6 +39,7 @@ using std::function;
 using std::make_shared;
 using std::string;
 using std::chrono::duration_cast;
+using std::chrono::hours;
 using std::chrono::milliseconds;
 using std::chrono::nanoseconds;
 using std::chrono::seconds;
@@ -111,26 +112,26 @@ TEST(SingleThreadPriorityAsyncExecutorTests, CannotStopBeforeRun) {
 TEST(SingleThreadPriorityAsyncExecutorTests, ExceedingQueueCapSchedule) {
   int queue_cap = 1;
   SingleThreadPriorityAsyncExecutor executor(queue_cap);
-  executor.Init();
-  executor.Run();
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
 
   AsyncTask task;
   auto two_seconds = duration_cast<nanoseconds>(seconds(2)).count();
 
   auto schedule_for_timestamp = task.GetExecutionTimestamp() + two_seconds;
-  executor.ScheduleFor([&]() {}, schedule_for_timestamp);
+  EXPECT_SUCCESS(executor.ScheduleFor([&]() {}, schedule_for_timestamp));
   auto result = executor.ScheduleFor([&]() {}, task.GetExecutionTimestamp());
   EXPECT_THAT(result, ResultIs(RetryExecutionResult(
                           errors::SC_ASYNC_EXECUTOR_EXCEEDING_QUEUE_CAP)));
 
-  executor.Stop();
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 TEST(SingleThreadPriorityAsyncExecutorTests, CountWorkSingleThread) {
   int queue_cap = 10;
   SingleThreadPriorityAsyncExecutor executor(queue_cap);
-  executor.Init();
-  executor.Run();
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
 
   atomic<int> count(0);
   for (int i = 0; i < queue_cap; i++) {
@@ -140,7 +141,7 @@ TEST(SingleThreadPriorityAsyncExecutorTests, CountWorkSingleThread) {
   WaitUntil([&]() { return count == queue_cap; }, seconds(30));
   EXPECT_EQ(count, queue_cap);
 
-  executor.Stop();
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 class AffinityTest : public testing::TestWithParam<size_t> {
@@ -151,8 +152,8 @@ class AffinityTest : public testing::TestWithParam<size_t> {
 TEST_P(AffinityTest, CountWorkSingleThreadWithAffinity) {
   int queue_cap = 10;
   SingleThreadPriorityAsyncExecutor executor(queue_cap, false, GetCpu());
-  executor.Init();
-  executor.Run();
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
 
   atomic<int> count(0);
   for (int i = 0; i < queue_cap; i++) {
@@ -172,7 +173,7 @@ TEST_P(AffinityTest, CountWorkSingleThreadWithAffinity) {
   WaitUntil([&]() { return count == queue_cap; });
   EXPECT_EQ(count, queue_cap);
 
-  executor.Stop();
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 // The test should work for any value, even an invalid CPU #.
@@ -183,8 +184,8 @@ INSTANTIATE_TEST_SUITE_P(SingleThreadPriorityAsyncExecutorTests, AffinityTest,
 TEST(SingleThreadPriorityAsyncExecutorTests, OrderedTasksExecution) {
   int queue_cap = 10;
   SingleThreadPriorityAsyncExecutor executor(queue_cap);
-  executor.Init();
-  executor.Run();
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
 
   AsyncTask task;
   auto half_second = duration_cast<nanoseconds>(milliseconds(500)).count();
@@ -192,21 +193,24 @@ TEST(SingleThreadPriorityAsyncExecutorTests, OrderedTasksExecution) {
   auto two_seconds = duration_cast<nanoseconds>(seconds(2)).count();
 
   atomic<size_t> counter(0);
-  executor.ScheduleFor([&]() { EXPECT_EQ(counter++, 2); },
-                       task.GetExecutionTimestamp() + two_seconds);
-  executor.ScheduleFor([&]() { EXPECT_EQ(counter++, 1); },
-                       task.GetExecutionTimestamp() + one_second);
-  executor.ScheduleFor([&]() { EXPECT_EQ(counter++, 0); },
-                       task.GetExecutionTimestamp() + half_second);
+  EXPECT_SUCCESS(
+      executor.ScheduleFor([&]() { EXPECT_EQ(counter++, 2); },
+                           task.GetExecutionTimestamp() + two_seconds));
+  EXPECT_SUCCESS(
+      executor.ScheduleFor([&]() { EXPECT_EQ(counter++, 1); },
+                           task.GetExecutionTimestamp() + one_second));
+  EXPECT_SUCCESS(
+      executor.ScheduleFor([&]() { EXPECT_EQ(counter++, 0); },
+                           task.GetExecutionTimestamp() + half_second));
 
   WaitUntil([&]() { return counter == 3; }, seconds(30));
-  executor.Stop();
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 TEST(SingleThreadPriorityAsyncExecutorTests, AsyncContextCallback) {
   SingleThreadPriorityAsyncExecutor executor(10);
-  executor.Init();
-  executor.Run();
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
 
   // Atomic is not used here because we just reserve one thread in the
   size_t callback_count = 0;
@@ -216,13 +220,13 @@ TEST(SingleThreadPriorityAsyncExecutorTests, AsyncContextCallback) {
   };
   auto context = AsyncContext<string, string>(request, callback);
 
-  executor.ScheduleFor(
+  EXPECT_SUCCESS(executor.ScheduleFor(
       [&]() {
         context.response = make_shared<string>("response");
         context.result = SuccessExecutionResult();
         context.Finish();
       },
-      12345);
+      12345));
 
   // Waits some time to finish the work.
   WaitUntil([&]() { return callback_count == 1; }, seconds(30));
@@ -233,25 +237,25 @@ TEST(SingleThreadPriorityAsyncExecutorTests, AsyncContextCallback) {
   // Verifies the callback is executed.
   EXPECT_EQ(callback_count, 1);
 
-  executor.Stop();
+  EXPECT_SUCCESS(executor.Stop());
 }
 
 TEST(SingleThreadPriorityAsyncExecutorTests, FinishWorkWhenStopInMiddle) {
   int queue_cap = 5;
   SingleThreadPriorityAsyncExecutor executor(queue_cap);
-  executor.Init();
-  executor.Run();
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
 
   atomic<int> urgent_count(0);
   for (int i = 0; i < queue_cap; i++) {
-    executor.ScheduleFor(
+    EXPECT_SUCCESS(executor.ScheduleFor(
         [&]() {
           urgent_count++;
           std::this_thread::sleep_for(UNIT_TEST_SHORT_SLEEP_MS);
         },
-        1234);
+        1234));
   }
-  executor.Stop();
+  EXPECT_SUCCESS(executor.Stop());
 
   // Waits some time to finish the work.
   WaitUntil([&]() { return urgent_count == queue_cap; }, seconds(30));
@@ -262,8 +266,8 @@ TEST(SingleThreadPriorityAsyncExecutorTests, FinishWorkWhenStopInMiddle) {
 TEST(SingleThreadPriorityAsyncExecutorTests, TaskCancellation) {
   int queue_cap = 3;
   SingleThreadPriorityAsyncExecutor executor(queue_cap);
-  executor.Init();
-  executor.Run();
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
 
   for (int i = 0; i < queue_cap; i++) {
     function<bool()> cancellation_callback;
@@ -271,13 +275,37 @@ TEST(SingleThreadPriorityAsyncExecutorTests, TaskCancellation) {
         (TimeProvider::GetSteadyTimestampInNanoseconds() + milliseconds(500))
             .count();
 
-    executor.ScheduleFor([&]() { EXPECT_EQ(true, false); }, next_clock,
-                         cancellation_callback);
+    EXPECT_SUCCESS(executor.ScheduleFor([&]() { EXPECT_EQ(true, false); },
+                                        next_clock, cancellation_callback));
 
     EXPECT_EQ(cancellation_callback(), true);
   }
-  executor.Stop();
+  EXPECT_SUCCESS(executor.Stop());
 
   std::this_thread::sleep_for(seconds(2));
 }
+
+TEST(SingleThreadPriorityAsyncExecutorTests,
+     DuringStopDoNotWaitOnCancelledTaskExecutionTimeToArrive) {
+  int queue_cap = 3;
+  SingleThreadPriorityAsyncExecutor executor(queue_cap);
+  EXPECT_SUCCESS(executor.Init());
+  EXPECT_SUCCESS(executor.Run());
+
+  for (int i = 0; i < queue_cap; i++) {
+    function<bool()> cancellation_callback;
+    auto far_ahead_timestamp =
+        (TimeProvider::GetSteadyTimestampInNanoseconds() + hours(24)).count();
+
+    EXPECT_SUCCESS(executor.ScheduleFor([&]() { EXPECT_EQ(true, false); },
+                                        far_ahead_timestamp,
+                                        cancellation_callback));
+
+    // Cancel the task
+    EXPECT_EQ(cancellation_callback(), true);
+  }
+  // This should exit quickly and should not get stuck.
+  EXPECT_SUCCESS(executor.Stop());
+}
+
 }  // namespace google::scp::core::test

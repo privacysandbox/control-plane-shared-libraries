@@ -20,6 +20,7 @@
 #include <string>
 
 #include "core/interface/http_types.h"
+#include "core/interface/initializable_interface.h"
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::core {
@@ -50,7 +51,7 @@ struct RequestRouteEndpointInfo {
 /**
  * @brief Abstraction to resolve target route for a given request.
  */
-class HttpRequestRouteResolverInterface {
+class HttpRequestRouteResolverInterface : public InitializableInterface {
  public:
   virtual ~HttpRequestRouteResolverInterface() = default;
   /**

@@ -23,7 +23,6 @@ cc_library(
         "//cc:cc_base_include_dir",
         "//cc/core/http2_client/src:http2_client_lib",
         "//cc/cpio/client_providers/auth_token_provider/src/gcp:gcp_auth_token_provider_lib",
-        "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/interface:type_def",
         "//cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_lib",

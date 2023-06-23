@@ -27,7 +27,6 @@
 #include "core/interface/async_context.h"
 #include "core/interface/http_client_interface.h"
 #include "core/interface/http_types.h"
-#include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/public_key_client_provider_interface.h"
 #include "cpio/client_providers/interface/type_def.h"
 #include "google/protobuf/any.pb.h"

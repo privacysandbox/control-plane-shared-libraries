@@ -50,7 +50,7 @@ class WorkerPoolApiSapi : public WorkerPool {
   core::ExecutionResultOr<std::shared_ptr<worker_api::WorkerApi>> GetWorker(
       size_t index) noexcept override;
 
- private:
+ protected:
   size_t size_;
   std::vector<std::shared_ptr<worker_api::WorkerApi>> workers_;
 };

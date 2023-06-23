@@ -38,6 +38,7 @@ cc_library(
         "//cc/core/interface:async_context_lib",
         "//cc/core/interface:interface_lib",
         "//cc/core/utils/src:core_utils",
+        "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/public_key_client_provider/src:public_key_client_provider_lib",
         "//cc/public/cpio/adapters/common:adapter_utils",
         "//cc/public/cpio/interface:type_def",

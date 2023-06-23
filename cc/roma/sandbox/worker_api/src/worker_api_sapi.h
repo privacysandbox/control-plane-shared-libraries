@@ -52,6 +52,8 @@ class WorkerApiSapi : public WorkerApi {
   core::ExecutionResultOr<WorkerApi::RunCodeResponse> RunCode(
       const WorkerApi::RunCodeRequest& request) noexcept override;
 
+  core::ExecutionResult Terminate() noexcept override;
+
  private:
   std::unique_ptr<WorkerSandboxApi> sandbox_api_;
   std::mutex run_code_mutex_;

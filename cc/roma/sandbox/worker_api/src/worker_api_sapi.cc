@@ -62,4 +62,8 @@ ExecutionResultOr<WorkerApi::RunCodeResponse> WorkerApiSapi::RunCode(
   code_response.response = make_shared<string>(params_proto.response());
   return code_response;
 }
+
+ExecutionResult WorkerApiSapi::Terminate() noexcept {
+  return sandbox_api_->Terminate();
+}
 }  // namespace google::scp::roma::sandbox::worker_api

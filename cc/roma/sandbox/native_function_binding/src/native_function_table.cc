@@ -26,11 +26,14 @@ using google::scp::core::errors::
 using google::scp::core::errors::
     SC_ROMA_FUNCTION_TABLE_FAILED_WHILE_CALLING_USER_PROVIDED_FUNC;
 using google::scp::core::errors::SC_ROMA_FUNCTION_TABLE_NAME_ALREADY_REGISTERED;
+using std::lock_guard;
 using std::string;
 
 namespace google::scp::roma::sandbox::native_function_binding {
 ExecutionResult NativeFunctionTable::Register(string function_name,
                                               NativeBinding binding) {
+  lock_guard lock(native_functions_map_mutex_);
+
   if (native_functions_.find(function_name) != native_functions_.end()) {
     return FailureExecutionResult(
         SC_ROMA_FUNCTION_TABLE_NAME_ALREADY_REGISTERED);
@@ -44,13 +47,19 @@ ExecutionResult NativeFunctionTable::Register(string function_name,
 ExecutionResult NativeFunctionTable::Call(
     string function_name,
     proto::FunctionBindingIoProto& function_binding_proto) {
-  if (native_functions_.find(function_name) == native_functions_.end()) {
-    return FailureExecutionResult(
-        SC_ROMA_FUNCTION_TABLE_COULD_NOT_FIND_FUNCTION_NAME);
+  NativeBinding func;
+
+  {
+    lock_guard lock(native_functions_map_mutex_);
+    if (native_functions_.find(function_name) == native_functions_.end()) {
+      return FailureExecutionResult(
+          SC_ROMA_FUNCTION_TABLE_COULD_NOT_FIND_FUNCTION_NAME);
+    }
+    func = native_functions_[function_name];
   }
 
   try {
-    native_functions_[function_name](function_binding_proto);
+    func(function_binding_proto);
   } catch (...) {
     return FailureExecutionResult(
         SC_ROMA_FUNCTION_TABLE_FAILED_WHILE_CALLING_USER_PROVIDED_FUNC);

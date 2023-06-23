@@ -36,6 +36,7 @@ cc_library(
         "//cc/core/logger/src/log_providers/syslog:syslog_lib",
         "//cc/core/test:core_test_lib",
         "//cc/public/core/test/interface:execution_result_matchers",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],

@@ -25,7 +25,6 @@
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 
 #include "core/utils/src/base64.h"
-#include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"
 #include "public/cpio/interface/kms_client/type_def.h"

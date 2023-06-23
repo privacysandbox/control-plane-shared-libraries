@@ -29,7 +29,6 @@
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
 #include "core/interface/async_executor_interface.h"
-#include "cpio/client_providers/global_cpio/src/global_cpio.h"
 #include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"

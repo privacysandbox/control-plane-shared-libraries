@@ -55,17 +55,10 @@ class WorkerSandboxApi : public core::ServiceInterface {
   WorkerSandboxApi(const worker::WorkerFactory::WorkerEngine& worker_engine,
                    bool require_preload, int native_js_function_comms_fd,
                    const std::vector<std::string>& native_js_function_names) {
-    worker_sapi_sandbox_ = std::make_unique<WorkerSapiSandbox>();
-    worker_wrapper_api_ =
-        std::make_unique<WorkerWrapperApi>(worker_sapi_sandbox_.get());
     worker_engine_ = worker_engine;
     require_preload_ = require_preload;
     native_js_function_comms_fd_ = native_js_function_comms_fd;
     native_js_function_names_ = native_js_function_names;
-    if (native_js_function_comms_fd_ != kBadFd) {
-      sapi_native_js_function_comms_fd_ =
-          std::make_unique<sapi::v::Fd>(native_js_function_comms_fd_);
-    }
   }
 
   core::ExecutionResult Init() noexcept override;
@@ -82,6 +75,8 @@ class WorkerSandboxApi : public core::ServiceInterface {
    */
   core::ExecutionResult RunCode(
       ::worker_api::WorkerParamsProto& params) noexcept;
+
+  core::ExecutionResult Terminate() noexcept;
 
  protected:
   /**

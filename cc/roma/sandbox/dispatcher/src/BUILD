@@ -34,6 +34,7 @@ cc_library(
         "//cc/public/core/interface:execution_result",
         "//cc/roma/interface:roma_interface_lib",
         "//cc/roma/sandbox/constants:roma_constants_lib",
+        "//cc/roma/sandbox/logging/src:roma_logging_lib",
         "//cc/roma/sandbox/worker_api/src:roma_worker_api_lib",
         "//cc/roma/sandbox/worker_pool/src:roma_worker_pool_lib",
         "@com_google_absl//absl/status",

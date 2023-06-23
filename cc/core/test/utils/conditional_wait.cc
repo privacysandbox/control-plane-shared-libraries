@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <thread>
 
+#include "absl/strings/str_cat.h"
 #include "core/common/time_provider/src/time_provider.h"
 #include "public/core/interface/execution_result.h"
 
@@ -33,6 +34,11 @@ void WaitUntil(function<bool()> condition, DurationMs timeout) {
     auto now_time = TimeProvider::GetSteadyTimestampInNanoseconds();
     auto duration = now_time - start_time;
     if (duration > timeout) {
+      std::cerr << absl::StrCat(
+          "Duration elapsed (ms): ",
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              std::chrono::nanoseconds(duration))
+              .count());
       throw TestTimeoutException();
     }
     yield();

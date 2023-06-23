@@ -17,6 +17,7 @@
 #pragma once
 
 #include <functional>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -53,5 +54,6 @@ class NativeFunctionTable {
 
  private:
   std::unordered_map<std::string, NativeBinding> native_functions_;
+  std::mutex native_functions_map_mutex_;
 };
 }  // namespace google::scp::roma::sandbox::native_function_binding

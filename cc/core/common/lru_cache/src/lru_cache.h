@@ -67,6 +67,18 @@ class LruCache {
     freshness_list_.clear();
   }
 
+  absl::flat_hash_map<TKey, TVal> GetAll() {
+    std::lock_guard lock(data_mutex_);
+
+    absl::flat_hash_map<TKey, TVal> result;
+
+    for (auto& kv : data_) {
+      result[kv.first] = std::get<1>(kv.second);
+    }
+
+    return result;
+  }
+
  private:
   const size_t capacity_;
   absl::flat_hash_map<TKey,

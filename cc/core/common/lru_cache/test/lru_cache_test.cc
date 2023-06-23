@@ -70,7 +70,7 @@ TEST(LruCacheTest, CanAddAndGetMultipleElements) {
   }
 }
 
-TEST(LruCacheTest, ShoulReplaceOldestItem) {
+TEST(LruCacheTest, ShouldReplaceOldestItem) {
   LruCache<string, string> cache(5);
 
   // We add 5 items
@@ -184,5 +184,24 @@ TEST(LruCacheTest, ShouldBeAbleToReplaceValues) {
   cache.Set(key1, new_value1);
 
   EXPECT_EQ(cache.Get(key1), new_value1);
+}
+
+TEST(LruCacheTest, ShouldBeAbleToGetAllItems) {
+  LruCache<string, string> cache(2);
+
+  auto key1 = "Key1";
+  auto value1 = "Value1";
+  cache.Set(key1, value1);
+  EXPECT_EQ(cache.Get(key1), value1);
+
+  auto key2 = "Key2";
+  auto value2 = "Value2";
+  cache.Set(key2, value2);
+
+  auto all_items = cache.GetAll();
+
+  EXPECT_EQ(2, all_items.size());
+  EXPECT_EQ(all_items[key1], value1);
+  EXPECT_EQ(all_items[key2], value2);
 }
 }  // namespace google::scp::core::common::test

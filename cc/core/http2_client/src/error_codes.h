@@ -57,7 +57,7 @@ DEFINE_ERROR_CODE(SC_HTTP2_CLIENT_NOT_OK_RESPONSE_BUT_RETRIABLE,
 DEFINE_ERROR_CODE(SC_HTTP2_CLIENT_CONNECTION_POOL_IS_NOT_AVAILABLE,
                   SC_HTTP2_CLIENT, 0x000D,
                   "The connection pool is not available",
-                  HttpStatusCode::BAD_REQUEST)
+                  HttpStatusCode::INTERNAL_SERVER_ERROR)
 DEFINE_ERROR_CODE(SC_HTTP2_CLIENT_CONNECTION_INITIALIZATION_FAILED,
                   SC_HTTP2_CLIENT, 0x000E,
                   "The connection cannot be initialized",

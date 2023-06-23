@@ -203,9 +203,6 @@ void V8JsEngine::StartWatchdogTimer(
       _ROMA_LOG_ERROR(string("Timeout tag parsing with error ") +
                       GetErrorMessage(timeout_int_or.result().status_code));
     }
-  } else {
-    _ROMA_LOG_ERROR(string("Timeout tag fetching with error ") +
-                    GetErrorMessage(timeout_str_or.result().status_code));
   }
   execution_watchdog_->StartTimer(timeout_ms);
 }

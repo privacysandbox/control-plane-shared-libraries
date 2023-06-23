@@ -389,4 +389,391 @@ TEST(DispatcherTest, DispatchBatchShouldExecuteAllRequests) {
   // the ids to have been removed from this set.
   EXPECT_TRUE(request_ids.empty());
 }
+
+TEST(DispatcherTest, ShouldBeAbleToExecutePreviouslyLoadedCodeAfterCrash) {
+  auto async_executor = make_shared<AsyncExecutor>(1, 10);
+
+  vector<WorkerApiSapiConfig> configs;
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = true;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  configs.push_back(config);
+
+  // Only one worker in the pool
+  shared_ptr<WorkerPool> worker_pool =
+      make_shared<WorkerPoolApiSapi>(configs, 1);
+  AutoInitRunStop for_async_executor(*async_executor);
+  AutoInitRunStop for_worker_pool(*worker_pool);
+
+  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  AutoInitRunStop for_dispatcher(dispatcher);
+
+  auto load_request = make_unique<CodeObject>();
+  load_request->id = "some_id";
+  load_request->version_num = 1;
+  load_request->js =
+      "function test(input) { return input + \" Some string\"; }";
+
+  atomic<bool> done_loading(false);
+
+  auto result = dispatcher.Dispatch(
+      move(load_request),
+      [&done_loading](unique_ptr<StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        done_loading.store(true);
+      });
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_loading]() { return done_loading.load(); });
+
+  auto execute_request = make_unique<InvocationRequestStrInput>();
+  execute_request->id = "some_id";
+  execute_request->version_num = 1;
+  execute_request->handler_name = "test";
+  execute_request->input.push_back("\"Hello\"");
+
+  atomic<bool> done_executing(false);
+
+  result = dispatcher.Dispatch(
+      move(execute_request),
+      [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        EXPECT_EQ("\"Hello Some string\"", (*resp)->resp);
+        done_executing.store(true);
+      });
+
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_executing]() { return done_executing.load(); });
+
+  // We loaded and executed successfully, so now we kill the one worker
+  auto worker = worker_pool->GetWorker(0);
+  EXPECT_SUCCESS(worker.result());
+  (*worker)->Terminate();
+
+  // This coming execution we expect will fail since the worker has died. But
+  // the execution flow should cause it to be restarted.
+
+  done_executing.store(false);
+
+  execute_request = make_unique<InvocationRequestStrInput>();
+  execute_request->id = "some_id";
+  execute_request->version_num = 1;
+  execute_request->handler_name = "test";
+  execute_request->input.push_back("\"Hello\"");
+
+  result = dispatcher.Dispatch(
+      move(execute_request),
+      [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+        // This execution should fail since the worker has died
+        EXPECT_FALSE(resp->ok());
+        done_executing.store(true);
+      });
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_executing]() { return done_executing.load(); });
+
+  // Now we execute again an this time around we expect it to work
+
+  done_executing.store(false);
+
+  execute_request = make_unique<InvocationRequestStrInput>();
+  execute_request->id = "some_id";
+  execute_request->version_num = 1;
+  execute_request->handler_name = "test";
+  execute_request->input.push_back("\"Hello after restart :)\"");
+
+  result = dispatcher.Dispatch(
+      move(execute_request),
+      [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        EXPECT_EQ("\"Hello after restart :) Some string\"", (*resp)->resp);
+        done_executing.store(true);
+      });
+
+  WaitUntil([&done_executing]() { return done_executing.load(); });
+
+  EXPECT_SUCCESS(result);
+}
+
+TEST(DispatcherTest, ShouldRecoverFromWorkerCrashWithMultipleCodeVersions) {
+  auto async_executor = make_shared<AsyncExecutor>(1, 10);
+
+  vector<WorkerApiSapiConfig> configs;
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = true;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  configs.push_back(config);
+
+  // Only one worker in the pool
+  shared_ptr<WorkerPool> worker_pool =
+      make_shared<WorkerPoolApiSapi>(configs, 1);
+  AutoInitRunStop for_async_executor(*async_executor);
+  AutoInitRunStop for_worker_pool(*worker_pool);
+
+  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  AutoInitRunStop for_dispatcher(dispatcher);
+
+  auto load_request = make_unique<CodeObject>();
+  load_request->id = "some_id";
+  load_request->version_num = 1;
+  load_request->js =
+      "function test(input) { return input + \" Some string 1\"; }";
+
+  atomic<bool> done_loading(false);
+
+  auto result = dispatcher.Dispatch(
+      move(load_request),
+      [&done_loading](unique_ptr<StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        done_loading.store(true);
+      });
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_loading]() { return done_loading.load(); });
+
+  load_request = make_unique<CodeObject>();
+  load_request->id = "some_id_2";
+  load_request->version_num = 2;
+  load_request->js =
+      "function test(input) { return input + \" Some string 2\"; }";
+
+  done_loading.store(false);
+
+  result = dispatcher.Dispatch(
+      move(load_request),
+      [&done_loading](unique_ptr<StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        done_loading.store(true);
+      });
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_loading]() { return done_loading.load(); });
+
+  // We kill the worker so we expect the first request right after to fail
+  auto worker = worker_pool->GetWorker(0);
+  EXPECT_SUCCESS(worker.result());
+  (*worker)->Terminate();
+
+  auto execute_request = make_unique<InvocationRequestStrInput>();
+  execute_request->id = "some_id";
+  execute_request->version_num = 1;
+  execute_request->handler_name = "test";
+  execute_request->input.push_back("\"Hello\"");
+
+  atomic<bool> done_executing(false);
+
+  result = dispatcher.Dispatch(
+      move(execute_request),
+      [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+        // This request failed but it should have caused the restart of the
+        // worker so subsequent requests should work.
+        EXPECT_FALSE(resp->ok());
+        done_executing.store(true);
+      });
+
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_executing]() { return done_executing.load(); });
+
+  // Subsequent requests should succeed
+
+  for (int i = 0; i < 10; i++) {
+    done_executing.store(false);
+
+    execute_request = make_unique<InvocationRequestStrInput>();
+    execute_request->id = "some_id";
+    execute_request->version_num = 1;
+    execute_request->handler_name = "test";
+    execute_request->input.push_back("\"Hello 1\"");
+
+    result = dispatcher.Dispatch(
+        move(execute_request),
+        [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+          EXPECT_TRUE(resp->ok());
+          EXPECT_EQ("\"Hello 1 Some string 1\"", (*resp)->resp);
+          done_executing.store(true);
+        });
+    EXPECT_SUCCESS(result);
+
+    WaitUntil([&done_executing]() { return done_executing.load(); });
+
+    done_executing.store(false);
+
+    execute_request = make_unique<InvocationRequestStrInput>();
+    execute_request->id = "some_id_2";
+    execute_request->version_num = 2;
+    execute_request->handler_name = "test";
+    execute_request->input.push_back("\"Hello 2\"");
+
+    result = dispatcher.Dispatch(
+        move(execute_request),
+        [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+          EXPECT_TRUE(resp->ok());
+          EXPECT_EQ("\"Hello 2 Some string 2\"", (*resp)->resp);
+          done_executing.store(true);
+        });
+
+    WaitUntil([&done_executing]() { return done_executing.load(); });
+
+    EXPECT_SUCCESS(result);
+  }
+}
+
+TEST(DispatcherTest, ShouldBeAbleToLoadMoreVersionsAfterWorkerCrash) {
+  auto async_executor = make_shared<AsyncExecutor>(1, 10);
+
+  vector<WorkerApiSapiConfig> configs;
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = true;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  configs.push_back(config);
+
+  // Only one worker in the pool
+  shared_ptr<WorkerPool> worker_pool =
+      make_shared<WorkerPoolApiSapi>(configs, 1);
+  AutoInitRunStop for_async_executor(*async_executor);
+  AutoInitRunStop for_worker_pool(*worker_pool);
+
+  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  AutoInitRunStop for_dispatcher(dispatcher);
+
+  auto load_request = make_unique<CodeObject>();
+  load_request->id = "some_id";
+  load_request->version_num = 1;
+  load_request->js =
+      "function test(input) { return input + \" Some string 1\"; }";
+
+  atomic<bool> done_loading(false);
+
+  auto result = dispatcher.Dispatch(
+      move(load_request),
+      [&done_loading](unique_ptr<StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        done_loading.store(true);
+      });
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_loading]() { return done_loading.load(); });
+
+  load_request = make_unique<CodeObject>();
+  load_request->id = "some_id_2";
+  load_request->version_num = 2;
+  load_request->js =
+      "function test(input) { return input + \" Some string 2\"; }";
+
+  done_loading.store(false);
+
+  result = dispatcher.Dispatch(
+      move(load_request),
+      [&done_loading](unique_ptr<StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        done_loading.store(true);
+      });
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_loading]() { return done_loading.load(); });
+
+  // We kill the worker so we expect the first request right after to fail
+  auto worker = worker_pool->GetWorker(0);
+  EXPECT_SUCCESS(worker.result());
+  (*worker)->Terminate();
+
+  for (int i = 0; i < 2; i++) {
+    // The first load should fail as the worker had died
+    load_request = make_unique<CodeObject>();
+    load_request->id = "some_id_3";
+    load_request->version_num = 3;
+    load_request->js =
+        "function test(input) { return input + \" Some string 3\"; }";
+
+    done_loading.store(false);
+
+    result = dispatcher.Dispatch(
+        move(load_request),
+        [&done_loading, i](unique_ptr<StatusOr<ResponseObject>> resp) {
+          if (i == 0) {
+            // Failed
+            EXPECT_FALSE(resp->ok());
+          } else {
+            EXPECT_TRUE(resp->ok());
+          }
+
+          done_loading.store(true);
+        });
+    EXPECT_SUCCESS(result);
+
+    WaitUntil([&done_loading]() { return done_loading.load(); });
+  }
+
+  // Execute all versions, those loaded before and after the worker crash
+  atomic<bool> done_executing(false);
+
+  for (int i = 0; i < 10; i++) {
+    done_executing.store(false);
+
+    auto execute_request = make_unique<InvocationRequestStrInput>();
+    execute_request->id = "some_id";
+    execute_request->version_num = 1;
+    execute_request->handler_name = "test";
+    execute_request->input.push_back("\"Hello 1\"");
+
+    result = dispatcher.Dispatch(
+        move(execute_request),
+        [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+          EXPECT_TRUE(resp->ok());
+          EXPECT_EQ("\"Hello 1 Some string 1\"", (*resp)->resp);
+          done_executing.store(true);
+        });
+    EXPECT_SUCCESS(result);
+
+    WaitUntil([&done_executing]() { return done_executing.load(); });
+
+    done_executing.store(false);
+
+    execute_request = make_unique<InvocationRequestStrInput>();
+    execute_request->id = "some_id_2";
+    execute_request->version_num = 2;
+    execute_request->handler_name = "test";
+    execute_request->input.push_back("\"Hello 2\"");
+
+    result = dispatcher.Dispatch(
+        move(execute_request),
+        [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+          EXPECT_TRUE(resp->ok());
+          EXPECT_EQ("\"Hello 2 Some string 2\"", (*resp)->resp);
+          done_executing.store(true);
+        });
+
+    WaitUntil([&done_executing]() { return done_executing.load(); });
+
+    EXPECT_SUCCESS(result);
+
+    done_executing.store(false);
+
+    execute_request = make_unique<InvocationRequestStrInput>();
+    execute_request->id = "some_id_3";
+    execute_request->version_num = 3;
+    execute_request->handler_name = "test";
+    execute_request->input.push_back("\"Hello 3\"");
+
+    result = dispatcher.Dispatch(
+        move(execute_request),
+        [&done_executing](unique_ptr<StatusOr<ResponseObject>> resp) {
+          EXPECT_TRUE(resp->ok());
+          EXPECT_EQ("\"Hello 3 Some string 3\"", (*resp)->resp);
+          done_executing.store(true);
+        });
+
+    WaitUntil([&done_executing]() { return done_executing.load(); });
+
+    EXPECT_SUCCESS(result);
+  }
+}
 }  // namespace google::scp::roma::sandbox::dispatcher::test

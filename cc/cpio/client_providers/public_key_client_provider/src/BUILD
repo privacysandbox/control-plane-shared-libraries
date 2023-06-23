@@ -24,9 +24,9 @@ cc_library(
     ),
     deps = [
         "//cc:cc_base_include_dir",
-        "//cc/cpio/client_providers/global_cpio/src:global_cpio_lib",
         "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/interface:type_def",
+        "//cc/public/cpio/interface:cpio_errors",
         "//cc/public/cpio/interface/public_key_client:type_def",
         "//cc/public/cpio/proto/public_key_service/v1:public_key_service_cc_proto",
         "@com_google_protobuf//:protobuf",

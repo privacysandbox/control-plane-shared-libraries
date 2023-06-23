@@ -29,6 +29,7 @@
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "roma/interface/roma.h"
+#include "roma/sandbox/logging/src/logging.h"
 #include "roma/sandbox/worker_api/src/worker_api.h"
 #include "roma/sandbox/worker_pool/src/worker_pool.h"
 
@@ -220,6 +221,19 @@ class Dispatcher : public core::ServiceInterface {
                 absl::Status(absl::StatusCode::kInternal,
                              core::errors::GetErrorMessage(
                                  run_code_response_or.result().status_code)));
+
+            if (run_code_response_or.result().Retryable()) {
+              // This means that the worker crashed and the request could be
+              // retried, however, we need to reload the worker with the cached
+              // code.
+              auto reload_result = ReloadCachedCodeObjects(*worker_or);
+              if (!reload_result.Successful()) {
+                _ROMA_LOG_ERROR(
+                    "The worker crashed and was restarted but reloading the "
+                    "worker cache failed.");
+              }
+            }
+
             callback(::std::move(response_or));
             pending_requests_--;
             return;
@@ -241,6 +255,9 @@ class Dispatcher : public core::ServiceInterface {
 
     return schedule_result;
   }
+
+  core::ExecutionResult ReloadCachedCodeObjects(
+      std::shared_ptr<worker_api::WorkerApi>& worker);
 
   std::shared_ptr<core::AsyncExecutor> async_executor_;
   std::shared_ptr<worker_pool::WorkerPool> worker_pool_;

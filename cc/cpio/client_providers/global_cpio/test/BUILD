@@ -81,7 +81,6 @@ cc_test(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/cpio/client_providers/global_cpio/mock:global_cpio_mock",
-        "//cc/cpio/client_providers/role_credentials_provider/src:role_credentials_provider_select_lib",
         "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/public/cpio/interface:cpio",
         "@com_google_googletest//:gtest_main",
