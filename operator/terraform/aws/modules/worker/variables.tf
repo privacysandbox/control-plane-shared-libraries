@@ -82,6 +82,10 @@ variable "metadata_db_table_arn" {
   description = "Name of the Dynamo DB table for storing job metadata."
 }
 
+variable "asg_instances_table_arn" {
+  description = "ARN of the Dynamo DB table for storing instance termination records."
+}
+
 variable "job_queue_arn" {
   description = "Name of the Dynamo DB table for storing job metadata."
 }

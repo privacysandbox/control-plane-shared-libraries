@@ -91,17 +91,17 @@ ExecutionResult PrivateKeyClientProvider::ListPrivateKeys(
           ? ListingMethod::kByMaxAge
           : ListingMethod::kByKeyId;
   if (list_keys_status->listing_method == ListingMethod::kByKeyId) {
-    list_keys_status->total_key_count =
+    list_keys_status->expected_total_key_count =
         list_private_keys_context.request->key_ids().size();
   }
 
-  auto call_count_per_endpoint =
+  list_keys_status->call_count_per_endpoint =
       list_keys_status->listing_method == ListingMethod::kByKeyId
-          ? list_keys_status->total_key_count
+          ? list_keys_status->expected_total_key_count
           : 1;
 
-  for (size_t call_index = 0; call_index < call_count_per_endpoint;
-       ++call_index) {
+  for (size_t call_index = 0;
+       call_index < list_keys_status->call_count_per_endpoint; ++call_index) {
     auto endpoints_status = make_shared<KeyEndPointsStatus>();
 
     for (size_t uri_index = 0; uri_index < endpoint_count_; ++uri_index) {
@@ -124,7 +124,8 @@ ExecutionResult PrivateKeyClientProvider::ListPrivateKeys(
               move(request),
               bind(&PrivateKeyClientProvider::OnFetchPrivateKeyCallback, this,
                    list_private_keys_context, _1, list_keys_status,
-                   endpoints_status, uri_index));
+                   endpoints_status, uri_index),
+              list_private_keys_context);
 
       auto execution_result =
           private_key_fetcher_->FetchPrivateKey(fetch_private_key_context);
@@ -160,7 +161,8 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
     shared_ptr<ListPrivateKeysStatus> list_keys_status,
     shared_ptr<KeyEndPointsStatus> endpoints_status,
     size_t uri_index) noexcept {
-  if (list_keys_status->got_failure.load()) {
+  if (list_keys_status->got_failure.load() ||
+      list_keys_status->got_empty_key_list.load()) {
     return;
   }
 
@@ -179,8 +181,27 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
   }
 
   if (list_keys_status->listing_method == ListingMethod::kByMaxAge) {
-    list_keys_status->total_key_count =
+    list_keys_status->expected_total_key_count =
         fetch_private_key_context.response->encryption_keys.size();
+  }
+
+  list_keys_status->total_key_split_count.fetch_add(
+      fetch_private_key_context.response->encryption_keys.size());
+  list_keys_status->fetching_call_returned_count.fetch_add(1);
+
+  // For empty key list, return immediately.
+  if (list_keys_status->expected_total_key_count == 0) {
+    auto got_empty_key_list = false;
+    if (list_keys_status->got_empty_key_list.compare_exchange_strong(
+            got_empty_key_list, true)) {
+      list_private_keys_context.result = SuccessExecutionResult();
+      list_private_keys_context.response =
+          make_shared<ListPrivateKeysResponse>();
+      list_private_keys_context.Finish();
+      SCP_WARNING_CONTEXT(kPrivateKeyClientProvider, list_private_keys_context,
+                          "The private key list is empty.");
+    }
+    return;
   }
 
   for (const auto& encryption_key :
@@ -231,7 +252,8 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
         make_shared<DecryptRequest>(kms_decrypt_request),
         bind(&PrivateKeyClientProvider::OnDecrpytCallback, this,
              list_private_keys_context, _1, list_keys_status, endpoints_status,
-             encryption_key, uri_index));
+             encryption_key, uri_index),
+        list_private_keys_context);
     execution_result = kms_client_provider_->Decrypt(decrypt_context);
 
     if (!execution_result.Successful()) {
@@ -291,7 +313,8 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
       endpoints_status->finished_counter_key_id_map[key_id].fetch_add(1);
   endpoints_status->map_mutex.unlock();
 
-  // Reconstructs the private key after all endpoints operations are complete.
+  // Reconstructs the private key after all endpoints operations are complete
+  // for the key.
   if (endpoint_finished_prev == plaintexts.size() - 1) {
     PrivateKey private_key;
     execution_result =
@@ -323,8 +346,6 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
       return;
     }
 
-    // Returns a ListPrivateKeys response after all private key operations
-    // are complete.
     string encoded_key;
     execution_result = Base64Encode(private_key.private_key(), encoded_key);
     if (!execution_result.Successful()) {
@@ -342,22 +363,25 @@ void PrivateKeyClientProvider::OnDecrpytCallback(
 
     private_key.set_private_key(move(encoded_key));
     list_keys_status->private_key_id_map[key_id] = move(private_key);
+  }
 
-    auto list_keys_finished_prev =
-        list_keys_status->finished_counter.fetch_add(1);
-    if (list_keys_finished_prev == list_keys_status->total_key_count - 1) {
-      list_private_keys_context.response =
-          make_shared<ListPrivateKeysResponse>();
-      int count = 0;
-      for (auto it = list_keys_status->private_key_id_map.begin();
-           it != list_keys_status->private_key_id_map.end(); ++it) {
-        *list_private_keys_context.response->add_private_keys() =
-            move(it->second);
-        ++count;
-      }
-      list_private_keys_context.result = SuccessExecutionResult();
-      list_private_keys_context.Finish();
+  // Finished all remote calls.
+  auto finished_key_split_count_prev =
+      list_keys_status->finished_key_split_count.fetch_add(1);
+  if (list_keys_status->fetching_call_returned_count ==
+          list_keys_status->call_count_per_endpoint * endpoint_count_ &&
+      finished_key_split_count_prev ==
+          list_keys_status->total_key_split_count - 1) {
+    list_private_keys_context.response = make_shared<ListPrivateKeysResponse>();
+    int count = 0;
+    for (auto it = list_keys_status->private_key_id_map.begin();
+         it != list_keys_status->private_key_id_map.end(); ++it) {
+      *list_private_keys_context.response->add_private_keys() =
+          move(it->second);
+      ++count;
     }
+    list_private_keys_context.result = SuccessExecutionResult();
+    list_private_keys_context.Finish();
   }
 }
 
@@ -372,7 +396,6 @@ PrivateKeyClientProviderFactory::Create(
   auto kms_client_provider = KmsClientProviderFactory::Create(
       make_shared<KmsClientOptions>(), role_credentials_provider,
       io_async_executor);
-  // TODO: provide AuthTokenProvider in lib_cpio_provider.
   auto private_key_fetcher = PrivateKeyFetcherProviderFactory::Create(
       http_client, role_credentials_provider, auth_token_provider);
 

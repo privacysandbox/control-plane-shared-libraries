@@ -197,7 +197,7 @@ data "aws_iam_policy_document" "enclave_policy_doc" {
       "dynamodb:GetItem",
       "dynamodb:PutItem",
     ]
-    resources = [var.metadata_db_table_arn]
+    resources = [var.metadata_db_table_arn, var.asg_instances_table_arn]
     condition {
       test     = "StringEquals"
       values   = [var.dynamodb_vpc_endpoint_id]
@@ -209,7 +209,7 @@ data "aws_iam_policy_document" "enclave_policy_doc" {
     sid       = "DenyDdbAccessFromAnyOtherEndpoints"
     effect    = "Deny"
     actions   = ["dynamodb:*"]
-    resources = [var.metadata_db_table_arn]
+    resources = [var.metadata_db_table_arn, var.asg_instances_table_arn]
     condition {
       test     = "StringNotEquals"
       values   = [var.dynamodb_vpc_endpoint_id]

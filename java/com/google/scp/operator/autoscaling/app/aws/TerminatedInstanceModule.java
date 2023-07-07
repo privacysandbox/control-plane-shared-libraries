@@ -19,17 +19,38 @@ package com.google.scp.operator.autoscaling.app.aws;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb.AsgInstancesDbDynamoClient;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb.AsgInstancesDbDynamoTableName;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb.AsgInstancesDbDynamoTtlDays;
+import java.time.Clock;
+import java.util.Map;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 /**
  * Defines dependencies to be used with TerminatedInstanceHandler for initial filtering of
  * terminating instances for the worker Auto Scaling Group.
  */
 public final class TerminatedInstanceModule extends AbstractModule {
+
+  private static final Map<String, String> env = System.getenv();
+  private static final String ASG_INSTANCES_DYNAMO_TABLE_NAME_ENV_VAR =
+      "ASG_INSTANCES_DYNAMO_TABLE_NAME";
+  private static final String ASG_INSTANCES_DYNAMO_TTL_DAYS_ENV_VAR =
+      "ASG_INSTANCES_DYNAMO_TTL_DAYS";
+
+  private static String getAsgInstancesDynamoTableName() {
+    return env.getOrDefault(ASG_INSTANCES_DYNAMO_TABLE_NAME_ENV_VAR, "");
+  }
+
+  private static Integer getAsgInstancesDynamoTtlDays() {
+    return Integer.parseInt(env.getOrDefault(ASG_INSTANCES_DYNAMO_TTL_DAYS_ENV_VAR, "7"));
+  }
 
   @Provides
   @Singleton
@@ -41,8 +62,35 @@ public final class TerminatedInstanceModule extends AbstractModule {
         .build();
   }
 
+  @Provides
+  @Singleton
+  @AsgInstancesDbDynamoClient
+  public DynamoDbEnhancedClient provideAsgInstancesDynamoClient(
+      SdkHttpClient httpClient, AwsCredentialsProvider credentialsProvider) {
+    DynamoDbClient ddbClient =
+        DynamoDbClient.builder()
+            .credentialsProvider(credentialsProvider)
+            .httpClient(httpClient)
+            .build();
+    return DynamoDbEnhancedClient.builder().dynamoDbClient(ddbClient).build();
+  }
+
+  /** Provides an instance of the {@code Clock} class. */
+  @Provides
+  @Singleton
+  public Clock provideClock() {
+    return Clock.systemUTC();
+  }
+
   @Override
   protected void configure() {
+    bind(String.class)
+        .annotatedWith(AsgInstancesDbDynamoTableName.class)
+        .toInstance(getAsgInstancesDynamoTableName());
+    bind(Integer.class)
+        .annotatedWith(AsgInstancesDbDynamoTtlDays.class)
+        .toInstance(getAsgInstancesDynamoTtlDays());
+
     bind(SdkHttpClient.class).toInstance(UrlConnectionHttpClient.builder().build());
     bind(AwsCredentialsProvider.class).toInstance(EnvironmentVariableCredentialsProvider.create());
   }

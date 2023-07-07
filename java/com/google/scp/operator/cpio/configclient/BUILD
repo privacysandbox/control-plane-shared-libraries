@@ -27,9 +27,11 @@ java_library(
     srcs = glob([
         "aws/*.java",
         "local/*.java",
+        "common/*.java",
     ]),
     deps = [
         "//java/com/google/scp/operator/cpio/configclient",
+        "//java/com/google/scp/shared/api/util",
         "//java/com/google/scp/shared/aws/credsprovider",
         "//java/com/google/scp/shared/aws/util",
         "//java/com/google/scp/shared/clients",

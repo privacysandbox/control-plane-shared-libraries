@@ -21,7 +21,13 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.scp.operator.cpio.lifecycleclient.LifecycleClient;
 import com.google.scp.operator.cpio.lifecycleclient.LifecycleModule;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb.AsgInstancesDbDynamoClient;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb.AsgInstancesDbDynamoTableName;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb.AsgInstancesDbDynamoTtlDays;
 import com.google.scp.shared.clients.configclient.Annotations.ApplicationRegionBinding;
+import com.google.scp.shared.clients.configclient.ParameterClient;
+import com.google.scp.shared.clients.configclient.ParameterClient.ParameterClientException;
+import com.google.scp.shared.clients.configclient.model.WorkerParameter;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -30,10 +36,12 @@ import java.net.URI;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient;
 import software.amazon.awssdk.services.autoscaling.AutoScalingClientBuilder;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 /** Guice module for binding the AWS lifecycle client functionality. */
 @Singleton
@@ -72,6 +80,34 @@ public final class AwsLifecycleModule extends LifecycleModule {
     }
 
     return clientBuilder.build();
+  }
+
+  @Provides
+  @Singleton
+  @AsgInstancesDbDynamoClient
+  DynamoDbEnhancedClient provideAsgInstancesDynamoClient(
+      SdkHttpClient httpClient, AwsCredentialsProvider credentialsProvider) {
+    DynamoDbClient ddbClient =
+        DynamoDbClient.builder()
+            .credentialsProvider(credentialsProvider)
+            .httpClient(httpClient)
+            .build();
+    return DynamoDbEnhancedClient.builder().dynamoDbClient(ddbClient).build();
+  }
+
+  @Provides
+  @Singleton
+  @AsgInstancesDbDynamoTableName
+  String provideAsgInstancesTableName(ParameterClient parameterClient)
+      throws ParameterClientException {
+    return parameterClient.getParameter(WorkerParameter.ASG_INSTANCES_TABLE_NAME.name()).orElse("");
+  }
+
+  /** Set to arbitrary number since Lifecycle Client should not be inserting to the DB. */
+  @Provides
+  @AsgInstancesDbDynamoTtlDays
+  Integer provideAsgInstancesTtlDays() {
+    return 3;
   }
 
   /** Annotation for binding an autoscaling endpoint override. */

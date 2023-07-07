@@ -89,7 +89,8 @@ ExecutionResult AwsPrivateKeyFetcherProvider::SignHttpRequest(
           move(request),
           bind(&AwsPrivateKeyFetcherProvider::
                    CreateSessionCredentialsCallbackToSignHttpRequest,
-               this, sign_request_context, _1));
+               this, sign_request_context, _1),
+          sign_request_context);
   return role_credentials_provider_->GetRoleCredentials(
       get_session_credentials_context);
 }

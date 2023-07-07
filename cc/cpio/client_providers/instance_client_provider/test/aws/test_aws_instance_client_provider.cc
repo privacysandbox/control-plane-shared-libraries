@@ -24,7 +24,6 @@
 #include "public/core/interface/execution_result.h"
 
 using absl::StrFormat;
-using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;

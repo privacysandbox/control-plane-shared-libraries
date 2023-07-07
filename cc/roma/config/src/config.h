@@ -104,6 +104,17 @@ class Config {
   std::function<uint64_t()> GetStartupMemoryCheckMinimumNeededValueKb;
 
   /**
+   * @brief The maximum amount of VIRTUAL memory that the worker processes are
+   * allowed to use. The worker process will be terminated if it exceeds this
+   * size. If not provided, the default is that the process does not have a cap
+   * on the virtual address space and will attempt to use up to the maximum
+   * address space available.
+   * NOTE: This setting maps directly to the Linux resource limit RLIMIT_AS.
+   * https://linux.die.net/man/2/setrlimit
+   */
+  size_t max_worker_virtual_memory_mb = 0;
+
+  /**
    * @brief Register a function binding object
    *
    * @tparam TOutput

@@ -65,3 +65,15 @@ java_test(
         "//java/external:resilience4j_retry",
     ],
 )
+
+java_test(
+    name = "HttpClientWrapperTest",
+    srcs = ["HttpClientWrapperTest.java"],
+    deps = [
+        "//java/com/google/scp/shared/api/util",
+        "//java/external:apache_httpclient",
+        "//java/external:apache_httpcore",
+        "//java/external:google_truth",
+        "//java/external:mockito",
+    ],
+)

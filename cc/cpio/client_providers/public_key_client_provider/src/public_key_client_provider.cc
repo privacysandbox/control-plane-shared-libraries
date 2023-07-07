@@ -97,9 +97,11 @@ void PublicKeyClientProvider::OnListPublicKeys(
   auto request = make_shared<ListPublicKeysRequest>();
   any_context.request->UnpackTo(request.get());
   AsyncContext<ListPublicKeysRequest, ListPublicKeysResponse> context(
-      move(request), bind(CallbackToPackAnyResponse<ListPublicKeysRequest,
-                                                    ListPublicKeysResponse>,
-                          any_context, _1));
+      move(request),
+      bind(CallbackToPackAnyResponse<ListPublicKeysRequest,
+                                     ListPublicKeysResponse>,
+           any_context, _1),
+      any_context);
   context.result = ListPublicKeys(context);
 }
 
@@ -134,7 +136,8 @@ ExecutionResult PublicKeyClientProvider::ListPublicKeys(
         move(http_request),
         bind(&PublicKeyClientProvider::OnPerformRequestCallback, this,
              public_key_fetching_context, _1, got_success_result,
-             unfinished_counter));
+             unfinished_counter),
+        public_key_fetching_context);
 
     auto execution_result = http_client_->PerformRequest(http_client_context);
     if (execution_result.Successful()) {

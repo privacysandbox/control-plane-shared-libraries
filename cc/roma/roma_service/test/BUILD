@@ -79,7 +79,10 @@ cc_test(
     copts = [
         "-std=c++17",
     ],
-    data = ["//cc/roma/testing/cpp_wasm_string_in_string_out_example"],
+    data = [
+        "//cc/roma/testing/cpp_wasm_allocate_memory",
+        "//cc/roma/testing/cpp_wasm_string_in_string_out_example",
+    ],
     tags = ["manual"],
     deps = [
         "//cc/core/test/utils:utils_lib",

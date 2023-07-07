@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "roma/config/src/config.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_sandbox_api.h"
 #include "roma/sandbox/worker_factory/src/worker_factory.h"
 
@@ -33,6 +34,9 @@ struct WorkerApiSapiConfig {
   bool js_engine_require_code_preload;
   int native_js_function_comms_fd;
   std::vector<std::string> native_js_function_names;
+  size_t max_worker_virtual_memory_mb = 0;
+  JsEngineResourceConstraints js_engine_resource_constraints;
+  size_t js_engine_max_wasm_memory_number_of_pages = 0;
 };
 
 class WorkerApiSapi : public WorkerApi {
@@ -40,7 +44,11 @@ class WorkerApiSapi : public WorkerApi {
   explicit WorkerApiSapi(const WorkerApiSapiConfig& config) {
     sandbox_api_ = std::make_unique<WorkerSandboxApi>(
         config.worker_js_engine, config.js_engine_require_code_preload,
-        config.native_js_function_comms_fd, config.native_js_function_names);
+        config.native_js_function_comms_fd, config.native_js_function_names,
+        config.max_worker_virtual_memory_mb,
+        config.js_engine_resource_constraints.initial_heap_size_in_mb,
+        config.js_engine_resource_constraints.maximum_heap_size_in_mb,
+        config.js_engine_max_wasm_memory_number_of_pages);
   }
 
   core::ExecutionResult Init() noexcept override;

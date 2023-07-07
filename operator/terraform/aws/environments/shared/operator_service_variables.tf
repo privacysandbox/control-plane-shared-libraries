@@ -191,6 +191,16 @@ variable "metadatadb_write_capacity" {
 }
 
 ################################################################################
+# AsgInstancesDB Variables
+################################################################################
+
+variable "asginstances_db_ttl_days" {
+  type        = number
+  description = "The TTL in days for records in the AsgInstances DynamoDB table."
+  default     = 7
+}
+
+################################################################################
 # Frontend Alarm Variables
 ################################################################################
 

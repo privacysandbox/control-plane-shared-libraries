@@ -60,9 +60,10 @@ ExecutionResult ExecutionWatchDog::Stop() noexcept {
 }
 
 void ExecutionWatchDog::StartTimer(
-    core::TimeDuration ms_before_timeout) noexcept {
+    v8::Isolate* isolate, core::TimeDuration ms_before_timeout) noexcept {
   {
     lock_guard lock(mutex_);
+    v8_isolate_ = isolate;
     nanoseconds_before_timeout_ = ms_before_timeout * kMsToNsConversionBase;
     timeout_timestamp_ =
         TimeProvider::GetSteadyTimestampInNanosecondsAsClockTicks() +

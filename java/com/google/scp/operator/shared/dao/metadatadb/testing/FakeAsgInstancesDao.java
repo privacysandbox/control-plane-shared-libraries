@@ -17,7 +17,7 @@
 package com.google.scp.operator.shared.dao.metadatadb.testing;
 
 import com.google.scp.operator.protos.shared.backend.asginstance.AsgInstanceProto.AsgInstance;
-import com.google.scp.operator.shared.dao.metadatadb.common.AsgInstancesDao;
+import com.google.scp.operator.shared.dao.asginstancesdb.common.AsgInstancesDao;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

@@ -45,8 +45,9 @@ public final class TerminatedInstanceHandler
 
   /**
    * Checks the health status of terminated instances from the worker Auto Scaling Group and
-   * completes the termination lifecycle action if unhealthy. Otherwise, the worker will handle
-   * continuing the termination when it is not running a job.
+   * completes the termination lifecycle action if unhealthy. Otherwise, inserts a record into the
+   * AsgInstances table and the worker will handle continuing the termination when it is not running
+   * a job.
    *
    * <p>Instance termination event format:
    * https://docs.aws.amazon.com/autoscaling/ec2/userguide/cloud-watch-events.html#terminate-lifecycle-action

@@ -39,6 +39,7 @@ cc_library(
     ],
     deps = [
         ":roma_worker_api_lib",
+        "//cc/roma/config/src:roma_config_lib",
         "//cc/roma/sandbox/worker_api/sapi/src:roma_worker_sandbox_api_lib",
         "//cc/roma/sandbox/worker_factory/src:roma_worker_factory_lib",
     ],

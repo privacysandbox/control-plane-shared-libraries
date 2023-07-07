@@ -72,24 +72,38 @@ class PrivateKeyClientProvider : public PrivateKeyClientProviderInterface {
 
   /// The overrall status of the whole ListPrivateKeys call.
   struct ListPrivateKeysStatus {
-    ListPrivateKeysStatus() : finished_counter(0), got_failure(false) {}
+    ListPrivateKeysStatus()
+        : total_key_split_count(0),
+          finished_key_split_count(0),
+          fetching_call_returned_count(0),
+          got_failure(false),
+          got_empty_key_list(false) {}
 
     virtual ~ListPrivateKeysStatus() = default;
 
     ListingMethod listing_method = ListingMethod::kByKeyId;
 
     /// How many keys we are expecting.
-    uint64_t total_key_count;
+    uint64_t expected_total_key_count;
+
+    uint64_t call_count_per_endpoint;
 
     /// Map of all PrivateKeys to Key IDs.
     std::map<std::string, cmrt::sdk::private_key_service::v1::PrivateKey>
         private_key_id_map;
 
-    /// How many keys finished operation.
-    std::atomic<uint64_t> finished_counter;
+    /// How many key splits fetched in total.
+    std::atomic<size_t> total_key_split_count;
+    /// How many key splits finished decryption.
+    std::atomic<size_t> finished_key_split_count;
+    /// How many fetching call returned.
+    std::atomic<size_t> fetching_call_returned_count;
 
     /// whether ListPrivateKeys() call got failure result.
     std::atomic<bool> got_failure;
+
+    /// whether an empty key list was returned from any endpoint.
+    std::atomic<bool> got_empty_key_list;
   };
 
   /// Operation status for a batch of calls to all endpoints. When listing keys

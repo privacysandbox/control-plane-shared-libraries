@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "public/core/interface/execution_result.h"
+#include "roma/config/src/config.h"
 #include "roma/sandbox/worker/src/worker.h"
 
 namespace google::scp::roma::sandbox::worker {
@@ -31,6 +32,8 @@ class WorkerFactory {
   struct V8WorkerEngineParams {
     int native_js_function_comms_fd;
     std::vector<std::string> native_js_function_names;
+    JsEngineResourceConstraints resource_constraints;
+    size_t max_wasm_memory_number_of_pages;
   };
 
   struct FactoryParams {

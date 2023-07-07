@@ -24,4 +24,5 @@ message WorkerParamsProto {
 
   // Output
   optional string response = 5;
+  map<string, int64> metrics = 6;
 }

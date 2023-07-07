@@ -52,7 +52,7 @@ ExecutionResult NativeFunctionInvokerSapiIpc::Invoke(
         SC_ROMA_FUNCTION_INVOKER_SAPI_IPC_INVOKE_WITH_UNINITIALIZED_COMMS);
   }
 
-  // Set the function name so that it can be retrieved one the other side.
+  // Set the function name so that it can be retrieved on the other side.
   (*function_binding_proto
         .mutable_metadata())[kFuctionBindingMetadataFunctionName] =
       function_name;

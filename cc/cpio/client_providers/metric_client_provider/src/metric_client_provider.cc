@@ -223,7 +223,8 @@ void MetricClientProvider::OnPutMetrics(
   AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
       move(request),
       bind(CallbackToPackAnyResponse<PutMetricsRequest, PutMetricsResponse>,
-           any_context, _1));
+           any_context, _1),
+      any_context);
   context.result = PutMetrics(context);
 }
 }  // namespace google::scp::cpio::client_providers

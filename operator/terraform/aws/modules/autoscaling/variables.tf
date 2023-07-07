@@ -172,6 +172,25 @@ variable "terminated_instance_lambda_role_name" {
 }
 
 ################################################################################
+# Terminated Instances Lambda Environment Variables
+################################################################################
+
+variable "asginstances_db_table_name" {
+  type        = string
+  description = "The name of the AsgInstances DynamoDB table."
+}
+
+variable "asginstances_db_arn" {
+  type        = string
+  description = "The ARN of the AsgInstances DynamoDB table."
+}
+
+variable "asginstances_db_ttl_days" {
+  type        = number
+  description = "The TTL in days for records in the AsgInstances DynamoDB table."
+}
+
+################################################################################
 # Metric/Alarm Variables
 ################################################################################
 variable "worker_alarms_enabled" {

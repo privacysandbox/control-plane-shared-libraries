@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "include/v8.h"
@@ -38,11 +39,24 @@ class V8IsolateVisitorFunctionBinding : public V8IsolateVisitor {
       const std::vector<std::string>& function_names,
       const std::shared_ptr<native_function_binding::NativeFunctionInvoker>&
           function_invoker)
-      : function_names_(function_names), function_invoker_(function_invoker) {}
+      : function_names_(function_names), function_invoker_(function_invoker) {
+    for (auto function_name : function_names_) {
+      auto pair = std::pair(function_name, this);
+      binding_references_.push_back(std::make_shared<BindingPair>(pair));
+    }
+  }
 
-  core::ExecutionResult Visit(v8::Isolate* isolate) noexcept override;
+  core::ExecutionResult Visit(
+      v8::Isolate* isolate,
+      v8::Local<v8::ObjectTemplate>& global_object_template) noexcept override;
+
+  void AddExternalReferences(
+      std::vector<intptr_t>& external_references) noexcept override;
 
  private:
+  typedef std::pair<std::string, V8IsolateVisitorFunctionBinding*> BindingPair;
+  std::vector<std::shared_ptr<BindingPair>> binding_references_;
+
   static void GlobalV8FunctionCallback(
       const v8::FunctionCallbackInfo<v8::Value>& info);
 

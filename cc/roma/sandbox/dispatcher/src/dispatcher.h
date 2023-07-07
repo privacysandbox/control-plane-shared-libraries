@@ -240,10 +240,13 @@ class Dispatcher : public core::ServiceInterface {
           }
 
           ResponseObject response_object;
-          response_object.id = request->id;
-          response_object.resp = *run_code_response_or->response;
           response_or =
               std::make_unique<absl::StatusOr<ResponseObject>>(response_object);
+          response_or->value().id = request->id;
+          response_or->value().resp = move(*run_code_response_or->response);
+          for (auto& kv : run_code_response_or->metrics) {
+            response_or->value().metrics[kv.first] = kv.second;
+          }
           callback(::std::move(response_or));
           pending_requests_--;
         },

@@ -43,10 +43,10 @@ using std::vector;
 
 namespace google::scp::roma::sandbox::worker_api::test {
 TEST(WorkerSandboxApiTest, WorkerWorksThroughSandbox) {
-  WorkerSandboxApi sandbox_api(WorkerFactory::WorkerEngine::v8,
-                               false /*require_preload*/,
-                               -1 /*native_js_function_comms_fd*/,
-                               vector<string>() /*native_js_function_names*/);
+  WorkerSandboxApi sandbox_api(
+      WorkerFactory::WorkerEngine::v8, false /*require_preload*/,
+      -1 /*native_js_function_comms_fd*/,
+      vector<string>() /*native_js_function_names*/, 0, 0, 0, 0);
 
   auto result = sandbox_api.Init();
   EXPECT_SUCCESS(result);
@@ -70,13 +70,33 @@ TEST(WorkerSandboxApiTest, WorkerWorksThroughSandbox) {
   EXPECT_SUCCESS(result);
 }
 
+TEST(WorkerSandboxApiTest,
+     StartingTheSandboxShouldFailIfNotEnoughMemoryInRlimitForV8) {
+  // Since this is limiting the virtual memory space in a machine with swap and
+  // no other limitations, this limit needs to be pretty high for V8 to properly
+  // start. We set a limit of 100MB which causes a failure in this case.
+  WorkerSandboxApi sandbox_api(WorkerFactory::WorkerEngine::v8,
+                               false /*require_preload*/,
+                               -1 /*native_js_function_comms_fd*/,
+                               vector<string>() /*native_js_function_names*/,
+                               100 /*max_worker_virtual_memory_mb*/, 0, 0, 0);
+
+  // Initializing the sandbox fail as we're giving a max of 100MB of virtual
+  // space address for v8 and the sandbox.
+  auto result = sandbox_api.Init();
+  EXPECT_FALSE(result.Successful());
+
+  result = sandbox_api.Stop();
+  EXPECT_SUCCESS(result);
+}
+
 TEST(WorkerSandboxApiTest, WorkerCanCallHooksThroughSandbox) {
   int fds[2];
   EXPECT_EQ(socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds), 0);
 
   WorkerSandboxApi sandbox_api(
       WorkerFactory::WorkerEngine::v8, false /*require_preload*/,
-      fds[1] /*native_js_function_comms_fd*/, {"my_great_func"});
+      fds[1] /*native_js_function_comms_fd*/, {"my_great_func"}, 0, 0, 0, 0);
 
   auto result = sandbox_api.Init();
   EXPECT_SUCCESS(result);
@@ -124,8 +144,8 @@ class WorkerSandboxApiForTests : public WorkerSandboxApi {
       bool require_preload, int native_js_function_comms_fd,
       const std::vector<std::string>& native_js_function_names)
       : WorkerSandboxApi(worker_engine, require_preload,
-                         native_js_function_comms_fd,
-                         native_js_function_names) {}
+                         native_js_function_comms_fd, native_js_function_names,
+                         0, 0, 0, 0) {}
 
   ::sapi::Sandbox* GetUnderlyingSandbox() { return worker_sapi_sandbox_.get(); }
 };

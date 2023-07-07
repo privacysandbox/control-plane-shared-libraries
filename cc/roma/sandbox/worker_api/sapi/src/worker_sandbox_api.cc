@@ -21,14 +21,18 @@
 #include <linux/audit.h>
 
 #include <chrono>
+#include <string>
 #include <thread>
 
+#include "roma/sandbox/logging/src/logging.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_init_params.pb.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_params.pb.h"
 #include "sandboxed_api/sandbox2/policy.h"
 #include "sandboxed_api/sandbox2/policybuilder.h"
 
 #include "error_codes.h"
+
+#define ROMA_CONVERT_MB_TO_BYTES(mb) mb * 1024 * 1024
 
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -44,11 +48,11 @@ using google::scp::core::errors::
 using google::scp::core::errors ::
     SC_ROMA_WORKER_API_COULD_NOT_RUN_CODE_THROUGH_WRAPPER_API;
 using google::scp::core::errors::SC_ROMA_WORKER_API_COULD_NOT_RUN_WRAPPER_API;
-using google::scp::core::errors::SC_ROMA_WORKER_API_COULD_NOT_STOP_WRAPPER_API;
 using google::scp::core::errors::
     SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX;
 using google::scp::core::errors::SC_ROMA_WORKER_API_UNINITIALIZED_SANDBOX;
 using google::scp::core::errors::SC_ROMA_WORKER_API_WORKER_CRASHED;
+using std::string;
 using std::this_thread::yield;
 
 namespace google::scp::roma::sandbox::worker_api {
@@ -74,7 +78,8 @@ ExecutionResult WorkerSandboxApi::Init() noexcept {
     }
   }
 
-  worker_sapi_sandbox_ = std::make_unique<WorkerSapiSandbox>();
+  worker_sapi_sandbox_ = std::make_unique<WorkerSapiSandbox>(
+      ROMA_CONVERT_MB_TO_BYTES(max_worker_virtual_memory_mb_));
 
   auto status = worker_sapi_sandbox_->Init();
   if (!status.ok()) {
@@ -114,6 +119,13 @@ ExecutionResult WorkerSandboxApi::Init() noexcept {
   worker_init_params.set_native_js_function_comms_fd(remote_fd);
   worker_init_params.mutable_native_js_function_names()->Assign(
       native_js_function_names_.begin(), native_js_function_names_.end());
+  worker_init_params.set_js_engine_initial_heap_size_mb(
+      js_engine_initial_heap_size_mb_);
+  worker_init_params.set_js_engine_maximum_heap_size_mb(
+      js_engine_maximum_heap_size_mb_);
+  worker_init_params.set_js_engine_max_wasm_memory_number_of_pages(
+      js_engine_max_wasm_memory_number_of_pages_);
+
   auto sapi_proto =
       sapi::v::Proto<::worker_api::WorkerInitParamsProto>::FromMessage(
           worker_init_params);
@@ -140,6 +152,9 @@ ExecutionResult WorkerSandboxApi::Run() noexcept {
 
   auto status_or = worker_wrapper_api_->Run();
   if (!status_or.ok()) {
+    _ROMA_LOG_ERROR(string("Failed to run the worker via the wrapper with: ") +
+                    string(status_or.status().message().begin(),
+                           status_or.status().message().end()));
     return FailureExecutionResult(SC_ROMA_WORKER_API_COULD_NOT_RUN_WRAPPER_API);
   } else if (*status_or != SC_OK) {
     return FailureExecutionResult(*status_or);
@@ -161,8 +176,11 @@ ExecutionResult WorkerSandboxApi::Stop() noexcept {
 
   auto status_or = worker_wrapper_api_->Stop();
   if (!status_or.ok()) {
-    return FailureExecutionResult(
-        SC_ROMA_WORKER_API_COULD_NOT_STOP_WRAPPER_API);
+    _ROMA_LOG_ERROR(string("Failed to stop the worker via the wrapper with: ") +
+                    string(status_or.status().message().begin(),
+                           status_or.status().message().end()));
+    // The worker had already died so nothing to stop
+    return SuccessExecutionResult();
   } else if (*status_or != SC_OK) {
     return FailureExecutionResult(*status_or);
   }

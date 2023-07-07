@@ -38,5 +38,5 @@ message AsgInstance {
   google.protobuf.Timestamp termination_time = 4;
 
   // The ttl of the instance record.
-  google.protobuf.Timestamp ttl = 5;
+  int64 ttl = 5;
 }

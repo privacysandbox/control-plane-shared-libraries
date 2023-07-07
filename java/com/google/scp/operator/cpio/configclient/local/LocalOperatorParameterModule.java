@@ -25,9 +25,12 @@ import static com.google.scp.operator.cpio.configclient.local.Annotations.SqsJob
 import static com.google.scp.shared.clients.configclient.local.Annotations.ParameterValues;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.inject.Key;
 import com.google.inject.Provides;
+import com.google.inject.multibindings.OptionalBinder;
 import com.google.scp.operator.cpio.configclient.local.Annotations.CoordinatorARoleArn;
 import com.google.scp.operator.cpio.configclient.local.Annotations.CoordinatorBRoleArn;
+import com.google.scp.operator.cpio.configclient.local.Annotations.WorkerAutoscalingGroup;
 import com.google.scp.shared.clients.configclient.ParameterClient;
 import com.google.scp.shared.clients.configclient.ParameterModule;
 import com.google.scp.shared.clients.configclient.local.LocalParameterClient;
@@ -51,7 +54,8 @@ public final class LocalOperatorParameterModule extends ParameterModule {
       @CoordinatorARoleArn String coordinatorARoleArn,
       @CoordinatorBRoleArn String coordinatorBRoleArn,
       @CoordinatorKmsArnParameter String coordinatorKmsArn,
-      @ScaleInHookParameter String scaleInHookParameter) {
+      @ScaleInHookParameter String scaleInHookParameter,
+      @WorkerAutoscalingGroup String workerAutoscalingGroup) {
     return ImmutableMap.<String, String>builder()
         .put(WorkerParameter.JOB_QUEUE.name(), sqsUrl)
         .put(WorkerParameter.JOB_METADATA_DB.name(), ddbTableName)
@@ -61,6 +65,14 @@ public final class LocalOperatorParameterModule extends ParameterModule {
         .put(WorkerParameter.COORDINATOR_B_ROLE.name(), coordinatorBRoleArn)
         .put(WorkerParameter.COORDINATOR_KMS_ARN.name(), coordinatorKmsArn)
         .put(WorkerParameter.SCALE_IN_HOOK.name(), scaleInHookParameter)
+        .put(WorkerParameter.WORKER_AUTOSCALING_GROUP.name(), workerAutoscalingGroup)
         .build();
+  }
+
+  @Override
+  public void customConfigure() {
+    OptionalBinder.newOptionalBinder(binder(), Key.get(String.class, WorkerAutoscalingGroup.class))
+        .setDefault()
+        .toInstance("fakeGroup");
   }
 }

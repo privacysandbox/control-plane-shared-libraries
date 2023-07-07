@@ -51,26 +51,22 @@ DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_RUN_WRAPPER_API,
                   SC_ROMA_WORKER_API, 0x0006, "Could not run the wrapper API.",
                   HttpStatusCode::BAD_REQUEST)
 
-DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_STOP_WRAPPER_API,
-                  SC_ROMA_WORKER_API, 0x0007, "Could not stop the wrapper API.",
-                  HttpStatusCode::BAD_REQUEST)
-
 DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_RUN_CODE_THROUGH_WRAPPER_API,
-                  SC_ROMA_WORKER_API, 0x0008,
+                  SC_ROMA_WORKER_API, 0x0007,
                   "Could not run code through the wrapper API.",
                   HttpStatusCode::BAD_REQUEST)
 
 DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX,
-                  SC_ROMA_WORKER_API, 0x0009,
+                  SC_ROMA_WORKER_API, 0x0008,
                   "Could not transfer function comms fd to sandbox.",
                   HttpStatusCode::BAD_REQUEST)
 
 DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_UNINITIALIZED_SANDBOX, SC_ROMA_WORKER_API,
-                  0x000A,
+                  0x0009,
                   "Attempt to call API function with an uninitialized sandbox.",
                   HttpStatusCode::BAD_REQUEST)
 
-DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_WORKER_CRASHED, SC_ROMA_WORKER_API, 0x000B,
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_WORKER_CRASHED, SC_ROMA_WORKER_API, 0x000A,
                   "Sandbox worker crashed during execution of request.",
                   HttpStatusCode::BAD_REQUEST)
 }  // namespace google::scp::core::errors

@@ -126,4 +126,88 @@ TEST_F(V8EngineWorkerTest, CanRunMultipleVersionsOfTheCode) {
   response_string = *response_or;
   EXPECT_EQ(response_string, "\"Hello Version 2!\"");
 }
+
+TEST_F(V8EngineWorkerTest, CanRunMultipleVersionsOfCompilationContexts) {
+  auto engine = make_shared<V8JsEngine>();
+  Worker worker(engine, true /*require_preload*/);
+  AutoInitRunStop to_handle_worker(worker);
+
+  // Load v1
+  string js_code = R"""(
+          let bytes = new Uint8Array([
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x07, 0x01,
+            0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x03, 0x02, 0x01, 0x00, 0x07,
+            0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, 0x0a, 0x09, 0x01,
+            0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b
+          ]);
+          let module = new WebAssembly.Module(bytes);
+          let instance = new WebAssembly.Instance(module);
+          function hello_js(a, b) {
+            return instance.exports.add(a, b);
+          }
+        )""";
+  vector<string> input;
+  unordered_map<string, string> metadata = {
+      {kRequestType, kRequestTypeJavascript},
+      {kCodeVersion, "1"},
+      {kRequestAction, kRequestActionLoad}};
+
+  auto response_or = worker.RunCode(js_code, input, metadata);
+  EXPECT_SUCCESS(response_or.result());
+  auto response_string = *response_or;
+  EXPECT_EQ(response_string, "");
+
+  // Load v2
+  js_code = R"""(
+          let bytes = new Uint8Array([
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x07, 0x01,
+            0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x03, 0x02, 0x01, 0x00, 0x07,
+            0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, 0x0a, 0x09, 0x01,
+            0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b
+          ]);
+          function hello_js(a, b) {
+            var module = new WebAssembly.Module(bytes);
+            var instance = new WebAssembly.Instance(module);
+            return instance.exports.add(a, b);
+          }
+        )""";
+  metadata = {{kRequestType, kRequestTypeJavascript},
+              {kCodeVersion, "2"},
+              {kRequestAction, kRequestActionLoad}};
+
+  response_or = worker.RunCode(js_code, input, metadata);
+  EXPECT_SUCCESS(response_or.result());
+  response_string = *response_or;
+  EXPECT_EQ(response_string, "");
+
+  // Execute v1
+  {
+    js_code = "";
+    input = {"1", "2"};
+    metadata = {{kRequestType, kRequestTypeJavascript},
+                {kCodeVersion, "1"},
+                {kRequestAction, kRequestActionExecute},
+                {kHandlerName, "hello_js"}};
+
+    response_or = worker.RunCode(js_code, input, metadata);
+    EXPECT_SUCCESS(response_or.result());
+    response_string = *response_or;
+    EXPECT_EQ(response_string, "3");
+  }
+
+  // Execute v2
+  {
+    js_code = "";
+    input = {"5", "7"};
+    metadata = {{kRequestType, kRequestTypeJavascript},
+                {kCodeVersion, "2"},
+                {kRequestAction, kRequestActionExecute},
+                {kHandlerName, "hello_js"}};
+
+    response_or = worker.RunCode(js_code, input, metadata);
+    EXPECT_SUCCESS(response_or.result());
+    response_string = *response_or;
+    EXPECT_EQ(response_string, "12");
+  }
+}
 }  // namespace google::scp::roma::sandbox::worker::test

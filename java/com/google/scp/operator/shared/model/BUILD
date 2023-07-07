@@ -27,6 +27,7 @@ java_library(
         "//java/external:jackson_core",
         "//java/external:jackson_databind",
         "//operator/protos/shared/backend:java_proto",
+        "//operator/protos/shared/backend/asginstance:java_proto",
         "//operator/protos/shared/backend/metadatadb:java_proto",
     ],
 )

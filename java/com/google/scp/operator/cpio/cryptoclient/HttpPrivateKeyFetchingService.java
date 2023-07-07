@@ -21,21 +21,21 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import com.google.common.primitives.Ints;
 import com.google.inject.BindingAnnotation;
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.google.scp.coordinator.protos.keymanagement.keyhosting.api.v1.GetEncryptedPrivateKeyResponseProto.GetEncryptedPrivateKeyResponse;
 import com.google.scp.shared.api.util.ErrorUtil;
+import com.google.scp.shared.api.util.HttpClientWrapper;
 import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.time.Duration;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,16 +47,17 @@ import org.slf4j.LoggerFactory;
 @Deprecated
 public final class HttpPrivateKeyFetchingService implements PrivateKeyFetchingService {
 
-  private static final int REQUEST_TIMEOUT_DURATION = Duration.ofMinutes(1).toMillisPart();
+  private static final int REQUEST_TIMEOUT_DURATION =
+      Ints.checkedCast(Duration.ofMinutes(1).toMillis());
   // Base URL (e.g. `https://foo.com/v1`).
   private final String privateKeyServiceBaseUrl;
-  private final HttpClient httpClient;
+  private final HttpClientWrapper httpClient;
   private final Logger logger = LoggerFactory.getLogger(HttpPrivateKeyFetchingService.class);
 
   /** Creates a new instance of the {@code HttpPrivateKeyFetchingService} class. */
   @Inject
   public HttpPrivateKeyFetchingService(
-      @PrivateKeyServiceBaseUrl String privateKeyServiceBaseUrl, HttpClient httpClient) {
+      @PrivateKeyServiceBaseUrl String privateKeyServiceBaseUrl, HttpClientWrapper httpClient) {
     this.privateKeyServiceBaseUrl = privateKeyServiceBaseUrl;
     this.httpClient = httpClient;
   }
@@ -78,9 +79,9 @@ public final class HttpPrivateKeyFetchingService implements PrivateKeyFetchingSe
       request.setConfig(requestConfig);
 
       var response = httpClient.execute(request);
-      var responseBody = EntityUtils.toString(response.getEntity());
+      var responseBody = response.responseBody();
 
-      if (response.getStatusLine().getStatusCode() != 200) {
+      if (response.statusCode() != 200) {
         var errorResponse = ErrorUtil.parseErrorResponse(responseBody);
         var exception = ErrorUtil.toServiceException(errorResponse);
 

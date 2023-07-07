@@ -28,6 +28,7 @@
 #include <gmock/gmock.h>
 
 #include "core/test/utils/conditional_wait.h"
+#include "roma/config/src/config.h"
 #include "roma/interface/roma.h"
 #include "roma/wasm/test/testing_utils.h"
 
@@ -54,6 +55,22 @@ namespace google::scp::roma::test {
 TEST(SandboxedServiceTest, InitStop) {
   auto status = RomaInit();
   EXPECT_TRUE(status.ok());
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest,
+     ShouldFailToInitializeIfVirtualMemoryCapIsTooLittle) {
+  Config config;
+  config.max_worker_virtual_memory_mb = 10;
+
+  auto status = RomaInit(config);
+  EXPECT_FALSE(status.ok());
+  EXPECT_EQ(
+      "Roma initialization failed due to internal error: Could not initialize "
+      "the wrapper API.",
+      status.message());
+
   status = RomaStop();
   EXPECT_TRUE(status.ok());
 }
@@ -106,6 +123,85 @@ TEST(SandboxedServiceTest, ExecuteCode) {
   WaitUntil([&]() { return load_finished.load(); }, 10s);
   WaitUntil([&]() { return execute_finished.load(); }, 10s);
   EXPECT_EQ(result, R"("Hello world! \"Foobar\"")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, CanRunAsyncJsCode) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+
+      function multiplePromises() {
+        const p1 = Promise.resolve("some");
+        const p2 = "cool";
+        const p3 = new Promise((resolve, reject) => {
+          sleep(1000);
+          resolve("string1");
+        });
+        const p4 = new Promise((resolve, reject) => {
+          sleep(200);
+          resolve("string2");
+        });
+
+        return Promise.all([p1, p2, p3, p4]).then((values) => {
+          return values;
+        });
+      }
+
+      async function Handler() {
+          const result = await multiplePromises();
+          return result.join(" ");
+      }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, "\"some cool string1 string2\"");
 
   status = RomaStop();
   EXPECT_TRUE(status.ok());
@@ -268,6 +364,75 @@ TEST(SandboxedServiceTest,
   {
     auto execution_obj = make_unique<InvocationRequestStrInput>();
     execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("Foobar String from C++")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+void StringInStringOutFunctionWithRequestIdCheck(
+    proto::FunctionBindingIoProto& io) {
+  // Should be able to read the request ID
+  EXPECT_EQ("id-that-should-be-available-in-hook-metadata",
+            io.metadata().at("roma.request_id"));
+
+  io.set_output_string(io.input_string() + " String from C++");
+}
+
+TEST(SandboxedServiceTest,
+     ShouldBeAbleToGeRequestIdFromFunctionBindingMetadataInHook) {
+  Config config;
+  config.number_of_workers = 2;
+  auto function_binding_object = make_unique<FunctionBindingObjectV2>();
+  function_binding_object->function =
+      StringInStringOutFunctionWithRequestIdCheck;
+  function_binding_object->function_name = "cool_function";
+  config.RegisterFunctionBinding(move(function_binding_object));
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "some-cool-id-doesnt-matter-because-its-a-load-request";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return cool_function(input);}
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    // Should be available in the hook
+    execution_obj->id = "id-that-should-be-available-in-hook-metadata";
     execution_obj->version_num = 1;
     execution_obj->handler_name = "Handler";
     execution_obj->input.push_back("\"Foobar\"");
@@ -681,4 +846,243 @@ TEST(SandboxedServiceTest, ExecuteCodeGotTimeoutError) {
   EXPECT_TRUE(status.ok());
 }
 
+TEST(SandboxedServiceTest, ShouldRespectJsHeapLimits) {
+  Config config;
+  config.number_of_workers = 2;
+  config.ConfigureJsEngineResourceConstraints(1 /*initial_heap_size_in_mb*/,
+                                              15 /*maximum_heap_size_in_mb*/);
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // Dummy code to allocate memory based on input
+    code_obj->js = R"(
+        function Handler(input) {
+          const bigObject = [];
+          for (let i = 0; i < 1024*512*Number(input); i++) {
+            var person = {
+            name: 'test',
+            age: 24,
+            };
+            bigObject.push(person);
+          }
+          return 233;
+        }
+      )";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // Large input which should fail
+    execution_obj->input.push_back("\"10\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_FALSE(resp->ok());
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  execute_finished.store(false);
+
+  {
+    string result;
+
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // Small input which should work
+    execution_obj->input.push_back("\"1\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+
+    WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+    EXPECT_EQ("233", result);
+  }
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest,
+     LoadingWasmModuleShouldFailIfMemoryRequirementIsNotMet) {
+  {
+    Config config;
+    // This module was compiled with a memory requirement of 10MiB (160 pages -
+    // each page is 64KiB). When we set the limit to 150 pages, it fails to
+    // properly build the WASM object.
+    config.max_wasm_memory_number_of_pages = 150;
+    config.number_of_workers = 1;
+
+    auto status = RomaInit(config);
+    EXPECT_TRUE(status.ok());
+
+    auto wasm_bin = WasmTestingUtils::LoadWasmFile(
+        "./cc/roma/testing/cpp_wasm_allocate_memory/allocate_memory.wasm");
+
+    atomic<bool> load_finished = false;
+    {
+      auto code_obj = make_unique<CodeObject>();
+      code_obj->id = "foo";
+      code_obj->version_num = 1;
+      code_obj->js = "";
+      code_obj->wasm.assign(reinterpret_cast<char*>(wasm_bin.data()),
+                            wasm_bin.size());
+
+      status = LoadCodeObj(
+          move(code_obj), [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+            // Fails
+            EXPECT_FALSE(resp->ok());
+            EXPECT_EQ("Failed to create wasm object.",
+                      resp->status().message());
+            load_finished.store(true);
+          });
+      EXPECT_TRUE(status.ok());
+    }
+
+    WaitUntil([&]() { return load_finished.load(); });
+
+    status = RomaStop();
+    EXPECT_TRUE(status.ok());
+  }
+
+  // We now load the same WASM but with the amount of memory it requires, and it
+  // should work. Not that this requires restarting the service since this limit
+  // is an initialization limit for the JS engine.
+
+  {
+    Config config;
+    // This module was compiled with a memory requirement of 10MiB (160 pages -
+    // each page is 64KiB). When we set the limit to 160 pages, it should be
+    // able to properly build the WASM object.
+    config.max_wasm_memory_number_of_pages = 160;
+    config.number_of_workers = 1;
+
+    auto status = RomaInit(config);
+    EXPECT_TRUE(status.ok());
+
+    auto wasm_bin = WasmTestingUtils::LoadWasmFile(
+        "./cc/roma/testing/cpp_wasm_allocate_memory/allocate_memory.wasm");
+
+    atomic<bool> load_finished = false;
+    {
+      auto code_obj = make_unique<CodeObject>();
+      code_obj->id = "foo";
+      code_obj->version_num = 1;
+      code_obj->js = "";
+      code_obj->wasm.assign(reinterpret_cast<char*>(wasm_bin.data()),
+                            wasm_bin.size());
+
+      status = LoadCodeObj(
+          move(code_obj), [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+            // Loading works
+            EXPECT_TRUE(resp->ok());
+            load_finished.store(true);
+          });
+      EXPECT_TRUE(status.ok());
+    }
+
+    WaitUntil([&]() { return load_finished.load(); });
+
+    status = RomaStop();
+    EXPECT_TRUE(status.ok());
+  }
+}
+
+TEST(SandboxedServiceTest, ShouldGetMetricsInResponse) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(
+        move(execution_obj),
+        [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+          EXPECT_TRUE(resp->ok());
+          if (resp->ok()) {
+            auto& code_resp = **resp;
+            result = code_resp.resp;
+          }
+
+          EXPECT_GT(resp->value().metrics["roma.metric.sandboxed_code_run_ns"],
+                    0);
+          EXPECT_GT(resp->value().metrics["roma.metric.code_run_ns"], 0);
+
+          std::cout
+              << "Metrics:\n roma.metric.sandboxed_code_run_ns:"
+              << resp->value().metrics["roma.metric.sandboxed_code_run_ns"]
+              << "\n roma.metric.code_run_ns:"
+              << resp->value().metrics["roma.metric.code_run_ns"] << std::endl;
+
+          execute_finished.store(true);
+        });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("Hello world! \"Foobar\"")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
 }  // namespace google::scp::roma::test

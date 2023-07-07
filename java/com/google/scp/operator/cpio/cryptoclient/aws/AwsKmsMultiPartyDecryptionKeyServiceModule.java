@@ -34,6 +34,7 @@ import com.google.scp.operator.cpio.cryptoclient.MultiPartyDecryptionKeyServiceI
 import com.google.scp.operator.cpio.cryptoclient.MultiPartyDecryptionKeyServiceImpl.CoordinatorAEncryptionKeyFetchingService;
 import com.google.scp.operator.cpio.cryptoclient.MultiPartyDecryptionKeyServiceImpl.CoordinatorBEncryptionKeyFetchingService;
 import com.google.scp.operator.cpio.cryptoclient.aws.Annotations.KmsEndpointOverride;
+import com.google.scp.shared.api.util.HttpClientWrapper;
 import com.google.scp.shared.aws.credsprovider.AwsSessionCredentialsProvider;
 import com.google.scp.shared.clients.configclient.aws.AwsClientConfigModule.AwsCredentialAccessKey;
 import com.google.scp.shared.clients.configclient.aws.AwsClientConfigModule.AwsCredentialSecretKey;
@@ -42,7 +43,6 @@ import com.google.scp.shared.crypto.tink.aws.AwsTinkUtil;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.util.Optional;
-import org.apache.http.client.HttpClient;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -66,7 +66,7 @@ public final class AwsKmsMultiPartyDecryptionKeyServiceModule extends Decryption
   @CoordinatorAEncryptionKeyFetchingService
   @Singleton
   public EncryptionKeyFetchingService provideCoordinatorAEncryptionKeyFetchingService(
-      @CoordinatorAHttpClient HttpClient httpClient,
+      @CoordinatorAHttpClient HttpClientWrapper httpClient,
       @CoordinatorAEncryptionKeyServiceBaseUrl String coordinatorAEncryptionKeyServiceBaseUrl) {
     return new HttpEncryptionKeyFetchingService(
         httpClient, coordinatorAEncryptionKeyServiceBaseUrl);
@@ -76,7 +76,7 @@ public final class AwsKmsMultiPartyDecryptionKeyServiceModule extends Decryption
   @CoordinatorBEncryptionKeyFetchingService
   @Singleton
   public EncryptionKeyFetchingService provideCoordinatorBEncryptionKeyFetchingService(
-      @CoordinatorBHttpClient HttpClient httpClient,
+      @CoordinatorBHttpClient HttpClientWrapper httpClient,
       @CoordinatorBEncryptionKeyServiceBaseUrl String coordinatorBEncryptionKeyServiceBaseUrl) {
     return new HttpEncryptionKeyFetchingService(
         httpClient, coordinatorBEncryptionKeyServiceBaseUrl);

@@ -20,12 +20,18 @@ java_test(
     deps = [
         "//java/com/google/scp/operator/cpio/configclient:aws",
         "//java/com/google/scp/operator/cpio/lifecycleclient:aws",
+        "//java/com/google/scp/operator/shared/dao/asginstancesdb/aws",
+        "//java/com/google/scp/operator/shared/testing",
         "//java/com/google/scp/shared/clients/configclient:aws",
+        "//java/com/google/scp/shared/proto",
         "//java/external:aws_auto_scaling",
+        "//java/external:aws_dynamodb",
+        "//java/external:aws_dynamodb_enhanced",
         "//java/external:google_truth",
         "//java/external:google_truth8",
         "//java/external:guice",
         "//java/external:guice-testlib",
         "//java/external:mockito",
+        "//operator/protos/shared/backend/asginstance:java_proto",
     ],
 )

@@ -99,17 +99,23 @@ ExecutionResultOr<string> Worker::RunCode(
     auto response_or = js_engine_->CompileAndRunJs(code, handler_name, input,
                                                    metadata, context);
     RETURN_IF_FAILURE(response_or.result());
+    if (*action_or == kRequestActionLoad &&
+        response_or->compilation_context.has_context) {
+      compilation_contexts_.Set(*code_version_or,
+                                response_or->compilation_context);
+    }
 
-    compilation_contexts_.Set(*code_version_or,
-                              response_or->compilation_context);
     return response_or->response;
   } else if (*request_type_or == kRequestTypeWasm) {
     auto response_or = js_engine_->CompileAndRunWasm(code, handler_name, input,
                                                      metadata, context);
     RETURN_IF_FAILURE(response_or.result());
 
-    compilation_contexts_.Set(*code_version_or,
-                              response_or->compilation_context);
+    if (*action_or == kRequestActionLoad &&
+        response_or->compilation_context.has_context) {
+      compilation_contexts_.Set(*code_version_or,
+                                response_or->compilation_context);
+    }
     return response_or->response;
   }
 

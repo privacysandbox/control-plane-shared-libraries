@@ -38,7 +38,6 @@ using google::cmrt::sdk::nosql_database_service::v1::ItemAttribute;
 using google::cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest;
 using google::protobuf::Any;
 using google::protobuf::util::TimeUtil;
-using google::scp::core::AsyncContext;
 using google::scp::core::ExecutionResult;
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;

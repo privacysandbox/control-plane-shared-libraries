@@ -75,3 +75,10 @@ module "worker_scale_in_hook_parameter" {
   legacy_parameter_name = "scale_in_hook"
   parameter_value       = aws_autoscaling_lifecycle_hook.worker_scale_in_hook.name
 }
+
+module "worker_autoscaling_group_parameter" {
+  source          = "../parameters"
+  environment     = var.environment
+  parameter_name  = "WORKER_AUTOSCALING_GROUP"
+  parameter_value = aws_autoscaling_group.worker_group.name
+}

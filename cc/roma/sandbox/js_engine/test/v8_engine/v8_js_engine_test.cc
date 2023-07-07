@@ -28,8 +28,8 @@
 
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT;
-using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_COMPILING_SCRIPT;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER;
+using google::scp::core::errors::SC_ROMA_V8_WORKER_CODE_COMPILE_FAILURE;
 using google::scp::core::test::AutoInitRunStop;
 using google::scp::core::test::ResultIs;
 using google::scp::roma::kDefaultExecutionTimeoutMs;
@@ -66,6 +66,102 @@ TEST_F(V8JsEngineTest, CanRunJsCode) {
   EXPECT_EQ(response_string, "\"Hello World! vec input 1 vec input 2\"");
 }
 
+TEST_F(V8JsEngineTest, CanRunAsyncJsCodeReturningPromiseExplicitly) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  auto js_code = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+
+      function resolveAfterOneSecond() {
+        return new Promise((resolve) => {
+          sleep(1000);
+          resolve("some cool string");
+        });
+      }
+
+      function Handler() {
+          return resolveAfterOneSecond();
+      }
+    )JS_CODE";
+  auto response_or =
+      engine.CompileAndRunJs(js_code, "Handler", {} /*input*/, {} /*metadata*/);
+
+  EXPECT_SUCCESS(response_or.result());
+  auto response_string = response_or->response;
+  EXPECT_EQ(response_string, "\"some cool string\"");
+}
+
+TEST_F(V8JsEngineTest, CanRunAsyncJsCodeReturningPromiseImplicitly) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  auto js_code = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+
+      function resolveAfterOneSecond() {
+        return new Promise((resolve) => {
+          sleep(1000);
+          resolve("some cool string");
+        });
+      }
+
+      async function Handler() {
+          result = await resolveAfterOneSecond();
+          return result;
+      }
+    )JS_CODE";
+  auto response_or =
+      engine.CompileAndRunJs(js_code, "Handler", {} /*input*/, {} /*metadata*/);
+
+  EXPECT_SUCCESS(response_or.result());
+  auto response_string = response_or->response;
+  EXPECT_EQ(response_string, "\"some cool string\"");
+}
+
+TEST_F(V8JsEngineTest, CanHandlePromiseRejectionInAsyncJs) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  auto js_code = R"JS_CODE(
+      function sleep(milliseconds) {
+        const date = Date.now();
+        let currentDate = null;
+        do {
+          currentDate = Date.now();
+        } while (currentDate - date < milliseconds);
+      }
+
+      function resolveAfterOneSecond() {
+        return new Promise((resolve, reject) => {
+          sleep(1000);
+          reject("some cool string");
+        });
+      }
+
+      async function Handler() {
+          result = await resolveAfterOneSecond();
+          return result;
+      }
+    )JS_CODE";
+  auto response_or =
+      engine.CompileAndRunJs(js_code, "Handler", {} /*input*/, {} /*metadata*/);
+
+  EXPECT_FALSE(response_or.result().Successful());
+}
+
 TEST_F(V8JsEngineTest, CanHandleCompilationFailures) {
   V8JsEngine engine;
   AutoInitRunStop to_handle_engine(engine);
@@ -75,9 +171,41 @@ TEST_F(V8JsEngineTest, CanHandleCompilationFailures) {
   auto response_or =
       engine.CompileAndRunJs(js_code, "hello_js", input, {} /*metadata*/);
 
+  EXPECT_THAT(
+      response_or.result(),
+      ResultIs(FailureExecutionResult(SC_ROMA_V8_WORKER_CODE_COMPILE_FAILURE)));
+}
+
+TEST_F(V8JsEngineTest, CanRunCodeRequestWithJsonInput) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  auto js_code =
+      "function Handler(a, b) { "
+      "return (a[\"value\"] + b[\"value\"]); }";
+  vector<string> input = {"{\"value\":1}", "{\"value\":2}"};
+  auto response_or =
+      engine.CompileAndRunJs(js_code, "Handler", input, {} /*metadata*/);
+
+  EXPECT_SUCCESS(response_or.result());
+  auto response_string = response_or->response;
+  EXPECT_EQ(response_string, "3");
+}
+
+TEST_F(V8JsEngineTest, ShouldFailIfInputIsBadJsonInput) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  auto js_code =
+      "function Handler(a, b) { "
+      "return (a[\"value\"] + b[\"value\"]); }";
+  vector<string> input = {"value\":1}", "{\"value\":2}"};
+  auto response_or =
+      engine.CompileAndRunJs(js_code, "Handler", input, {} /*metadata*/);
+
   EXPECT_THAT(response_or.result(),
               ResultIs(FailureExecutionResult(
-                  SC_ROMA_V8_ENGINE_ERROR_COMPILING_SCRIPT)));
+                  SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT)));
 }
 
 TEST_F(V8JsEngineTest, ShouldSucceedWithEmptyResponseIfHandlerNameIsEmpty) {
@@ -271,6 +399,88 @@ TEST_F(V8JsEngineTest, CanTimeoutExecutionWithCustomTimeoutTag) {
     // the code executes successfully.
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
+  }
+}
+
+TEST_F(V8JsEngineTest, JsMixedGlobalWasmCompileRunExecute) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  // JS code mixed with global WebAssembly variables.
+  auto js_code = R"""(
+          let bytes = new Uint8Array([
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x07, 0x01,
+            0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x03, 0x02, 0x01, 0x00, 0x07,
+            0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, 0x0a, 0x09, 0x01,
+            0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b
+          ]);
+          let module = new WebAssembly.Module(bytes);
+          let instance = new WebAssembly.Instance(module);
+          function hello_js(a, b) {
+            return instance.exports.add(a, b);
+          }
+        )""";
+
+  {
+    auto response_or = engine.CompileAndRunJs(js_code, "hello_js", {}, {});
+    EXPECT_SUCCESS(response_or.result());
+  }
+
+  {
+    vector<string> input = {"1", "2"};
+    auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
+    EXPECT_SUCCESS(response_or.result());
+    auto response_string = response_or->response;
+    EXPECT_EQ(response_string, "3");
+  }
+
+  {
+    vector<string> input = {"1", "6"};
+    auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
+    EXPECT_SUCCESS(response_or.result());
+    auto response_string = response_or->response;
+    EXPECT_EQ(response_string, "7");
+  }
+}
+
+TEST_F(V8JsEngineTest, JsMixedLocalWasmCompileRunExecute) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  // JS code mixed with local WebAssembly variables.
+  auto js_code = R"""(
+          let bytes = new Uint8Array([
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x07, 0x01,
+            0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x03, 0x02, 0x01, 0x00, 0x07,
+            0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, 0x0a, 0x09, 0x01,
+            0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b
+          ]);
+          function hello_js(a, b) {
+            var module = new WebAssembly.Module(bytes);
+            var instance = new WebAssembly.Instance(module);
+            return instance.exports.add(a, b);
+          }
+        )""";
+
+  {
+    auto response_or = engine.CompileAndRunJs(js_code, "", {}, {});
+    EXPECT_SUCCESS(response_or.result());
+  }
+
+  {
+    vector<string> input = {"1", "2"};
+    auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
+    EXPECT_SUCCESS(response_or.result());
+    auto response_string = response_or->response;
+    EXPECT_EQ(response_string, "3");
+  }
+
+  {
+    vector<string> input = {"1", "6"};
+    auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
+    EXPECT_SUCCESS(response_or.result());
+    auto response_string = response_or->response;
+    EXPECT_EQ(response_string, "7");
   }
 }
 

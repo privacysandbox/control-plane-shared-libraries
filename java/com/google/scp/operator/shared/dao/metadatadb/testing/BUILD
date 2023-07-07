@@ -27,7 +27,7 @@ java_library(
     name = "fake_asg_instances_dao",
     srcs = ["FakeAsgInstancesDao.java"],
     deps = [
-        "//java/com/google/scp/operator/shared/dao/metadatadb/common",
+        "//java/com/google/scp/operator/shared/dao/asginstancesdb/common",
         "//operator/protos/shared/backend/asginstance:java_proto",
     ],
 )

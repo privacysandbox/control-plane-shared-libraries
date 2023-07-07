@@ -124,13 +124,15 @@ void AggregateMetric::MetricPushHandler(
   MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info_,
                                     metric_value, metric_tag);
 
+  auto correlation_id = core::common::Uuid::GenerateUuid();
   AsyncContext<PutMetricsRequest, PutMetricsResponse> record_metric_context(
       move(record_metric_request),
       [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& outcome) {
         if (!outcome.result.Successful()) {
           // TODO: Create an alert or reschedule
         }
-      });
+      },
+      correlation_id, correlation_id);
 
   auto execution_result = metric_client_->PutMetrics(record_metric_context);
   if (!execution_result.Successful()) {

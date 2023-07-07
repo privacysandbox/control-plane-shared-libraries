@@ -217,7 +217,8 @@ ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceResourceName(
       get_token_context(
           make_shared<GetSessionTokenRequest>(),
           bind(&AwsInstanceClientProvider::OnGetSessionTokenCallback, this,
-               get_resource_name_context, _1));
+               get_resource_name_context, _1),
+          get_resource_name_context);
   auto execution_result =
       auth_token_provider_->GetSessionToken(get_token_context);
   if (!execution_result.Successful()) {
@@ -260,7 +261,8 @@ void AwsInstanceClientProvider::OnGetSessionTokenCallback(
   AsyncContext<HttpRequest, HttpResponse> http_context(
       move(signed_request),
       bind(&AwsInstanceClientProvider::OnGetInstanceResourceNameCallback, this,
-           get_resource_name_context, _1));
+           get_resource_name_context, _1),
+      get_resource_name_context);
 
   auto execution_result = http1_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {

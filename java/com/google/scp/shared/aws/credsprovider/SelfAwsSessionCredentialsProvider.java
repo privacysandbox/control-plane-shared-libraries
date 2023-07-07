@@ -17,9 +17,11 @@
 package com.google.scp.shared.aws.credsprovider;
 
 import java.util.Optional;
+import javax.inject.Singleton;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.auth.StsGetSessionTokenCredentialsProvider;
 
 /**
  * AWS Session credentials provider which returns the current credentials if they are already
@@ -36,11 +38,11 @@ import software.amazon.awssdk.services.sts.StsClient;
  * do not have a session token and temporary credentials providers (e.g. instance profile
  * credentials) which have a session token and cannot be used to directly fetch new session tokens.
  */
-public final class SelfAwsSessionCredentialsProvider implements AwsSessionCredentialsProvider {
+@Singleton
+public final class SelfAwsSessionCredentialsProvider extends AwsSessionCredentialsProvider {
   /** Duration for which requested temporary credentials should be valid. */
   private static final int DURATION_SECONDS = 1000;
 
-  private final StsClient stsClient;
   private final AwsCredentialsProvider credentialsProvider;
 
   /**
@@ -50,13 +52,23 @@ public final class SelfAwsSessionCredentialsProvider implements AwsSessionCreden
    */
   public SelfAwsSessionCredentialsProvider(
       AwsCredentialsProvider processCredentialsProvider, StsClient stsClient) {
-    this.stsClient = stsClient;
+    super(
+        // This provider will fail if stsClient is already configured to use session credentials
+        // because session credentials cannot be used with getSessionToken.
+        StsGetSessionTokenCredentialsProvider.builder()
+            .stsClient(stsClient)
+            .refreshRequest(request -> request.durationSeconds(DURATION_SECONDS))
+            .build(),
+        () ->
+            stsClient
+                .getSessionToken(request -> request.durationSeconds(DURATION_SECONDS))
+                .credentials());
     this.credentialsProvider = processCredentialsProvider;
   }
 
   @Override
   public AwsSessionCredentials resolveCredentials() {
-    return resolveProcessCredentials().orElseGet(this::fetchNewSessionCredentials);
+    return resolveProcessCredentials().orElseGet(super::resolveCredentials);
   }
 
   /** Resolves current credentials and returns them if they are session credentials. */
@@ -67,17 +79,5 @@ public final class SelfAwsSessionCredentialsProvider implements AwsSessionCreden
       return Optional.of((AwsSessionCredentials) credentials);
     }
     return Optional.empty();
-  }
-
-  /**
-   * Fetches temporary credentials using STS. Will fail if stsClient is already configured to use
-   * session credentials because session credentials cannot be used with getSessionToken.
-   */
-  private AwsSessionCredentials fetchNewSessionCredentials() {
-    var credentials =
-        stsClient.getSessionToken(req -> req.durationSeconds(DURATION_SECONDS)).credentials();
-
-    return AwsSessionCredentials.create(
-        credentials.accessKeyId(), credentials.secretAccessKey(), credentials.sessionToken());
   }
 }

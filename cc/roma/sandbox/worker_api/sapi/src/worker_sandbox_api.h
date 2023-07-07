@@ -51,14 +51,31 @@ class WorkerSandboxApi : public core::ServiceInterface {
    * function calls through the sandbox.
    * @param native_js_function_names The names of the functions that should be
    * registered to be available in JS.
+   * @param max_worker_virtual_memory_mb The maximum amount of virtual memory in
+   * MB that the worker process is allowed to use.
+   * @param js_engine_initial_heap_size_mb The initial heap size in MB for the
+   * JS engine.
+   * @param js_engine_maximum_heap_size_mb The maximum heap size in MB for the
+   * JS engine.
+   * @param js_engine_max_wasm_memory_number_of_pages The maximum number of WASM
+   * pages. Each page is 64KiB. Max 65536 pages (4GiB).
    */
   WorkerSandboxApi(const worker::WorkerFactory::WorkerEngine& worker_engine,
                    bool require_preload, int native_js_function_comms_fd,
-                   const std::vector<std::string>& native_js_function_names) {
+                   const std::vector<std::string>& native_js_function_names,
+                   size_t max_worker_virtual_memory_mb,
+                   size_t js_engine_initial_heap_size_mb,
+                   size_t js_engine_maximum_heap_size_mb,
+                   size_t js_engine_max_wasm_memory_number_of_pages) {
     worker_engine_ = worker_engine;
     require_preload_ = require_preload;
     native_js_function_comms_fd_ = native_js_function_comms_fd;
     native_js_function_names_ = native_js_function_names;
+    max_worker_virtual_memory_mb_ = max_worker_virtual_memory_mb;
+    js_engine_initial_heap_size_mb_ = js_engine_initial_heap_size_mb;
+    js_engine_maximum_heap_size_mb_ = js_engine_maximum_heap_size_mb;
+    js_engine_max_wasm_memory_number_of_pages_ =
+        js_engine_max_wasm_memory_number_of_pages;
   }
 
   core::ExecutionResult Init() noexcept override;
@@ -85,6 +102,16 @@ class WorkerSandboxApi : public core::ServiceInterface {
    */
   class WorkerSapiSandbox : public WorkerWrapperSandbox {
    public:
+    explicit WorkerSapiSandbox(uint64_t rlimit_as_bytes = 0)
+        : rlimit_as_bytes_(rlimit_as_bytes) {}
+
+    // Modify the sandbox policy executor object
+    void ModifyExecutor(sandbox2::Executor* executor) override {
+      if (rlimit_as_bytes_ > 0) {
+        executor->limits()->set_rlimit_as(rlimit_as_bytes_);
+      }
+    }
+
     // Build a custom sandbox policy needed proper worker operation
     std::unique_ptr<sandbox2::Policy> ModifyPolicy(
         sandbox2::PolicyBuilder*) override {
@@ -102,13 +129,31 @@ class WorkerSandboxApi : public core::ServiceInterface {
           .AllowReadlink()
           .AllowMmap()
           .AllowFork()
-          .AllowSyscalls({__NR_tgkill, __NR_recvmsg, __NR_sendmsg, __NR_lseek,
-                          __NR_nanosleep, __NR_futex, __NR_close,
-                          __NR_sched_getaffinity, __NR_mprotect, __NR_clone3,
-                          __NR_rseq, __NR_set_robust_list, __NR_prctl,
-                          __NR_uname, __NR_pkey_alloc, __NR_madvise})
+          .AllowSyscall(__NR_tgkill)
+          .AllowSyscall(__NR_recvmsg)
+          .AllowSyscall(__NR_sendmsg)
+          .AllowSyscall(__NR_lseek)
+          .AllowSyscall(__NR_futex)
+          .AllowSyscall(__NR_close)
+          .AllowSyscall(__NR_nanosleep)
+          .AllowSyscall(__NR_sched_getaffinity)
+          .AllowSyscall(__NR_mprotect)
+          .AllowSyscall(__NR_clone3)
+          .AllowSyscall(__NR_rseq)
+          .AllowSyscall(__NR_set_robust_list)
+          .AllowSyscall(__NR_prctl)
+          .AllowSyscall(__NR_uname)
+          .AllowSyscall(__NR_pkey_alloc)
+          .AllowSyscall(__NR_madvise)
+          .AllowSyscall(__NR_ioctl)
+          .AllowSyscall(__NR_prlimit64)
+          .DisableNamespaces()
+          .AllowDynamicStartup()
           .BuildOrDie();
     }
+
+   private:
+    uint64_t rlimit_as_bytes_ = 0;
   };
 
   std::unique_ptr<WorkerSapiSandbox> worker_sapi_sandbox_;
@@ -118,5 +163,9 @@ class WorkerSandboxApi : public core::ServiceInterface {
   int native_js_function_comms_fd_;
   std::vector<std::string> native_js_function_names_;
   std::unique_ptr<sapi::v::Fd> sapi_native_js_function_comms_fd_;
+  size_t max_worker_virtual_memory_mb_;
+  size_t js_engine_initial_heap_size_mb_;
+  size_t js_engine_maximum_heap_size_mb_;
+  size_t js_engine_max_wasm_memory_number_of_pages_;
 };
 }  // namespace google::scp::roma::sandbox::worker_api

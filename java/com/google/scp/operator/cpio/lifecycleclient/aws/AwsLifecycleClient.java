@@ -17,9 +17,17 @@
 package com.google.scp.operator.cpio.lifecycleclient.aws;
 
 import com.google.scp.operator.cpio.lifecycleclient.LifecycleClient;
+import com.google.scp.operator.protos.shared.backend.asginstance.AsgInstanceProto.AsgInstance;
+import com.google.scp.operator.protos.shared.backend.asginstance.InstanceStatusProto.InstanceStatus;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb.AsgInstancesDbDynamoTableName;
+import com.google.scp.operator.shared.dao.asginstancesdb.common.AsgInstancesDao.AsgInstanceDaoException;
 import com.google.scp.shared.clients.configclient.ParameterClient;
 import com.google.scp.shared.clients.configclient.ParameterClient.ParameterClientException;
 import com.google.scp.shared.clients.configclient.model.WorkerParameter;
+import com.google.scp.shared.proto.ProtoUtil;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.logging.Logger;
 import javax.inject.Inject;
@@ -37,12 +45,23 @@ public final class AwsLifecycleClient implements LifecycleClient {
   private static final Logger logger = Logger.getLogger(AwsLifecycleClient.class.getName());
   private final AutoScalingClient autoScalingClient;
   private final ParameterClient parameterClient;
+  private final DynamoAsgInstancesDb dynamoAsgInstancesDb;
+  private final Clock clock;
+  private final Boolean useAsgInstancesTable;
 
   /** Creates a new instance of the {@code AwsLifecycleClient} class. */
   @Inject
-  AwsLifecycleClient(AutoScalingClient autoScalingClient, ParameterClient parameterClient) {
+  AwsLifecycleClient(
+      AutoScalingClient autoScalingClient,
+      ParameterClient parameterClient,
+      DynamoAsgInstancesDb dynamoAsgInstancesDb,
+      Clock clock,
+      @AsgInstancesDbDynamoTableName String asgInstancesTableName) {
     this.autoScalingClient = autoScalingClient;
     this.parameterClient = parameterClient;
+    this.dynamoAsgInstancesDb = dynamoAsgInstancesDb;
+    this.clock = clock;
+    this.useAsgInstancesTable = !asgInstancesTableName.isEmpty();
   }
 
   @Override
@@ -75,35 +94,71 @@ public final class AwsLifecycleClient implements LifecycleClient {
     try {
       String instanceId = EC2MetadataUtils.getInstanceId();
 
-      DescribeAutoScalingInstancesRequest request =
-          DescribeAutoScalingInstancesRequest.builder().instanceIds(instanceId).build();
-      DescribeAutoScalingInstancesResponse response =
-          autoScalingClient.describeAutoScalingInstances(request);
-      if (response.autoScalingInstances().isEmpty()) {
-        return false;
+      if (useAsgInstancesTable) {
+        return handleLifecycleActionUsingDb(instanceId, scaleInLifecycleHook.get());
+      } else {
+        return handleLifecycleActionUsingApi(instanceId, scaleInLifecycleHook.get());
       }
-      String lifecycleState = response.autoScalingInstances().get(0).lifecycleState();
-      String autoScalingGroup = response.autoScalingInstances().get(0).autoScalingGroupName();
-
-      // TODO : If lifecycle is in terminating,  wait and check if it goes into waiting state
-      if (lifecycleState.equals(LifecycleState.TERMINATING_WAIT.toString())) {
-        CompleteLifecycleActionRequest lifecycleRequest =
-            CompleteLifecycleActionRequest.builder()
-                .autoScalingGroupName(autoScalingGroup)
-                .lifecycleActionResult("CONTINUE")
-                .instanceId(instanceId)
-                .lifecycleHookName(scaleInLifecycleHook.get())
-                .build();
-        autoScalingClient.completeLifecycleAction(lifecycleRequest);
-        return true;
-      }
-
-      // Scale-in Lifecycle hook was already completed, no-op and return true for scale-in action.
-      if (lifecycleState.equals(LifecycleState.TERMINATING_PROCEED.toString())) {
-        return true;
-      }
-    } catch (SdkException exception) {
+    } catch (SdkException | AsgInstanceDaoException | ParameterClientException exception) {
       throw new LifecycleClientException(exception);
+    }
+  }
+
+  private void completeLifecycleAction(
+      String autoScalingGroup, String instanceId, String scaleInLifecycleHook) {
+    CompleteLifecycleActionRequest lifecycleRequest =
+        CompleteLifecycleActionRequest.builder()
+            .autoScalingGroupName(autoScalingGroup)
+            .lifecycleActionResult("CONTINUE")
+            .instanceId(instanceId)
+            .lifecycleHookName(scaleInLifecycleHook)
+            .build();
+    autoScalingClient.completeLifecycleAction(lifecycleRequest);
+  }
+
+  private boolean handleLifecycleActionUsingDb(String instanceId, String scaleInLifecycleHook)
+      throws ParameterClientException, AsgInstanceDaoException {
+    Optional<String> autoscalingGroup =
+        parameterClient.getParameter(WorkerParameter.WORKER_AUTOSCALING_GROUP.name());
+    if (autoscalingGroup.isEmpty()) {
+      return false;
+    }
+    Optional<AsgInstance> asgInstance = dynamoAsgInstancesDb.getAsgInstance(instanceId);
+    if (asgInstance.isPresent()) {
+      logger.info("Found asg instance record in the AsgInstances table: " + asgInstance.get());
+      if (asgInstance.get().getStatus().equals(InstanceStatus.TERMINATING_WAIT)) {
+        completeLifecycleAction(autoscalingGroup.get(), instanceId, scaleInLifecycleHook);
+        AsgInstance updatedAsgInstance =
+            AsgInstance.newBuilder(asgInstance.get())
+                .setTerminationTime(ProtoUtil.toProtoTimestamp((Instant.now(clock))))
+                .setStatus(InstanceStatus.TERMINATED)
+                .build();
+        dynamoAsgInstancesDb.updateAsgInstance(updatedAsgInstance);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private boolean handleLifecycleActionUsingApi(String instanceId, String scaleInLifecycleHook) {
+    DescribeAutoScalingInstancesRequest request =
+        DescribeAutoScalingInstancesRequest.builder().instanceIds(instanceId).build();
+    DescribeAutoScalingInstancesResponse response =
+        autoScalingClient.describeAutoScalingInstances(request);
+    if (response.autoScalingInstances().isEmpty()) {
+      return false;
+    }
+    String lifecycleState = response.autoScalingInstances().get(0).lifecycleState();
+    String autoScalingGroup = response.autoScalingInstances().get(0).autoScalingGroupName();
+
+    if (lifecycleState.equals(LifecycleState.TERMINATING_WAIT.toString())) {
+      completeLifecycleAction(autoScalingGroup, instanceId, scaleInLifecycleHook);
+      return true;
+    }
+
+    // Scale-in Lifecycle hook was already completed, no-op and return true for scale-in action.
+    if (lifecycleState.equals(LifecycleState.TERMINATING_PROCEED.toString())) {
+      return true;
     }
     return false;
   }

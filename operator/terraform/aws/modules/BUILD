@@ -20,6 +20,7 @@ pkg_filegroup(
     name = "modules_pkg",
     srcs = [
         "//operator/terraform/aws/modules/alarmsnstopic",
+        "//operator/terraform/aws/modules/asginstancesdb",
         "//operator/terraform/aws/modules/autoscaling",
         "//operator/terraform/aws/modules/bazel",
         "//operator/terraform/aws/modules/frontend",

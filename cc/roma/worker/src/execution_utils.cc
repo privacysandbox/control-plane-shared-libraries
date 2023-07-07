@@ -34,7 +34,6 @@ using google::scp::core::StatusCode;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_BAD_HANDLER_NAME;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_CODE_COMPILE_FAILURE;
-using google::scp::core::errors::SC_ROMA_V8_WORKER_HANDLER_INVALID_FUNCTION;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_SCRIPT_RUN_FAILURE;
 using google::scp::roma::common::RomaString;
 using google::scp::roma::common::RomaVector;
@@ -42,10 +41,13 @@ using google::scp::roma::wasm::RomaWasmListOfStringRepresentation;
 using google::scp::roma::wasm::RomaWasmStringRepresentation;
 using google::scp::roma::wasm::WasmDeserializer;
 using google::scp::roma::wasm::WasmSerializer;
+using std::shared_ptr;
 using std::string;
 using std::vector;
+
 using v8::Array;
 using v8::Context;
+using v8::External;
 using v8::Function;
 using v8::FunctionCallback;
 using v8::FunctionCallbackInfo;
@@ -75,6 +77,60 @@ namespace google::scp::roma::worker {
 static constexpr char kWasmMemory[] = "memory";
 static constexpr char kWasiSnapshotPreview[] = "wasi_snapshot_preview1";
 static constexpr char kWasiProcExitFunctionName[] = "proc_exit";
+
+void ExecutionUtils::GlobalV8FunctionCallback(
+    const FunctionCallbackInfo<Value>& info) {
+  auto isolate = info.GetIsolate();
+  Isolate::Scope isolate_scope(isolate);
+  HandleScope handle_scope(isolate);
+
+  if (info.Data().IsEmpty() || !info.Data()->IsExternal()) {
+    isolate->ThrowError("Unexpected data in global callback");
+    return;
+  }
+
+  // Get the user-provided function
+  Local<External> data_object = Local<External>::Cast(info.Data());
+  auto user_function =
+      reinterpret_cast<FunctionBindingObjectBase*>(data_object->Value());
+
+  if (user_function->Signature != FunctionBindingObjectBase::KnownSignature) {
+    // This signals a bad cast. The pointer we got is not really a
+    // FunctionBindingObjectBase
+    isolate->ThrowError("Unexpected function in global callback");
+    return;
+  }
+
+  user_function->InvokeInternalHandler(info);
+}
+
+void ExecutionUtils::GetV8Context(
+    Isolate* isolate,
+    const vector<shared_ptr<FunctionBindingObjectBase>>& function_bindings,
+    Local<Context>& context) noexcept {
+  // Create a global object template
+  Local<ObjectTemplate> global_object_template = ObjectTemplate::New(isolate);
+  // Add the global function bindings
+  for (auto& func : function_bindings) {
+    auto function_name =
+        TypeConverter<string>::ToV8(isolate, func->GetFunctionName())
+            .As<String>();
+
+    // Allow retrieving the user-provided function from the FunctionCallbackInfo
+    // when the C++ callback is invoked so that it can be called.
+    Local<External> user_provided_function =
+        External::New(isolate, reinterpret_cast<void*>(&*func));
+    auto function_template = v8::FunctionTemplate::New(
+        isolate, &ExecutionUtils::GlobalV8FunctionCallback,
+        user_provided_function);
+
+    // set the global function
+    global_object_template->Set(function_name, function_template);
+  }
+
+  // Create a new context.
+  context = Context::New(isolate, NULL, global_object_template);
+}
 
 Local<Value> ExecutionUtils::GetWasmMemoryObject(Isolate* isolate,
                                                  Local<Context>& context) {
@@ -131,62 +187,6 @@ string ExecutionUtils::DescribeError(Isolate* isolate,
   }
 
   return ExecutionUtils::ExtractMessage(isolate, message);
-}
-
-ExecutionResult ExecutionUtils::CompileRunJS(
-    const RomaString& js, RomaString& err_msg,
-    Local<UnboundScript>* unbound_script) noexcept {
-  auto isolate = Isolate::GetCurrent();
-  TryCatch try_catch(isolate);
-  Local<Context> context(isolate->GetCurrentContext());
-
-  auto str = string(js.c_str(), js.size());
-  Local<String> js_source =
-      TypeConverter<string>::ToV8(isolate, str).As<String>();
-  Local<Script> script;
-  if (!Script::Compile(context, js_source).ToLocal(&script)) {
-    ReportException(&try_catch, err_msg);
-    return FailureExecutionResult(SC_ROMA_V8_WORKER_CODE_COMPILE_FAILURE);
-  }
-
-  if (unbound_script) {
-    *unbound_script = script->GetUnboundScript();
-  }
-
-  Local<Value> script_result;
-  if (!script->Run(context).ToLocal(&script_result)) {
-    ReportException(&try_catch, err_msg);
-    return FailureExecutionResult(SC_ROMA_V8_WORKER_SCRIPT_RUN_FAILURE);
-  }
-
-  return SuccessExecutionResult();
-}
-
-ExecutionResult ExecutionUtils::GetJsHandler(const RomaString& handler_name,
-                                             Local<Value>& handler,
-                                             RomaString& err_msg) noexcept {
-  if (handler_name.empty()) {
-    return FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_HANDLER_NAME);
-  }
-  auto isolate = Isolate::GetCurrent();
-  TryCatch try_catch(isolate);
-  Local<Context> context(isolate->GetCurrentContext());
-
-  // Fetch out the handler name from code object.
-  auto str = string(handler_name.c_str(), handler_name.size());
-  Local<String> local_name =
-      TypeConverter<string>::ToV8(isolate, str).As<String>();
-
-  // If there is no handler function, or if it is not a function,
-  // bail out
-  if (!context->Global()->Get(context, local_name).ToLocal(&handler) ||
-      !handler->IsFunction()) {
-    auto exception_result = ReportException(&try_catch, err_msg);
-    return GetExecutionResult(exception_result,
-                              SC_ROMA_V8_WORKER_HANDLER_INVALID_FUNCTION);
-  }
-
-  return SuccessExecutionResult();
 }
 
 /**

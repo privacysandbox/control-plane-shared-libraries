@@ -28,9 +28,27 @@ static constexpr char kCodeVersion[] = "CodeVersion";
 static constexpr char kRequestAction[] = "RequestAction";
 static constexpr char kRequestActionLoad[] = "Load";
 static constexpr char kRequestActionExecute[] = "Execute";
+static constexpr char kJsEngineOneTimeSetupWasmPagesKey[] =
+    "MaxWasmNumberOfPages";
 
 static constexpr char kFuctionBindingMetadataFunctionName[] =
     "roma.js_function_binding_name";
 
+static constexpr char kMetadataRomaRequestId[] = "roma.request_id";
+
 static constexpr int kCodeVersionCacheSize = 5;
+
+static constexpr char kWasmMemPagesV8PlatformFlag[] = "--wasm_max_mem_pages=";
+static constexpr size_t kMaxNumberOfWasm32BitMemPages = 65536;
+
+// Metrics information constants
+
+// Label for time taken to run code in the sandbox, called from outside the
+// sandbox, meaning this includes serialization overhead. In nanoseconds.
+static constexpr char kExecutionMetricSandboxedJsEngineCallNs[] =
+    "roma.metric.sandboxed_code_run_ns";
+// Label for time taken to run code inside of the sandbox, meaning we skip the
+// overhead for serializing data. In nanoseconds.
+static constexpr char kExecutionMetricJsEngineCallNs[] =
+    "roma.metric.code_run_ns";
 }  // namespace google::scp::roma::sandbox::constants

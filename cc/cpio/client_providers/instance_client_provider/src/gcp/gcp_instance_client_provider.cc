@@ -249,8 +249,8 @@ GcpInstanceClientProvider::MakeHttpRequestsForInstanceResourceName(
   AsyncContext<HttpRequest, HttpResponse> http_context(
       move(http_request),
       bind(&GcpInstanceClientProvider::OnGetInstanceResourceName, this,
-           get_resource_name_context, _1, instance_resource_name_tracker,
-           type));
+           get_resource_name_context, _1, instance_resource_name_tracker, type),
+      get_resource_name_context);
 
   auto execution_result = http1_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
@@ -338,7 +338,8 @@ ExecutionResult GcpInstanceClientProvider::GetTagsByResourceName(
       get_token_context(
           make_shared<GetSessionTokenRequest>(),
           bind(&GcpInstanceClientProvider::OnGetSessionTokenForTagsCallback,
-               this, get_tags_context, _1));
+               this, get_tags_context, _1),
+          get_tags_context);
 
   auto execution_result =
       auth_token_provider_->GetSessionToken(get_token_context);
@@ -389,7 +390,8 @@ void GcpInstanceClientProvider::OnGetSessionTokenForTagsCallback(
   AsyncContext<HttpRequest, HttpResponse> http_context(
       move(signed_request),
       bind(&GcpInstanceClientProvider::OnGetTagsByResourceNameCallback, this,
-           get_tags_context, _1));
+           get_tags_context, _1),
+      get_tags_context);
 
   auto execution_result = http2_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {
@@ -537,7 +539,8 @@ ExecutionResult GcpInstanceClientProvider::GetInstanceDetailsByResourceName(
       get_token_context(make_shared<GetSessionTokenRequest>(),
                         bind(&GcpInstanceClientProvider::
                                  OnGetSessionTokenForInstanceDetailsCallback,
-                             this, get_instance_details_context, _1));
+                             this, get_instance_details_context, _1),
+                        get_instance_details_context);
 
   execution_result = auth_token_provider_->GetSessionToken(get_token_context);
   if (!execution_result.Successful()) {
@@ -589,7 +592,8 @@ void GcpInstanceClientProvider::OnGetSessionTokenForInstanceDetailsCallback(
   AsyncContext<HttpRequest, HttpResponse> http_context(
       move(signed_request),
       bind(&GcpInstanceClientProvider::OnGetInstanceDetailsCallback, this,
-           get_instance_details_context, _1));
+           get_instance_details_context, _1),
+      get_instance_details_context);
 
   auto execution_result = http2_client_->PerformRequest(http_context);
   if (!execution_result.Successful()) {

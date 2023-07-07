@@ -17,6 +17,12 @@
 package com.google.scp.operator.autoscaling.tasks.aws;
 
 import com.google.inject.Inject;
+import com.google.scp.operator.protos.shared.backend.asginstance.AsgInstanceProto.AsgInstance;
+import com.google.scp.operator.protos.shared.backend.asginstance.InstanceStatusProto.InstanceStatus;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb;
+import com.google.scp.shared.proto.ProtoUtil;
+import java.time.Clock;
+import java.time.Instant;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,16 +38,23 @@ public class ManageTerminatedInstanceTask {
 
   private static final Logger logger = LoggerFactory.getLogger(ManageTerminatedInstanceTask.class);
   private final AutoScalingClient autoScalingClient;
+  private final DynamoAsgInstancesDb dynamoAsgInstancesDb;
+  private final Clock clock;
 
   @Inject
-  public ManageTerminatedInstanceTask(AutoScalingClient autoScalingClient) {
+  public ManageTerminatedInstanceTask(
+      AutoScalingClient autoScalingClient, DynamoAsgInstancesDb dynamoAsgInstancesDb, Clock clock) {
     this.autoScalingClient = autoScalingClient;
+    this.dynamoAsgInstancesDb = dynamoAsgInstancesDb;
+    this.clock = clock;
   }
 
   /**
    * Checks the terminating EC2 Instance's lifecycle and health status. If the lifecycle state is
-   * Terminating:Wait and health status is UNHEALTHY, complete the lifecycle action and continue
-   * with instance termination and return true. Otherwise, return false.
+   * Terminating:Wait and health status is UNHEALTHY, complete the lifecycle action to continue with
+   * instance termination and return true. If the instance is in Terminating:Wait state and health
+   * status is Healthy, insert a record into the AsgInstances table to let the worker handle the
+   * instance termination and return true. Otherwise, return false.
    */
   public Boolean manageTerminatedInstance(
       String asgName, String instanceId, String lifecycleHookName, String lifecycleActionToken) {
@@ -51,11 +64,30 @@ public class ManageTerminatedInstanceTask {
             "EC2 Instance %s has lifecycle state %s and health status %s.",
             instanceId, instanceDetails.lifecycleState(), instanceDetails.healthStatus()));
 
-    if (instanceDetails.healthStatus().equals("UNHEALTHY")
-        && instanceDetails.lifecycleState().equals(LifecycleState.TERMINATING_WAIT.toString())) {
-      logger.info("Completing lifecycle action.");
-      completeLifecycleAction(asgName, instanceId, lifecycleHookName, lifecycleActionToken);
-      return true;
+    if (instanceDetails.lifecycleState().equals(LifecycleState.TERMINATING_WAIT.toString())) {
+      if (instanceDetails.healthStatus().equals("UNHEALTHY")) {
+        logger.info(String.format("Completing lifecycle action for instance: %s.", instanceId));
+        completeLifecycleAction(asgName, instanceId, lifecycleHookName, lifecycleActionToken);
+        return true;
+      } else {
+        logger.info(
+            String.format(
+                "Inserting instance %s to the AsgInstances table to be handled by the worker.",
+                instanceId));
+        try {
+          Instant currentTime = Instant.now(clock);
+          AsgInstance asgInstance =
+              AsgInstance.newBuilder()
+                  .setInstanceName(instanceId)
+                  .setStatus(InstanceStatus.TERMINATING_WAIT)
+                  .setRequestTime(ProtoUtil.toProtoTimestamp(currentTime))
+                  .build();
+          dynamoAsgInstancesDb.upsertAsgInstance(asgInstance);
+          return true;
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      }
     }
     logger.info("Lifecycle action completion skipped.");
     return false;

@@ -33,10 +33,10 @@ import com.google.scp.operator.cpio.cryptoclient.HttpEncryptionKeyFetchingServic
 import com.google.scp.operator.cpio.cryptoclient.MultiPartyDecryptionKeyServiceImpl;
 import com.google.scp.operator.cpio.cryptoclient.MultiPartyDecryptionKeyServiceImpl.CoordinatorAEncryptionKeyFetchingService;
 import com.google.scp.operator.cpio.cryptoclient.MultiPartyDecryptionKeyServiceImpl.CoordinatorBEncryptionKeyFetchingService;
+import com.google.scp.shared.api.util.HttpClientWrapper;
 import com.google.scp.shared.aws.credsprovider.AwsSessionCredentialsProvider;
 import com.google.scp.shared.crypto.tink.CloudAeadSelector;
 import com.google.scp.shared.crypto.tink.aws.AwsTinkUtil;
-import org.apache.http.client.HttpClient;
 
 /**
  * Guice module for implementation of {@link DecryptionKeyService}.
@@ -56,7 +56,7 @@ public final class AwsEnclaveMultiPartyDecryptionKeyServiceModule
   @CoordinatorAEncryptionKeyFetchingService
   @Singleton
   public EncryptionKeyFetchingService provideCoordinatorAEncryptionKeyFetchingService(
-      @CoordinatorAHttpClient HttpClient httpClient,
+      @CoordinatorAHttpClient HttpClientWrapper httpClient,
       @CoordinatorAEncryptionKeyServiceBaseUrl String coordinatorAEncryptionKeyServiceBaseUrl) {
     return new HttpEncryptionKeyFetchingService(
         httpClient, coordinatorAEncryptionKeyServiceBaseUrl);
@@ -66,7 +66,7 @@ public final class AwsEnclaveMultiPartyDecryptionKeyServiceModule
   @CoordinatorBEncryptionKeyFetchingService
   @Singleton
   public EncryptionKeyFetchingService provideCoordinatorBEncryptionKeyFetchingService(
-      @CoordinatorBHttpClient HttpClient httpClient,
+      @CoordinatorBHttpClient HttpClientWrapper httpClient,
       @CoordinatorBEncryptionKeyServiceBaseUrl String coordinatorBEncryptionKeyServiceBaseUrl) {
     return new HttpEncryptionKeyFetchingService(
         httpClient, coordinatorBEncryptionKeyServiceBaseUrl);

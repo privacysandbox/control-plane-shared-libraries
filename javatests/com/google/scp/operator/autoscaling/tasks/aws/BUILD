@@ -46,6 +46,9 @@ java_test(
     ],
     deps = [
         "//java/com/google/scp/operator/autoscaling/tasks/aws:AutoScalingTasks",
+        "//java/com/google/scp/operator/shared/dao/asginstancesdb/aws",
+        "//java/com/google/scp/operator/shared/dao/asginstancesdb/common",
+        "//java/com/google/scp/operator/shared/testing",
         "//java/external:aws_auto_scaling",
         "//java/external:mockito",
     ],

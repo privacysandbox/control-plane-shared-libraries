@@ -34,8 +34,7 @@ coordinator_a_assume_role_parameter = "arn:aws:iam::<CoordinatorAAccount>:role/<
 # Remove coordinator_b_assume_role_parameter if using single coordinator
 coordinator_b_assume_role_parameter = "arn:aws:iam::<CoordinatorBAccount>:role/<CoordinatorBRole>"
 
-initial_capacity_ec2_instances = 2
-min_capacity_ec2_instances     = "1"
-max_capacity_ec2_instances     = "20"
+min_capacity_ec2_instances = "1"
+max_capacity_ec2_instances = "20"
 
 alarm_notification_email = "noreply@example.com"

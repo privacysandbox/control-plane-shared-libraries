@@ -66,8 +66,11 @@ java_library(
     ],
     deps = [
         "//java/com/google/scp/operator/autoscaling/tasks/aws:AutoScalingTasks",
+        "//java/com/google/scp/operator/shared/dao/asginstancesdb/aws",
         "//java/external:aws_auth",
         "//java/external:aws_auto_scaling",
+        "//java/external:aws_dynamodb",
+        "//java/external:aws_dynamodb_enhanced",
         "//java/external:aws_http_client_spi",
         "//java/external:aws_lambda_java_core",
         "//java/external:aws_lambda_java_events",

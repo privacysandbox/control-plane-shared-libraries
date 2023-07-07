@@ -41,9 +41,10 @@ namespace google::scp::core {
 // Example 2:
 // RETURN_IF_FAILURE(foo());
 // // If we reach this point, foo() was Successful.
-#define RETURN_IF_FAILURE(execution_result)                            \
-  if (ExecutionResult __res = execution_result; !__res.Successful()) { \
-    return __res;                                                      \
+#define RETURN_IF_FAILURE(execution_result)                          \
+  if (::google::scp::core::ExecutionResult __res = execution_result; \
+      !__res.Successful()) {                                         \
+    return __res;                                                    \
   }
 
 // Same as above but logs an error before returning upon failure.
@@ -65,10 +66,11 @@ namespace google::scp::core {
 #define RETURN_AND_LOG_IF_FAILURE_CONTEXT(execution_result, ...) \
   __RETURN_IF_FAILURE_LOG(execution_result, SCP_ERROR_CONTEXT, __VA_ARGS__)
 
-#define __RETURN_IF_FAILURE_LOG(execution_result, error_level, ...)    \
-  if (ExecutionResult __res = execution_result; !__res.Successful()) { \
-    error_level(__VA_ARGS__);                                          \
-    return __res;                                                      \
+#define __RETURN_IF_FAILURE_LOG(execution_result, error_level, ...)  \
+  if (::google::scp::core::ExecutionResult __res = execution_result; \
+      !__res.Successful()) {                                         \
+    error_level(__VA_ARGS__);                                        \
+    return __res;                                                    \
   }
 
 // Macro similar to RETURN_IF_FAILURE but for ExecutionResultOr.

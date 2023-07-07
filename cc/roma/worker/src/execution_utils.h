@@ -51,9 +51,37 @@ class ExecutionUtils {
    * provided, a local UnboundScript will be assigned to unbound_script.
    * @return core::ExecutionResult
    */
+  template <typename StringT = common::RomaString>
   static core::ExecutionResult CompileRunJS(
-      const common::RomaString& js, common::RomaString& err_msg,
-      v8::Local<v8::UnboundScript>* unbound_script = nullptr) noexcept;
+      const StringT& js, StringT& err_msg,
+      v8::Local<v8::UnboundScript>* unbound_script = nullptr) noexcept {
+    auto isolate = v8::Isolate::GetCurrent();
+    v8::TryCatch try_catch(isolate);
+    v8::Local<v8::Context> context(isolate->GetCurrentContext());
+
+    auto str = std::string(js.c_str(), js.size());
+    v8::Local<v8::String> js_source =
+        TypeConverter<std::string>::ToV8(isolate, str).As<v8::String>();
+    v8::Local<v8::Script> script;
+    if (!v8::Script::Compile(context, js_source).ToLocal(&script)) {
+      ReportException(&try_catch, err_msg);
+      return core::FailureExecutionResult(
+          core::errors::SC_ROMA_V8_WORKER_CODE_COMPILE_FAILURE);
+    }
+
+    if (unbound_script) {
+      *unbound_script = script->GetUnboundScript();
+    }
+
+    v8::Local<v8::Value> script_result;
+    if (!script->Run(context).ToLocal(&script_result)) {
+      ReportException(&try_catch, err_msg);
+      return core::FailureExecutionResult(
+          core::errors::SC_ROMA_V8_WORKER_SCRIPT_RUN_FAILURE);
+    }
+
+    return core::SuccessExecutionResult();
+  }
 
   /**
    * @brief Get JS handler from context.
@@ -63,9 +91,35 @@ class ExecutionUtils {
    * @param err_msg the error message to output.
    * @return core::ExecutionResult
    */
-  static core::ExecutionResult GetJsHandler(
-      const common::RomaString& handler_name, v8::Local<v8::Value>& handler,
-      common::RomaString& err_msg) noexcept;
+  template <typename StringT = common::RomaString>
+  static core::ExecutionResult GetJsHandler(const StringT& handler_name,
+                                            v8::Local<v8::Value>& handler,
+                                            StringT& err_msg) noexcept {
+    if (handler_name.empty()) {
+      return core::FailureExecutionResult(
+          core::errors::SC_ROMA_V8_WORKER_BAD_HANDLER_NAME);
+    }
+    auto isolate = v8::Isolate::GetCurrent();
+    v8::TryCatch try_catch(isolate);
+    v8::Local<v8::Context> context(isolate->GetCurrentContext());
+
+    // Fetch out the handler name from code object.
+    auto str = std::string(handler_name.c_str(), handler_name.size());
+    v8::Local<v8::String> local_name =
+        TypeConverter<std::string>::ToV8(isolate, str).As<v8::String>();
+
+    // If there is no handler function, or if it is not a function,
+    // bail out
+    if (!context->Global()->Get(context, local_name).ToLocal(&handler) ||
+        !handler->IsFunction()) {
+      auto exception_result = ReportException(&try_catch, err_msg);
+      return GetExecutionResult(
+          exception_result,
+          core::errors::SC_ROMA_V8_WORKER_HANDLER_INVALID_FUNCTION);
+    }
+
+    return core::SuccessExecutionResult();
+  }
 
   /**
    * @brief Compiles and runs WASM code object.
@@ -423,6 +477,136 @@ class ExecutionUtils {
   }
 
   /**
+   * @brief Function that is used as the entry point to call user-provided
+   * C++ binding functions.
+   *
+   * @param info
+   */
+  static void GlobalV8FunctionCallback(
+      const v8::FunctionCallbackInfo<v8::Value>& info);
+
+  /**
+   * @brief Generate a new context with the included function bindings.
+   *
+   * @param isolate
+   * @param function_bindings
+   * @param[out] context
+   */
+  static void GetV8Context(
+      v8::Isolate* isolate,
+      const std::vector<std::shared_ptr<FunctionBindingObjectBase>>&
+          function_bindings,
+      v8::Local<v8::Context>& context) noexcept;
+
+  /**
+   * @brief Create a StartupData blob with input code object.
+   *
+   * @param code_obj code object to be compiled and run.
+   * @param err_msg Error message.
+   * @param function_bindings The registered function bindings.
+   * @param external_references The external references for the snapshot.
+   * @return core::ExecutionResult
+   */
+  template <typename StringT = common::RomaString>
+  static core::ExecutionResult CreateSnapshot(
+      v8::StartupData& startup_data, const StringT& js_code, StringT& err_msg,
+      const std::vector<std::shared_ptr<FunctionBindingObjectBase>>&
+          function_bindings,
+      const intptr_t* external_references) noexcept {
+    v8::SnapshotCreator creator(external_references);
+    v8::Isolate* isolate = creator.GetIsolate();
+    {
+      v8::Isolate::Scope isolate_scope(isolate);
+      v8::HandleScope handle_scope(isolate);
+      v8::Local<v8::Context> context;
+      GetV8Context(isolate, function_bindings, context);
+      v8::Context::Scope context_scope(context);
+
+      // Compile and run JavaScript code object.
+      auto execution_result = ExecutionUtils::CompileRunJS(js_code, err_msg);
+      RETURN_IF_FAILURE(execution_result);
+
+      // Set above context with compiled and run code as the default context for
+      // the StartupData blob to create.
+      creator.SetDefaultContext(context);
+    }
+    startup_data =
+        creator.CreateBlob(v8::SnapshotCreator::FunctionCodeHandling::kClear);
+    return core::SuccessExecutionResult();
+  }
+
+  /**
+   * @brief Check if err_msg contains a WebAssembly ReferenceError.
+   *
+   * @param err_msg
+   * @return true
+   * @return false
+   */
+  template <typename StringT = common::RomaString>
+  static bool CheckErrorWithWebAssembly(StringT& err_msg) noexcept {
+    return err_msg.find(kJsWasmMixedError) != std::string::npos;
+  }
+
+  /**
+   * @brief Create an Unbound Script object.
+   *
+   * @param js
+   * @param err_msg
+   * @return core::ExecutionResult
+   */
+  template <typename StringT = common::RomaString>
+  static core::ExecutionResult CreateUnboundScript(
+      v8::Global<v8::UnboundScript>& unbound_script, v8::Isolate* isolate,
+      const StringT& js, StringT& err_msg) noexcept {
+    v8::Isolate::Scope isolate_scope(isolate);
+    v8::HandleScope handle_scope(isolate);
+
+    v8::Local<v8::Context> context = v8::Context::New(isolate);
+    v8::Context::Scope context_scope(context);
+
+    v8::Local<v8::UnboundScript> local_unbound_script;
+    auto execution_result =
+        ExecutionUtils::CompileRunJS(js, err_msg, &local_unbound_script);
+    RETURN_IF_FAILURE(execution_result);
+
+    // Store unbound_script_ in a Global handle in isolate.
+    unbound_script.Reset(isolate, local_unbound_script);
+
+    return core::SuccessExecutionResult();
+  }
+
+  /**
+   * @brief Bind UnboundScript to current context and run it.
+   *
+   * @param err_msg
+   * @return core::ExecutionResult
+   */
+  template <typename StringT = common::RomaString>
+  static core::ExecutionResult BindUnboundScript(
+      const v8::Global<v8::UnboundScript>& global_unbound_script,
+      StringT& err_msg) noexcept {
+    auto isolate = v8::Isolate::GetCurrent();
+    v8::TryCatch try_catch(isolate);
+    v8::Local<v8::Context> context(isolate->GetCurrentContext());
+    v8::Context::Scope context_scope(context);
+
+    v8::Local<v8::UnboundScript> unbound_script =
+        v8::Local<v8::UnboundScript>::New(isolate, global_unbound_script);
+
+    v8::Local<v8::Value> script_result;
+    if (!unbound_script->BindToCurrentContext()->Run(context).ToLocal(
+            &script_result)) {
+      auto exception_result =
+          ExecutionUtils::ReportException(&try_catch, err_msg);
+      return ExecutionUtils::GetExecutionResult(
+          exception_result,
+          core::errors::SC_ROMA_V8_WORKER_BIND_UNBOUND_SCRIPT_FAILED);
+    }
+
+    return core::SuccessExecutionResult();
+  }
+
+  /**
    * @brief Generate an object that represents the WASM imports modules
    *
    * @param isolate
@@ -442,5 +626,37 @@ class ExecutionUtils {
    */
   static v8::Local<v8::Value> GetWasmMemoryObject(
       v8::Isolate* isolate, v8::Local<v8::Context>& context);
+
+  template <typename StringT = common::RomaString>
+  static core::ExecutionResult V8PromiseHandler(v8::Isolate* isolate,
+                                                v8::Local<v8::Value>& result,
+                                                StringT& err_msg) {
+    // We don't need a callback handler for now. The default handler will wrap
+    // the successful result of Promise::kFulfilled and the exception message of
+    // Promise::kRejected.
+    auto promise = result.As<v8::Promise>();
+
+    // Wait until promise state isn't pending.
+    while (promise->State() == v8::Promise::kPending) {
+      isolate->PerformMicrotaskCheckpoint();
+    }
+
+    if (promise->State() == v8::Promise::kRejected) {
+      // Extract the exception message from a rejected promise.
+      const v8::Local<v8::Message> message =
+          v8::Exception::CreateMessage(isolate, promise->Result());
+      err_msg = ExecutionUtils::ExtractMessage(isolate, message);
+      promise->MarkAsHandled();
+      return core::FailureExecutionResult(
+          core::errors::SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED);
+    }
+
+    result = promise->Result();
+    return core::SuccessExecutionResult();
+  }
+
+ private:
+  static constexpr char kJsWasmMixedError[] =
+      "ReferenceError: WebAssembly is not defined";
 };
 }  // namespace google::scp::roma::worker

@@ -22,6 +22,9 @@ java_library(
         "//java/external:apache_httpclient5",
         "//java/external:apache_httpcore",
         "//java/external:apache_httpcore5",
+        "//java/external:guava",
         "//java/external:guice",
+        "//java/external:resilience4j_core",
+        "//java/external:resilience4j_retry",
     ],
 )

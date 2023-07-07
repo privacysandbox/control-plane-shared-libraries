@@ -46,6 +46,12 @@ module "metadata_db" {
   metadatadb_write_capacity_usage_ratio_alarm_threshold = var.metadatadb_write_capacity_usage_ratio_alarm_threshold
 }
 
+module "asginstances_db" {
+  source      = "../../modules/asginstancesdb"
+  environment = var.environment
+  table_name  = "${var.environment}-AsgInstances"
+}
+
 module "job_queue" {
   source      = "../../modules/jobqueue"
   environment = var.environment
@@ -172,6 +178,7 @@ module "worker_service" {
   ec2_instance_name = "${var.environment}-aggregation-service"
 
   metadata_db_table_arn         = module.metadata_db.metadata_db_arn
+  asg_instances_table_arn       = module.asginstances_db.asginstances_db_arn
   job_queue_arn                 = module.job_queue.jobqueue_sqs_arn
   coordinator_a_assume_role_arn = var.coordinator_a_assume_role_parameter
   coordinator_b_assume_role_arn = var.coordinator_b_assume_role_parameter
@@ -227,6 +234,9 @@ module "worker_autoscaling" {
   terminated_instance_handler_lambda_local_jar = var.terminated_instance_handler_lambda == "" ? "${module.bazel.bazel_bin}/java/com/google/scp/operator/autoscaling/app/aws/TerminatedInstanceHandlerLambda_deploy.jar" : var.terminated_instance_handler_lambda
   terminated_instance_handler_lambda_name      = "${var.environment}-TerminatedInstanceHandler"
   terminated_instance_lambda_role_name         = "${var.environment}-TerminatedInstanceLambdaRole"
+  asginstances_db_table_name                   = module.asginstances_db.asginstances_db_table_name
+  asginstances_db_arn                          = module.asginstances_db.asginstances_db_arn
+  asginstances_db_ttl_days                     = var.asginstances_db_ttl_days
 
   #Alarms
   worker_alarms_enabled                         = var.worker_alarms_enabled
@@ -267,7 +277,7 @@ module "vpc" {
   lambda_execution_role_ids = []
 
   dynamodb_allowed_principal_arns = [module.worker_service.worker_enclave_role_arn]
-  dynamodb_arns                   = [module.metadata_db.metadata_db_arn]
+  dynamodb_arns                   = [module.metadata_db.metadata_db_arn, module.asginstances_db.asginstances_db_arn]
 
   s3_allowed_principal_arns = [module.worker_service.worker_enclave_role_arn]
 }

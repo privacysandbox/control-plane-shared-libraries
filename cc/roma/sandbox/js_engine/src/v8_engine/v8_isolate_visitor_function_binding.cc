@@ -23,6 +23,8 @@
 #include "cc/roma/interface/function_binding_io.pb.h"
 #include "roma/common/src/containers.h"
 #include "roma/config/src/type_converter.h"
+#include "roma/sandbox/constants/constants.h"
+#include "roma/sandbox/logging/src/logging.h"
 
 #include "error_codes.h"
 
@@ -36,6 +38,7 @@ using google::scp::core::errors::
 using google::scp::core::errors::
     SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING_INVALID_ISOLATE;
 using google::scp::roma::proto::FunctionBindingIoProto;
+using google::scp::roma::sandbox::constants::kMetadataRomaRequestId;
 using std::string;
 using std::to_string;
 using std::unordered_map;
@@ -51,6 +54,7 @@ using v8::Isolate;
 using v8::Local;
 using v8::Map;
 using v8::Object;
+using v8::ObjectTemplate;
 using v8::String;
 using v8::Undefined;
 using v8::Value;
@@ -59,9 +63,6 @@ static constexpr char kCouldNotRunFunctionBinding[] =
     "ROMA: Could not run C++ function binding.";
 static constexpr char kUnexpectedDataInBindingCallback[] =
     "ROMA: Unexpected data in global callback.";
-static constexpr char kThisInstanceLookupKey[] =
-    "V8IsolateVisitorFunctionBinding";
-static constexpr char kFunctionLookupKey[] = "RomaBindingName";
 static constexpr char kCouldNotConvertJsFunctionInputToNative[] =
     "ROMA: Could not convert JS function input to native C++ type.";
 static constexpr char KCouldNotConvertNativeFunctionReturnToV8Type[] =
@@ -145,42 +146,10 @@ void V8IsolateVisitorFunctionBinding::GlobalV8FunctionCallback(
     isolate->ThrowError(kUnexpectedDataInBindingCallback);
     return;
   }
-  // The data we get here is an object containing the name of the function that
-  // was called and a pointer to this class instance.
-  auto data_object = Local<Object>::Cast(data);
 
-  // Convert the data into a usable V8IsolateVisitorFunctionBinding
-  auto this_object_maybe = data_object->Get(
-      context, TypeConverter<string>::ToV8(isolate, kThisInstanceLookupKey));
-  Local<Value> this_object_local;
-  if (!this_object_maybe.ToLocal(&this_object_local)) {
-    isolate->ThrowError(kUnexpectedDataInBindingCallback);
-    return;
-  }
-  if (!this_object_local->IsExternal()) {
-    isolate->ThrowError(kUnexpectedDataInBindingCallback);
-    return;
-  }
-  Local<External> this_object_external =
-      Local<External>::Cast(this_object_local);
-  auto this_object = reinterpret_cast<V8IsolateVisitorFunctionBinding*>(
-      this_object_external->Value());
-
-  // Get the function name
-  auto function_name_maybe = data_object->Get(
-      context, TypeConverter<string>::ToV8(isolate, kFunctionLookupKey));
-  Local<Value> function_name_local;
-  if (!function_name_maybe.ToLocal(&function_name_local)) {
-    isolate->ThrowError(kUnexpectedDataInBindingCallback);
-    return;
-  }
-
-  string native_function_name;
-  if (!TypeConverter<string>::FromV8(isolate, function_name_local.As<String>(),
-                                     &native_function_name)) {
-    isolate->ThrowError(kUnexpectedDataInBindingCallback);
-    return;
-  }
+  Local<External> binding_info_pair_external = Local<External>::Cast(data);
+  auto binding_info_pair =
+      reinterpret_cast<BindingPair*>(binding_info_pair_external->Value());
 
   FunctionBindingIoProto function_invocation_proto;
   if (!V8TypesToProto(info, function_invocation_proto)) {
@@ -188,7 +157,31 @@ void V8IsolateVisitorFunctionBinding::GlobalV8FunctionCallback(
     return;
   }
 
-  auto result = this_object->function_invoker_->Invoke(
+  // Read the request ID from the global object in the context
+  auto request_id_label =
+      TypeConverter<string>::ToV8(isolate, kMetadataRomaRequestId).As<String>();
+  auto roma_request_id_maybe =
+      context->Global()->Get(context, request_id_label);
+  Local<Value> roma_request_id;
+  string roma_request_id_native;
+  if (roma_request_id_maybe.ToLocal(&roma_request_id) &&
+      TypeConverter<string>::FromV8(isolate, roma_request_id,
+                                    &roma_request_id_native)) {
+    // Set the request ID in the function call metadata so that it is accessible
+    // when the function is invoked in the user-provided binding.
+    (*function_invocation_proto.mutable_metadata())[kMetadataRomaRequestId] =
+        roma_request_id_native;
+  } else {
+    _ROMA_LOG_ERROR("Could not read request ID from metadata in hook.");
+  }
+
+  string native_function_name = binding_info_pair->first;
+  if (native_function_name.empty()) {
+    isolate->ThrowError(kCouldNotRunFunctionBinding);
+    return;
+  }
+
+  auto result = binding_info_pair->second->function_invoker_->Invoke(
       native_function_name, function_invocation_proto);
   if (!result.Successful()) {
     isolate->ThrowError(kCouldNotRunFunctionBinding);
@@ -209,64 +202,41 @@ void V8IsolateVisitorFunctionBinding::GlobalV8FunctionCallback(
 }
 
 ExecutionResult V8IsolateVisitorFunctionBinding::Visit(
-    Isolate* isolate) noexcept {
+    Isolate* isolate, Local<ObjectTemplate>& global_object_template) noexcept {
   if (!isolate) {
     return FailureExecutionResult(
         SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING_INVALID_ISOLATE);
   }
 
-  auto context = isolate->GetCurrentContext();
-
-  if (context.IsEmpty()) {
-    return FailureExecutionResult(
-        SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING_EMPTY_CONTEXT);
-  }
-
-  auto global_object = context->Global();
-
-  for (auto& function_name : function_names_) {
-    // This is used to be able to retrieve data from the callback
-    auto function_template_data_object = Object::New(isolate);
+  for (auto binding_refer : binding_references_) {
     // Store a pointer to this V8IsolateVisitorFunctionBinding instance
-    Local<External> this_class_instance =
-        External::New(isolate, reinterpret_cast<void*>(this));
-    auto set_this_instance = function_template_data_object->Set(
-        context, TypeConverter<string>::ToV8(isolate, kThisInstanceLookupKey),
-        this_class_instance);
-    if (!set_this_instance.FromMaybe(false /*default_if_empty*/)) {
-      return FailureExecutionResult(
-          SC_ROMA_V8_ENGINE_COULD_NOT_REGISTER_FUNCTION_BINDING);
-    }
+    Local<External> binding_context_pair =
+        External::New(isolate, reinterpret_cast<void*>(binding_refer.get()));
 
-    // Store the name of the function as it is to be called from
-    // javascript
-    auto set_function_name = function_template_data_object->Set(
-        context, TypeConverter<string>::ToV8(isolate, kFunctionLookupKey),
-        TypeConverter<string>::ToV8(isolate, function_name));
-    if (!set_function_name.FromMaybe(false /*default_if_empty*/)) {
-      return FailureExecutionResult(
-          SC_ROMA_V8_ENGINE_COULD_NOT_REGISTER_FUNCTION_BINDING);
-    }
     // Create the function template to register in the global object
     auto function_template = FunctionTemplate::New(
-        isolate, &GlobalV8FunctionCallback, function_template_data_object);
-    Local<Value> function_instance;
-    if (!function_template->GetFunction(context).ToLocal(&function_instance)) {
-      return FailureExecutionResult(
-          SC_ROMA_V8_ENGINE_COULD_NOT_REGISTER_FUNCTION_BINDING);
-    }
+        isolate, &GlobalV8FunctionCallback, binding_context_pair);
+
     // Convert the function binding name to a v8 type
     auto binding_name =
-        TypeConverter<string>::ToV8(isolate, function_name).As<String>();
-    // Register the function in the global object
-    auto set_function_template =
-        global_object->Set(context, binding_name, function_instance);
-    if (!set_function_template.FromMaybe(false /*default_if_empty*/)) {
-      return FailureExecutionResult(
-          SC_ROMA_V8_ENGINE_COULD_NOT_REGISTER_FUNCTION_BINDING);
-    }
+        TypeConverter<string>::ToV8(isolate, binding_refer->first).As<String>();
+
+    global_object_template->Set(binding_name, function_template);
   }
 
   return SuccessExecutionResult();
 }
+
+void V8IsolateVisitorFunctionBinding::AddExternalReferences(
+    std::vector<intptr_t>& external_references) noexcept {
+  // Must add pointers that are not within the v8 heap to external_references_
+  // so that the snapshot serialization works.
+  for (auto binding_refer : binding_references_) {
+    external_references.push_back(
+        reinterpret_cast<intptr_t>(binding_refer.get()));
+  }
+  external_references.push_back(
+      reinterpret_cast<intptr_t>(&GlobalV8FunctionCallback));
+}
+
 }  // namespace google::scp::roma::sandbox::js_engine::v8_js_engine

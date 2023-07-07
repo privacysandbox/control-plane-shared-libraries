@@ -78,7 +78,8 @@ ExecutionResult GcpPrivateKeyFetcherProvider::SignHttpRequest(
       get_token_context(
           move(request),
           bind(&GcpPrivateKeyFetcherProvider::OnGetSessionTokenCallback, this,
-               sign_request_context, _1));
+               sign_request_context, _1),
+          sign_request_context);
 
   return auth_token_provider_->GetSessionTokenForTargetAudience(
       get_token_context);

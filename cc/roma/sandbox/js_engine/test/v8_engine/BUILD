@@ -45,3 +45,18 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "snapshot_compilation_context_test",
+    size = "small",
+    srcs = ["snapshot_compilation_context_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc/core/test/utils:utils_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
+        "//cc/roma/sandbox/js_engine/src/v8_engine:roma_v8_js_engine_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

@@ -124,7 +124,8 @@ ExecutionResult JobClientProvider::PutJob(
   AsyncContext<EnqueueMessageRequest, EnqueueMessageResponse>
       enqueue_message_context(move(enqueue_message_request),
                               bind(&JobClientProvider::OnEnqueueMessageCallback,
-                                   this, put_job_context, _1));
+                                   this, put_job_context, _1),
+                              put_job_context);
 
   return queue_client_provider_->EnqueueMessage(enqueue_message_context);
 }
@@ -168,7 +169,8 @@ void JobClientProvider::OnEnqueueMessageCallback(
       upsert_database_item_context(
           move(upsert_job_request),
           bind(&JobClientProvider::OnUpsertNewJobItemCallback, this,
-               put_job_context, move(job), _1));
+               put_job_context, move(job), _1),
+          put_job_context);
   auto execution_result = nosql_database_client_provider_->UpsertDatabaseItem(
       upsert_database_item_context);
 
@@ -211,7 +213,8 @@ ExecutionResult JobClientProvider::GetNextJob(
   AsyncContext<GetTopMessageRequest, GetTopMessageResponse>
       get_top_message_context(move(make_shared<GetTopMessageRequest>()),
                               bind(&JobClientProvider::OnGetTopMessageCallback,
-                                   this, get_next_job_context, _1));
+                                   this, get_next_job_context, _1),
+                              get_next_job_context);
 
   return queue_client_provider_->GetTopMessage(get_top_message_context);
 }
@@ -240,7 +243,8 @@ void JobClientProvider::OnGetTopMessageCallback(
       get_database_item_context(
           move(get_database_item_request),
           bind(&JobClientProvider::OnGetNextJobItemCallback, this,
-               get_next_job_context, move(receipt_info), _1));
+               get_next_job_context, move(receipt_info), _1),
+          get_next_job_context);
   auto execution_result = nosql_database_client_provider_->GetDatabaseItem(
       get_database_item_context);
 
@@ -309,7 +313,8 @@ ExecutionResult JobClientProvider::GetJobById(
       get_database_item_context(
           move(get_database_item_request),
           bind(&JobClientProvider::OnGetJobItemByJobIdCallback, this,
-               get_job_by_id_context, _1));
+               get_job_by_id_context, _1),
+          get_job_by_id_context);
 
   return nosql_database_client_provider_->GetDatabaseItem(
       get_database_item_context);
@@ -369,7 +374,8 @@ ExecutionResult JobClientProvider::UpdateJobBody(
       get_database_item_context(
           move(get_database_item_request),
           bind(&JobClientProvider::OnGetJobItemForUpdateJobBodyCallback, this,
-               update_job_body_context, _1));
+               update_job_body_context, _1),
+          update_job_body_context);
 
   return nosql_database_client_provider_->GetDatabaseItem(
       get_database_item_context);
@@ -442,7 +448,8 @@ void JobClientProvider::OnGetJobItemForUpdateJobBodyCallback(
       upsert_database_item_context(
           move(upsert_job_request),
           bind(&JobClientProvider::OnUpsertUpdatedJobBodyJobItemCallback, this,
-               update_job_body_context, move(update_time), _1));
+               update_job_body_context, move(update_time), _1),
+          update_job_body_context);
 
   auto execution_result = nosql_database_client_provider_->UpsertDatabaseItem(
       upsert_database_item_context);
@@ -521,7 +528,8 @@ ExecutionResult JobClientProvider::UpdateJobStatus(
       get_database_item_context(
           move(get_database_item_request),
           bind(&JobClientProvider::OnGetJobItemForUpdateJobStatusCallback, this,
-               update_job_status_context, _1));
+               update_job_status_context, _1),
+          update_job_status_context);
 
   return nosql_database_client_provider_->GetDatabaseItem(
       get_database_item_context);
@@ -620,7 +628,8 @@ void JobClientProvider::DeleteJobMessage(
   AsyncContext<DeleteMessageRequest, DeleteMessageResponse>
       delete_message_context(move(delete_message_request),
                              bind(&JobClientProvider::OnDeleteMessageCallback,
-                                  this, update_job_status_context, _1));
+                                  this, update_job_status_context, _1),
+                             update_job_status_context);
 
   auto execution_result =
       queue_client_provider_->DeleteMessage(delete_message_context);
@@ -674,7 +683,8 @@ void JobClientProvider::UpsertUpdatedJobStatusJobItem(
       upsert_database_item_context(
           move(upsert_job_request),
           bind(&JobClientProvider::OnUpsertUpdatedJobStatusJobItemCallback,
-               this, update_job_status_context, move(update_time), _1));
+               this, update_job_status_context, move(update_time), _1),
+          update_job_status_context);
 
   auto execution_result = nosql_database_client_provider_->UpsertDatabaseItem(
       upsert_database_item_context);
@@ -771,7 +781,8 @@ ExecutionResult JobClientProvider::UpdateJobVisibilityTimeout(
           move(get_database_item_request),
           bind(&JobClientProvider::
                    OnGetJobItemForUpdateVisibilityTimeoutCallback,
-               this, update_job_visibility_timeout_context, _1));
+               this, update_job_visibility_timeout_context, _1),
+          update_job_visibility_timeout_context);
 
   return nosql_database_client_provider_->GetDatabaseItem(
       get_database_item_context);
@@ -841,7 +852,8 @@ void JobClientProvider::OnGetJobItemForUpdateVisibilityTimeoutCallback(
           move(update_message_visibility_timeout_request),
           bind(&JobClientProvider::OnUpdateMessageVisibilityTimeoutCallback,
                this, update_job_visibility_timeout_context, move(update_time),
-               _1));
+               _1),
+          update_job_visibility_timeout_context);
 
   queue_client_provider_->UpdateMessageVisibilityTimeout(
       update_message_visibility_timeout_context);
@@ -886,7 +898,8 @@ void JobClientProvider::OnUpdateMessageVisibilityTimeoutCallback(
           bind(&JobClientProvider::
                    OnUpsertUpdatedJobVisibilityTimeoutJobItemCallback,
                this, update_job_visibility_timeout_context, move(update_time),
-               _1));
+               _1),
+          update_job_visibility_timeout_context);
 
   auto execution_result = nosql_database_client_provider_->UpsertDatabaseItem(
       upsert_database_item_context);

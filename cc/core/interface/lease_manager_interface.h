@@ -58,8 +58,6 @@ struct LeaseInfo {
   std::string lease_acquirer_id;
   /**
    * @brief Endpoint address of the PBS service of the lease acquirer.
-   * This is of format 'hostname:port'
-   *
    */
   std::string service_endpoint_address;
 };

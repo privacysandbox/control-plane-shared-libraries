@@ -164,7 +164,8 @@ ExecutionResult TeeAwsKmsClientProvider::Decrypt(
       get_session_credentials_context(
           move(get_credentials_request),
           bind(&TeeAwsKmsClientProvider::GetSessionCredentialsCallbackToDecrypt,
-               this, decrypt_context, _1));
+               this, decrypt_context, _1),
+          decrypt_context);
   return credential_provider_->GetRoleCredentials(
       get_session_credentials_context);
 }

@@ -17,8 +17,14 @@
 package com.google.scp.operator.autoscaling.tasks.aws;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb;
+import com.google.scp.operator.shared.dao.asginstancesdb.common.AsgInstancesDao.AsgInstanceDaoException;
+import com.google.scp.operator.shared.testing.FakeClock;
+import java.time.Clock;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,6 +45,9 @@ import software.amazon.awssdk.services.autoscaling.model.LifecycleState;
 public final class ManageTerminatedInstanceTaskTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
   @Mock AutoScalingClient autoScalingClientMock;
+  @Mock DynamoAsgInstancesDb dynamoAsgInstancesDbMock;
+
+  private final Clock fakeClock = new FakeClock();
 
   private final String asgName = "fakeAsg";
   private final String instanceId = "fakeInstanceId";
@@ -49,36 +58,43 @@ public final class ManageTerminatedInstanceTaskTest {
   public void manageTerminatedInstance_unhealthyInstance() {
     setupAutoScalingClient(false, LifecycleState.TERMINATING_WAIT.toString());
 
-    var manageTerminatedInstanceTask = new ManageTerminatedInstanceTask(autoScalingClientMock);
-    Boolean lifecycleActionCompleted =
+    var manageTerminatedInstanceTask =
+        new ManageTerminatedInstanceTask(
+            autoScalingClientMock, dynamoAsgInstancesDbMock, fakeClock);
+    Boolean actionTaken =
         manageTerminatedInstanceTask.manageTerminatedInstance(
             asgName, instanceId, lifecycleHookName, lifecycleActionToken);
 
-    Assert.assertTrue(lifecycleActionCompleted);
+    Assert.assertTrue(actionTaken);
   }
 
   @Test
-  public void manageTerminatedInstance_healthyInstance() {
+  public void manageTerminatedInstance_healthyInstance() throws AsgInstanceDaoException {
     setupAutoScalingClient(true, LifecycleState.TERMINATING_WAIT.toString());
 
-    var manageTerminatedInstanceTask = new ManageTerminatedInstanceTask(autoScalingClientMock);
-    Boolean lifecycleActionCompleted =
+    var manageTerminatedInstanceTask =
+        new ManageTerminatedInstanceTask(
+            autoScalingClientMock, dynamoAsgInstancesDbMock, fakeClock);
+    Boolean actionTaken =
         manageTerminatedInstanceTask.manageTerminatedInstance(
             asgName, instanceId, lifecycleHookName, lifecycleActionToken);
 
-    Assert.assertFalse(lifecycleActionCompleted);
+    verify(dynamoAsgInstancesDbMock, times(1)).upsertAsgInstance(any());
+    Assert.assertTrue(actionTaken);
   }
 
   @Test
   public void manageTerminatedInstance_instanceAlreadyTerminated() {
     setupAutoScalingClient(false, LifecycleState.TERMINATING_PROCEED.toString());
 
-    var manageTerminatedInstanceTask = new ManageTerminatedInstanceTask(autoScalingClientMock);
-    Boolean lifecycleActionCompleted =
+    var manageTerminatedInstanceTask =
+        new ManageTerminatedInstanceTask(
+            autoScalingClientMock, dynamoAsgInstancesDbMock, fakeClock);
+    Boolean actionTaken =
         manageTerminatedInstanceTask.manageTerminatedInstance(
             asgName, instanceId, lifecycleHookName, lifecycleActionToken);
 
-    Assert.assertFalse(lifecycleActionCompleted);
+    Assert.assertFalse(actionTaken);
   }
 
   @Test
@@ -90,7 +106,9 @@ public final class ManageTerminatedInstanceTaskTest {
     when(autoScalingClientMock.completeLifecycleAction(any(CompleteLifecycleActionRequest.class)))
         .thenThrow(completeLifecycleActionError);
 
-    var manageTerminatedInstanceTask = new ManageTerminatedInstanceTask(autoScalingClientMock);
+    var manageTerminatedInstanceTask =
+        new ManageTerminatedInstanceTask(
+            autoScalingClientMock, dynamoAsgInstancesDbMock, fakeClock);
     Assert.assertThrows(
         AutoScalingException.class,
         () ->

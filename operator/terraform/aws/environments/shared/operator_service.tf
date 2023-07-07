@@ -67,6 +67,9 @@ module "operator_service" {
   metadatadb_read_capacity  = var.metadatadb_read_capacity
   metadatadb_write_capacity = var.metadatadb_write_capacity
 
+  # AsgInstancesDB
+  asginstances_db_ttl_days = var.asginstances_db_ttl_days
+
   # Frontend Alarms
   frontend_alarms_enabled                 = var.frontend_alarms_enabled
   frontend_alarm_eval_period_sec          = var.frontend_alarm_eval_period_sec

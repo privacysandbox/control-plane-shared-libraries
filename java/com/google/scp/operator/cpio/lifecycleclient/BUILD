@@ -23,12 +23,17 @@ java_library(
     deps = [
         "//java/com/google/scp/operator/cpio/configclient",
         "//java/com/google/scp/operator/cpio/configclient:aws",
+        "//java/com/google/scp/operator/shared/dao/asginstancesdb/aws",
+        "//java/com/google/scp/operator/shared/dao/asginstancesdb/common",
         "//java/com/google/scp/shared/clients/configclient",
         "//java/com/google/scp/shared/clients/configclient:model",
+        "//java/com/google/scp/shared/proto",
         "//java/external:aws_apache_http",
         "//java/external:aws_auth",
         "//java/external:aws_auto_scaling",
         "//java/external:aws_core",
+        "//java/external:aws_dynamodb",
+        "//java/external:aws_dynamodb_enhanced",
         "//java/external:aws_ec2",
         "//java/external:aws_http_client_spi",
         "//java/external:aws_regions",
@@ -40,6 +45,7 @@ java_library(
         "//java/external:guice",
         "//java/external:javax_inject",
         "//java/external:slf4j",
+        "//operator/protos/shared/backend/asginstance:java_proto",
     ],
 )
 

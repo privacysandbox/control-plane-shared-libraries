@@ -16,12 +16,19 @@
 
 #pragma once
 
+#include <vector>
+
 #include "include/v8.h"
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::roma::sandbox::js_engine::v8_js_engine {
 class V8IsolateVisitor {
  public:
-  virtual core::ExecutionResult Visit(v8::Isolate* isolate) noexcept = 0;
+  virtual core::ExecutionResult Visit(
+      v8::Isolate* isolate,
+      v8::Local<v8::ObjectTemplate>& global_object_template) noexcept = 0;
+
+  virtual void AddExternalReferences(
+      std::vector<intptr_t>& external_references) noexcept = 0;
 };
 }  // namespace google::scp::roma::sandbox::js_engine::v8_js_engine

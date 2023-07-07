@@ -21,6 +21,8 @@ java_library(
         "//java/external:aws_auth",
         "//java/external:aws_regions",
         "//java/external:aws_sts",
+        "//java/external:aws_utils",
         "//java/external:guava",
+        "//java/external:javax_inject",
     ],
 )

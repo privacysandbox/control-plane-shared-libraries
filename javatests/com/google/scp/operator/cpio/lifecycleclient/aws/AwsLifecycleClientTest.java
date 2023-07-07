@@ -25,6 +25,8 @@ import static org.mockito.Mockito.when;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
+import com.google.inject.Key;
+import com.google.inject.multibindings.OptionalBinder;
 import com.google.inject.testing.fieldbinder.Bind;
 import com.google.inject.testing.fieldbinder.BoundFieldModule;
 import com.google.scp.operator.cpio.configclient.local.Annotations.CoordinatorARoleArn;
@@ -35,8 +37,18 @@ import com.google.scp.operator.cpio.configclient.local.Annotations.MaxJobNumAtte
 import com.google.scp.operator.cpio.configclient.local.Annotations.MaxJobProcessingTimeSecondsParameter;
 import com.google.scp.operator.cpio.configclient.local.Annotations.ScaleInHookParameter;
 import com.google.scp.operator.cpio.configclient.local.Annotations.SqsJobQueueUrlParameter;
+import com.google.scp.operator.cpio.configclient.local.Annotations.WorkerAutoscalingGroup;
 import com.google.scp.operator.cpio.configclient.local.LocalOperatorParameterModule;
 import com.google.scp.operator.cpio.lifecycleclient.LifecycleClient;
+import com.google.scp.operator.protos.shared.backend.asginstance.AsgInstanceProto.AsgInstance;
+import com.google.scp.operator.protos.shared.backend.asginstance.InstanceStatusProto.InstanceStatus;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb;
+import com.google.scp.operator.shared.dao.asginstancesdb.aws.DynamoAsgInstancesDb.AsgInstancesDbDynamoTableName;
+import com.google.scp.operator.shared.testing.FakeClock;
+import com.google.scp.shared.proto.ProtoUtil;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.Optional;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -60,11 +72,15 @@ public class AwsLifecycleClientTest {
   @Mock
   private AutoScalingClient autoScalingClient;
 
+  @Bind(lazy = true)
+  @Mock
+  private DynamoAsgInstancesDb dynamoAsgInstancesDb;
+
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Inject private AwsLifecycleClient lifecycleClient;
 
-  public void testSetUp() throws Exception {
+  public void testSetUp(Boolean useAsgInstancesDb) throws Exception {
     Guice.createInjector(
             BoundFieldModule.of(this),
             new LocalOperatorParameterModule(),
@@ -89,6 +105,14 @@ public class AwsLifecycleClientTest {
                 bind(String.class)
                     .annotatedWith(CoordinatorKmsArnParameter.class)
                     .toInstance("test-kms-arn");
+                bind(String.class)
+                    .annotatedWith(AsgInstancesDbDynamoTableName.class)
+                    .toInstance(useAsgInstancesDb ? "test" : "");
+                OptionalBinder.newOptionalBinder(
+                        binder(), Key.get(String.class, WorkerAutoscalingGroup.class))
+                    .setBinding()
+                    .toInstance("replacedGroup");
+                bind(Clock.class).to(FakeClock.class);
               }
             })
         .injectMembers(this);
@@ -97,7 +121,7 @@ public class AwsLifecycleClientTest {
   @Test
   public void handleScaleInLifecycleAction_Successful() throws Exception {
     scaleInHookParameter = "scale-in-hook-name";
-    testSetUp();
+    testSetUp(/* useAsgInstancesDb= */ false);
     when(autoScalingClient.describeAutoScalingInstances(
             any(DescribeAutoScalingInstancesRequest.class)))
         .thenReturn(
@@ -116,7 +140,7 @@ public class AwsLifecycleClientTest {
   @Test
   public void handleScaleInLifecycleAction_NotSuccessful() throws Exception {
     scaleInHookParameter = "scale-in-hook-name";
-    testSetUp();
+    testSetUp(/* useAsgInstancesDb= */ false);
     when(autoScalingClient.describeAutoScalingInstances(
             any(DescribeAutoScalingInstancesRequest.class)))
         .thenReturn(
@@ -135,7 +159,7 @@ public class AwsLifecycleClientTest {
   @Test
   public void handleScaleInLifecycleAction_HookNotSet() throws Exception {
     scaleInHookParameter = "";
-    testSetUp();
+    testSetUp(/* useAsgInstancesDb= */ false);
     when(autoScalingClient.describeAutoScalingInstances(
             any(DescribeAutoScalingInstancesRequest.class)))
         .thenReturn(
@@ -154,7 +178,7 @@ public class AwsLifecycleClientTest {
   @Test
   public void handleScaleInLifecycleAction_NoAutoscalingInstances() throws Exception {
     scaleInHookParameter = "scale-in-hook-name";
-    testSetUp();
+    testSetUp(/* useAsgInstancesDb= */ false);
 
     DescribeAutoScalingInstancesResponse response =
         DescribeAutoScalingInstancesResponse.builder()
@@ -167,5 +191,48 @@ public class AwsLifecycleClientTest {
     assertThat(lifecycleClient.handleScaleInLifecycleAction()).isFalse();
     verify(autoScalingClient, times(1))
         .describeAutoScalingInstances(any(DescribeAutoScalingInstancesRequest.class));
+  }
+
+  @Test
+  public void handleScaleInLifecycleAction_successfulWithDb() throws Exception {
+    scaleInHookParameter = "scale-in-hook-name";
+    testSetUp(/* useAsgInstancesDb= */ true);
+
+    AsgInstance asgInstance =
+        AsgInstance.newBuilder()
+            .setInstanceName("123")
+            .setStatus(InstanceStatus.TERMINATING_WAIT)
+            .setRequestTime(ProtoUtil.toProtoTimestamp(Instant.now()))
+            .build();
+    when(dynamoAsgInstancesDb.getAsgInstance(any())).thenReturn(Optional.of(asgInstance));
+
+    assertThat(lifecycleClient.handleScaleInLifecycleAction()).isTrue();
+    verify(dynamoAsgInstancesDb, times(1)).updateAsgInstance(any(AsgInstance.class));
+  }
+
+  @Test
+  public void handleScaleInLifecycleAction_nonterminatingInstanceWithDb() throws Exception {
+    scaleInHookParameter = "scale-in-hook-name";
+    testSetUp(/* useAsgInstancesDb= */ true);
+
+    when(dynamoAsgInstancesDb.getAsgInstance(any())).thenReturn(Optional.empty());
+    assertThat(lifecycleClient.handleScaleInLifecycleAction()).isFalse();
+  }
+
+  @Test
+  public void handleScaleInLifecycleAction_alreadyTerminatedWithDb() throws Exception {
+    scaleInHookParameter = "scale-in-hook-name";
+    testSetUp(/* useAsgInstancesDb= */ true);
+
+    AsgInstance asgInstance =
+        AsgInstance.newBuilder()
+            .setInstanceName("123")
+            .setStatus(InstanceStatus.TERMINATED)
+            .setRequestTime(ProtoUtil.toProtoTimestamp(Instant.now()))
+            .build();
+    when(dynamoAsgInstancesDb.getAsgInstance(any())).thenReturn(Optional.of(asgInstance));
+
+    assertThat(lifecycleClient.handleScaleInLifecycleAction()).isTrue();
+    verify(dynamoAsgInstancesDb, times(0)).updateAsgInstance(any(AsgInstance.class));
   }
 }

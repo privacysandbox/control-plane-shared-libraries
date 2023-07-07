@@ -30,7 +30,6 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::GetErrorMessage;
-using google::scp::core::errors::SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_BAD_INPUT_ARGS;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_BIND_UNBOUND_SCRIPT_FAILED;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE;
@@ -75,19 +74,6 @@ using v8::Undefined;
 using v8::Value;
 
 namespace {
-constexpr char kJsWasmMixedError[] =
-    "ReferenceError: WebAssembly is not defined";
-
-/**
- * @brief Check if err_msg contains a WebAssembly ReferenceError.
- *
- * @param err_msg
- * @return true
- * @return false
- */
-bool CheckErrorWithWebAssembly(RomaString& err_msg) noexcept {
-  return err_msg.find(kJsWasmMixedError) != std::string::npos;
-}
 
 /**
  * @brief Get the Timeout Value object from code_obj tags.
@@ -110,6 +96,11 @@ ExecutionResult GetTimeoutValue(const RomaCodeObj& code_obj,
     timeout_ms = stoi(timeout_ms_value.c_str());
     return SuccessExecutionResult();
   } catch (...) {
+#if defined(_SCP_ROMA_LOG_ERRORS)
+    std::cout << "Error GetTimeoutValue: "
+              << GetErrorMessage(execution_result.status_code) << "\n"
+              << std::endl;
+#endif
     return FailureExecutionResult(
         SC_ROMA_V8_WORKER_FAILED_TO_PARSE_TIMEOUT_TAG);
   }
@@ -128,7 +119,7 @@ ExecutionManager::ExecutionManager(
   // Must add pointers that are not within the v8 heap to external_references_
   // so that the snapshot serialization works.
   external_references_.push_back(
-      reinterpret_cast<intptr_t>(ExecutionManager::GlobalV8FunctionCallback));
+      reinterpret_cast<intptr_t>(ExecutionUtils::GlobalV8FunctionCallback));
   for (auto& func : function_bindings) {
     external_references_.push_back(reinterpret_cast<intptr_t>(func.get()));
   }
@@ -146,105 +137,6 @@ ExecutionResult ExecutionManager::Run() noexcept {
 
 ExecutionResult ExecutionManager::Stop() noexcept {
   DisposeV8Isolate();
-  return SuccessExecutionResult();
-}
-
-void ExecutionManager::GlobalV8FunctionCallback(
-    const FunctionCallbackInfo<Value>& info) {
-  auto isolate = info.GetIsolate();
-  Isolate::Scope isolate_scope(isolate);
-  HandleScope handle_scope(isolate);
-
-  if (info.Data().IsEmpty() || !info.Data()->IsExternal()) {
-    isolate->ThrowError("Unexpected data in global callback");
-    return;
-  }
-
-  // Get the user-provided function
-  Local<External> data_object = Local<External>::Cast(info.Data());
-  auto user_function =
-      reinterpret_cast<FunctionBindingObjectBase*>(data_object->Value());
-
-  if (user_function->Signature != FunctionBindingObjectBase::KnownSignature) {
-    // This signals a bad cast. The pointer we got is not really a
-    // FunctionBindingObjectBase
-    isolate->ThrowError("Unexpected function in global callback");
-    return;
-  }
-
-  user_function->InvokeInternalHandler(info);
-}
-
-void ExecutionManager::GetV8Context(
-    Isolate* isolate,
-    const vector<shared_ptr<FunctionBindingObjectBase>>& function_bindings,
-    Local<Context>& context) noexcept {
-  // Create a global object template
-  Local<ObjectTemplate> global_object_template = ObjectTemplate::New(isolate);
-  // Add the global function bindings
-  for (auto& func : function_bindings) {
-    auto function_name =
-        TypeConverter<string>::ToV8(isolate, func->GetFunctionName())
-            .As<String>();
-
-    // Allow retrieving the user-provided function from the FunctionCallbackInfo
-    // when the C++ callback is invoked so that it can be called.
-    Local<External> user_provided_function =
-        External::New(isolate, reinterpret_cast<void*>(&*func));
-    auto function_template = v8::FunctionTemplate::New(
-        isolate, &ExecutionManager::GlobalV8FunctionCallback,
-        user_provided_function);
-
-    // set the global function
-    global_object_template->Set(function_name, function_template);
-  }
-
-  // Create a new context.
-  context = Context::New(isolate, NULL, global_object_template);
-}
-
-ExecutionResult ExecutionManager::CreateSnapshot(
-    const RomaCodeObj& code_obj, RomaString& err_msg,
-    const vector<shared_ptr<FunctionBindingObjectBase>>& function_bindings,
-    const intptr_t* external_references) noexcept {
-  SnapshotCreator creator(external_references);
-  Isolate* isolate = creator.GetIsolate();
-  {
-    Isolate::Scope isolate_scope(isolate);
-    HandleScope handle_scope(isolate);
-    Local<Context> context;
-    GetV8Context(isolate, function_bindings, context);
-    Context::Scope context_scope(context);
-
-    // Compile and run JavaScript code object.
-    auto execution_result = ExecutionUtils::CompileRunJS(code_obj.js, err_msg);
-    RETURN_IF_FAILURE(execution_result);
-
-    // Set above context with compiled and run code as the default context for
-    // the StartupData blob to create.
-    creator.SetDefaultContext(context);
-  }
-  startup_data_ =
-      creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kClear);
-  return SuccessExecutionResult();
-}
-
-ExecutionResult ExecutionManager::CreateUnboundScript(
-    const RomaString& js, RomaString& err_msg) noexcept {
-  Isolate::Scope isolate_scope(v8_isolate_);
-  HandleScope handle_scope(v8_isolate_);
-
-  Local<Context> context = Context::New(v8_isolate_);
-  Context::Scope context_scope(context);
-
-  Local<UnboundScript> unbound_script;
-  auto execution_result =
-      ExecutionUtils::CompileRunJS(js, err_msg, &unbound_script);
-  RETURN_IF_FAILURE(execution_result);
-
-  // Store unbound_script_ in a Global handle in v8_isolate_.
-  unbound_script_.Reset(v8_isolate_, unbound_script);
-
   return SuccessExecutionResult();
 }
 
@@ -271,9 +163,11 @@ ExecutionResult ExecutionManager::Create(const RomaCodeObj& code_obj,
     return SuccessExecutionResult();
   }
 
-  auto execution_result = CreateSnapshot(code_obj, err_msg, function_bindings_,
-                                         external_references_.data());
-  if (!execution_result.Successful() && !CheckErrorWithWebAssembly(err_msg)) {
+  auto execution_result = ExecutionUtils::CreateSnapshot(
+      startup_data_, code_obj.js, err_msg, function_bindings_,
+      external_references_.data());
+  if (!execution_result.Successful() &&
+      !ExecutionUtils::CheckErrorWithWebAssembly(err_msg)) {
 #if defined(_SCP_ROMA_LOG_ERRORS)
     std::cout << "Error CreateSnapshot:" << err_msg << "\n" << std::endl;
 #endif
@@ -285,8 +179,10 @@ ExecutionResult ExecutionManager::Create(const RomaCodeObj& code_obj,
   // Re-create v8_isolate_. UnboundScript needs to be created in v8_isolate_.
   CreateV8Isolate(external_references_.data());
 
-  if (!execution_result.Successful() && CheckErrorWithWebAssembly(err_msg)) {
-    execution_result = CreateUnboundScript(code_obj.js, err_msg);
+  if (!execution_result.Successful() &&
+      ExecutionUtils::CheckErrorWithWebAssembly(err_msg)) {
+    execution_result = ExecutionUtils::CreateUnboundScript(
+        unbound_script_, v8_isolate_, code_obj.js, err_msg);
     if (!execution_result.Successful()) {
 #if defined(_SCP_ROMA_LOG_ERRORS)
       std::cout << "Error CreateUnboundScript:" << err_msg << "\n" << std::endl;
@@ -298,28 +194,6 @@ ExecutionResult ExecutionManager::Create(const RomaCodeObj& code_obj,
   }
 
   code_version_num_ = code_obj.version_num;
-  return SuccessExecutionResult();
-}
-
-ExecutionResult ExecutionManager::BindUnboundScript(
-    RomaString& err_msg) noexcept {
-  auto isolate = Isolate::GetCurrent();
-  TryCatch try_catch(isolate);
-  Local<Context> context(isolate->GetCurrentContext());
-  Context::Scope context_scope(context);
-
-  Local<UnboundScript> unbound_script =
-      Local<UnboundScript>::New(isolate, unbound_script_);
-
-  Local<Value> script_result;
-  if (!unbound_script->BindToCurrentContext()->Run(context).ToLocal(
-          &script_result)) {
-    auto exception_result =
-        ExecutionUtils::ReportException(&try_catch, err_msg);
-    return ExecutionUtils::GetExecutionResult(
-        exception_result, SC_ROMA_V8_WORKER_BIND_UNBOUND_SCRIPT_FAILED);
-  }
-
   return SuccessExecutionResult();
 }
 
@@ -339,7 +213,8 @@ ExecutionResult ExecutionManager::SetUpContextAndGetHandler(
       break;
 
     case CodeType::kJsWasmMixed:
-      execution_result = BindUnboundScript(err_msg);
+      execution_result =
+          ExecutionUtils::BindUnboundScript(unbound_script_, err_msg);
       RETURN_IF_FAILURE(execution_result);
 
       execution_result =
@@ -372,32 +247,6 @@ ExecutionResult ExecutionManager::SetUpContextAndGetHandler(
   return SuccessExecutionResult();
 }
 
-static ExecutionResult V8PromiseHandle(v8::Isolate* isolate,
-                                       Local<Value>& result,
-                                       RomaString& err_msg) {
-  // We don't need a callback handler for now. The default handler will wrap
-  // the successful result of Promise::kFulfilled and the exception message of
-  // Promise::kRejected.
-  auto promise = result.As<v8::Promise>();
-
-  // Wait until promise state isn't pending.
-  while (promise->State() == v8::Promise::kPending) {
-    isolate->PerformMicrotaskCheckpoint();
-  }
-
-  if (promise->State() == v8::Promise::kRejected) {
-    // Extract the exception message from a rejected promise.
-    const Local<Message> message =
-        v8::Exception::CreateMessage(isolate, promise->Result());
-    err_msg = ExecutionUtils::ExtractMessage(isolate, message);
-    promise->MarkAsHandled();
-    return FailureExecutionResult(SC_ROMA_V8_WORKER_ASYNC_EXECUTION_FAILED);
-  }
-
-  result = promise->Result();
-  return SuccessExecutionResult();
-}
-
 ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
                                           RomaString& output,
                                           RomaString& err_msg) noexcept {
@@ -416,13 +265,8 @@ ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
   auto execution_result = GetTimeoutValue(code_obj, timeout_ms);
   if (!execution_result.Successful()) {
     timeout_ms = kDefaultExecutionTimeoutMs;
-#if defined(_SCP_ROMA_LOG_ERRORS)
-    std::cout << "Error GetTimeoutValue:"
-              << GetErrorMessage(execution_result.status_code) << "\n"
-              << std::endl;
-#endif
   }
-  execution_watchdog_->StartTimer(timeout_ms);
+  execution_watchdog_->StartTimer(v8_isolate_, timeout_ms);
 
   Isolate::Scope isolate_scope(v8_isolate_);
   // Create a handle scope to keep the temporary object references.
@@ -486,7 +330,8 @@ ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
   }
 
   if (result->IsPromise()) {
-    execution_result = V8PromiseHandle(v8_isolate_, result, err_msg);
+    execution_result =
+        ExecutionUtils::V8PromiseHandler(v8_isolate_, result, err_msg);
 #if defined(_SCP_ROMA_LOG_ERRORS)
     std::cout << "Error from V8 Promise execution: " << err_msg << "\n"
               << std::endl;
@@ -541,7 +386,7 @@ void ExecutionManager::CreateV8Isolate(
 
   // Start execution_watchdog_ thread to monitor the execution time for each
   // code object in the isolate.
-  execution_watchdog_ = make_unique<ExecutionWatchDog>(v8_isolate_);
+  execution_watchdog_ = make_unique<ExecutionWatchDog>();
   execution_watchdog_->Run();
 }
 

@@ -16,34 +16,35 @@
 
 package com.google.scp.operator.cpio.cryptoclient;
 
+import com.google.common.primitives.Ints;
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.google.scp.coordinator.protos.keymanagement.keyhosting.api.v1.GetEncryptedPrivateKeyResponseProto.GetEncryptedPrivateKeyResponse;
 import com.google.scp.coordinator.protos.keymanagement.shared.api.v1.EncryptionKeyProto.EncryptionKey;
 import com.google.scp.shared.api.util.ErrorUtil;
+import com.google.scp.shared.api.util.HttpClientWrapper;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Client which fetches encrypted private keys from the private key vending service. */
 public final class HttpEncryptionKeyFetchingService implements EncryptionKeyFetchingService {
 
-  private static final int REQUEST_TIMEOUT_DURATION = Duration.ofMinutes(1).toMillisPart();
-  private final HttpClient httpClient;
+  private static final int REQUEST_TIMEOUT_DURATION =
+      Ints.checkedCast(Duration.ofMinutes(1).toMillis());
+  private final HttpClientWrapper httpClient;
   private final String encryptionKeyServiceBaseUrl;
   private final Logger logger = LoggerFactory.getLogger(HttpEncryptionKeyFetchingService.class);
 
   /** Creates a new instance of the {@code HttpPrivateKeyFetchingService} class. */
   @Inject
   public HttpEncryptionKeyFetchingService(
-      HttpClient httpClient, String encryptionKeyServiceBaseUrl) {
+      HttpClientWrapper httpClient, String encryptionKeyServiceBaseUrl) {
     this.httpClient = httpClient;
     this.encryptionKeyServiceBaseUrl = encryptionKeyServiceBaseUrl;
   }
@@ -73,9 +74,9 @@ public final class HttpEncryptionKeyFetchingService implements EncryptionKeyFetc
 
     try {
       var response = httpClient.execute(request);
-      var responseBody = EntityUtils.toString(response.getEntity());
+      var responseBody = response.responseBody();
 
-      if (response.getStatusLine().getStatusCode() != 200) {
+      if (response.statusCode() != 200) {
         var errorResponse = ErrorUtil.parseErrorResponse(responseBody);
         var exception = ErrorUtil.toServiceException(errorResponse);
 

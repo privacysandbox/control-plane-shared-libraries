@@ -22,20 +22,17 @@ import static com.google.scp.shared.api.model.Code.PERMISSION_DENIED;
 import static com.google.scp.shared.api.model.Code.UNKNOWN;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.scp.operator.cpio.cryptoclient.PrivateKeyFetchingService.PrivateKeyFetchingServiceException;
 import com.google.scp.shared.api.exception.ServiceException;
-import java.io.IOException;
+import com.google.scp.shared.api.util.HttpClientResponse;
+import com.google.scp.shared.api.util.HttpClientWrapper;
 import java.net.URI;
 import org.apache.http.HttpResponse;
-import org.apache.http.ProtocolVersion;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.message.BasicStatusLine;
+import org.apache.http.client.methods.HttpRequestBase;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -57,13 +54,14 @@ public final class HttpPrivateKeyFetchingServiceTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock private HttpClient httpClient;
+  @Mock private HttpClientWrapper httpClient;
 
   @Test
   @SuppressWarnings("unchecked") // Ignore Http{Request,Response,Client} casting warnings.
   public void fetchKeyCiphertext_notFound() throws Exception {
-    var response = buildFakeResponse(404, getNotFoundResponse());
-    when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(response);
+    HttpClientResponse response =
+        HttpClientResponse.create(404, getNotFoundResponse(), ImmutableMap.of());
+    when(httpClient.execute(any(HttpRequestBase.class))).thenReturn(response);
 
     var service = new HttpPrivateKeyFetchingService("https://example.com/v1", httpClient);
     PrivateKeyFetchingServiceException exception =
@@ -79,8 +77,10 @@ public final class HttpPrivateKeyFetchingServiceTest {
   @Test
   @SuppressWarnings("unchecked") // Ignore Http{Request,Response,Client} casting warnings.
   public void fetchKeyCiphertext_forbidden() throws Exception {
-    var response = buildFakeResponse(PERMISSION_DENIED.getHttpStatusCode(), getForbiddenResponse());
-    when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(response);
+    HttpClientResponse response =
+        HttpClientResponse.create(
+            PERMISSION_DENIED.getHttpStatusCode(), getForbiddenResponse(), ImmutableMap.of());
+    when(httpClient.execute(any(HttpRequestBase.class))).thenReturn(response);
 
     var service = new HttpPrivateKeyFetchingService("https://example.com/v1", httpClient);
     PrivateKeyFetchingServiceException exception =
@@ -98,10 +98,11 @@ public final class HttpPrivateKeyFetchingServiceTest {
   @Test
   @SuppressWarnings("unchecked") // Ignore Http{Request,Response,Client} casting warnings.
   public void fetchKeyCiphertext_success() throws Exception {
-    var response = buildFakeResponse(200, getSuccessResponse());
-    when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(response);
+    HttpClientResponse response =
+        HttpClientResponse.create(200, getSuccessResponse(), ImmutableMap.of());
+    when(httpClient.execute(any(HttpRequestBase.class))).thenReturn(response);
     var expectedUri = URI.create("https://example.com/v2alpha/privateKeys/abc");
-    var argument = ArgumentCaptor.forClass(HttpUriRequest.class);
+    var argument = ArgumentCaptor.forClass(HttpRequestBase.class);
 
     var service = new HttpPrivateKeyFetchingService("https://example.com/v2alpha", httpClient);
     // Assume response is valid if deserialization was successful.
@@ -109,16 +110,6 @@ public final class HttpPrivateKeyFetchingServiceTest {
 
     verify(httpClient).execute(argument.capture());
     assertThat(argument.getValue().getURI()).isEqualTo(expectedUri);
-  }
-
-  @SuppressWarnings("unchecked")
-  private HttpResponse buildFakeResponse(int statusCode, String body) throws IOException {
-    HttpResponse response = mock(HttpResponse.class);
-    var protocol = new ProtocolVersion("HTTP", 1, 1);
-    when(response.getStatusLine()).thenReturn(new BasicStatusLine(protocol, statusCode, ""));
-    when(response.getEntity()).thenReturn(new StringEntity(body));
-
-    return response;
   }
 
   private static String getForbiddenResponse() {

@@ -16,6 +16,10 @@
 
 package com.google.scp.operator.cpio.configclient.aws;
 
+import static com.google.scp.operator.cpio.configclient.common.ConfigClientUtil.COORDINATOR_HTTPCLIENT_MAX_ATTEMPTS;
+import static com.google.scp.operator.cpio.configclient.common.ConfigClientUtil.COORDINATOR_HTTPCLIENT_RETRY_INITIAL_INTERVAL;
+import static com.google.scp.operator.cpio.configclient.common.ConfigClientUtil.COORDINATOR_HTTPCLIENT_RETRY_MULTIPLIER;
+
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -29,10 +33,10 @@ import com.google.scp.operator.cpio.configclient.aws.Annotations.CoordinatorACre
 import com.google.scp.operator.cpio.configclient.aws.Annotations.CoordinatorARoleArn;
 import com.google.scp.operator.cpio.configclient.aws.Annotations.CoordinatorBCredentialsProvider;
 import com.google.scp.operator.cpio.configclient.aws.Annotations.CoordinatorBRoleArn;
+import com.google.scp.shared.api.util.HttpClientWrapper;
 import com.google.scp.shared.aws.credsprovider.AwsSessionCredentialsProvider;
 import com.google.scp.shared.aws.credsprovider.StsAwsSessionCredentialsProvider;
 import com.google.scp.shared.aws.util.AwsRequestSigner;
-import com.google.scp.shared.clients.DefaultHttpClientRetryStrategy;
 import com.google.scp.shared.clients.configclient.ParameterClient;
 import com.google.scp.shared.clients.configclient.ParameterClient.ParameterClientException;
 import com.google.scp.shared.clients.configclient.aws.AwsClientConfigModule;
@@ -40,8 +44,6 @@ import com.google.scp.shared.clients.configclient.aws.AwsClientConfigModule.AwsC
 import com.google.scp.shared.clients.configclient.aws.AwsClientConfigModule.AwsCredentialSecretKey;
 import com.google.scp.shared.clients.configclient.model.ErrorReason;
 import com.google.scp.shared.clients.configclient.model.WorkerParameter;
-import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.HttpClients;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
 
@@ -59,57 +61,46 @@ public final class AwsOperatorClientConfigModule extends AbstractModule {
     install(new AwsClientConfigModule());
   }
 
-  /** Provider for an {@code HttpClient} to access coordinator A. */
+  /** Provider for an {@code HttpClientWrapper} to access coordinator A. */
   @Provides
   @Singleton
   @CoordinatorAHttpClient
-  public HttpClient provideCoordinatorAHttpClient(
+  public HttpClientWrapper provideCoordinatorAHttpClient(
       @AwsCredentialAccessKey String accessKey,
       @AwsCredentialSecretKey String secretKey,
       @CoordinatorARegionBinding Region coordinatorRegion,
       @CoordinatorACredentialsProvider AwsSessionCredentialsProvider credentialsProvider) {
     if (!accessKey.isEmpty() && !secretKey.isEmpty()) {
       // Doesn't use STS, so requests can't be signed (no session token)
-      return HttpClients.createDefault();
+      return HttpClientWrapper.createDefault();
     } else {
-      // TODO: This should be refactored to allow unit testing that interception works
-      return HttpClients.custom()
-          .addInterceptorFirst(
-              AwsRequestSigner.createRequestSignerInterceptor(
-                  coordinatorRegion, credentialsProvider))
-          .setServiceUnavailableRetryStrategy(DefaultHttpClientRetryStrategy.getInstance())
-          .build();
+      return getHttpClientWrapper(coordinatorRegion, credentialsProvider);
     }
   }
 
-  /** Provider for an {@code HttpClient} to access coordinator B. */
+  /** Provider for an {@code HttpClientWrapper} to access coordinator B. */
   @Provides
   @Singleton
   @CoordinatorBHttpClient
-  public HttpClient provideCoordinatorBHttpClient(
+  public HttpClientWrapper provideCoordinatorBHttpClient(
       @AwsCredentialAccessKey String accessKey,
       @AwsCredentialSecretKey String secretKey,
       @CoordinatorBRegionBinding Region coordinatorRegion,
       @CoordinatorBCredentialsProvider AwsSessionCredentialsProvider credentialsProvider) {
     if (!accessKey.isEmpty() && !secretKey.isEmpty()) {
       // Doesn't use STS, so requests can't be signed (no session token)
-      return HttpClients.createDefault();
+      return HttpClientWrapper.createDefault();
     } else {
-      // TODO: This should be refactored to allow unit testing that interception works
-      return HttpClients.custom()
-          .addInterceptorFirst(
-              AwsRequestSigner.createRequestSignerInterceptor(
-                  coordinatorRegion, credentialsProvider))
-          .setServiceUnavailableRetryStrategy(DefaultHttpClientRetryStrategy.getInstance())
-          .build();
+      return getHttpClientWrapper(coordinatorRegion, credentialsProvider);
     }
   }
 
   /** Provided for backwards compatibility with single key clients. */
   @Provides
   @Singleton
-  public HttpClient provideCoordinatorHttpClient(@CoordinatorAHttpClient HttpClient httpClient) {
-    return httpClient;
+  public HttpClientWrapper provideCoordinatorHttpClient(
+      @CoordinatorAHttpClient HttpClientWrapper httpClientWrapper) {
+    return httpClientWrapper;
   }
 
   /** Provider for a {@code AwsSessionCredentialsProvider} class to access coordinator A. */
@@ -178,5 +169,17 @@ public final class AwsOperatorClientConfigModule extends AbstractModule {
   @CoordinatorBRegionBinding
   public Region provideCoordinatorBRegion(@CoordinatorBRegionBindingOverride String region) {
     return Region.of(region);
+  }
+
+  private static HttpClientWrapper getHttpClientWrapper(
+      Region coordinatorRegion, AwsSessionCredentialsProvider credentialsProvider) {
+    return HttpClientWrapper.builder()
+        .setInterceptor(
+            AwsRequestSigner.createRequestSignerInterceptor(coordinatorRegion, credentialsProvider))
+        .setExponentialBackoff(
+            COORDINATOR_HTTPCLIENT_RETRY_INITIAL_INTERVAL,
+            COORDINATOR_HTTPCLIENT_RETRY_MULTIPLIER,
+            COORDINATOR_HTTPCLIENT_MAX_ATTEMPTS)
+        .build();
   }
 }

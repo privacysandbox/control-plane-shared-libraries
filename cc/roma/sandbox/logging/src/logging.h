@@ -19,5 +19,7 @@
 #include <iostream>
 
 #if !defined(_ROMA_LOG_ERROR)
-#define _ROMA_LOG_ERROR(msg) std::cerr << msg << std::endl;
+#define _ROMA_LOG_ERROR(msg)                                        \
+  std::cerr << "ROMA:" << __FILE__ << ":" << __LINE__ << ":" << msg \
+            << std::endl;
 #endif

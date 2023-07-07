@@ -72,6 +72,31 @@ resource "aws_iam_role_policy_attachment" "terminated_instance_autoscaling_group
   role       = aws_iam_role.terminated_instance_lambda_role.name
 }
 
+// IAM policy to allow access to AsgInstances DDB table.
+resource "aws_iam_policy" "terminated_instance_asginstances_db_policy" {
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        Action : [
+          "dynamodb:DescribeTable",
+          "dynamodb:Get*",
+          "dynamodb:Query",
+          "dynamodb:Update*",
+          "dynamodb:PutItem"
+        ],
+        Resource : var.asginstances_db_arn
+        Effect : "Allow"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "terminated_instance_asginstances_db_policy_attachment" {
+  policy_arn = aws_iam_policy.terminated_instance_asginstances_db_policy.arn
+  role       = aws_iam_role.terminated_instance_lambda_role.name
+}
+
 resource "aws_lambda_function" "terminated_instance_lambda" {
   function_name = var.terminated_instance_handler_lambda_name
   role          = aws_iam_role.terminated_instance_lambda_role.arn
@@ -86,6 +111,12 @@ resource "aws_lambda_function" "terminated_instance_lambda" {
   runtime     = "java11"
   memory_size = var.terminated_instance_handler_memory_size
   timeout     = var.terminated_instance_handler_lambda_runtime_timeout
+  environment {
+    variables = {
+      ASG_INSTANCES_DYNAMO_TABLE_NAME = var.asginstances_db_table_name,
+      ASG_INSTANCES_DYNAMO_TTL_DAYS   = var.asginstances_db_ttl_days
+    }
+  }
 
   tags = {
     name        = var.terminated_instance_handler_lambda_name

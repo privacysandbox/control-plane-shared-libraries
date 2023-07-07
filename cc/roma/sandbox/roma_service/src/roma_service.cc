@@ -99,17 +99,25 @@ ExecutionResult RomaService::Run() noexcept {
 }
 
 ExecutionResult RomaService::Stop() noexcept {
-  auto result = native_function_binding_handler_->Stop();
-  RETURN_IF_FAILURE(result);
+  if (native_function_binding_handler_) {
+    auto result = native_function_binding_handler_->Stop();
+    RETURN_IF_FAILURE(result);
+  }
 
-  result = dispatcher_->Stop();
-  RETURN_IF_FAILURE(result);
+  if (dispatcher_) {
+    auto result = dispatcher_->Stop();
+    RETURN_IF_FAILURE(result);
+  }
 
-  result = worker_pool_->Stop();
-  RETURN_IF_FAILURE(result);
+  if (worker_pool_) {
+    auto result = worker_pool_->Stop();
+    RETURN_IF_FAILURE(result);
+  }
 
-  result = async_executor_->Stop();
-  RETURN_IF_FAILURE(result);
+  if (async_executor_) {
+    auto result = async_executor_->Stop();
+    RETURN_IF_FAILURE(result);
+  }
 
   return SuccessExecutionResult();
 }
@@ -166,12 +174,19 @@ ExecutionResult RomaService::SetupWorkers(
 
   auto concurrency = remote_fds.size();
 
+  JsEngineResourceConstraints resource_constraints;
+  config_.GetJsEngineResourceConstraints(resource_constraints);
+
   for (int i = 0; i < concurrency; i++) {
     WorkerApiSapiConfig worker_api_sapi_config{
         .worker_js_engine = worker::WorkerFactory::WorkerEngine::v8,
         .js_engine_require_code_preload = true,
         .native_js_function_comms_fd = remote_fds.at(i),
-        .native_js_function_names = function_names};
+        .native_js_function_names = function_names,
+        .max_worker_virtual_memory_mb = config_.max_worker_virtual_memory_mb,
+        .js_engine_resource_constraints = resource_constraints,
+        .js_engine_max_wasm_memory_number_of_pages =
+            config_.max_wasm_memory_number_of_pages};
 
     worker_configs.push_back(worker_api_sapi_config);
   }

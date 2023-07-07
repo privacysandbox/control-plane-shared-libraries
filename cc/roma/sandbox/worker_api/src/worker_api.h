@@ -37,6 +37,7 @@ class WorkerApi : public core::ServiceInterface {
   struct RunCodeResponse {
     std::shared_ptr<std::string> response;
     std::vector<std::shared_ptr<std::string>> errors;
+    std::unordered_map<std::string, int64_t> metrics;
   };
 
   /**

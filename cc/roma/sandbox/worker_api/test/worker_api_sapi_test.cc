@@ -25,6 +25,8 @@
 #include "roma/sandbox/constants/constants.h"
 
 using google::scp::roma::sandbox::constants::kCodeVersion;
+using google::scp::roma::sandbox::constants::
+    kExecutionMetricSandboxedJsEngineCallNs;
 using google::scp::roma::sandbox::constants::kHandlerName;
 using google::scp::roma::sandbox::constants::kRequestAction;
 using google::scp::roma::sandbox::constants::kRequestActionExecute;
@@ -88,5 +90,37 @@ TEST(WorkerApiSapiTest, WorkerWithInputsWorksThroughSandbox) {
 
   EXPECT_SUCCESS(response_or.result());
   EXPECT_EQ(*response_or->response, "\"pos0 string pos1 string\"");
+}
+
+TEST(WorkerApiSapiTest, ShouldGetExecutionMetrics) {
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = false;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  WorkerApiSapi worker_api(config);
+
+  auto result = worker_api.Init();
+  EXPECT_SUCCESS(result);
+
+  result = worker_api.Run();
+  EXPECT_SUCCESS(result);
+
+  WorkerApi::RunCodeRequest request = {
+      .code =
+          "function func(input1, input2) { return input1 + \" \" + input2 }",
+      .input = {"\"pos0 string\"", "\"pos1 string\""},
+      .metadata = {{kRequestType, kRequestTypeJavascript},
+                   {kHandlerName, "func"},
+                   {kCodeVersion, "1"},
+                   {kRequestAction, kRequestActionExecute}}};
+
+  auto response_or = worker_api.RunCode(request);
+
+  EXPECT_SUCCESS(response_or.result());
+  EXPECT_EQ(*response_or->response, "\"pos0 string pos1 string\"");
+
+  EXPECT_GT(response_or->metrics.at(kExecutionMetricSandboxedJsEngineCallNs),
+            0);
 }
 }  // namespace google::scp::roma::sandbox::worker_api::test

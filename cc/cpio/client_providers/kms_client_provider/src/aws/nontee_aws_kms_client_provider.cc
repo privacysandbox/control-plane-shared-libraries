@@ -142,7 +142,8 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
   AsyncContext<DecryptRequest, Aead> get_aead_context(
       decrypt_context.request,
       bind(&NonteeAwsKmsClientProvider::GetAeadCallbackToDecrypt, this,
-           decrypt_context, _1));
+           decrypt_context, _1),
+      decrypt_context);
   return GetAead(get_aead_context);
 }
 
@@ -185,7 +186,8 @@ ExecutionResult NonteeAwsKmsClientProvider::GetAead(
   AsyncContext<DecryptRequest, KMSClient> create_kms_context(
       get_aead_context.request,
       bind(&NonteeAwsKmsClientProvider::CreateKmsCallbackToCreateAead, this,
-           get_aead_context, _1));
+           get_aead_context, _1),
+      get_aead_context);
   return CreateKmsClient(create_kms_context);
 }
 
@@ -225,9 +227,11 @@ ExecutionResult NonteeAwsKmsClientProvider::CreateKmsClient(
       create_kms_context.request->account_identity());
   AsyncContext<GetRoleCredentialsRequest, GetRoleCredentialsResponse>
       get_role_credentials_context(
-          move(request), bind(&NonteeAwsKmsClientProvider::
-                                  GetSessionCredentialsCallbackToCreateKms,
-                              this, create_kms_context, _1));
+          move(request),
+          bind(&NonteeAwsKmsClientProvider::
+                   GetSessionCredentialsCallbackToCreateKms,
+               this, create_kms_context, _1),
+          create_kms_context);
   return role_credentials_provider_->GetRoleCredentials(
       get_role_credentials_context);
 }

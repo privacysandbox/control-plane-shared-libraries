@@ -26,9 +26,13 @@
 #include "public/core/interface/execution_result.h"
 #include "roma/interface/roma.h"
 #include "roma/sandbox/js_engine/src/js_engine.h"
+#include "roma/sandbox/logging/src/logging.h"
+#include "roma/sandbox/worker/src/worker_utils.h"
+#include "roma/worker/src/execution_utils.h"
 #include "roma/worker/src/execution_watchdog.h"
 
 #include "error_codes.h"
+#include "snapshot_compilation_context.h"
 #include "v8_isolate_visitor.h"
 
 namespace google::scp::roma::sandbox::js_engine::v8_js_engine {
@@ -40,8 +44,19 @@ class V8JsEngine : public JsEngine {
  public:
   V8JsEngine(
       const std::vector<std::shared_ptr<V8IsolateVisitor>>& isolate_visitors =
-          std::vector<std::shared_ptr<V8IsolateVisitor>>())
-      : isolate_visitors_(isolate_visitors) {}
+          std::vector<std::shared_ptr<V8IsolateVisitor>>(),
+      const JsEngineResourceConstraints& v8_resource_constraints =
+          JsEngineResourceConstraints())
+      : isolate_visitors_(isolate_visitors),
+        v8_resource_constraints_(v8_resource_constraints),
+        execution_watchdog_(
+            std::make_unique<roma::worker::ExecutionWatchDog>()) {
+    for (const auto& visitor : isolate_visitors_) {
+      visitor->AddExternalReferences(external_references_);
+    }
+    // Must be null terminated
+    external_references_.push_back(0);
+  }
 
   core::ExecutionResult Init() noexcept override;
 
@@ -69,16 +84,74 @@ class V8JsEngine : public JsEngine {
           RomaJsEngineCompilationContext()) noexcept override;
 
  private:
-  void StartWatchdogTimer(
-      const std::unordered_map<std::string, std::string>& metadata) noexcept;
+  /**
+   * @brief Create a Snapshot object
+   *
+   * @param startup_data
+   * @param js_code
+   * @param err_msg
+   * @return core::ExecutionResult
+   */
+  core::ExecutionResult CreateSnapshot(v8::StartupData& startup_data,
+                                       const std::string& js_code,
+                                       std::string& err_msg) noexcept;
+  /**
+   * @brief Create a Compilation Context object which wraps a object of
+   * SnapshotCompilationContext in the context.
+   *
+   * @param code
+   * @param err_msg
+   * @return core::ExecutionResultOr<js_engine::RomaJsEngineCompilationContext>
+   */
+  core::ExecutionResultOr<js_engine::RomaJsEngineCompilationContext>
+  CreateCompilationContext(const std::string& code,
+                           std::string& err_msg) noexcept;
 
-  inline static std::unique_ptr<v8::Platform> v8_platform_;
+  /// @brief Create a v8 isolate instance.
+  virtual core::ExecutionResultOr<v8::Isolate*> CreateIsolate(
+      const v8::StartupData& startup_data = {nullptr, 0}) noexcept;
+
+  /// @brief Dispose v8 isolate.
+  virtual void DisposeIsolate() noexcept;
+
+  /**
+   * @brief Start timing the execution running in the isolate with watchdog.
+   *
+   * @param isolate the target isolate where the execution is running.
+   * @param metadata metadata from the request which may contain a kTimeoutMsTag
+   * with the timeout value. If there is no kTimeoutMsTag, the default timeout
+   * value kDefaultExecutionTimeoutMs will be used.
+   */
+  void StartWatchdogTimer(
+      v8::Isolate* isolate,
+      const std::unordered_map<std::string, std::string>& metadata) noexcept;
+  /**
+   * @brief Stop the timer for the execution in isolate. Call this function
+   * after execution is complete to avoid watchdog termination of standby
+   * isolate.
+   *
+   */
+  void StopWatchdogTimer() noexcept;
+
+  /**
+   * @brief Initialize and run a execution watchdog for current v8_isolate.
+   *
+   * @return core::ExecutionResult
+   */
+  core::ExecutionResult InitAndRunWatchdog() noexcept;
 
   v8::Isolate* v8_isolate_ = nullptr;
   const std::vector<std::shared_ptr<V8IsolateVisitor>> isolate_visitors_;
 
+  /// @brief These are external references (pointers to data outside of the v8
+  /// heap) which are needed for serialization of the v8 snapshot.
+  std::vector<intptr_t> external_references_;
+
   /// @brief A timer thread watches the code execution in v8 isolate and
   /// timeouts the execution in set time.
   std::unique_ptr<roma::worker::ExecutionWatchDog> execution_watchdog_{nullptr};
+
+  /// v8 heap resource constraints.
+  const JsEngineResourceConstraints v8_resource_constraints_;
 };
 }  // namespace google::scp::roma::sandbox::js_engine::v8_js_engine

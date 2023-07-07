@@ -23,6 +23,7 @@ import com.google.scp.operator.protos.shared.backend.CreateJobRequestProto.Creat
 import com.google.scp.operator.protos.shared.backend.JobKeyProto;
 import com.google.scp.operator.protos.shared.backend.RequestInfoProto.RequestInfo;
 import com.google.scp.operator.protos.shared.backend.ResultInfoProto.ResultInfo;
+import com.google.scp.operator.protos.shared.backend.asginstance.AsgInstanceProto.AsgInstance;
 import com.google.scp.operator.protos.shared.backend.metadatadb.JobMetadataProto.JobMetadata;
 import java.time.Instant;
 import javax.annotation.Nullable;
@@ -48,6 +49,7 @@ public class BackendModelUtil {
    * Returns the JobMetadata.createJobRequest value, or null if it is not set. This is used in
    * conversion of model to schemas which accept null instead of Optional.
    */
+  @Nullable
   @Deprecated
   public static CreateJobRequest getCreateJobRequestValue(JobMetadata jobMetadata) {
     return jobMetadata.hasCreateJobRequest() ? jobMetadata.getCreateJobRequest() : null;
@@ -69,6 +71,7 @@ public class BackendModelUtil {
    * Returns JobMetadata.requestInfo value, or null if it is not set. This is used in conversion of
    * model to schemas which accept null instead of Optional.
    */
+  @Nullable
   public static RequestInfo getRequestInfoValue(JobMetadata jobMetadata) {
     return jobMetadata.hasRequestInfo() ? jobMetadata.getRequestInfo() : null;
   }
@@ -88,6 +91,7 @@ public class BackendModelUtil {
    * Returns JobMetadata.resultInfo value, or null if it is not set. This is used in conversion of
    * model to schemas which accept null instead of Optional.
    */
+  @Nullable
   public static ResultInfo getResultInfoValue(JobMetadata jobMetadata) {
     return jobMetadata.hasResultInfo() ? jobMetadata.getResultInfo() : null;
   }
@@ -107,6 +111,7 @@ public class BackendModelUtil {
    * Returns JobMetadata.requestProcessingStartedAt value, or null if it is not set. This is used in
    * conversion of model to schemas which accept null instead of Optional.
    */
+  @Nullable
   public static Instant getRequestProcessingStartedTimeValue(JobMetadata jobMetadata) {
     return jobMetadata.hasRequestProcessingStartedAt()
         ? toJavaInstant(jobMetadata.getRequestProcessingStartedAt())
@@ -121,6 +126,28 @@ public class BackendModelUtil {
       JobMetadata.Builder jobMetadata, @Nullable Instant requestProcessingStartedAt) {
     if (requestProcessingStartedAt != null) {
       jobMetadata.setRequestProcessingStartedAt(toProtoTimestamp(requestProcessingStartedAt));
+    }
+  }
+
+  /**
+   * Returns AsgInstance.terminationTime value, or null if it is not set. This is used in conversion
+   * of model to schemas which accept null instead of Optional.
+   */
+  @Nullable
+  public static Instant getAsgInstanceTerminationTimeValue(AsgInstance asgInstance) {
+    return asgInstance.hasTerminationTime()
+        ? toJavaInstant(asgInstance.getTerminationTime())
+        : null;
+  }
+
+  /**
+   * Sets the AsgInstance.terminationTime value if the given {@param asgInstance} is not null. This
+   * is used in conversion of model to schemas which accept null instead of Optional.
+   */
+  public static void setAsgInstanceTerminationTimeValue(
+      AsgInstance.Builder asgInstance, @Nullable Instant terminationTime) {
+    if (terminationTime != null) {
+      asgInstance.setTerminationTime(toProtoTimestamp(terminationTime));
     }
   }
 }

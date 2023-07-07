@@ -19,13 +19,20 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 
+#include "core/common/time_provider/src/stopwatch.h"
 #include "public/core/interface/execution_result.h"
+#include "roma/sandbox/constants/constants.h"
 
 using google::scp::core::ExecutionResult;
 using google::scp::core::ExecutionResultOr;
+using google::scp::core::common::Stopwatch;
+using google::scp::roma::sandbox::constants::
+    kExecutionMetricSandboxedJsEngineCallNs;
 using std::lock_guard;
 using std::make_shared;
+using std::move;
 using std::mutex;
 using std::string;
 
@@ -53,13 +60,23 @@ ExecutionResultOr<WorkerApi::RunCodeResponse> WorkerApiSapi::RunCode(
     (*params_proto.mutable_metadata())[kv.first] = kv.second;
   }
 
+  Stopwatch stopwatch;
+  stopwatch.Start();
   auto result = sandbox_api_->RunCode(params_proto);
+  auto run_code_elapsed_ns = stopwatch.Stop();
   if (!result.Successful()) {
     return result;
   }
 
   WorkerApi::RunCodeResponse code_response;
-  code_response.response = make_shared<string>(params_proto.response());
+  code_response.metrics[kExecutionMetricSandboxedJsEngineCallNs] =
+      run_code_elapsed_ns.count();
+  for (auto& kv : params_proto.metrics()) {
+    code_response.metrics[kv.first] = kv.second;
+  }
+
+  code_response.response = make_shared<string>(move(params_proto.response()));
+
   return code_response;
 }
 

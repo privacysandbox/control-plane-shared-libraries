@@ -23,7 +23,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/common/time_provider/src/stopwatch.h"
 #include "core/interface/errors.h"
+#include "roma/config/src/config.h"
+#include "roma/sandbox/constants/constants.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_init_params.pb.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_params.pb.h"
 #include "roma/sandbox/worker_factory/src/worker_factory.h"
@@ -31,7 +34,10 @@
 #include "error_codes.h"
 
 using google::scp::core::StatusCode;
+using google::scp::core::common::Stopwatch;
 using google::scp::core::errors::SC_ROMA_WORKER_API_UNINITIALIZED_WORKER;
+using google::scp::roma::JsEngineResourceConstraints;
+using google::scp::roma::sandbox::constants::kExecutionMetricJsEngineCallNs;
 using google::scp::roma::sandbox::worker::Worker;
 using google::scp::roma::sandbox::worker::WorkerFactory;
 using std::shared_ptr;
@@ -59,11 +65,19 @@ StatusCode Init(worker_api::WorkerInitParamsProto* init_params) {
         init_params->native_js_function_names().begin(),
         init_params->native_js_function_names().end());
 
+    JsEngineResourceConstraints resource_constraints;
+    resource_constraints.initial_heap_size_in_mb =
+        static_cast<size_t>(init_params->js_engine_initial_heap_size_mb());
+    resource_constraints.maximum_heap_size_in_mb =
+        static_cast<size_t>(init_params->js_engine_maximum_heap_size_mb());
+
     WorkerFactory::V8WorkerEngineParams v8_params{
         .native_js_function_comms_fd =
             init_params->native_js_function_comms_fd(),
         .native_js_function_names = native_js_function_names,
-    };
+        .resource_constraints = resource_constraints,
+        .max_wasm_memory_number_of_pages = static_cast<size_t>(
+            init_params->js_engine_max_wasm_memory_number_of_pages())};
 
     factory_params.v8_worker_engine_params = v8_params;
   }
@@ -110,7 +124,12 @@ StatusCode RunCode(worker_api::WorkerParamsProto* params) {
     metadata[element.first] = element.second;
   }
 
+  Stopwatch stopwatch;
+  stopwatch.Start();
   auto response_or = worker_->RunCode(code, input, metadata);
+  auto run_code_elapsed_ns = stopwatch.Stop();
+  (*params->mutable_metrics())[kExecutionMetricJsEngineCallNs] =
+      run_code_elapsed_ns.count();
 
   if (!response_or.result().Successful()) {
     return response_or.result().status_code;

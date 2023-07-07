@@ -17,16 +17,17 @@
 #include "roma/interface/roma.h"
 
 #include <memory>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
 
+#include "core/interface/errors.h"
 #include "core/os/src/linux/system_resource_info_provider_linux.h"
 
 #if defined(_SCP_ROMA_SANDBOXED_LIBRARY)
 #include "roma/sandbox/roma_service/src/roma_service.h"
 using google::scp::roma::sandbox::roma_service::RomaService;
-
 #else
 #include "roma_service.h"
 using google::scp::roma::roma_service::RomaService;
@@ -35,16 +36,18 @@ using google::scp::roma::roma_service::RomaService;
 using absl::OkStatus;
 using absl::Status;
 using absl::StatusCode;
+using google::scp::core::errors::GetErrorMessage;
 using google::scp::core::os::linux::SystemResourceInfoProviderLinux;
 using std::make_unique;
 using std::move;
+using std::string;
 using std::unique_ptr;
 using std::vector;
 
 // This value does not account for runtime memory usage and is only a generic
 // estimate based on the memory needed by roma and the steady-state memory
 // needed by v8.
-static constexpr uint64_t kDefaultMinimumStatupMemoryNeededPerWorkerKb =
+static constexpr uint64_t kDefaultMinimumStartupMemoryNeededPerWorkerKb =
     400 * 1024;
 
 namespace google::scp::roma {
@@ -127,7 +130,7 @@ static bool RomaHasEnoughMemoryForStartup(const Config& config) {
           : cpu_count;
 
   auto minimum_memory_needed =
-      num_processes * kDefaultMinimumStatupMemoryNeededPerWorkerKb;
+      num_processes * kDefaultMinimumStartupMemoryNeededPerWorkerKb;
 
   return minimum_memory_needed < *available_memory_or;
 }
@@ -143,12 +146,14 @@ Status RomaInit(const Config& config) {
   auto result = roma_service->Init();
   if (!result.Successful()) {
     return Status(StatusCode::kInternal,
-                  "Roma initialization failed due to internal error.");
+                  "Roma initialization failed due to internal error: " +
+                      string(GetErrorMessage(result.status_code)));
   }
   result = roma_service->Run();
   if (!result.Successful()) {
     return Status(StatusCode::kInternal,
-                  "Roma startup failed due to internal error.");
+                  "Roma startup failed due to internal error: " +
+                      string(GetErrorMessage(result.status_code)));
   }
   return OkStatus();
 }
@@ -158,7 +163,8 @@ Status RomaStop() {
   auto result = roma_service->Stop();
   if (!result.Successful()) {
     return Status(StatusCode::kInternal,
-                  "Roma stop failed due to internal error.");
+                  "Roma stop failed due to internal error: " +
+                      string(GetErrorMessage(result.status_code)));
   }
   RomaService::Delete();
   return OkStatus();

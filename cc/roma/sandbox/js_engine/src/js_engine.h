@@ -26,7 +26,7 @@
 
 namespace google::scp::roma::sandbox::js_engine {
 /**
- * @brief Context that can be used to load contexts to the JS enginer.
+ * @brief Context that can be used to load contexts to the JS engine.
  *
  */
 struct RomaJsEngineCompilationContext {

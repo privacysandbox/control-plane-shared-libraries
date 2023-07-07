@@ -43,6 +43,7 @@ cc_library(
         ":worker_init_params_cc_proto",
         ":worker_params_cc_proto",
         "//cc:cc_base_include_dir",
+        "//cc/roma/config/src:roma_config_lib",
         "//cc/roma/sandbox/worker_factory/src:roma_worker_factory_lib",
     ],
 )
@@ -82,6 +83,7 @@ cc_library(
         ":worker_params_cc_proto",
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
+        "//cc/roma/sandbox/logging/src:roma_logging_lib",
         "//cc/roma/sandbox/worker_factory/src:roma_worker_factory_lib",
     ],
 )

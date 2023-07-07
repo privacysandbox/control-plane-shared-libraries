@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.scp.operator.shared.dao.metadatadb.common;
+package com.google.scp.operator.shared.dao.asginstancesdb.common;
 
 import com.google.scp.operator.protos.shared.backend.asginstance.AsgInstanceProto.AsgInstance;
 import java.util.List;
@@ -53,7 +53,7 @@ public interface AsgInstancesDao {
    *
    * @throws AsgInstanceDaoException for other failures to write
    */
-  void updateAsgInstance(AsgInstance terminatedInstance) throws AsgInstanceDaoException;
+  void updateAsgInstance(AsgInstance asgInstance) throws AsgInstanceDaoException;
 
   /** Represents an exception thrown by the {@code AsgInstanceDao} class. */
   public class AsgInstanceDaoException extends Exception {
