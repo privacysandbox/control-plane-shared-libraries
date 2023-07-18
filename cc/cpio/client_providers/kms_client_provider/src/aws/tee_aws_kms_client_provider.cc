@@ -105,7 +105,7 @@ ExecutionResult TeeAwsKmsClientProvider::Init() noexcept {
   if (!credential_provider_) {
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_CREDENTIAL_PROVIDER_NOT_FOUND);
-    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, execution_result,
               "Failed to get credential provider.");
     return execution_result;
   }
@@ -128,8 +128,9 @@ ExecutionResult TeeAwsKmsClientProvider::Decrypt(
   if (ciphertext.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND);
-    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-              "Failed to get cipher text from decryption request.");
+    SCP_ERROR_CONTEXT(kTeeAwsKmsClientProvider, decrypt_context,
+                      execution_result,
+                      "Failed to get cipher text from decryption request.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -139,8 +140,8 @@ ExecutionResult TeeAwsKmsClientProvider::Decrypt(
   if (assume_role_arn.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_ASSUME_ROLE_NOT_FOUND);
-    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-              "Failed to get AssumeRole Arn.");
+    SCP_ERROR_CONTEXT(kTeeAwsKmsClientProvider, decrypt_context,
+                      execution_result, "Failed to get AssumeRole Arn.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return execution_result;
@@ -150,8 +151,8 @@ ExecutionResult TeeAwsKmsClientProvider::Decrypt(
   if (kms_region.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_TEE_AWS_KMS_CLIENT_PROVIDER_REGION_NOT_FOUND);
-    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-              "Failed to get region.");
+    SCP_ERROR_CONTEXT(kTeeAwsKmsClientProvider, decrypt_context,
+                      execution_result, "Failed to get region.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return execution_result;
@@ -176,8 +177,8 @@ void TeeAwsKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
         get_session_credentials_context) noexcept {
   auto execution_result = get_session_credentials_context.result;
   if (!execution_result.Successful()) {
-    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
-              "Failed to get AWS Credentials.");
+    SCP_ERROR_CONTEXT(kTeeAwsKmsClientProvider, decrypt_context,
+                      execution_result, "Failed to get AWS Credentials.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return;
@@ -207,8 +208,8 @@ void TeeAwsKmsClientProvider::GetSessionCredentialsCallbackToDecrypt(
   string decoded_plaintext;
   execute_result = Base64Decode(plaintext, decoded_plaintext);
   if (!execute_result.Successful()) {
-    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execute_result,
-              "Failed to decode data.");
+    SCP_ERROR_CONTEXT(kTeeAwsKmsClientProvider, decrypt_context, execute_result,
+                      "Failed to decode data.");
     decrypt_context.result = execute_result;
     decrypt_context.Finish();
     return;
@@ -230,7 +231,7 @@ ExecutionResult TeeAwsKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_KMSTOOL_CLI_EXECUTION_FAILED);
     SCP_ERROR(
-        kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
+        kTeeAwsKmsClientProvider, kZeroUuid, execution_result,
         "Enclaves KMSTool Cli execution failed on initializing pipe stream.");
     return execution_result;
   }
@@ -243,7 +244,7 @@ ExecutionResult TeeAwsKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
   if (return_status == EXIT_FAILURE) {
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_KMSTOOL_CLI_EXECUTION_FAILED);
-    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, execution_result,
               "Enclaves KMSTool Cli execution failed on closing pipe stream.");
     return execution_result;
   }

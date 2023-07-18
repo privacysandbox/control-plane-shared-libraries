@@ -72,7 +72,8 @@ ExecutionResultOr<shared_ptr<Worker>> WorkerFactory::Create(
     auto one_time_setup = GetEngineOneTimeSetup(params);
     v8_engine->OneTimeSetup(one_time_setup);
 
-    auto worker = make_shared<Worker>(v8_engine, params.require_preload);
+    auto worker = make_shared<Worker>(v8_engine, params.require_preload,
+                                      params.compilation_context_cache_size);
 
     return worker;
   }

@@ -95,7 +95,7 @@ void AwsMetricClientProvider::CreateClientConfiguration(
 ExecutionResult AwsMetricClientProvider::Run() noexcept {
   auto execution_result = MetricClientProvider::Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, execution_result,
               "Failed to initialize MetricClientProvider");
     return execution_result;
   }
@@ -104,14 +104,13 @@ ExecutionResult AwsMetricClientProvider::Run() noexcept {
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
 
   if (!region_code_or.Successful()) {
-    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
-              region_code_or.result(),
+    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, region_code_or.result(),
               "Failed to get region code for current instance");
     return region_code_or.result();
   }
 
-  SCP_INFO(kAwsMetricClientProvider, kZeroUuid, kZeroUuid,
-           "GetCurrentRegionCode: %s", region_code_or->c_str());
+  SCP_INFO(kAwsMetricClientProvider, kZeroUuid, "GetCurrentRegionCode: %s",
+           region_code_or->c_str());
 
   shared_ptr<ClientConfiguration> client_config;
   CreateClientConfiguration(make_shared<string>(move(*region_code_or)),
@@ -135,7 +134,7 @@ ExecutionResult AwsMetricClientProvider::MetricsBatchPush(
       metric_requests_vector->size() > 1) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_METRIC_CLIENT_PROVIDER_SHOULD_ENABLE_BATCH_RECORDING);
-    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kAwsMetricClientProvider, kZeroUuid, execution_result,
               "Should enable batch recording");
     return execution_result;
   }

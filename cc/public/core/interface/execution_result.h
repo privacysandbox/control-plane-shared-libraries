@@ -148,7 +148,7 @@ namespace google::scp::core {
 
 #define __ASSIGN_OR_RETURN_HELPER(lhs, result_or_temp_var_name,           \
                                   execution_result_or, failure_statement) \
-  auto result_or_temp_var_name = execution_result_or;                     \
+  auto&& result_or_temp_var_name = execution_result_or;                   \
   if (!result_or_temp_var_name.Successful()) {                            \
     auto __res = result_or_temp_var_name.result();                        \
     failure_statement;                                                    \

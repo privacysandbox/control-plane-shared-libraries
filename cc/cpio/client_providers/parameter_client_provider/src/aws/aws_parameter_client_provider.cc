@@ -82,11 +82,14 @@ AwsParameterClientProvider::CreateClientConfiguration(
 }
 
 ExecutionResult AwsParameterClientProvider::Init() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult AwsParameterClientProvider::Run() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
   if (!region_code_or.Successful()) {
-    SCP_ERROR(kAwsParameterClientProvider, kZeroUuid, kZeroUuid,
-              region_code_or.result(),
+    SCP_ERROR(kAwsParameterClientProvider, kZeroUuid, region_code_or.result(),
               "Failed to get region code for current instance");
     return region_code_or.result();
   }
@@ -94,10 +97,6 @@ ExecutionResult AwsParameterClientProvider::Init() noexcept {
   ssm_client_ = ssm_client_factory_->CreateSSMClient(
       *CreateClientConfiguration(*region_code_or), io_async_executor_);
 
-  return SuccessExecutionResult();
-}
-
-ExecutionResult AwsParameterClientProvider::Run() noexcept {
   return SuccessExecutionResult();
 }
 

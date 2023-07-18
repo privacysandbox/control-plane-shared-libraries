@@ -46,6 +46,9 @@ class LoggerTests : public ScpTestBase {
     parent_uuid = Uuid::GenerateUuid();
     parent_uuid_str = ToString(parent_uuid);
 
+    correlation_id = Uuid::GenerateUuid();
+    correlation_id_str = ToString(correlation_id);
+
     location =
         std::string(__FILE__) + ":" + __func__ + ":" + std::to_string(__LINE__);
   }
@@ -54,13 +57,16 @@ class LoggerTests : public ScpTestBase {
   string uuid_str;
   Uuid parent_uuid;
   string parent_uuid_str;
+  Uuid correlation_id;
+  string correlation_id_str;
   string location;
   const string component_name = "LoggerTest";
 };
 
 TEST_F(LoggerTests, LogDebug) {
   MockLogger logger;
-  logger.Info(component_name, parent_uuid, uuid, location, "Message");
+  logger.Info(component_name, correlation_id, parent_uuid, uuid, location,
+              "Message");
 
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs.size(), 1);
@@ -70,14 +76,15 @@ TEST_F(LoggerTests, LogDebug) {
   auto after_timestamp_string = logs[0].substr(first_delim);
 
   EXPECT_NO_THROW(std::stod(timestamp_string));
-  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
-                                        uuid_str + "|" + location +
-                                        "|32: Message");
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + correlation_id_str +
+                                        "|" + parent_uuid_str + "|" + uuid_str +
+                                        "|" + location + "|32: Message");
 }
 
 TEST_F(LoggerTests, LogInfo) {
   MockLogger logger;
-  logger.Debug(component_name, parent_uuid, uuid, location, "Message");
+  logger.Debug(component_name, correlation_id, parent_uuid, uuid, location,
+               "Message");
 
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs.size(), 1);
@@ -87,14 +94,15 @@ TEST_F(LoggerTests, LogInfo) {
   auto after_timestamp_string = logs[0].substr(first_delim);
 
   EXPECT_NO_THROW(std::stod(timestamp_string));
-  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
-                                        uuid_str + "|" + location +
-                                        "|16: Message");
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + correlation_id_str +
+                                        "|" + parent_uuid_str + "|" + uuid_str +
+                                        "|" + location + "|16: Message");
 }
 
 TEST_F(LoggerTests, LogError) {
   MockLogger logger;
-  logger.Error(component_name, parent_uuid, uuid, location, "Message");
+  logger.Error(component_name, correlation_id, parent_uuid, uuid, location,
+               "Message");
 
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs.size(), 1);
@@ -104,15 +112,16 @@ TEST_F(LoggerTests, LogError) {
   auto after_timestamp_string = logs[0].substr(first_delim);
 
   EXPECT_NO_THROW(std::stod(timestamp_string));
-  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
-                                        uuid_str + "|" + location +
-                                        "|4: Message");
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + correlation_id_str +
+                                        "|" + parent_uuid_str + "|" + uuid_str +
+                                        "|" + location + "|4: Message");
 }
 
 TEST_F(LoggerTests, LogWarning) {
   MockLogger logger;
 
-  logger.Warning(component_name, parent_uuid, uuid, location, "Message");
+  logger.Warning(component_name, correlation_id, parent_uuid, uuid, location,
+                 "Message");
 
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs.size(), 1);
@@ -122,16 +131,16 @@ TEST_F(LoggerTests, LogWarning) {
   auto after_timestamp_string = logs[0].substr(first_delim);
 
   EXPECT_NO_THROW(std::stod(timestamp_string));
-  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
-                                        uuid_str + "|" + location +
-                                        "|8: Message");
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + correlation_id_str +
+                                        "|" + parent_uuid_str + "|" + uuid_str +
+                                        "|" + location + "|8: Message");
 }
 
 TEST_F(LoggerTests, LogWithArgs) {
   MockLogger logger;
 
-  logger.Warning(component_name, parent_uuid, uuid, location, "Message %d %s",
-                 1, "error");
+  logger.Warning(component_name, correlation_id, parent_uuid, uuid, location,
+                 "Message %d %s", 1, "error");
 
   auto logs = logger.GetMessages();
   EXPECT_EQ(logs.size(), 1);
@@ -140,9 +149,9 @@ TEST_F(LoggerTests, LogWithArgs) {
   auto timestamp_string = logs[0].substr(0, first_delim);
   auto after_timestamp_string = logs[0].substr(first_delim);
 
-  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + parent_uuid_str + "|" +
-                                        uuid_str + "|" + location +
-                                        "|8: Message 1 error");
+  EXPECT_EQ(after_timestamp_string, "|||LoggerTest|" + correlation_id_str +
+                                        "|" + parent_uuid_str + "|" + uuid_str +
+                                        "|" + location + "|8: Message 1 error");
 }
 
 TEST_F(LoggerTests, LogLevelToAndFromString) {

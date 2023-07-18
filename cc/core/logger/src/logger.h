@@ -44,38 +44,45 @@ class Logger : public LoggerInterface {
   ExecutionResult Stop() noexcept override;
 
   void Info(const std::string_view& component_name,
+            const common::Uuid& correlation_id,
             const common::Uuid& parent_activity_id,
             const common::Uuid& activity_id, const std::string_view& location,
             const std::string_view& message, ...) noexcept override;
 
   void Debug(const std::string_view& component_name,
+             const common::Uuid& correlation_id,
              const common::Uuid& parent_activity_id,
              const common::Uuid& activity_id, const std::string_view& location,
              const std::string_view& message, ...) noexcept override;
 
   void Warning(const std::string_view& component_name,
+               const common::Uuid& correlation_id,
                const common::Uuid& parent_activity_id,
                const common::Uuid& activity_id,
                const std::string_view& location,
                const std::string_view& message, ...) noexcept override;
 
   void Error(const std::string_view& component_name,
+             const common::Uuid& correlation_id,
              const common::Uuid& parent_activity_id,
              const common::Uuid& activity_id, const std::string_view& location,
              const std::string_view& message, ...) noexcept override;
 
   void Alert(const std::string_view& component_name,
+             const common::Uuid& correlation_id,
              const common::Uuid& parent_activity_id,
              const common::Uuid& activity_id, const std::string_view& location,
              const std::string_view& message, ...) noexcept override;
 
   void Critical(const std::string_view& component_name,
+                const common::Uuid& correlation_id,
                 const common::Uuid& parent_activity_id,
                 const common::Uuid& activity_id,
                 const std::string_view& location,
                 const std::string_view& message, ...) noexcept override;
 
   void Emergency(const std::string_view& component_name,
+                 const common::Uuid& correlation_id,
                  const common::Uuid& parent_activity_id,
                  const common::Uuid& activity_id,
                  const std::string_view& location,

@@ -204,7 +204,8 @@ Status LoadCodeObj(unique_ptr<CodeObject> code_object, Callback callback) {
       roma_service->Dispatcher().Broadcast(move(code_object), callback);
   if (!result.Successful()) {
     return Status(StatusCode::kInternal,
-                  "Roma LoadCodeObj failed due to dispatch error.");
+                  "Roma LoadCodeObj failed with: " +
+                      string(GetErrorMessage(result.status_code)));
   }
   return OkStatus();
 }

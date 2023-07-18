@@ -16,6 +16,7 @@
 
 #include "roma/sandbox/dispatcher/src/dispatcher.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -23,8 +24,6 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-
-#include <gmock/gmock.h>
 
 #include "absl/status/statusor.h"
 #include "core/async_executor/src/async_executor.h"
@@ -67,6 +66,7 @@ TEST(DispatcherTest, CanRunCode) {
   WorkerApiSapiConfig config;
   config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
   config.js_engine_require_code_preload = true;
+  config.compilation_context_cache_size = 5;
   config.native_js_function_comms_fd = -1;
   config.native_js_function_names = vector<string>();
   configs.push_back(config);
@@ -76,7 +76,7 @@ TEST(DispatcherTest, CanRunCode) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  Dispatcher dispatcher(async_executor, worker_pool, 10, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto load_request = make_unique<CodeObject>();
@@ -125,6 +125,7 @@ TEST(DispatcherTest, CanHandleCodeFailures) {
   WorkerApiSapiConfig config;
   config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
   config.js_engine_require_code_preload = true;
+  config.compilation_context_cache_size = 5;
   config.native_js_function_comms_fd = -1;
   config.native_js_function_names = vector<string>();
   configs.push_back(config);
@@ -134,7 +135,7 @@ TEST(DispatcherTest, CanHandleCodeFailures) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  Dispatcher dispatcher(async_executor, worker_pool, 10, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto load_request = make_unique<CodeObject>();
@@ -164,6 +165,7 @@ TEST(DispatcherTest, CanHandleExecuteWithoutLoadFailure) {
   WorkerApiSapiConfig config;
   config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
   config.js_engine_require_code_preload = true;
+  config.compilation_context_cache_size = 5;
   config.native_js_function_comms_fd = -1;
   config.native_js_function_names = vector<string>();
   configs.push_back(config);
@@ -173,7 +175,7 @@ TEST(DispatcherTest, CanHandleExecuteWithoutLoadFailure) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  Dispatcher dispatcher(async_executor, worker_pool, 10, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto execute_request = make_unique<InvocationRequestStrInput>();
@@ -205,6 +207,7 @@ TEST(DispatcherTest, BroadcastShouldUpdateAllWorkers) {
     WorkerApiSapiConfig config;
     config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
     config.js_engine_require_code_preload = true;
+    config.compilation_context_cache_size = 5;
     config.native_js_function_comms_fd = -1;
     config.native_js_function_names = vector<string>();
     configs.push_back(config);
@@ -215,7 +218,7 @@ TEST(DispatcherTest, BroadcastShouldUpdateAllWorkers) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 100);
+  Dispatcher dispatcher(async_executor, worker_pool, 100, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto load_request = make_unique<CodeObject>();
@@ -273,6 +276,7 @@ TEST(DispatcherTest, BroadcastShouldExitGracefullyIfThereAreErrorsWithTheCode) {
     WorkerApiSapiConfig config;
     config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
     config.js_engine_require_code_preload = true;
+    config.compilation_context_cache_size = 5;
     config.native_js_function_comms_fd = -1;
     config.native_js_function_names = vector<string>();
     configs.push_back(config);
@@ -283,7 +287,7 @@ TEST(DispatcherTest, BroadcastShouldExitGracefullyIfThereAreErrorsWithTheCode) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 100);
+  Dispatcher dispatcher(async_executor, worker_pool, 100, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto load_request = make_unique<CodeObject>();
@@ -315,6 +319,7 @@ TEST(DispatcherTest, DispatchBatchShouldExecuteAllRequests) {
     WorkerApiSapiConfig config;
     config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
     config.js_engine_require_code_preload = true;
+    config.compilation_context_cache_size = 5;
     config.native_js_function_comms_fd = -1;
     config.native_js_function_names = vector<string>();
     configs.push_back(config);
@@ -325,7 +330,7 @@ TEST(DispatcherTest, DispatchBatchShouldExecuteAllRequests) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 100);
+  Dispatcher dispatcher(async_executor, worker_pool, 100, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto load_request = make_unique<CodeObject>();
@@ -390,6 +395,93 @@ TEST(DispatcherTest, DispatchBatchShouldExecuteAllRequests) {
   EXPECT_TRUE(request_ids.empty());
 }
 
+TEST(DispatcherTest, DispatchBatchShouldFailIfQueuesAreFull) {
+  // One worker with a one-item queue so that the queue takes long to empty out
+  const size_t number_of_workers = 1;
+  auto async_executor = make_shared<AsyncExecutor>(
+      number_of_workers /*thread_count*/, 1 /*queue_cap*/);
+
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = true;
+  config.compilation_context_cache_size = 5;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+
+  vector<WorkerApiSapiConfig> configs = {config};
+  shared_ptr<WorkerPool> worker_pool =
+      make_shared<WorkerPoolApiSapi>(configs, number_of_workers);
+  AutoInitRunStop for_async_executor(*async_executor);
+  AutoInitRunStop for_worker_pool(*worker_pool);
+
+  Dispatcher dispatcher(async_executor, worker_pool,
+                        100 /*max_pending_requests*/, 5 /*code_version_size*/);
+  AutoInitRunStop for_dispatcher(dispatcher);
+
+  auto load_request = make_unique<CodeObject>();
+  load_request->id = "some_id";
+  load_request->version_num = 1;
+  // Function that takes long so that queues will have items in it
+  load_request->js = R"""(
+    function sleep(milliseconds) {
+      const date = Date.now();
+      let currentDate = null;
+      do {
+        currentDate = Date.now();
+      } while (currentDate - date < milliseconds);
+    }
+
+    function takes_long() {
+      sleep(2000);
+      return "hello";
+    }
+  )""";
+
+  atomic<bool> done_loading(false);
+
+  auto result = dispatcher.Broadcast(
+      move(load_request),
+      [&done_loading](unique_ptr<StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        done_loading.store(true);
+      });
+  EXPECT_SUCCESS(result);
+
+  WaitUntil([&done_loading]() { return done_loading.load(); });
+
+  vector<InvocationRequestStrInput> batch;
+  for (int i = 0; i < 2; i++) {
+    auto execute_request = InvocationRequestStrInput();
+    execute_request.id = "some_id" + to_string(i);
+    execute_request.version_num = 1;
+    execute_request.handler_name = "takes_long";
+    batch.push_back(execute_request);
+  }
+
+  atomic<bool> finished_batch(false);
+
+  result = dispatcher.DispatchBatch(
+      batch, [&finished_batch](
+                 const vector<StatusOr<ResponseObject>>& batch_response) {
+        for (auto& r : batch_response) {
+          EXPECT_TRUE(r.ok());
+        }
+        finished_batch.store(true);
+      });
+
+  // This dispatch batch should work as queues were empty
+  EXPECT_SUCCESS(result);
+
+  result = dispatcher.DispatchBatch(
+      batch,
+      [](const vector<StatusOr<ResponseObject>>& batch_response) { return; });
+
+  // This dispatch batch should not work as queues are not empty
+  EXPECT_FALSE(result.Successful());
+
+  WaitUntil([&finished_batch]() { return finished_batch.load(); });
+}
+
 TEST(DispatcherTest, ShouldBeAbleToExecutePreviouslyLoadedCodeAfterCrash) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
 
@@ -397,6 +489,7 @@ TEST(DispatcherTest, ShouldBeAbleToExecutePreviouslyLoadedCodeAfterCrash) {
   WorkerApiSapiConfig config;
   config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
   config.js_engine_require_code_preload = true;
+  config.compilation_context_cache_size = 5;
   config.native_js_function_comms_fd = -1;
   config.native_js_function_names = vector<string>();
   configs.push_back(config);
@@ -407,7 +500,7 @@ TEST(DispatcherTest, ShouldBeAbleToExecutePreviouslyLoadedCodeAfterCrash) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  Dispatcher dispatcher(async_executor, worker_pool, 10, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto load_request = make_unique<CodeObject>();
@@ -505,6 +598,7 @@ TEST(DispatcherTest, ShouldRecoverFromWorkerCrashWithMultipleCodeVersions) {
   WorkerApiSapiConfig config;
   config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
   config.js_engine_require_code_preload = true;
+  config.compilation_context_cache_size = 5;
   config.native_js_function_comms_fd = -1;
   config.native_js_function_names = vector<string>();
   configs.push_back(config);
@@ -515,7 +609,7 @@ TEST(DispatcherTest, ShouldRecoverFromWorkerCrashWithMultipleCodeVersions) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  Dispatcher dispatcher(async_executor, worker_pool, 10, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto load_request = make_unique<CodeObject>();
@@ -631,6 +725,7 @@ TEST(DispatcherTest, ShouldBeAbleToLoadMoreVersionsAfterWorkerCrash) {
   WorkerApiSapiConfig config;
   config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
   config.js_engine_require_code_preload = true;
+  config.compilation_context_cache_size = 5;
   config.native_js_function_comms_fd = -1;
   config.native_js_function_names = vector<string>();
   configs.push_back(config);
@@ -641,7 +736,7 @@ TEST(DispatcherTest, ShouldBeAbleToLoadMoreVersionsAfterWorkerCrash) {
   AutoInitRunStop for_async_executor(*async_executor);
   AutoInitRunStop for_worker_pool(*worker_pool);
 
-  Dispatcher dispatcher(async_executor, worker_pool, 10);
+  Dispatcher dispatcher(async_executor, worker_pool, 10, 5);
   AutoInitRunStop for_dispatcher(dispatcher);
 
   auto load_request = make_unique<CodeObject>();

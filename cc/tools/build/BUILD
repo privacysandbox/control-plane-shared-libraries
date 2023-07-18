@@ -81,7 +81,7 @@ container_run_and_commit_layer(
         "ln -s /usr/bin/clang-13 /usr/bin/clang",
         "ln -s /usr/bin/clang++-13 /usr/bin/clang++",
         "ln -s /usr/bin/clang-cpp-13 /usr/bin/clang-cpp",
-        "pip3 install libclang",
+        "pip3 install \"libclang~=13.0\"",
     ],
     env = {
         "CC": "/usr/bin/clang",

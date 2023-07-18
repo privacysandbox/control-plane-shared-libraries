@@ -153,8 +153,7 @@ ExecutionResult GcpCloudStorageClientProvider::Init() noexcept {
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_);
   if (!project_id_or.Successful()) {
-    SCP_ERROR(kGcpCloudStorageClientProvider, kZeroUuid, kZeroUuid,
-              project_id_or.result(),
+    SCP_ERROR(kGcpCloudStorageClientProvider, kZeroUuid, project_id_or.result(),
               "Failed to get project ID for current instance");
     return project_id_or.result();
   }
@@ -162,8 +161,7 @@ ExecutionResult GcpCloudStorageClientProvider::Init() noexcept {
   auto client_or =
       cloud_storage_factory_->CreateClient(options_, *project_id_or);
   if (!client_or.Successful()) {
-    SCP_ERROR(kGcpCloudStorageClientProvider, kZeroUuid, kZeroUuid,
-              client_or.result(),
+    SCP_ERROR(kGcpCloudStorageClientProvider, kZeroUuid, client_or.result(),
               "Failed creating Google Cloud Storage client.");
     return client_or.result();
   }

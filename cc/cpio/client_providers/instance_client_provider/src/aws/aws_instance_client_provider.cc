@@ -197,8 +197,7 @@ ExecutionResult AwsInstanceClientProvider::GetCurrentInstanceResourceNameSync(
           request, response);
 
   if (!execution_result.Successful()) {
-    SCP_ERROR(kAwsInstanceClientProvider, kZeroUuid, kZeroUuid,
-              execution_result,
+    SCP_ERROR(kAwsInstanceClientProvider, kZeroUuid, execution_result,
               "Failed to run async function GetCurrentInstanceResourceName for "
               "current instance resource name");
     return execution_result;
@@ -348,7 +347,7 @@ ExecutionResult AwsInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
 
   if (!execution_result.Successful()) {
     SCP_ERROR(
-        kAwsInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
+        kAwsInstanceClientProvider, kZeroUuid, execution_result,
         "Failed to run async function GetInstanceDetailsByResourceName for "
         "resource %s",
         request.instance_resource_name().c_str());

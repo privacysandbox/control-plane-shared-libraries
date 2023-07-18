@@ -71,7 +71,7 @@ FailureExecutionResult SSMErrorConverter::ConvertSSMError(
       failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
   }
 
-  SCP_ERROR(kSSMErrorConverter, kZeroUuid, kZeroUuid, failure,
+  SCP_ERROR(kSSMErrorConverter, kZeroUuid, failure,
             "AWS cloud service error: code is %d, and error message is %s.",
             error, error_message.c_str());
   return failure;

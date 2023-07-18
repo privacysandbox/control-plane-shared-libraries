@@ -14,6 +14,7 @@
 
 #include "cpio/client_providers/parameter_client_provider/src/aws/aws_parameter_client_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <map>
@@ -26,7 +27,6 @@
 #include <aws/ssm/SSMClient.h>
 #include <aws/ssm/SSMErrors.h>
 #include <aws/ssm/model/GetParametersRequest.h>
-#include <gmock/gmock.h>
 
 #include "core/async_executor/mock/mock_async_executor.h"
 // #include "core/async_executor/src/aws/aws_async_executor.h"
@@ -154,7 +154,8 @@ TEST_F(AwsParameterClientProviderTest, FailedToFetchRegion) {
   auto failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
   mock_instance_client_->get_instance_resource_name_mock = failure;
 
-  EXPECT_EQ(client_->Init(), failure);
+  EXPECT_SUCCESS(client_->Init());
+  EXPECT_THAT(client_->Run(), ResultIs(failure));
 }
 
 TEST_F(AwsParameterClientProviderTest, FailedToFetchParameters) {

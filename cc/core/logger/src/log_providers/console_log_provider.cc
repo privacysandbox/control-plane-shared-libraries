@@ -52,11 +52,11 @@ ExecutionResult ConsoleLogProvider::Stop() noexcept {
 }
 
 void ConsoleLogProvider::Log(
-    const LogLevel& level, const Uuid& parent_activity_id,
-    const Uuid& activity_id, const string_view& component_name,
-    const string_view& machine_name, const string_view& cluster_name,
-    const string_view& location, const string_view& message,
-    va_list args) noexcept {
+    const LogLevel& level, const Uuid& correlation_id,
+    const Uuid& parent_activity_id, const Uuid& activity_id,
+    const string_view& component_name, const string_view& machine_name,
+    const string_view& cluster_name, const string_view& location,
+    const string_view& message, va_list args) noexcept {
   auto current_timestamp =
       TimeProvider::GetWallTimestampInNanosecondsAsClockTicks();
   auto current_timestamp_seconds = current_timestamp / nano_seconds_multiplier;
@@ -64,8 +64,9 @@ void ConsoleLogProvider::Log(
   std::stringstream output;
   output << current_timestamp_seconds << "." << remainder_nano_seconds << "|"
          << cluster_name << "|" << machine_name << "|" << component_name << "|"
-         << ToString(parent_activity_id) + "|" + ToString(activity_id) << "|"
-         << location << "|" << static_cast<int>(level) << ": ";
+         << ToString(correlation_id) << "|" << ToString(parent_activity_id)
+         << "|" << ToString(activity_id) << "|" << location << "|"
+         << static_cast<int>(level) << ": ";
 
   va_list size_args;
   va_copy(size_args, args);

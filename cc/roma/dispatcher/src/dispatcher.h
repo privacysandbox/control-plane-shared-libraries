@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -55,6 +56,7 @@ class Dispatcher : public core::ServiceInterface {
     auto ctx =
         ipc_manager_.SwitchTo(ipc::RoleId(worker_index, true /* dispatcher */));
 
+    std::lock_guard<std::mutex> lk(dispatch_mutex_);
     auto result = ipc_manager_.GetIpcChannel().TryAcquirePushRequest();
 
     if (result.Successful()) {
@@ -107,11 +109,12 @@ class Dispatcher : public core::ServiceInterface {
   }
 
   /**
-   * @brief Broadcast code_object is dispatching the code_object to all workers,
-   * which will update their persistent precompiled code objects.
+   * @brief Broadcast code_object is dispatching the code_object to all
+   * workers, which will update their persistent precompiled code objects.
    *
    * @param code_object The code object to be broadcasted.
-   * @param callback Callback function to run after broadcast is done or failed.
+   * @param callback Callback function to run after broadcast is done or
+   * failed.
    * @return core::ExecutionResult
    */
   core::ExecutionResult Broadcast(std::unique_ptr<CodeObject> code_object,
@@ -130,6 +133,8 @@ class Dispatcher : public core::ServiceInterface {
   std::atomic<uint32_t> next_worker_index_;
   /// The response pollers shall stop if this flag becomes true.
   std::atomic<bool> stop_;
+
+  std::mutex dispatch_mutex_;
 };
 
 }  // namespace google::scp::roma::dispatcher

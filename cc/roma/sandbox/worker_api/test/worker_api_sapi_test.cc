@@ -36,12 +36,23 @@ using std::string;
 using std::vector;
 
 namespace google::scp::roma::sandbox::worker_api::test {
-TEST(WorkerApiSapiTest, WorkerWorksThroughSandbox) {
+
+static WorkerApiSapiConfig GetDefaultConfig() {
   WorkerApiSapiConfig config;
   config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
   config.js_engine_require_code_preload = false;
+  config.compilation_context_cache_size = 5;
   config.native_js_function_comms_fd = -1;
   config.native_js_function_names = vector<string>();
+  config.max_worker_virtual_memory_mb = 0;
+  config.js_engine_resource_constraints.initial_heap_size_in_mb = 0;
+  config.js_engine_resource_constraints.maximum_heap_size_in_mb = 0;
+  config.js_engine_max_wasm_memory_number_of_pages = 0;
+  return config;
+}
+
+TEST(WorkerApiSapiTest, WorkerWorksThroughSandbox) {
+  auto config = GetDefaultConfig();
   WorkerApiSapi worker_api(config);
 
   auto result = worker_api.Init();
@@ -64,11 +75,7 @@ TEST(WorkerApiSapiTest, WorkerWorksThroughSandbox) {
 }
 
 TEST(WorkerApiSapiTest, WorkerWithInputsWorksThroughSandbox) {
-  WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-  config.js_engine_require_code_preload = false;
-  config.native_js_function_comms_fd = -1;
-  config.native_js_function_names = vector<string>();
+  auto config = GetDefaultConfig();
   WorkerApiSapi worker_api(config);
 
   auto result = worker_api.Init();
@@ -93,11 +100,7 @@ TEST(WorkerApiSapiTest, WorkerWithInputsWorksThroughSandbox) {
 }
 
 TEST(WorkerApiSapiTest, ShouldGetExecutionMetrics) {
-  WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-  config.js_engine_require_code_preload = false;
-  config.native_js_function_comms_fd = -1;
-  config.native_js_function_names = vector<string>();
+  auto config = GetDefaultConfig();
   WorkerApiSapi worker_api(config);
 
   auto result = worker_api.Init();

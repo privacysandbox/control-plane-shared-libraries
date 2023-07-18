@@ -107,7 +107,7 @@ class AwsDynamoDBUtils {
           auto double_or = FromString<double>(number.c_str(), number.length());
           if (!double_or.Successful()) {
             SCP_ERROR(kDynamoDbUtils, core::common::kZeroUuid,
-                      core::common::kZeroUuid, double_or.result(),
+                      double_or.result(),
                       "Failed converting AWS value to ItemAttribute");
             return double_or.result();
           }
@@ -115,8 +115,7 @@ class AwsDynamoDBUtils {
         }
         auto int_or = FromString<int>(number.c_str(), number.length());
         if (!int_or.Successful()) {
-          SCP_ERROR(kDynamoDbUtils, core::common::kZeroUuid,
-                    core::common::kZeroUuid, int_or.result(),
+          SCP_ERROR(kDynamoDbUtils, core::common::kZeroUuid, int_or.result(),
                     "Failed converting AWS value to ItemAttribute");
           return int_or.result();
         }

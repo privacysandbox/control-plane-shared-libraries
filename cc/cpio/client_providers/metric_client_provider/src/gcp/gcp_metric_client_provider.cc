@@ -69,7 +69,7 @@ namespace google::scp::cpio::client_providers {
 ExecutionResult GcpMetricClientProvider::Run() noexcept {
   auto execution_result = MetricClientProvider::Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, execution_result,
               "Failed to initialize MetricClientProvider");
     return execution_result;
   }
@@ -79,7 +79,7 @@ ExecutionResult GcpMetricClientProvider::Run() noexcept {
       instance_client_provider_->GetCurrentInstanceResourceNameSync(
           instance_resource_name);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, execution_result,
               "Failed to fetch current instance resource name");
     return execution_result;
   }
@@ -87,7 +87,7 @@ ExecutionResult GcpMetricClientProvider::Run() noexcept {
   execution_result = GcpInstanceClientUtils::GetInstanceResourceNameDetails(
       instance_resource_name, instance_resource_);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpMetricClientProvider, kZeroUuid, execution_result,
               "Failed to parse instance resource name %s",
               instance_resource_name.c_str());
   }

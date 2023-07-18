@@ -64,7 +64,7 @@ ExecutionResult BlobStorageClient::Init() noexcept {
   auto execution_result =
       GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kBlobStorageClient, kZeroUuid, execution_result,
               "Failed to get AsyncExecutor.");
     return execution_result;
   }
@@ -73,7 +73,7 @@ ExecutionResult BlobStorageClient::Init() noexcept {
   execution_result =
       GlobalCpio::GetGlobalCpio()->GetIoAsyncExecutor(io_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kBlobStorageClient, kZeroUuid, execution_result,
               "Failed to get IOAsyncExecutor.");
     return execution_result;
   }
@@ -82,7 +82,7 @@ ExecutionResult BlobStorageClient::Init() noexcept {
   execution_result =
       GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(instance_client);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kBlobStorageClient, kZeroUuid, execution_result,
               "Failed to get InstanceClientProvider.");
     return execution_result;
   }
@@ -90,7 +90,7 @@ ExecutionResult BlobStorageClient::Init() noexcept {
       options_, instance_client, cpu_async_executor, io_async_executor);
   execution_result = blob_storage_client_provider_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kBlobStorageClient, kZeroUuid, execution_result,
               "Failed to initialize BlobStorageClientProvider.");
     return execution_result;
   }
@@ -100,7 +100,7 @@ ExecutionResult BlobStorageClient::Init() noexcept {
 ExecutionResult BlobStorageClient::Run() noexcept {
   auto execution_result = blob_storage_client_provider_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kBlobStorageClient, kZeroUuid, execution_result,
               "Failed to run BlobStorageClientProvider.");
     return execution_result;
   }
@@ -110,7 +110,7 @@ ExecutionResult BlobStorageClient::Run() noexcept {
 ExecutionResult BlobStorageClient::Stop() noexcept {
   auto execution_result = blob_storage_client_provider_->Stop();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kBlobStorageClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kBlobStorageClient, kZeroUuid, execution_result,
               "Failed to stop BlobStorageClientProvider.");
     return execution_result;
   }

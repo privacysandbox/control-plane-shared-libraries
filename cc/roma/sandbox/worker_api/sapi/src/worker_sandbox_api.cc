@@ -23,16 +23,20 @@
 #include <chrono>
 #include <string>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #include "roma/sandbox/logging/src/logging.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_init_params.pb.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_params.pb.h"
+#include "sandboxed_api/lenval_core.h"
 #include "sandboxed_api/sandbox2/policy.h"
 #include "sandboxed_api/sandbox2/policybuilder.h"
 
 #include "error_codes.h"
 
 #define ROMA_CONVERT_MB_TO_BYTES(mb) mb * 1024 * 1024
+#define ROMA_SAPI_USE_SERIALIZED_DATA 1
 
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -40,33 +44,37 @@ using google::scp::core::RetryExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_ROMA_WORKER_API_COULD_NOT_CREATE_IPC_PROTO;
 using google::scp::core::errors::
+    SC_ROMA_WORKER_API_COULD_NOT_DESERIALIZE_RUN_CODE_DATA;
+using google::scp::core::errors::
     SC_ROMA_WORKER_API_COULD_NOT_GET_PROTO_MESSAGE_AFTER_EXECUTION;
 using google::scp::core::errors::
     SC_ROMA_WORKER_API_COULD_NOT_INITIALIZE_SANDBOX;
 using google::scp::core::errors::
     SC_ROMA_WORKER_API_COULD_NOT_INITIALIZE_WRAPPER_API;
-using google::scp::core::errors ::
+using google::scp::core::errors::
     SC_ROMA_WORKER_API_COULD_NOT_RUN_CODE_THROUGH_WRAPPER_API;
 using google::scp::core::errors::SC_ROMA_WORKER_API_COULD_NOT_RUN_WRAPPER_API;
+using google::scp::core::errors::
+    SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_INIT_DATA;
+using google::scp::core::errors::
+    SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_DATA;
 using google::scp::core::errors::
     SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX;
 using google::scp::core::errors::SC_ROMA_WORKER_API_UNINITIALIZED_SANDBOX;
 using google::scp::core::errors::SC_ROMA_WORKER_API_WORKER_CRASHED;
+using std::move;
 using std::string;
+using std::vector;
 using std::this_thread::yield;
 
 namespace google::scp::roma::sandbox::worker_api {
 
 ExecutionResult WorkerSandboxApi::Init() noexcept {
-  if (sapi_native_js_function_comms_fd_) {
-    // If we're here, the sandbox crashed and we're attempting to restart it.
-    // This FD object had already been initialized, but in order to call
-    // TransferToSandboxee below, we need to reset the underlying remote FD
-    // value.
-    sapi_native_js_function_comms_fd_->SetRemoteFd(kBadFd);
-  } else if (native_js_function_comms_fd_ != kBadFd) {
+  if (native_js_function_comms_fd_ != kBadFd) {
     sapi_native_js_function_comms_fd_ =
         std::make_unique<::sapi::v::Fd>(native_js_function_comms_fd_);
+    // We don't want the SAPI FD object to manage the local FD or it'd close it
+    // upon its deletion.
     sapi_native_js_function_comms_fd_->OwnLocalFd(false);
   }
 
@@ -105,8 +113,9 @@ ExecutionResult WorkerSandboxApi::Init() noexcept {
           SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX);
     }
 
-    // This is to support rerunning TransferToSandboxee upon restarts, and it
-    // has to be done after the call to TransferToSandboxee.
+    // This is to support recreating the SAPI FD object upon restarts, otherwise
+    // destroying the object will try to close a non-existent file. And it has
+    // to be done after the call to TransferToSandboxee.
     sapi_native_js_function_comms_fd_->OwnRemoteFd(false);
 
     remote_fd = sapi_native_js_function_comms_fd_->GetRemoteFd();
@@ -116,6 +125,8 @@ ExecutionResult WorkerSandboxApi::Init() noexcept {
   worker_init_params.set_worker_factory_js_engine(
       static_cast<int>(worker_engine_));
   worker_init_params.set_require_code_preload_for_execution(require_preload_);
+  worker_init_params.set_compilation_context_cache_size(
+      compilation_context_cache_size_);
   worker_init_params.set_native_js_function_comms_fd(remote_fd);
   worker_init_params.mutable_native_js_function_names()->Assign(
       native_js_function_names_.begin(), native_js_function_names_.end());
@@ -126,6 +137,28 @@ ExecutionResult WorkerSandboxApi::Init() noexcept {
   worker_init_params.set_js_engine_max_wasm_memory_number_of_pages(
       js_engine_max_wasm_memory_number_of_pages_);
 
+#if ROMA_SAPI_USE_SERIALIZED_DATA
+  int serialized_size = worker_init_params.ByteSizeLong();
+  vector<char> serialized_data(serialized_size);
+  if (!worker_init_params.SerializeToArray(serialized_data.data(),
+                                           serialized_size)) {
+    _ROMA_LOG_ERROR("Failed to serialize init data.");
+    return FailureExecutionResult(
+        SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_INIT_DATA);
+  }
+
+  sapi::v::LenVal sapi_len_val(static_cast<const char*>(serialized_data.data()),
+                               serialized_size);
+
+  auto status_or =
+      worker_wrapper_api_->InitFromSerializedData(sapi_len_val.PtrBefore());
+  if (!status_or.ok()) {
+    return FailureExecutionResult(
+        SC_ROMA_WORKER_API_COULD_NOT_INITIALIZE_WRAPPER_API);
+  } else if (*status_or != SC_OK) {
+    return FailureExecutionResult(*status_or);
+  }
+#else
   auto sapi_proto =
       sapi::v::Proto<::worker_api::WorkerInitParamsProto>::FromMessage(
           worker_init_params);
@@ -141,6 +174,7 @@ ExecutionResult WorkerSandboxApi::Init() noexcept {
   } else if (*status_or != SC_OK) {
     return FailureExecutionResult(*status_or);
   }
+#endif
 
   return SuccessExecutionResult();
 }
@@ -190,12 +224,39 @@ ExecutionResult WorkerSandboxApi::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult WorkerSandboxApi::RunCode(
+ExecutionResult WorkerSandboxApi::InternalRunCode(
     ::worker_api::WorkerParamsProto& params) noexcept {
-  if (!worker_sapi_sandbox_ || !worker_wrapper_api_) {
-    return FailureExecutionResult(SC_ROMA_WORKER_API_UNINITIALIZED_SANDBOX);
+#if ROMA_SAPI_USE_SERIALIZED_DATA
+  int serialized_size = params.ByteSizeLong();
+  vector<char> serialized_data(serialized_size);
+  if (!params.SerializeToArray(serialized_data.data(), serialized_size)) {
+    _ROMA_LOG_ERROR("Failed to serialize run_code data.");
+    return FailureExecutionResult(
+        SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_DATA);
   }
 
+  sapi::v::LenVal sapi_len_val(static_cast<const char*>(serialized_data.data()),
+                               serialized_size);
+
+  auto ptr_both = sapi_len_val.PtrBoth();
+  auto status_or = worker_wrapper_api_->RunCodeFromSerializedData(ptr_both);
+
+  if (!status_or.ok()) {
+    return RetryExecutionResult(SC_ROMA_WORKER_API_WORKER_CRASHED);
+  } else if (*status_or != SC_OK) {
+    return FailureExecutionResult(*status_or);
+  }
+
+  ::worker_api::WorkerParamsProto out_params;
+  if (!out_params.ParseFromArray(sapi_len_val.GetData(),
+                                 sapi_len_val.GetDataSize())) {
+    _ROMA_LOG_ERROR("Could not deserialize run_code response from sandbox");
+    return FailureExecutionResult(
+        SC_ROMA_WORKER_API_COULD_NOT_DESERIALIZE_RUN_CODE_DATA);
+  }
+
+  params = move(out_params);
+#else
   auto sapi_proto =
       ::sapi::v::Proto<::worker_api::WorkerParamsProto>::FromMessage(params);
 
@@ -204,21 +265,11 @@ ExecutionResult WorkerSandboxApi::RunCode(
         SC_ROMA_WORKER_API_COULD_NOT_CREATE_IPC_PROTO);
   }
 
-  auto status_or = worker_wrapper_api_->RunCode(sapi_proto->PtrBoth());
+  auto ptr_both = sapi_proto->PtrBoth();
+  auto status_or = worker_wrapper_api_->RunCode(ptr_both);
+
   if (!status_or.ok()) {
-    // This means that the sandbox died so we need to restart it.
-    if (!worker_sapi_sandbox_->is_active()) {
-      auto result = Init();
-      RETURN_IF_FAILURE(result);
-      result = Run();
-      RETURN_IF_FAILURE(result);
-
-      // We still return a failure for this request
-      return RetryExecutionResult(SC_ROMA_WORKER_API_WORKER_CRASHED);
-    }
-
-    return FailureExecutionResult(
-        SC_ROMA_WORKER_API_COULD_NOT_RUN_CODE_THROUGH_WRAPPER_API);
+    return RetryExecutionResult(SC_ROMA_WORKER_API_WORKER_CRASHED);
   } else if (*status_or != SC_OK) {
     return FailureExecutionResult(*status_or);
   }
@@ -230,6 +281,30 @@ ExecutionResult WorkerSandboxApi::RunCode(
   }
 
   params = *message_or;
+#endif
+
+  return SuccessExecutionResult();
+}
+
+ExecutionResult WorkerSandboxApi::RunCode(
+    ::worker_api::WorkerParamsProto& params) noexcept {
+  if (!worker_sapi_sandbox_ || !worker_wrapper_api_) {
+    return FailureExecutionResult(SC_ROMA_WORKER_API_UNINITIALIZED_SANDBOX);
+  }
+
+  auto run_code_result = InternalRunCode(params);
+
+  if (!run_code_result.Successful()) {
+    if (run_code_result.Retryable()) {
+      // This means that the sandbox died so we need to restart it.
+      auto result = Init();
+      RETURN_IF_FAILURE(result);
+      result = Run();
+      RETURN_IF_FAILURE(result);
+    }
+
+    return run_code_result;
+  }
 
   return SuccessExecutionResult();
 }

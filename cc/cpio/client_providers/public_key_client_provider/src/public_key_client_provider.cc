@@ -76,7 +76,7 @@ ExecutionResult PublicKeyClientProvider::Init() noexcept {
       !public_key_client_options_->endpoints.size()) {
     auto execution_result = FailureExecutionResult(
         SC_PUBLIC_KEY_CLIENT_PROVIDER_INVALID_CONFIG_OPTIONS);
-    SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, execution_result,
               "Failed to init PublicKeyClientProvider.");
     return execution_result;
   }
@@ -84,7 +84,7 @@ ExecutionResult PublicKeyClientProvider::Init() noexcept {
   if (!http_client_) {
     auto execution_result = FailureExecutionResult(
         SC_PUBLIC_KEY_CLIENT_PROVIDER_HTTP_CLIENT_REQUIRED);
-    SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, execution_result,
               "Failed to init PublicKeyClientProvider.");
     return execution_result;
   }
@@ -145,9 +145,10 @@ ExecutionResult PublicKeyClientProvider::ListPublicKeys(
       // return success.
       result = SuccessExecutionResult();
     } else {
-      SCP_ERROR(kPublicKeyClientProvider, kZeroUuid, kZeroUuid,
-                execution_result, "Failed to perform request with endpoint %s.",
-                uri.c_str());
+      SCP_ERROR_CONTEXT(kPublicKeyClientProvider, public_key_fetching_context,
+                        execution_result,
+                        "Failed to perform request with endpoint %s.",
+                        uri.c_str());
     }
   }
 

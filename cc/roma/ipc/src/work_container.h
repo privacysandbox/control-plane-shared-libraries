@@ -60,7 +60,6 @@ class WorkContainer : public ShmAllocated {
       : mem_pool_(shm_pool),
         acquire_semaphore_(0),
         complete_semaphore_(0),
-        space_available_semaphore_(capacity),
         capacity_(capacity),
         size_(0),
         add_index_(0),
@@ -93,6 +92,8 @@ class WorkContainer : public ShmAllocated {
    * @brief Try to acquire a slot to add an item into the container. Must be
    * called before calling Add(), and Add() should only be called if this
    * function returns a success.
+   * NOTE: The caller needs to handle the thread safety of the TryAcquireAdd()
+   * and Add() calls.
    *
    * @return core::ExecutionResult
    */
@@ -173,7 +174,6 @@ class WorkContainer : public ShmAllocated {
 
   ShmSemaphore acquire_semaphore_;
   ShmSemaphore complete_semaphore_;
-  ShmSemaphore space_available_semaphore_;
 
   ShmMutex add_item_mutex_;
 

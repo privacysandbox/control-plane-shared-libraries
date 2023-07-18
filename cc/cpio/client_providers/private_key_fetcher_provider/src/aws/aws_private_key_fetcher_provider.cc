@@ -70,8 +70,8 @@ ExecutionResult AwsPrivateKeyFetcherProvider::Init() noexcept {
   if (!role_credentials_provider_) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND);
-    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to get credentials provider.");
+    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, execution_result,
+              "Failed to get credentials provider.");
     return execution_result;
   }
 
@@ -103,8 +103,8 @@ void AwsPrivateKeyFetcherProvider::
             get_session_credentials_context) noexcept {
   auto execution_result = get_session_credentials_context.result;
   if (!execution_result.Successful()) {
-    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to get AWS credentials.");
+    SCP_ERROR_CONTEXT(kAwsPrivateKeyFetcherProvider, sign_request_context,
+                      execution_result, "Failed to get AWS credentials.");
     sign_request_context.result = get_session_credentials_context.result;
     sign_request_context.Finish();
     return;
@@ -140,8 +140,7 @@ ExecutionResult AwsPrivateKeyFetcherProvider::SignHttpRequestUsingV4Signer(
                             *http_request->path)) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_INVALID_URI);
-    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
-              execution_result,
+    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, execution_result,
               "Failed to sign HTTP request for an invalid URI.");
     return execution_result;
   }

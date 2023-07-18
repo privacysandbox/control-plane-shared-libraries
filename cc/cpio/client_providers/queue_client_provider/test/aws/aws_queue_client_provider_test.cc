@@ -14,13 +14,13 @@
 
 #include "cpio/client_providers/queue_client_provider/src/aws/aws_queue_client_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 
 #include <aws/core/Aws.h>
 #include <aws/sqs/SQSClient.h>
-#include <gmock/gmock.h>
 
 #include "core/async_executor/mock/mock_async_executor.h"
 #include "core/interface/async_context.h"
@@ -207,29 +207,31 @@ class AwsQueueClientProviderTest : public ::testing::Test {
   atomic_bool finish_called_{false};
 };
 
-TEST_F(AwsQueueClientProviderTest, InitWithNullQueueClientOptions) {
+TEST_F(AwsQueueClientProviderTest, RunWithNullQueueClientOptions) {
   auto client = make_unique<AwsQueueClientProvider>(
       nullptr, mock_instance_client_, make_shared<MockAsyncExecutor>(),
       make_shared<MockAsyncExecutor>(), mock_sqs_client_factory_);
 
-  EXPECT_THAT(client->Init(),
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_THAT(client->Run(),
               ResultIs(FailureExecutionResult(
                   SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_CLIENT_OPTIONS_REQUIRED)));
 }
 
-TEST_F(AwsQueueClientProviderTest, InitWithEmptyQueueName) {
+TEST_F(AwsQueueClientProviderTest, RunWithEmptyQueueName) {
   queue_client_options_->queue_name = "";
   auto client = make_unique<AwsQueueClientProvider>(
       queue_client_options_, mock_instance_client_,
       make_shared<MockAsyncExecutor>(), make_shared<MockAsyncExecutor>(),
       mock_sqs_client_factory_);
 
-  EXPECT_THAT(client->Init(),
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_THAT(client->Run(),
               ResultIs(FailureExecutionResult(
                   SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED)));
 }
 
-TEST_F(AwsQueueClientProviderTest, InitWithInvalidDefaultVisibilityTimeout) {
+TEST_F(AwsQueueClientProviderTest, RunWithInvalidDefaultVisibilityTimeout) {
   queue_client_options_->queue_name = kQueueName;
   queue_client_options_->default_visibility_timeout_in_seconds =
       kInvalidVisibilityTimeoutSeconds;
@@ -238,13 +240,14 @@ TEST_F(AwsQueueClientProviderTest, InitWithInvalidDefaultVisibilityTimeout) {
       make_shared<MockAsyncExecutor>(), make_shared<MockAsyncExecutor>(),
       mock_sqs_client_factory_);
 
+  EXPECT_SUCCESS(client->Init());
   EXPECT_THAT(
-      client->Init(),
+      client->Run(),
       ResultIs(FailureExecutionResult(
           SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT)));
 }
 
-TEST_F(AwsQueueClientProviderTest, InitWithCreateClientConfigurationFailed) {
+TEST_F(AwsQueueClientProviderTest, RunWithCreateClientConfigurationFailed) {
   auto failure_result = FailureExecutionResult(123);
   mock_instance_client_->get_instance_resource_name_mock = failure_result;
   auto client = make_unique<AwsQueueClientProvider>(
@@ -252,17 +255,19 @@ TEST_F(AwsQueueClientProviderTest, InitWithCreateClientConfigurationFailed) {
       make_shared<MockAsyncExecutor>(), make_shared<MockAsyncExecutor>(),
       mock_sqs_client_factory_);
 
-  EXPECT_THAT(client->Init(), ResultIs(failure_result));
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_THAT(client->Run(), ResultIs(failure_result));
 }
 
-TEST_F(AwsQueueClientProviderTest, InitWithGetQueueUrlFailed) {
+TEST_F(AwsQueueClientProviderTest, RunWithGetQueueUrlFailed) {
   AWSError<SQSErrors> get_queue_url_error(SQSErrors::SERVICE_UNAVAILABLE,
                                           false);
   GetQueueUrlOutcome get_queue_url_outcome(get_queue_url_error);
   EXPECT_CALL(*mock_sqs_client_, GetQueueUrl)
       .WillOnce(Return(get_queue_url_outcome));
 
-  EXPECT_THAT(queue_client_provider_->Init(),
+  EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_THAT(queue_client_provider_->Run(),
               ResultIs(FailureExecutionResult(SC_AWS_SERVICE_UNAVAILABLE)));
 }
 
@@ -271,7 +276,7 @@ MATCHER_P(HasGetQueueUrlRequestParams, queue_name, "") {
                             result_listener);
 }
 
-TEST_F(AwsQueueClientProviderTest, InitSuccessWithExistingQueue) {
+TEST_F(AwsQueueClientProviderTest, RunSuccessWithExistingQueue) {
   GetQueueUrlResult get_queue_url_result;
   get_queue_url_result.SetQueueUrl(kQueueUrl);
   GetQueueUrlOutcome get_queue_url_outcome(move(get_queue_url_result));
@@ -280,6 +285,7 @@ TEST_F(AwsQueueClientProviderTest, InitSuccessWithExistingQueue) {
       .WillOnce(Return(get_queue_url_outcome));
 
   EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_SUCCESS(queue_client_provider_->Run());
 }
 
 MATCHER_P2(HasSendMessageRequestParams, queue_url, message_body, "") {

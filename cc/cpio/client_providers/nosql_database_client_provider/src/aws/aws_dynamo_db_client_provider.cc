@@ -101,7 +101,7 @@ AwsDynamoDBClientProvider::CreateClientConfig() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_);
   if (!region_code_or.Successful()) {
-    SCP_ERROR(kDynamoDB, kZeroUuid, kZeroUuid, region_code_or.result(),
+    SCP_ERROR(kDynamoDB, kZeroUuid, region_code_or.result(),
               "Failed to get region code for current instance");
     return region_code_or.result();
   }
@@ -111,26 +111,26 @@ AwsDynamoDBClientProvider::CreateClientConfig() noexcept {
 }
 
 ExecutionResult AwsDynamoDBClientProvider::Init() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult AwsDynamoDBClientProvider::Run() noexcept {
   auto config_or = CreateClientConfig();
   if (!config_or.Successful()) {
-    SCP_ERROR(kDynamoDB, kZeroUuid, kZeroUuid, config_or.result(),
+    SCP_ERROR(kDynamoDB, kZeroUuid, config_or.result(),
               "Error creating ClientConfig");
     return config_or.result();
   }
 
   auto client_or = dynamo_db_factory_->CreateClient(*config_or);
   if (!client_or.Successful()) {
-    SCP_ERROR(kDynamoDB, kZeroUuid, kZeroUuid, client_or.result(),
+    SCP_ERROR(kDynamoDB, kZeroUuid, client_or.result(),
               "Error creating DynamoDBClient");
     return client_or.result();
   }
 
   dynamo_db_client_ = move(*client_or);
 
-  return SuccessExecutionResult();
-}
-
-ExecutionResult AwsDynamoDBClientProvider::Run() noexcept {
   return SuccessExecutionResult();
 }
 

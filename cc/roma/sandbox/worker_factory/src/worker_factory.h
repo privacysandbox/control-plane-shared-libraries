@@ -39,6 +39,8 @@ class WorkerFactory {
   struct FactoryParams {
     WorkerEngine engine = WorkerEngine::v8;
     bool require_preload = true;
+    size_t compilation_context_cache_size;
+
     V8WorkerEngineParams v8_worker_engine_params{};
   };
 

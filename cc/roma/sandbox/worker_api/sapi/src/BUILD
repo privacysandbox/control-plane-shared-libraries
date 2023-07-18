@@ -50,13 +50,17 @@ cc_library(
 
 sapi_library(
     name = "roma_worker_wrapper_lib-sapi",
+    hdrs = ["worker_wrapper.h"],
     functions = [
         "Init",
+        "InitFromSerializedData",
         "Run",
+        "RunCodeFromSerializedData",
         "Stop",
         "RunCode",
     ],
     generator_version = 1,
+    input_files = ["worker_wrapper.cc"],
     lib = ":roma_worker_wrapper_lib",
     lib_name = "WorkerWrapper",
     namespace = "google::scp::roma::sandbox::worker_api",

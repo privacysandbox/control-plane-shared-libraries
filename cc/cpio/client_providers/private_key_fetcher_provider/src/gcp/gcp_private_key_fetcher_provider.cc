@@ -59,8 +59,8 @@ ExecutionResult GcpPrivateKeyFetcherProvider::Init() noexcept {
   if (!auth_token_provider_) {
     auto execution_result = FailureExecutionResult(
         SC_GCP_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND);
-    SCP_ERROR(kGcpPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to get credentials provider.");
+    SCP_ERROR(kGcpPrivateKeyFetcherProvider, kZeroUuid, execution_result,
+              "Failed to get credentials provider.");
     return execution_result;
   }
 

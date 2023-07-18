@@ -83,7 +83,7 @@ ExecutionResultOr<string> GcpInstanceClientUtils::GetCurrentProjectId(
   if (auto result = instance_client->GetCurrentInstanceResourceNameSync(
           instance_resource_name);
       !result.Successful()) {
-    SCP_ERROR(kGcpInstanceClientUtils, kZeroUuid, kZeroUuid, result,
+    SCP_ERROR(kGcpInstanceClientUtils, kZeroUuid, result,
               "Failed getting instance resource name.");
     return result;
   }
@@ -91,8 +91,7 @@ ExecutionResultOr<string> GcpInstanceClientUtils::GetCurrentProjectId(
   auto project_id_or =
       ParseProjectIdFromInstanceResourceName(instance_resource_name);
   if (!project_id_or.Successful()) {
-    SCP_ERROR(kGcpInstanceClientUtils, kZeroUuid, kZeroUuid,
-              project_id_or.result(),
+    SCP_ERROR(kGcpInstanceClientUtils, kZeroUuid, project_id_or.result(),
               "Failed to parse instance resource name %s to get project ID",
               instance_resource_name.c_str());
   }

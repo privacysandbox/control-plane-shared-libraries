@@ -62,12 +62,12 @@ core::ExecutionResult Execute(std::function<core::ExecutionResult(
                                   core::AsyncContext<TRequest, TResponse>&)>
                                   func,
                               TRequest request, Callback<TResponse> callback) {
-  auto correlation_id = core::common::Uuid::GenerateUuid();
+  auto activity_id = core::common::Uuid::GenerateUuid();
   core::AsyncContext<TRequest, TResponse> context(
       std::make_shared<TRequest>(std::move(request)),
       bind(OnExecutionCallback<TRequest, TResponse>, callback,
            std::placeholders::_1),
-      correlation_id, correlation_id);
+      activity_id, activity_id);
 
   return core::utils::ConvertToPublicExecutionResult(func(context));
 }

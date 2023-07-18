@@ -73,7 +73,7 @@ ExecutionResult CloudWatchErrorConverter::ConvertCloudWatchError(
       failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
   }
 
-  SCP_ERROR(kCloudWatchErrorConverter, kZeroUuid, kZeroUuid, failure,
+  SCP_ERROR(kCloudWatchErrorConverter, kZeroUuid, failure,
             "AWS cloud service error: code is %d, and error message is %s.",
             cloud_watch_error, error_message.c_str());
   return failure;

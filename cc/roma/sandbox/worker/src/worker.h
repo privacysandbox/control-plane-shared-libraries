@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,7 +25,6 @@
 #include "core/common/lru_cache/src/lru_cache.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
-#include "roma/sandbox/constants/constants.h"
 #include "roma/sandbox/js_engine/src/js_engine.h"
 
 #include "error_codes.h"
@@ -35,10 +35,17 @@ namespace google::scp::roma::sandbox::worker {
 class Worker : public core::ServiceInterface {
  public:
   explicit Worker(std::shared_ptr<js_engine::JsEngine> js_engine,
-                  bool require_preload = true)
+                  bool require_preload = true,
+                  size_t compilation_context_cache_size = 5)
       : js_engine_(js_engine),
-        compilation_contexts_(constants::kCodeVersionCacheSize),
-        require_preload_(require_preload) {}
+        require_preload_(require_preload),
+        compilation_contexts_(compilation_context_cache_size) {
+    if (compilation_context_cache_size == 0) {
+      auto message = std::string(__FILE__) + ":" + std::to_string(__LINE__) +
+                     ":compilation_context_cache_size cannot be zero.";
+      throw std::invalid_argument(message);
+    }
+  }
 
   core::ExecutionResult Init() noexcept override;
 
@@ -60,12 +67,12 @@ class Worker : public core::ServiceInterface {
 
  private:
   std::shared_ptr<js_engine::JsEngine> js_engine_;
+  bool require_preload_;
   /**
    * @brief Used to keep track of compilation contexts
    *
    */
   core::common::LruCache<std::string, js_engine::RomaJsEngineCompilationContext>
       compilation_contexts_;
-  bool require_preload_;
 };
 }  // namespace google::scp::roma::sandbox::worker

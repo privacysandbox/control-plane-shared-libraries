@@ -115,6 +115,15 @@ class Config {
   size_t max_worker_virtual_memory_mb = 0;
 
   /**
+   * @brief The number of code versions to cache. This determines how many code
+   * version are available to execute after being loaded. This is used for an
+   * LRU cache and if additional code versions are cached, the LRU one will be
+   * replaced.
+   *
+   */
+  size_t code_version_cache_size = 5;
+
+  /**
    * @brief Register a function binding object
    *
    * @tparam TOutput

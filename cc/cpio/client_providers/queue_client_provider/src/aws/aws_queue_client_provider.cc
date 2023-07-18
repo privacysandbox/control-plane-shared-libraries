@@ -100,11 +100,15 @@ static const uint16_t kMaxVisibilityTimeoutSeconds = 600;
 
 namespace google::scp::cpio::client_providers {
 ExecutionResult AwsQueueClientProvider::Init() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult AwsQueueClientProvider::Run() noexcept {
   ExecutionResult execution_result(SuccessExecutionResult());
   if (!queue_client_options_) {
     execution_result = FailureExecutionResult(
         SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_CLIENT_OPTIONS_REQUIRED);
-    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Invalid queue client options.");
     return execution_result;
   }
@@ -112,7 +116,7 @@ ExecutionResult AwsQueueClientProvider::Init() noexcept {
   if (queue_client_options_->queue_name.empty()) {
     execution_result = FailureExecutionResult(
         SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED);
-    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Invalid queue name.");
     return execution_result;
   }
@@ -121,7 +125,7 @@ ExecutionResult AwsQueueClientProvider::Init() noexcept {
       kMaxVisibilityTimeoutSeconds) {
     execution_result = FailureExecutionResult(
         SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT);
-    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Invalid visibility timeout.");
     return execution_result;
   }
@@ -129,7 +133,7 @@ ExecutionResult AwsQueueClientProvider::Init() noexcept {
   auto client_config_or = CreateClientConfiguration();
   if (!client_config_or.Successful()) {
     execution_result = client_config_or.result();
-    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Failed to create ClientConfiguration");
     return execution_result;
   }
@@ -139,7 +143,7 @@ ExecutionResult AwsQueueClientProvider::Init() noexcept {
   auto queue_url_or = GetQueueUrl();
   if (!queue_url_or.Successful() || queue_url_or->empty()) {
     execution_result = queue_url_or.result();
-    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Failed to get queue url.");
     return execution_result;
   }
@@ -153,8 +157,7 @@ AwsQueueClientProvider::CreateClientConfiguration() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
   if (!region_code_or.Successful()) {
-    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, kZeroUuid,
-              region_code_or.result(),
+    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, region_code_or.result(),
               "Failed to get region code for current instance");
     return region_code_or.result();
   }
@@ -176,17 +179,13 @@ ExecutionResultOr<string> AwsQueueClientProvider::GetQueueUrl() noexcept {
     auto error_message = get_queue_url_outcome.GetError().GetMessage().c_str();
     auto execution_result = SqsErrorConverter::ConvertSqsError(error_type);
     SCP_ERROR(
-        kAwsQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+        kAwsQueueClientProvider, kZeroUuid, execution_result,
         "Failed to get queue url due to AWS SQS service error. Error code: "
         "%d, error message: %s",
         error_type, error_message);
     return execution_result;
   }
   return get_queue_url_outcome.GetResult().GetQueueUrl().c_str();
-}
-
-ExecutionResult AwsQueueClientProvider::Run() noexcept {
-  return SuccessExecutionResult();
 }
 
 ExecutionResult AwsQueueClientProvider::Stop() noexcept {

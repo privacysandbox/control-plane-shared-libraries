@@ -36,6 +36,29 @@ std::string ToString(ExecutionStatus status);
 #define EXPECT_SUCCESS(expression) \
   EXPECT_THAT(expression, ::google::scp::core::test::IsSuccessful())
 
+// Macro for shortening this pattern:
+// ASSERT_THAT(execution_result, IsSuccessful())
+#define ASSERT_SUCCESS(expression) \
+  ASSERT_THAT(expression, ::google::scp::core::test::IsSuccessful())
+
+// Macro for shortening this pattern:
+// ASSERT_SUCCESS(execution_result_or);
+// auto value = execution_result_or.release();
+// EXPECT_THAT(value, MatchesSomething());
+//
+// It becomes:
+// ASSERT_SUCCESS_AND_ASSIGN(auto value, execution_result_or);
+// EXPECT_THAT(value, MatchesSomething());
+#define ASSERT_SUCCESS_AND_ASSIGN(lhs, execution_result_or)            \
+  __ASSERT_SUCCESS_AND_ASSIGN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__), \
+                                     execution_result_or)
+
+#define __ASSERT_SUCCESS_AND_ASSIGN_HELPER(lhs, result_or_temp_var_name, \
+                                           execution_result_or)          \
+  auto&& result_or_temp_var_name = execution_result_or;                  \
+  ASSERT_SUCCESS(result_or_temp_var_name);                               \
+  lhs = result_or_temp_var_name.release();
+
 // Matches arg with expected_result.
 // Example usage:
 // ExecutionResult result = foo();

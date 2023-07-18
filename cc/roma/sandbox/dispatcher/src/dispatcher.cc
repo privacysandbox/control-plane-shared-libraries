@@ -50,23 +50,11 @@ ExecutionResult Dispatcher::Run() noexcept {
 }
 
 ExecutionResult Dispatcher::Stop() noexcept {
-  allow_dispatch_.store(false);
   return SuccessExecutionResult();
 }
 
 ExecutionResult Dispatcher::Broadcast(unique_ptr<CodeObject> code_object,
                                       Callback broadcast_callback) noexcept {
-  allow_dispatch_.store(false);
-  // We wait until there are no requests running to broadcast new code to all
-  // the workers
-  while (pending_requests_.load() > 0) {
-    sleep_for(milliseconds(5));
-  }
-
-  // We set the worker index to zero to make sure we get to all the workers in
-  // the dispatch call
-  worker_index_.store(0);
-
   auto worker_count = worker_pool_->GetPoolSize();
   auto finished_counter = make_shared<atomic<size_t>>(0);
   auto responses_storage =
@@ -95,15 +83,14 @@ ExecutionResult Dispatcher::Broadcast(unique_ptr<CodeObject> code_object,
 
     auto code_object_copy = make_unique<CodeObject>(*code_object);
 
-    auto dispatch_result = InternalDispatch(move(code_object_copy), callback);
+    auto dispatch_result =
+        InternalDispatch(move(code_object_copy), callback, worker_index);
 
     if (!dispatch_result.Successful()) {
-      allow_dispatch_.store(true);
       return dispatch_result;
     }
   }
 
-  allow_dispatch_.store(true);
   return SuccessExecutionResult();
 }
 
@@ -133,6 +120,7 @@ ExecutionResult Dispatcher::ReloadCachedCodeObjects(
     // Send the code objects to the worker again so it reloads its cache
     auto run_code_result_or = worker->RunCode(*run_code_request_or);
     if (!run_code_result_or.result().Successful()) {
+      _ROMA_LOG_ERROR("Reloading the code object failed.");
       ptr_cached_code.release();
       pending_requests_ -= all_cached_code_objects.size();
       return run_code_result_or.result();

@@ -69,4 +69,28 @@ DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_UNINITIALIZED_SANDBOX, SC_ROMA_WORKER_API,
 DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_WORKER_CRASHED, SC_ROMA_WORKER_API, 0x000A,
                   "Sandbox worker crashed during execution of request.",
                   HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_INIT_DATA,
+                  SC_ROMA_WORKER_API, 0x000B, "Failed to serialize init data.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_DESERIALIZE_INIT_DATA,
+                  SC_ROMA_WORKER_API, 0x000C,
+                  "Failed to deserialize init data.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_DATA,
+                  SC_ROMA_WORKER_API, 0x000D,
+                  "Failed to serialize run_code data.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_DESERIALIZE_RUN_CODE_DATA,
+                  SC_ROMA_WORKER_API, 0x000E,
+                  "Failed to deserialize run_code data.",
+                  HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_RESPONSE_DATA,
+                  SC_ROMA_WORKER_API, 0x000F,
+                  "Failed to serialize run_code response data.",
+                  HttpStatusCode::BAD_REQUEST)
 }  // namespace google::scp::core::errors

@@ -46,6 +46,8 @@ def sdk_container(
             "libxml2-dev",
             "netbase",
             "libjemalloc-dev",
+            "default-jre",
+            "default-jdk",
         ] + pkgs_to_install,
         additional_env_variables = additional_env_variables,
         additional_files = additional_files,

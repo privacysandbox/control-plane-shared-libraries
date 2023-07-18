@@ -60,20 +60,18 @@ ExecutionResult ParameterClient::CreateParameterClientProvider() noexcept {
   RETURN_AND_LOG_IF_FAILURE(
       GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(
           instance_client_provider),
-      kParameterClient, kZeroUuid, kZeroUuid, __res,
+      kParameterClient, kZeroUuid, __res,
       "Failed to get InstanceClientProvider.");
 
   shared_ptr<AsyncExecutorInterface> cpu_async_executor;
   RETURN_AND_LOG_IF_FAILURE(
       GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor),
-      kParameterClient, kZeroUuid, kZeroUuid, __res,
-      "Failed to get CpuAsyncExecutor.");
+      kParameterClient, kZeroUuid, __res, "Failed to get CpuAsyncExecutor.");
 
   shared_ptr<AsyncExecutorInterface> io_async_executor;
   RETURN_AND_LOG_IF_FAILURE(
       GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(io_async_executor),
-      kParameterClient, kZeroUuid, kZeroUuid, __res,
-      "Failed to get IoAsyncExecutor.");
+      kParameterClient, kZeroUuid, __res, "Failed to get IoAsyncExecutor.");
 
   parameter_client_provider_ = ParameterClientProviderFactory::Create(
       options_, instance_client_provider, cpu_async_executor,
@@ -84,14 +82,14 @@ ExecutionResult ParameterClient::CreateParameterClientProvider() noexcept {
 ExecutionResult ParameterClient::Init() noexcept {
   auto execution_result = CreateParameterClientProvider();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kParameterClient, kZeroUuid, execution_result,
               "Failed to create ParameterClientProvider.");
     return ConvertToPublicExecutionResult(execution_result);
   }
 
   execution_result = parameter_client_provider_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kParameterClient, kZeroUuid, execution_result,
               "Failed to initialize ParameterClientProvider.");
     return execution_result;
   }
@@ -101,7 +99,7 @@ ExecutionResult ParameterClient::Init() noexcept {
 ExecutionResult ParameterClient::Run() noexcept {
   auto execution_result = parameter_client_provider_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kParameterClient, kZeroUuid, execution_result,
               "Failed to run ParameterClientProvider.");
     return execution_result;
   }
@@ -111,7 +109,7 @@ ExecutionResult ParameterClient::Run() noexcept {
 ExecutionResult ParameterClient::Stop() noexcept {
   auto execution_result = parameter_client_provider_->Stop();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kParameterClient, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kParameterClient, kZeroUuid, execution_result,
               "Failed to stop ParameterClientProvider.");
     return execution_result;
   }

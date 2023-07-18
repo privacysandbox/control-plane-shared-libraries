@@ -29,12 +29,13 @@ import java.util.Optional;
  *
  * <p>If nothing is set explicitly, the puller will return an empty optional.
  */
-public final class ConstantJobClient implements JobClient {
+public class ConstantJobClient implements JobClient {
 
   private boolean returnEmpty = true;
   private Job constantToReturn = null;
   private boolean shouldThrowOnGetJob;
   private boolean shouldThrowOnMarkJobCompleted;
+  private boolean shouldThrowOnAppendJobErrorMessage;
 
   private JobResult lastJobResultCompleted;
 
@@ -44,6 +45,7 @@ public final class ConstantJobClient implements JobClient {
     lastJobResultCompleted = null;
     shouldThrowOnGetJob = false;
     shouldThrowOnMarkJobCompleted = false;
+    shouldThrowOnAppendJobErrorMessage = false;
   }
 
   @Override
@@ -76,7 +78,10 @@ public final class ConstantJobClient implements JobClient {
 
   @Override
   public void appendJobErrorMessage(JobKey jobKey, String error) throws JobClientException {
-    // Requires access to Job Metadata DB to save the error message from Result Info
+    if (shouldThrowOnAppendJobErrorMessage) {
+      throw new JobClientException(
+          new IllegalStateException("Was set to throw"), ErrorReason.UNSPECIFIED_ERROR);
+    }
   }
 
   /** Set true to return an empty {@code Optional<Job>} from the {@code getJob} method. */
@@ -103,5 +108,9 @@ public final class ConstantJobClient implements JobClient {
   /** Set true to throw an exception in the {@code markJobCompleted} method. */
   public void setShouldThrowOnMarkJobCompleted(boolean shouldThrowOnMarkJobCompleted) {
     this.shouldThrowOnMarkJobCompleted = shouldThrowOnMarkJobCompleted;
+  }
+
+  public void setShouldThrowOnAppendJobErrorMessage(boolean shouldThrowOnAppendJobErrorMessage) {
+    this.shouldThrowOnAppendJobErrorMessage = shouldThrowOnAppendJobErrorMessage;
   }
 }

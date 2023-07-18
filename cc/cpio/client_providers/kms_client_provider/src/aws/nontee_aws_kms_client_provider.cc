@@ -72,8 +72,8 @@ ExecutionResult NonteeAwsKmsClientProvider::Init() noexcept {
   if (!role_credentials_provider_) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_KMS_CLIENT_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND);
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to get credential provider.");
+    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, execution_result,
+              "Failed to get credential provider.");
     return execution_result;
   }
 
@@ -95,9 +95,9 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
   if (ciphertext.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_KMS_CLIENT_PROVIDER_CIPHER_TEXT_NOT_FOUND);
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result,
-              "Failed to get cipher text from decryption request.");
+    SCP_ERROR_CONTEXT(kNonteeAwsKmsClientProvider, decrypt_context,
+                      execution_result,
+                      "Failed to get cipher text from decryption request.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -107,9 +107,9 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
   if (key_arn.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_KEY_ARN_NOT_FOUND);
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result,
-              "Failed to get Key Arn from decryption request.");
+    SCP_ERROR_CONTEXT(kNonteeAwsKmsClientProvider, decrypt_context,
+                      execution_result,
+                      "Failed to get Key Arn from decryption request.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -119,9 +119,9 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
   if (kms_region.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_REGION_NOT_FOUND);
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result,
-              "Failed to get Key Region from decryption request.");
+    SCP_ERROR_CONTEXT(kNonteeAwsKmsClientProvider, decrypt_context,
+                      execution_result,
+                      "Failed to get Key Region from decryption request.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -131,9 +131,9 @@ ExecutionResult NonteeAwsKmsClientProvider::Decrypt(
   if (account_identity.empty()) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_KMS_CLIENT_PROVIDER_ASSUME_ROLE_NOT_FOUND);
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result,
-              "Failed to get Account Identity from decryption request.");
+    SCP_ERROR_CONTEXT(
+        kNonteeAwsKmsClientProvider, decrypt_context, execution_result,
+        "Failed to get Account Identity from decryption request.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -152,8 +152,8 @@ ExecutionResult NonteeAwsKmsClientProvider::GetAeadCallbackToDecrypt(
     AsyncContext<DecryptRequest, Aead>& get_aead_context) noexcept {
   auto execution_result = get_aead_context.result;
   if (!execution_result.Successful()) {
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to get Aead.");
+    SCP_ERROR_CONTEXT(kNonteeAwsKmsClientProvider, decrypt_context,
+                      execution_result, "Failed to get Aead.");
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -167,9 +167,9 @@ ExecutionResult NonteeAwsKmsClientProvider::GetAeadCallbackToDecrypt(
   if (!decrypt_result.ok()) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_DECRYPTION_FAILED);
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Aead Decryption failed with error %s.",
-              decrypt_result.status().ToString().c_str());
+    SCP_ERROR_CONTEXT(kNonteeAwsKmsClientProvider, decrypt_context,
+                      execution_result, "Aead Decryption failed with error %s.",
+                      decrypt_result.status().ToString().c_str());
     decrypt_context.result = execution_result;
     decrypt_context.Finish();
     return decrypt_context.result;
@@ -196,8 +196,8 @@ void NonteeAwsKmsClientProvider::CreateKmsCallbackToCreateAead(
     AsyncContext<DecryptRequest, KMSClient>& create_kms_context) noexcept {
   auto execution_result = create_kms_context.result;
   if (!execution_result.Successful()) {
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to create KMS Client.");
+    SCP_ERROR_CONTEXT(kNonteeAwsKmsClientProvider, get_aead_context,
+                      execution_result, "Failed to create KMS Client.");
     get_aead_context.result = execution_result;
     get_aead_context.Finish();
     return;
@@ -209,8 +209,8 @@ void NonteeAwsKmsClientProvider::CreateKmsCallbackToCreateAead(
   if (!aead_result.ok()) {
     auto execution_result =
         FailureExecutionResult(SC_AWS_KMS_CLIENT_PROVIDER_CREATE_AEAD_FAILED);
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to get Key Arn.");
+    SCP_ERROR_CONTEXT(kNonteeAwsKmsClientProvider, get_aead_context,
+                      execution_result, "Failed to get Key Arn.");
     get_aead_context.result = execution_result;
     get_aead_context.Finish();
     return;
@@ -242,8 +242,9 @@ void NonteeAwsKmsClientProvider::GetSessionCredentialsCallbackToCreateKms(
         get_session_credentials_context) noexcept {
   auto execution_result = get_session_credentials_context.result;
   if (!execution_result.Successful()) {
-    SCP_ERROR(kNonteeAwsKmsClientProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to get AWS Credentials.");
+    SCP_ERROR_CONTEXT(kNonteeAwsKmsClientProvider,
+                      get_session_credentials_context, execution_result,
+                      "Failed to get AWS Credentials.");
     create_kms_context.result = execution_result;
     create_kms_context.Finish();
     return;

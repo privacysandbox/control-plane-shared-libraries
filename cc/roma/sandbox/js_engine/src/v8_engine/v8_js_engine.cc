@@ -203,12 +203,12 @@ ExecutionResult V8JsEngine::OneTimeSetup(
   }
 
   static std::unique_ptr<v8::Platform> v8_platform = [] {
-      std::unique_ptr<v8::Platform> v8_platform =
-          v8::platform::NewDefaultPlatform();
-      v8::V8::InitializePlatform(v8_platform.get());
-      v8::V8::Initialize();
-      return v8_platform;
-    }();
+    std::unique_ptr<v8::Platform> v8_platform =
+        v8::platform::NewDefaultPlatform();
+    v8::V8::InitializePlatform(v8_platform.get());
+    v8::V8::Initialize();
+    return v8_platform;
+  }();
 
   return SuccessExecutionResult();
 }
@@ -241,6 +241,12 @@ core::ExecutionResult V8JsEngine::CreateSnapshot(v8::StartupData& startup_data,
   return core::SuccessExecutionResult();
 }
 
+static size_t NearHeapLimitCallback(void* data, size_t current_heap_limit,
+                                    size_t initial_heap_limit) {
+  _ROMA_LOG_ERROR("OOM in JS execution, exiting...");
+  return 0;
+}
+
 ExecutionResultOr<v8::Isolate*> V8JsEngine::CreateIsolate(
     const v8::StartupData& startup_data) noexcept {
   Isolate::CreateParams params;
@@ -268,6 +274,8 @@ ExecutionResultOr<v8::Isolate*> V8JsEngine::CreateIsolate(
   if (!isolate) {
     return FailureExecutionResult(SC_ROMA_V8_ENGINE_COULD_NOT_CREATE_ISOLATE);
   }
+
+  isolate->AddNearHeapLimitCallback(NearHeapLimitCallback, NULL);
 
   return isolate;
 }

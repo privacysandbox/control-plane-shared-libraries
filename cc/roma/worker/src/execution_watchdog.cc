@@ -50,6 +50,10 @@ ExecutionResult ExecutionWatchDog::Run() noexcept {
 }
 
 ExecutionResult ExecutionWatchDog::Stop() noexcept {
+  if (is_stop_called_.load()) {
+    return SuccessExecutionResult();
+  }
+
   is_stop_called_.store(true);
   condition_variable_.notify_one();
   if (execution_watchdog_thread_.joinable()) {

@@ -91,11 +91,14 @@ AwsAutoScalingClientProvider::CreateClientConfiguration(
 }
 
 ExecutionResult AwsAutoScalingClientProvider::Init() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult AwsAutoScalingClientProvider::Run() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
   if (!region_code_or.Successful()) {
-    SCP_ERROR(kAwsAutoScalingClientProvider, kZeroUuid, kZeroUuid,
-              region_code_or.result(),
+    SCP_ERROR(kAwsAutoScalingClientProvider, kZeroUuid, region_code_or.result(),
               "Failed to get region code for current instance");
     return region_code_or.result();
   }
@@ -103,10 +106,6 @@ ExecutionResult AwsAutoScalingClientProvider::Init() noexcept {
   auto_scaling_client_ = auto_scaling_client_factory_->CreateAutoScalingClient(
       *CreateClientConfiguration(*region_code_or), io_async_executor_);
 
-  return SuccessExecutionResult();
-}
-
-ExecutionResult AwsAutoScalingClientProvider::Run() noexcept {
   return SuccessExecutionResult();
 }
 

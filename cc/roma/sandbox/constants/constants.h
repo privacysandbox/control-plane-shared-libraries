@@ -34,7 +34,7 @@ static constexpr char kJsEngineOneTimeSetupWasmPagesKey[] =
 static constexpr char kFuctionBindingMetadataFunctionName[] =
     "roma.js_function_binding_name";
 
-static constexpr char kMetadataRomaRequestId[] = "roma.request_id";
+static constexpr char kMetadataRomaRequestId[] = "roma.request.id";
 
 static constexpr int kCodeVersionCacheSize = 5;
 
@@ -51,4 +51,6 @@ static constexpr char kExecutionMetricSandboxedJsEngineCallNs[] =
 // overhead for serializing data. In nanoseconds.
 static constexpr char kExecutionMetricJsEngineCallNs[] =
     "roma.metric.code_run_ns";
+
+static constexpr char kDefaultRomaRequestId[] = "roma.defaults.request.id";
 }  // namespace google::scp::roma::sandbox::constants

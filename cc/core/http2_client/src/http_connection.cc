@@ -99,7 +99,7 @@ ExecutionResult HttpConnection::Init() noexcept {
     if (ec.failed()) {
       auto result =
           FailureExecutionResult(errors::SC_HTTP2_CLIENT_TLS_CTX_ERROR);
-      SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result,
+      SCP_ERROR(kHttp2Client, kZeroUuid, result,
                 "Failed to initialize with tls ctx error %s.",
                 ec.message().c_str());
       return result;
@@ -119,13 +119,11 @@ ExecutionResult HttpConnection::Init() noexcept {
   } catch (...) {
     auto result = FailureExecutionResult(
         errors::SC_HTTP2_CLIENT_CONNECTION_INITIALIZATION_FAILED);
-    SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result,
-              "Failed to initialize.");
+    SCP_ERROR(kHttp2Client, kZeroUuid, result, "Failed to initialize.");
     return result;
   }
 
-  SCP_INFO(kHttp2Client, kZeroUuid, kZeroUuid,
-           "Initialized connection with ID: %p", this);
+  SCP_INFO(kHttp2Client, kZeroUuid, "Initialized connection with ID: %p", this);
 }
 
 ExecutionResult HttpConnection::Run() noexcept {
@@ -146,8 +144,7 @@ ExecutionResult HttpConnection::Stop() noexcept {
     // the session.
     post(*io_service_, [this]() {
       session_->shutdown();
-      SCP_INFO(kHttp2Client, kZeroUuid, kZeroUuid,
-               "Session is being shutdown.");
+      SCP_INFO(kHttp2Client, kZeroUuid, "Session is being shutdown.");
     });
   }
 
@@ -159,7 +156,7 @@ ExecutionResult HttpConnection::Stop() noexcept {
     // stop io_service_.
     post(*io_service_, [this]() {
       io_service_->stop();
-      SCP_INFO(kHttp2Client, kZeroUuid, kZeroUuid, "IO service is stopping.");
+      SCP_INFO(kHttp2Client, kZeroUuid, "IO service is stopping.");
     });
 
     if (worker_->joinable()) {
@@ -173,14 +170,14 @@ ExecutionResult HttpConnection::Stop() noexcept {
   } catch (...) {
     auto result =
         FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_STOP_FAILED);
-    SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, result, "Failed to stop.");
+    SCP_ERROR(kHttp2Client, kZeroUuid, result, "Failed to stop.");
     return result;
   }
 }
 
 void HttpConnection::OnConnectionCreated(tcp::resolver::iterator) noexcept {
   post(*io_service_, [this]() mutable {
-    SCP_INFO(kHttp2Client, kZeroUuid, kZeroUuid,
+    SCP_INFO(kHttp2Client, kZeroUuid,
              "Connection %p for host %s is established.", this, host_.c_str());
     is_ready_ = true;
   });
@@ -190,7 +187,7 @@ void HttpConnection::OnConnectionError() noexcept {
   post(*io_service_, [this]() mutable {
     auto failure =
         FailureExecutionResult(errors::SC_HTTP2_CLIENT_CONNECTION_DROPPED);
-    SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, failure,
+    SCP_ERROR(kHttp2Client, kZeroUuid, failure,
               "Connection %p for host %s got an error.", this, host_.c_str());
 
     is_ready_ = false;
@@ -204,7 +201,7 @@ void HttpConnection::CancelPendingCallbacks() noexcept {
   vector<Uuid> keys;
   auto execution_result = pending_network_calls_.Keys(keys);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kHttp2Client, kZeroUuid, execution_result,
               "Cannot get the list of pending callbacks for the connection.");
     return;
   }
@@ -214,7 +211,7 @@ void HttpConnection::CancelPendingCallbacks() noexcept {
     execution_result = pending_network_calls_.Find(key, http_context);
 
     if (!execution_result.Successful()) {
-      SCP_ERROR(kHttp2Client, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kHttp2Client, kZeroUuid, execution_result,
                 "Cannot get the callback for the pending call connection.");
       continue;
     }

@@ -65,7 +65,7 @@ ExecutionResult SyslogLogProvider::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-void SyslogLogProvider::Log(const LogLevel& level,
+void SyslogLogProvider::Log(const LogLevel& level, const Uuid& correlation_id,
                             const Uuid& parent_activity_id,
                             const Uuid& activity_id,
                             const string_view& component_name,
@@ -75,8 +75,8 @@ void SyslogLogProvider::Log(const LogLevel& level,
                             const string_view& message, va_list args) noexcept {
   auto formatted_message =
       StrCat(cluster_name, "|", machine_name, "|", component_name, "|",
-             ToString(parent_activity_id), "|", ToString(activity_id), "|",
-             location, "|", message);
+             ToString(correlation_id), "|", ToString(parent_activity_id), "|",
+             ToString(activity_id), "|", location, "|", message);
 
   try {
     switch (level) {

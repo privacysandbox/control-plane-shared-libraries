@@ -21,6 +21,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <thread>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -40,6 +41,7 @@ using std::make_shared;
 using std::make_unique;
 using std::move;
 using std::string;
+using std::thread;
 using std::to_string;
 using std::tuple;
 using std::unique_ptr;
@@ -384,12 +386,13 @@ TEST(RomaBasicE2ETest, ExecuteAsyncCodeFailedWithPromiseRejected) {
 
 TEST(RomaBasicE2ETest, BatchExecute) {
   Config config;
-  config.number_of_workers = 2;
+  config.number_of_workers = 10;
+  config.worker_queue_max_items = 5;
   auto status = RomaInit(config);
   EXPECT_TRUE(status.ok());
 
   atomic<int> res_count(0);
-  size_t batch_size(5);
+  size_t batch_size(100);
   atomic<bool> load_finished = false;
   atomic<bool> execute_finished = false;
   {
@@ -410,29 +413,268 @@ TEST(RomaBasicE2ETest, BatchExecute) {
   }
 
   {
-    auto execution_obj = InvocationRequestStrInput();
-    execution_obj.id = "foo";
-    execution_obj.version_num = 1;
-    execution_obj.handler_name = "Handler";
-    execution_obj.input.push_back("\"Foobar\"");
+    vector<InvocationRequestStrInput> batch;
 
-    vector<InvocationRequestStrInput> batch(batch_size, execution_obj);
-    status = BatchExecute(
-        batch,
+    for (auto i = 0; i < batch_size; i++) {
+      auto execution_obj = InvocationRequestStrInput();
+      execution_obj.id = std::to_string(i);
+      execution_obj.version_num = 1;
+      execution_obj.handler_name = "Handler";
+      execution_obj.input.push_back("\"Foobar\"");
+
+      batch.push_back(execution_obj);
+    }
+
+    auto callback =
         [&](const std::vector<absl::StatusOr<ResponseObject>>& batch_resp) {
           for (auto resp : batch_resp) {
-            EXPECT_TRUE(resp.ok());
+            ASSERT_TRUE(resp.ok());
             EXPECT_EQ(resp->resp, R"("Hello world! \"Foobar\"")");
           }
           res_count.store(batch_resp.size());
           execute_finished.store(true);
-        });
-    EXPECT_TRUE(status.ok());
+        };
+    while (!BatchExecute(batch, callback).ok()) {}
   }
 
   WaitUntil([&]() { return load_finished.load(); });
   WaitUntil([&]() { return execute_finished.load(); });
   EXPECT_EQ(res_count.load(), batch_size);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(RomaBasicE2ETest, BatchExecuteShouldWithSmallQueue) {
+  Config config;
+  config.number_of_workers = 10;
+  config.worker_queue_max_items = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<int> res_count(0);
+  size_t batch_size(100);
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    vector<InvocationRequestStrInput> batch;
+
+    for (auto i = 0; i < batch_size; i++) {
+      auto execution_obj = InvocationRequestStrInput();
+      execution_obj.id = std::to_string(i);
+      execution_obj.version_num = 1;
+      execution_obj.handler_name = "Handler";
+      execution_obj.input.push_back("\"Foobar\"");
+
+      batch.push_back(execution_obj);
+    }
+    auto callback =
+        [&](const std::vector<absl::StatusOr<ResponseObject>>& batch_resp) {
+          for (auto resp : batch_resp) {
+            ASSERT_TRUE(resp.ok());
+            EXPECT_EQ(resp->resp, R"("Hello world! \"Foobar\"")");
+          }
+          res_count.store(batch_resp.size());
+          execute_finished.store(true);
+        };
+    while (!BatchExecute(batch, callback).ok()) {}
+  }
+
+  WaitUntil([&]() { return load_finished.load(); });
+  WaitUntil([&]() { return execute_finished.load(); });
+  EXPECT_EQ(res_count.load(), batch_size);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(RomaBasicE2ETest, ShouldWorkWithMultiThreadsDispatchInSmallQueue) {
+  Config config;
+  config.number_of_workers = 1;
+  config.worker_queue_max_items = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // Multiple threads do dispatcher::Execute()
+  vector<thread> threads;
+  constexpr int num_threads = 101;
+  threads.reserve(num_threads);
+  vector<atomic<bool>> finished(num_threads);
+  // We could potentially have multiple threads dispatch request.
+  for (int i = 0; i < num_threads; i++) {
+    threads.push_back(thread([i, &finished]() {
+      InvocationRequestSharedInput code_obj;
+      code_obj.id = "foo";
+      code_obj.version_num = 1;
+      code_obj.handler_name = "Handler";
+      code_obj.input.push_back(make_shared<string>("\"Foobar\""));
+
+      auto callback = [&, i](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+        EXPECT_TRUE(resp->ok());
+        if (resp->ok()) {
+          ASSERT_TRUE(resp->ok());
+          EXPECT_EQ((**resp).resp, R"("Hello world! \"Foobar\"")");
+        }
+        finished[i].store(true);
+      };
+
+      while (!Execute(make_unique<InvocationRequestSharedInput>(code_obj),
+                      callback)
+                  .ok()) {}
+    }));
+  }
+
+  // One thread does dispatcher::BatchExecute().
+  atomic<int> res_count(0);
+  size_t batch_size(100);
+  atomic<bool> execute_finished = false;
+  {
+    vector<InvocationRequestStrInput> batch;
+
+    for (auto i = 0; i < batch_size; i++) {
+      auto execution_obj = InvocationRequestStrInput();
+      execution_obj.id = std::to_string(i);
+      execution_obj.version_num = 1;
+      execution_obj.handler_name = "Handler";
+      execution_obj.input.push_back("\"Foobar\"");
+
+      batch.push_back(execution_obj);
+    }
+    auto callback =
+        [&](const std::vector<absl::StatusOr<ResponseObject>>& batch_resp) {
+          for (auto resp : batch_resp) {
+            ASSERT_TRUE(resp.ok());
+            EXPECT_EQ(resp->resp, R"("Hello world! \"Foobar\"")");
+          }
+          res_count.store(batch_resp.size());
+          execute_finished.store(true);
+        };
+    while (!BatchExecute(batch, callback).ok()) {}
+  }
+
+  WaitUntil([&]() { return load_finished.load(); });
+  WaitUntil([&]() { return execute_finished.load(); });
+
+  for (auto i = 0u; i < num_threads; ++i) {
+    WaitUntil([&, i]() { return finished[i].load(); }, 30s);
+  }
+
+  EXPECT_EQ(res_count.load(), batch_size);
+
+  for (auto& t : threads) {
+    if (t.joinable()) {
+      t.join();
+    }
+  }
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(RomaBasicE2ETest, MultiThreadedBatchExecuteSmallQueue) {
+  Config config;
+  config.worker_queue_max_items = 1;
+  config.number_of_workers = 10;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<int> res_count(0);
+  size_t batch_size(100);
+  atomic<bool> load_finished = false;
+  atomic<int> execute_finished = 0;
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+    }
+  )JS_CODE";
+
+    auto callback = [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+      EXPECT_TRUE(resp->ok());
+      load_finished.store(true);
+    };
+
+    while (!LoadCodeObj(move(code_obj), callback).ok()) {}
+  }
+
+  int num_threads = 10;
+  vector<thread> threads;
+  for (int i = 0; i < num_threads; i++) {
+    std::atomic<bool> local_execute = false;
+    threads.emplace_back([&, i]() {
+      auto execution_obj = InvocationRequestStrInput();
+      execution_obj.id = "foo";
+      execution_obj.version_num = 1;
+      execution_obj.handler_name = "Handler";
+      auto input = "Foobar" + to_string(i);
+      execution_obj.input.push_back("\"" + input + "\"");
+
+      vector<InvocationRequestStrInput> batch(batch_size, execution_obj);
+
+      auto callback =
+          [&,
+           i](const std::vector<absl::StatusOr<ResponseObject>>& batch_resp) {
+            for (auto resp : batch_resp) {
+              EXPECT_TRUE(resp.ok());
+              auto result =
+                  "\"Hello world! \\\"Foobar" + to_string(i) + "\\\"\"";
+              EXPECT_EQ(resp->resp, result);
+            }
+            res_count += batch_resp.size();
+            execute_finished++;
+            local_execute.store(true);
+          };
+      while (!BatchExecute(batch, callback).ok()) {}
+      WaitUntil([&]() { return local_execute.load(); });
+    });
+  }
+
+  WaitUntil([&]() { return load_finished.load(); });
+  WaitUntil([&]() { return execute_finished >= num_threads; });
+  EXPECT_EQ(res_count.load(), batch_size * num_threads);
+
+  for (auto& t : threads) {
+    if (t.joinable()) {
+      t.join();
+    }
+  }
 
   status = RomaStop();
   EXPECT_TRUE(status.ok());

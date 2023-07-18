@@ -97,7 +97,7 @@ ExecutionResult JobClientProvider::Init() noexcept {
   if (!job_client_options_) {
     auto execution_result = FailureExecutionResult(
         SC_JOB_CLIENT_PROVIDER_JOB_CLIENT_OPTIONS_REQUIRED);
-    SCP_ERROR(kJobClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kJobClientProvider, kZeroUuid, execution_result,
               "Invalid job client options.");
     return execution_result;
   }

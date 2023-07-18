@@ -16,6 +16,7 @@
 
 #include "roma/ipc/src/work_container.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -24,16 +25,16 @@
 #include <thread>
 #include <vector>
 
-#include <gmock/gmock.h>
-
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/common/src/process.h"
 #include "roma/common/src/shared_memory.h"
 #include "roma/common/src/shared_memory_pool.h"
 
+using std::lock_guard;
 using std::make_unique;
 using std::move;
+using std::mutex;
 using std::set;
 using std::string;
 using std::thread;
@@ -48,6 +49,7 @@ using common::RomaString;
 using common::SharedMemoryPool;
 using common::SharedMemorySegment;
 using common::ShmAllocated;
+using core::ExecutionResult;
 using core::SuccessExecutionResult;
 using core::test::WaitUntil;
 using ipc::Request;
@@ -160,7 +162,7 @@ TEST(WorkContainerTest, WrapAroundSeveralTimes) {
   pool->SetThisThreadMemPool();
 
   auto* container = new WorkContainer(*pool, /* capacity */ 10);
-
+  mutex push_mutex;
   vector<thread> threads;
   constexpr int num_threads = 101;
   threads.reserve(num_threads);
@@ -168,7 +170,7 @@ TEST(WorkContainerTest, WrapAroundSeveralTimes) {
   // We could potentially have multiple threads pushing work
   for (int i = 0; i < num_threads; i++) {
     // Add work threads
-    threads.push_back(thread([i, &container, &pool]() {
+    threads.push_back(thread([i, &container, &pool, &push_mutex]() {
       pool->SetThisThreadMemPool();
 
       auto work_item = make_unique<WorkItem>();
@@ -177,9 +179,14 @@ TEST(WorkContainerTest, WrapAroundSeveralTimes) {
       work_item->request->code_obj = make_unique<RomaCodeObj>(code_obj);
 
       // We need to spin here since we're waiting for spots on the container
-      while (!container->TryAcquireAdd().Successful()) {}
-
-      container->Add(move(work_item));
+      ExecutionResult result;
+      while (!result.Successful()) {
+        lock_guard<mutex> lk(push_mutex);
+        result = container->TryAcquireAdd();
+        if (result.Successful()) {
+          container->Add(move(work_item));
+        }
+      }
     }));
   }
 
@@ -374,6 +381,73 @@ TEST(WorkContainerTest, OverflowRequestsPushedToWorkContianer) {
   std::cout << pool->GetAllocatedSize() << std::endl;
 
   handle_request.join();
+  get_response.join();
+  // Container is empty
+  EXPECT_EQ(container->Size(), 0);
+
+  delete container;
+}
+
+TEST(WorkContainerTest, SimulateWorkerContainerWork) {
+  SharedMemorySegment segment;
+  segment.Create(1024000);
+  auto* pool = new (segment.Get()) SharedMemoryPool();
+  pool->Init(reinterpret_cast<uint8_t*>(segment.Get()) + sizeof(*pool),
+             segment.Size() - sizeof(*pool));
+  pool->SetThisThreadMemPool();
+
+  auto* container = new WorkContainer(*pool, /* capacity */ 1);
+  int total_request = 100;
+
+  auto handle_request = [&container, &pool, total_request]() {
+    pool->SetThisThreadMemPool();
+    for (int i = 0; i < total_request; ++i) {
+      Request* request;
+      auto result = container->GetRequest(request);
+      EXPECT_SUCCESS(result);
+      auto response = make_unique<Response>();
+      response->status = ResponseStatus::kSucceeded;
+
+      result = container->CompleteRequest(move(response));
+      EXPECT_SUCCESS(result);
+    }
+    return SuccessExecutionResult();
+  };
+
+  pid_t pid1 = -1;
+  int child_status1;
+  auto result1 = Process::Create(handle_request, pid1);
+
+  std::thread get_response([&container, &pool, total_request]() {
+    pool->SetThisThreadMemPool();
+
+    for (int i = 0; i < total_request; ++i) {
+      unique_ptr<WorkItem> completed;
+      auto result = container->GetCompleted(completed);
+      EXPECT_SUCCESS(result);
+      EXPECT_TRUE(completed->Succeeded());
+    }
+  });
+
+  for (int i = 0; i < total_request; i++) {
+    while (!container->TryAcquireAdd().Successful()) {}
+
+    auto work_item = make_unique<WorkItem>();
+    work_item->request = make_unique<Request>();
+    CodeObject code_obj = {.id = to_string(i)};
+    work_item->request->code_obj = make_unique<RomaCodeObj>(code_obj);
+
+    container->Add(move(work_item));
+
+    if (i % 10 == 0) {
+      std::cout << "request " << i
+                << " allocated size: " << pool->GetAllocatedSize() << std::endl;
+    }
+  }
+
+  waitpid(pid1, &child_status1, 0);
+  EXPECT_EQ(WEXITSTATUS(child_status1), 0);
+
   get_response.join();
   // Container is empty
   EXPECT_EQ(container->Size(), 0);

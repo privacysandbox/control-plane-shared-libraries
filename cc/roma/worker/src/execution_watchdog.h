@@ -38,6 +38,8 @@ class ExecutionWatchDog : public core::ServiceInterface {
  public:
   ExecutionWatchDog() {}
 
+  ~ExecutionWatchDog() { Stop(); }
+
   virtual core::ExecutionResult Init() noexcept;
   virtual core::ExecutionResult Run() noexcept;
   virtual core::ExecutionResult Stop() noexcept;

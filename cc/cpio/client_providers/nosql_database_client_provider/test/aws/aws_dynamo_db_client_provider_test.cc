@@ -14,6 +14,7 @@
 
 #include "cpio/client_providers/nosql_database_client_provider/src/aws/aws_dynamo_db_client_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -27,7 +28,6 @@
 #include <aws/core/Aws.h>
 #include <aws/core/utils/Outcome.h>
 #include <aws/dynamodb/DynamoDBErrors.h>
-#include <gmock/gmock.h>
 
 #include "core/async_executor/mock/mock_async_executor.h"
 #include "core/async_executor/src/async_executor.h"
@@ -227,6 +227,14 @@ MATCHER_P2(IsStringAttribute, name, value, "") {
 
 MATCHER_P(HasNumber, num, "") {
   return ExplainMatchResult(Eq(num), arg.GetN(), result_listener);
+}
+
+TEST_F(AwsDynamoDBClientProviderTest, RunWithCreateClientConfigurationFailed) {
+  auto failure_result = FailureExecutionResult(SC_UNKNOWN);
+  instance_client_->get_instance_resource_name_mock = failure_result;
+
+  EXPECT_SUCCESS(client_provider_.Init());
+  EXPECT_THAT(client_provider_.Run(), ResultIs(failure_result));
 }
 
 TEST_F(AwsDynamoDBClientProviderTest,

@@ -14,6 +14,7 @@
 
 #include "cpio/client_providers/auto_scaling_client_provider/src/aws/aws_auto_scaling_client_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -21,7 +22,6 @@
 
 #include <aws/autoscaling/AutoScalingClient.h>
 #include <aws/core/Aws.h>
-#include <gmock/gmock.h>
 
 #include "core/async_executor/mock/mock_async_executor.h"
 #include "core/interface/async_context.h"
@@ -169,14 +169,15 @@ class AwsAutoScalingClientProviderTest : public ::testing::Test {
 };
 
 TEST_F(AwsAutoScalingClientProviderTest,
-       InitWithCreateClientConfigurationFailed) {
+       RunWithCreateClientConfigurationFailed) {
   auto failure_result = FailureExecutionResult(SC_UNKNOWN);
   mock_instance_client_->get_instance_resource_name_mock = failure_result;
   auto client = make_unique<AwsAutoScalingClientProvider>(
       make_shared<AutoScalingClientOptions>(), mock_instance_client_,
       mock_io_async_executor_, mock_auto_scaling_client_factory_);
 
-  EXPECT_THAT(client->Init(), ResultIs(failure_result));
+  EXPECT_SUCCESS(client->Init());
+  EXPECT_THAT(client->Run(), ResultIs(failure_result));
 }
 
 TEST_F(AwsAutoScalingClientProviderTest, MissingInstanceResourceId) {

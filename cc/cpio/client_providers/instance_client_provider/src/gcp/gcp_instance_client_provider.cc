@@ -198,8 +198,7 @@ ExecutionResult GcpInstanceClientProvider::GetCurrentInstanceResourceNameSync(
           request, response);
 
   if (!execution_result.Successful()) {
-    SCP_ERROR(kGcpInstanceClientProvider, kZeroUuid, kZeroUuid,
-              execution_result,
+    SCP_ERROR(kGcpInstanceClientProvider, kZeroUuid, execution_result,
               "Failed to run async function GetCurrentInstanceResourceName for "
               "current instance resource name");
     return execution_result;
@@ -505,7 +504,7 @@ ExecutionResult GcpInstanceClientProvider::GetInstanceDetailsByResourceNameSync(
 
   if (!execution_result.Successful()) {
     SCP_ERROR(
-        kGcpInstanceClientProvider, kZeroUuid, kZeroUuid, execution_result,
+        kGcpInstanceClientProvider, kZeroUuid, execution_result,
         "Failed to run async function GetInstanceDetailsByResourceName for "
         "resource %s",
         request.instance_resource_name().c_str());

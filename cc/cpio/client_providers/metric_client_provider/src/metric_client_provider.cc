@@ -74,7 +74,7 @@ ExecutionResult MetricClientProvider::Init() noexcept {
       metric_batching_options_->metric_namespace.empty()) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_NAMESPACE_NOT_SET);
-    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, execution_result,
               "Invalid namespace.");
     return execution_result;
   }
@@ -92,7 +92,7 @@ ExecutionResult MetricClientProvider::Run() noexcept {
   if (is_running_) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_ALREADY_RUNNING);
-    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, execution_result,
               "Failed to run MetricClientProvider.");
     return execution_result;
   }
@@ -182,7 +182,7 @@ void MetricClientProvider::RunMetricsBatchPush() noexcept {
   }
   auto execution_result = MetricsBatchPush(requests_vector_copy);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, execution_result,
               "Failed to push metrics in batch.");
   }
   return;
@@ -192,7 +192,7 @@ ExecutionResult MetricClientProvider::ScheduleMetricsBatchPush() noexcept {
   if (!is_running_) {
     auto execution_result =
         FailureExecutionResult(SC_METRIC_CLIENT_PROVIDER_IS_NOT_RUNNING);
-    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, execution_result,
               "Failed to schedule metric batch push.");
     return execution_result;
   }
@@ -210,7 +210,7 @@ ExecutionResult MetricClientProvider::ScheduleMetricsBatchPush() noexcept {
       },
       next_push_time, current_cancellation_callback_);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kMetricClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kMetricClientProvider, kZeroUuid, execution_result,
               "Failed to schedule metric batch push.");
   }
   return execution_result;

@@ -163,6 +163,14 @@ MATCHER_P2(HasBucketAndKey, bucket, key, "") {
          ExplainMatchResult(Eq(key), arg.GetKey(), result_listener);
 }
 
+TEST_F(AwsS3ClientProviderTest, RunWithCreateClientConfigurationFailed) {
+  auto failure_result = FailureExecutionResult(SC_UNKNOWN);
+  instance_client_->get_instance_resource_name_mock = failure_result;
+
+  EXPECT_SUCCESS(provider_.Init());
+  EXPECT_THAT(provider_.Run(), ResultIs(failure_result));
+}
+
 TEST_F(AwsS3ClientProviderTest, GetBlobFailure) {
   auto bucket_name = "bucket_name";
   auto blob_name = "blob_name";

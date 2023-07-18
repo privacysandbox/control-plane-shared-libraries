@@ -39,8 +39,8 @@ class MockAwsRoleCredentialsProviderWithOverrides
             std::make_shared<core::async_executor::mock::MockAsyncExecutor>()) {
   }
 
-  core::ExecutionResult Init() noexcept override {
-    auto execution_result = AwsRoleCredentialsProvider::Init();
+  core::ExecutionResult Run() noexcept override {
+    auto execution_result = AwsRoleCredentialsProvider::Run();
     if (execution_result != core::SuccessExecutionResult()) {
       return execution_result;
     }

@@ -54,8 +54,8 @@ ExecutionResult PrivateKeyFetcherProvider::Init() noexcept {
   if (!http_client_) {
     auto execution_result = FailureExecutionResult(
         SC_PRIVATE_KEY_FETCHER_PROVIDER_HTTP_CLIENT_NOT_FOUND);
-    SCP_ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to get http client.");
+    SCP_ERROR(kPrivateKeyFetcherProvider, kZeroUuid, execution_result,
+              "Failed to get http client.");
     return execution_result;
   }
   return SuccessExecutionResult();
@@ -89,8 +89,8 @@ void PrivateKeyFetcherProvider::SignHttpRequestCallback(
         sign_http_request_context) noexcept {
   auto execution_result = sign_http_request_context.result;
   if (!execution_result.Successful()) {
-    SCP_ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
-              execution_result, "Failed to sign http request.");
+    SCP_ERROR_CONTEXT(kPrivateKeyFetcherProvider, private_key_fetching_context,
+                      execution_result, "Failed to sign http request.");
     private_key_fetching_context.result = execution_result;
     private_key_fetching_context.Finish();
     return;
@@ -103,11 +103,12 @@ void PrivateKeyFetcherProvider::SignHttpRequestCallback(
       private_key_fetching_context);
   execution_result = http_client_->PerformRequest(http_client_context);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kPrivateKeyFetcherProvider, kZeroUuid, kZeroUuid,
-              execution_result,
-              "Failed to perform sign http request to reach endpoint %s.",
-              private_key_fetching_context.request->key_vending_endpoint
-                  ->private_key_vending_service_endpoint.c_str());
+    SCP_ERROR_CONTEXT(
+        kPrivateKeyFetcherProvider, private_key_fetching_context,
+        execution_result,
+        "Failed to perform sign http request to reach endpoint %s.",
+        private_key_fetching_context.request->key_vending_endpoint
+            ->private_key_vending_service_endpoint.c_str());
     private_key_fetching_context.result = execution_result;
     private_key_fetching_context.Finish();
   }

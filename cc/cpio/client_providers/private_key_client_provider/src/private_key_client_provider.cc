@@ -141,8 +141,7 @@ ExecutionResult PrivateKeyClientProvider::ListPrivateKeys(
           list_private_keys_context.Finish();
         }
 
-        SCP_ERROR(kPrivateKeyClientProvider, kZeroUuid, kZeroUuid,
-                  execution_result,
+        SCP_ERROR(kPrivateKeyClientProvider, kZeroUuid, execution_result,
                   "Failed to fetch private key with endpoint %s.",
                   endpoint.private_key_vending_service_endpoint.c_str());
         return execution_result;

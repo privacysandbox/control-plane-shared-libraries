@@ -21,6 +21,7 @@
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
+using google::scp::core::errors::SC_ROMA_WORK_CONTAINER_IS_FULL;
 using google::scp::core::errors::SC_ROMA_WORK_CONTAINER_STOPPED;
 using std::lock_guard;
 using std::move;
@@ -29,8 +30,11 @@ using std::unique_ptr;
 namespace google::scp::roma::ipc {
 
 ExecutionResult WorkContainer::TryAcquireAdd() {
-  auto ctx = SharedMemoryPool::SwitchTo(mem_pool_);
-  return space_available_semaphore_.TryWait();
+  lock_guard lock(add_item_mutex_);
+  if (size_ < capacity_) {
+    return SuccessExecutionResult();
+  }
+  return FailureExecutionResult(SC_ROMA_WORK_CONTAINER_IS_FULL);
 }
 
 ExecutionResult WorkContainer::Add(unique_ptr<WorkItem> work_item) {
@@ -40,9 +44,8 @@ ExecutionResult WorkContainer::Add(unique_ptr<WorkItem> work_item) {
     lock_guard lock(add_item_mutex_);
     items_[add_index_++] = move(work_item);
     add_index_ = add_index_ % capacity_;
+    size_++;
   }
-
-  size_++;
 
   acquire_semaphore_.Signal();
 
@@ -65,7 +68,6 @@ ExecutionResult WorkContainer::GetRequest(Request*& request) {
   }
 
   request = items_[acquire_index_]->request.get();
-
   return SuccessExecutionResult();
 }
 
@@ -101,8 +103,6 @@ ExecutionResult WorkContainer::GetCompleted(unique_ptr<WorkItem>& work_item) {
 
   size_--;
 
-  space_available_semaphore_.Signal();
-
   return SuccessExecutionResult();
 }
 
@@ -128,8 +128,6 @@ ExecutionResult WorkContainer::TryGetCompleted(
   get_complete_index_ = get_complete_index_ % capacity_;
 
   size_--;
-
-  space_available_semaphore_.Signal();
 
   return SuccessExecutionResult();
 }

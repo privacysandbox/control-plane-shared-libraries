@@ -108,7 +108,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
   if (!queue_client_options_) {
     execution_result = FailureExecutionResult(
         SC_GCP_QUEUE_CLIENT_PROVIDER_QUEUE_CLIENT_OPTIONS_REQUIRED);
-    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, execution_result,
               "Invalid queue client options.");
     return execution_result;
   }
@@ -116,7 +116,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
   if (queue_client_options_->queue_name.empty()) {
     execution_result = FailureExecutionResult(
         SC_GCP_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED);
-    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, execution_result,
               "Invalid queue name.");
     return execution_result;
   }
@@ -125,7 +125,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
       kMaxAckDeadlineSeconds) {
     execution_result = FailureExecutionResult(
         SC_GCP_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT);
-    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, execution_result,
               "Invalid visibility timeout.");
     return execution_result;
   }
@@ -133,8 +133,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_provider_);
   if (!project_id_or.Successful()) {
-    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, kZeroUuid,
-              project_id_or.result(),
+    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, project_id_or.result(),
               "Failed to get project ID for current instance");
     return project_id_or.result();
   }
@@ -145,7 +144,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
   if (!publisher_stub_) {
     execution_result =
         FailureExecutionResult(SC_GCP_QUEUE_CLIENT_PROVIDER_PUBLISHER_REQUIRED);
-    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, execution_result,
               "Failed to create publisher.");
     return execution_result;
   }
@@ -155,7 +154,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
   if (!subscriber_stub_) {
     execution_result = FailureExecutionResult(
         SC_GCP_QUEUE_CLIENT_PROVIDER_SUBSCRIBER_REQUIRED);
-    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, execution_result,
               "Failed to create subscriber.");
     return execution_result;
   }

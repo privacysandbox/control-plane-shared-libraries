@@ -101,20 +101,24 @@ ExecutionResult NativeFunctionHandlerSapiIpc::Run() noexcept {
 ExecutionResult NativeFunctionHandlerSapiIpc::Stop() noexcept {
   stop_.store(true);
 
+  // We write to the comms object so that we can unblock the function binding
+  // threads waiting on it.
   for (auto fd : remote_fds_) {
     sandbox2::Comms remote_comms(fd);
     proto::FunctionBindingIoProto io_proto;
     remote_comms.SendProtoBuf(io_proto);
   }
 
-  for (auto& c : ipc_comms_) {
-    c->Terminate();
-  }
-
+  // Wait for the function binding threads to stop before terminating the comms
+  // object below.
   for (auto& t : function_handler_threads_) {
     if (t.joinable()) {
       t.join();
     }
+  }
+
+  for (auto& c : ipc_comms_) {
+    c->Terminate();
   }
 
   return SuccessExecutionResult();

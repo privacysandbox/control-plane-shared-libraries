@@ -24,9 +24,13 @@
 #include "public/core/interface/execution_result.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_init_params.pb.h"
 #include "roma/sandbox/worker_api/sapi/src/worker_params.pb.h"
+#include "sandboxed_api/lenval_core.h"
 
 extern "C" google::scp::core::StatusCode Init(
     worker_api::WorkerInitParamsProto* init_params);
+
+extern "C" google::scp::core::StatusCode InitFromSerializedData(
+    sapi::LenValStruct* data);
 
 extern "C" google::scp::core::StatusCode Run();
 
@@ -34,3 +38,6 @@ extern "C" google::scp::core::StatusCode Stop();
 
 extern "C" google::scp::core::StatusCode RunCode(
     worker_api::WorkerParamsProto* params);
+
+extern "C" google::scp::core::StatusCode RunCodeFromSerializedData(
+    sapi::LenValStruct* data);

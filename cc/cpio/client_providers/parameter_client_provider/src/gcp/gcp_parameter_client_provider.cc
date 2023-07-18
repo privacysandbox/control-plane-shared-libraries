@@ -70,8 +70,7 @@ ExecutionResult GcpParameterClientProvider::Init() noexcept {
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_provider_);
   if (!project_id_or.Successful()) {
-    SCP_ERROR(kGcpParameterClientProvider, kZeroUuid, kZeroUuid,
-              project_id_or.result(),
+    SCP_ERROR(kGcpParameterClientProvider, kZeroUuid, project_id_or.result(),
               "Failed to get project ID for current instance");
     return project_id_or.result();
   }
@@ -81,8 +80,7 @@ ExecutionResult GcpParameterClientProvider::Init() noexcept {
   if (!sm_client_shared_) {
     auto execution_result = FailureExecutionResult(
         SC_GCP_PARAMETER_CLIENT_PROVIDER_CREATE_SM_CLIENT_FAILURE);
-    SCP_ERROR(kGcpParameterClientProvider, kZeroUuid, kZeroUuid,
-              execution_result,
+    SCP_ERROR(kGcpParameterClientProvider, kZeroUuid, execution_result,
               "Failed to create secret manager service client.");
     return execution_result;
   }

@@ -204,9 +204,8 @@ TEST_F(MacroLogTest, RETURN_IF_FAILURELogTest) {
 
   auto helper2 = [](ExecutionResult result) -> ExecutionResult {
     string some_str = "s";
-    RETURN_AND_LOG_IF_FAILURE(result, "component", common::kZeroUuid,
-                              common::kZeroUuid, __res, "msg %s",
-                              some_str.c_str());
+    RETURN_AND_LOG_IF_FAILURE(result, "component", common::kZeroUuid, __res,
+                              "msg %s", some_str.c_str());
     return SuccessExecutionResult();
   };
   // Doesn't log without context.
@@ -268,7 +267,7 @@ TEST_F(MacroLogTest, ASSIGN_OR_RETURNLogTest) {
   auto helper2 = [](ExecutionResultOr<int> result_or,
                     int& val) -> ExecutionResult {
     ASSIGN_OR_LOG_AND_RETURN(val, result_or, "component", common::kZeroUuid,
-                             common::kZeroUuid, __res, "msg %d", val);
+                             __res, "msg %d", val);
     val++;
     return SuccessExecutionResult();
   };
@@ -404,10 +403,15 @@ TEST(ExecutionResultTest, MatcherTest) {
   EXPECT_THAT(results, UnorderedPointwise(ResultIs(), expected_results));
 
   EXPECT_SUCCESS(SuccessExecutionResult());
+  ASSERT_SUCCESS(SuccessExecutionResult());
   ExecutionResult result = SuccessExecutionResult();
   EXPECT_SUCCESS(result);
+  ASSERT_SUCCESS(result);
   result_or = 1;
   EXPECT_SUCCESS(result_or);
+  ASSERT_SUCCESS(result_or);
+  ASSERT_SUCCESS_AND_ASSIGN(auto value, result_or);
+  EXPECT_EQ(value, 1);
 }
 
 TEST(ExecutionResultOrTest, Constructor) {

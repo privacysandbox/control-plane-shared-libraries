@@ -58,7 +58,7 @@ ExecutionResult SimpleMetric::Stop() noexcept {
 
 void SimpleMetric::RunMetricPush(
     const shared_ptr<PutMetricsRequest> record_metric_request) noexcept {
-  auto correlation_id = core::common::Uuid::GenerateUuid();
+  auto activity_id = core::common::Uuid::GenerateUuid();
   AsyncContext<PutMetricsRequest, PutMetricsResponse> record_metric_context(
       move(record_metric_request),
       [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& outcome) {
@@ -66,7 +66,7 @@ void SimpleMetric::RunMetricPush(
           // TODO: Create an alert or reschedule
         }
       },
-      correlation_id, correlation_id);
+      activity_id, activity_id);
   auto execution_result = metric_client_->PutMetrics(record_metric_context);
   if (!execution_result.Successful()) {
     // TODO: Create an alert or reschedule

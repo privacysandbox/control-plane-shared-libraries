@@ -69,7 +69,7 @@ core::ExecutionResult LibCpioProvider::Init() noexcept {
     cloud_initializer_ = CloudInitializerFactory::Create();
     auto execution_result = cloud_initializer_->Init();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to init cloud initializer.");
       return execution_result;
     }
@@ -81,7 +81,7 @@ core::ExecutionResult LibCpioProvider::Run() noexcept {
   if (cpio_options_->cloud_init_option == CloudInitOption::kInitInCpio) {
     auto execution_result = cloud_initializer_->Run();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to run cloud initializer.");
       return execution_result;
     }
@@ -94,7 +94,7 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
   if (instance_client_provider_) {
     auto execution_result = instance_client_provider_->Stop();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to stop instance client provider.");
       return execution_result;
     }
@@ -103,7 +103,7 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
   if (auth_token_provider_) {
     auto execution_result = auth_token_provider_->Stop();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to stop auth token provider.");
       return execution_result;
     }
@@ -112,7 +112,7 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
   if (http2_client_) {
     auto execution_result = http2_client_->Stop();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to stop http2 client.");
       return execution_result;
     }
@@ -121,7 +121,7 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
   if (http1_client_) {
     auto execution_result = http1_client_->Stop();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to stop http1 client.");
       return execution_result;
     }
@@ -130,7 +130,7 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
   if (!external_cpu_async_executor_is_set_ && cpu_async_executor_) {
     auto execution_result = cpu_async_executor_->Stop();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to stop CPU async executor.");
       return execution_result;
     }
@@ -139,7 +139,7 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
   if (!external_io_asycn_executor_is_set_ && io_async_executor_) {
     auto execution_result = io_async_executor_->Stop();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to stop IO async executor.");
       return execution_result;
     }
@@ -149,7 +149,7 @@ core::ExecutionResult LibCpioProvider::Stop() noexcept {
     cloud_initializer_->ShutdownCloud();
     auto execution_result = cloud_initializer_->Stop();
     if (!execution_result.Successful()) {
-      SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+      SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
                 "Failed to stop cloud initializer.");
       return execution_result;
     }
@@ -169,7 +169,7 @@ ExecutionResult LibCpioProvider::GetHttpClient(
   auto execution_result =
       LibCpioProvider::GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get asynce executor.");
     return execution_result;
   }
@@ -177,14 +177,14 @@ ExecutionResult LibCpioProvider::GetHttpClient(
   http2_client_ = make_shared<HttpClient>(cpu_async_executor);
   execution_result = http2_client_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to initialize http2 client.");
     return execution_result;
   }
 
   execution_result = http2_client_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to run http2 client.");
     return execution_result;
   }
@@ -203,7 +203,7 @@ ExecutionResult LibCpioProvider::GetHttp1Client(
   auto execution_result =
       LibCpioProvider::GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get CPU async executor.");
     return execution_result;
   }
@@ -211,7 +211,7 @@ ExecutionResult LibCpioProvider::GetHttp1Client(
   shared_ptr<AsyncExecutorInterface> io_async_executor;
   execution_result = LibCpioProvider::GetIoAsyncExecutor(io_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get IO async executor.");
     return execution_result;
   }
@@ -220,14 +220,14 @@ ExecutionResult LibCpioProvider::GetHttp1Client(
       make_shared<Http1CurlClient>(cpu_async_executor, io_async_executor);
   execution_result = http1_client_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to initialize http1 client.");
     return execution_result;
   }
 
   execution_result = http1_client_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to run http1 client.");
     return execution_result;
   }
@@ -271,14 +271,14 @@ ExecutionResult LibCpioProvider::GetCpuAsyncExecutor(
       make_shared<AsyncExecutor>(kThreadPoolThreadCount, kThreadPoolQueueSize);
   auto execution_result = cpu_async_executor_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to initialize async executor.");
     return execution_result;
   }
 
   execution_result = cpu_async_executor_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to run async executor.");
     return execution_result;
   }
@@ -297,14 +297,14 @@ ExecutionResult LibCpioProvider::GetIoAsyncExecutor(
                                                   kIOThreadPoolQueueSize);
   auto execution_result = io_async_executor_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to initialize IO async executor.");
     return execution_result;
   }
 
   execution_result = io_async_executor_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to run IO async executor.");
     return execution_result;
   }
@@ -324,7 +324,7 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
   auto execution_result =
       LibCpioProvider::GetAuthTokenProvider(auth_token_provider);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get auth token provider.");
     return execution_result;
   }
@@ -332,7 +332,7 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
   shared_ptr<HttpClientInterface> http1_client;
   execution_result = LibCpioProvider::GetHttp1Client(http1_client);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get Http1 client.");
     return execution_result;
   }
@@ -340,7 +340,7 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
   shared_ptr<HttpClientInterface> http2_client;
   execution_result = LibCpioProvider::GetHttpClient(http2_client);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get Http2 client.");
     return execution_result;
   }
@@ -348,7 +348,7 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
   shared_ptr<AsyncExecutorInterface> cpu_async_executor;
   execution_result = LibCpioProvider::GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get cpu async executor.");
     return execution_result;
   }
@@ -356,7 +356,7 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
   shared_ptr<AsyncExecutorInterface> io_async_executor;
   execution_result = LibCpioProvider::GetIoAsyncExecutor(io_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get io async executor.");
     return execution_result;
   }
@@ -366,14 +366,14 @@ ExecutionResult LibCpioProvider::GetInstanceClientProvider(
       io_async_executor);
   execution_result = instance_client_provider_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to initialize instance client provider.");
     return execution_result;
   }
 
   execution_result = instance_client_provider_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to run instance client provider.");
     return execution_result;
   }
@@ -403,7 +403,7 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
   auto execution_result =
       LibCpioProvider::GetCpuAsyncExecutor(cpu_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get cpu async executor.");
     return execution_result;
   }
@@ -411,7 +411,7 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
   shared_ptr<AsyncExecutorInterface> io_async_executor;
   execution_result = LibCpioProvider::GetIoAsyncExecutor(io_async_executor);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get io async executor.");
     return execution_result;
   }
@@ -419,7 +419,7 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
   shared_ptr<InstanceClientProviderInterface> instance_client;
   execution_result = GetInstanceClientProvider(instance_client);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get instance client.");
     return execution_result;
   }
@@ -428,14 +428,14 @@ ExecutionResult LibCpioProvider::GetRoleCredentialsProvider(
       instance_client, cpu_async_executor, io_async_executor);
   execution_result = role_credentials_provider_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to initialize role credential provider.");
     return execution_result;
   }
 
   execution_result = role_credentials_provider_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to run role credential provider.");
     return execution_result;
   }
@@ -453,7 +453,7 @@ ExecutionResult LibCpioProvider::GetAuthTokenProvider(
   shared_ptr<HttpClientInterface> http1_client;
   auto execution_result = LibCpioProvider::GetHttp1Client(http1_client);
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to get Http1 client.");
     return execution_result;
   }
@@ -461,14 +461,14 @@ ExecutionResult LibCpioProvider::GetAuthTokenProvider(
   auth_token_provider_ = AuthTokenProviderFactory::Create(http1_client);
   execution_result = auth_token_provider_->Init();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to initialize auth token provider.");
     return execution_result;
   }
 
   execution_result = auth_token_provider_->Run();
   if (!execution_result.Successful()) {
-    SCP_ERROR(kLibCpioProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kLibCpioProvider, kZeroUuid, execution_result,
               "Failed to run role  auth token provider.");
     return execution_result;
   }

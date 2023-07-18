@@ -210,4 +210,59 @@ TEST_F(V8EngineWorkerTest, CanRunMultipleVersionsOfCompilationContexts) {
     EXPECT_EQ(response_string, "12");
   }
 }
+
+TEST_F(V8EngineWorkerTest, ShouldReturnFailureIfVersionIsNotInInCache) {
+  auto engine = make_shared<V8JsEngine>();
+  Worker worker(engine, true /*require_preload*/,
+                1 /*compilation_context_cache_size*/);
+  AutoInitRunStop to_handle_worker(worker);
+
+  string js_code = "function hello_js() { return \"Hello World!\"; }";
+  vector<string> input;
+
+  // Load
+  unordered_map<string, string> metadata = {
+      {kRequestType, kRequestTypeJavascript},
+      {kHandlerName, "hello_js"},
+      {kCodeVersion, "1"},
+      {kRequestAction, kRequestActionLoad}};
+  auto response_or = worker.RunCode(js_code, input, metadata);
+  EXPECT_SUCCESS(response_or.result());
+
+  // Execute v1
+  metadata[kRequestAction] = kRequestActionExecute;
+  // Code was loaded so we don't need to send the source code again
+  response_or = worker.RunCode("", input, metadata);
+  EXPECT_SUCCESS(response_or.result());
+  auto response_string = *response_or;
+  EXPECT_EQ(response_string, "\"Hello World!\"");
+
+  // Execute v2 - Should fail since we haven't loaded v2
+  metadata[kCodeVersion] = "2";
+  metadata[kRequestAction] = kRequestActionExecute;
+  response_or = worker.RunCode("", input, metadata);
+  EXPECT_FALSE(response_or.result());
+
+  // Load v2
+  metadata[kCodeVersion] = "2";
+  metadata[kRequestAction] = kRequestActionLoad;
+  response_or = worker.RunCode(js_code, input, metadata);
+  EXPECT_SUCCESS(response_or.result());
+
+  // Execute v1 - Should fail since the cache size is 1 and we loaded a new
+  // version
+  metadata[kCodeVersion] = "1";
+  metadata[kRequestAction] = kRequestActionExecute;
+  response_or = worker.RunCode("", input, metadata);
+  EXPECT_FALSE(response_or.result());
+
+  // Execute v2
+  metadata[kCodeVersion] = "2";
+  metadata[kRequestAction] = kRequestActionExecute;
+  // Code was loaded so we don't need to send the source code again
+  response_or = worker.RunCode("", input, metadata);
+  EXPECT_SUCCESS(response_or.result());
+  response_string = *response_or;
+  EXPECT_EQ(response_string, "\"Hello World!\"");
+}
 }  // namespace google::scp::roma::sandbox::worker::test

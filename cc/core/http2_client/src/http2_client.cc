@@ -24,7 +24,7 @@ using google::scp::core::common::RetryStrategyType;
 using std::make_unique;
 using std::shared_ptr;
 
-constexpr char kHttpClient[] = "HTTPClient";
+constexpr char kHttpClient[] = "Http2Client";
 
 namespace google::scp::core {
 HttpClient::HttpClient(shared_ptr<AsyncExecutorInterface>& async_executor,
@@ -59,7 +59,7 @@ ExecutionResult HttpClient::PerformRequest(
           return execution_result;
         }
 
-        SCP_INFO_CONTEXT(
+        SCP_DEBUG_CONTEXT(
             kHttpClient, http_context,
             "Executing request on connection %p. Retry count: %lld",
             http_connection.get(), http_context.retry_count);

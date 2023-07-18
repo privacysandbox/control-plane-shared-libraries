@@ -49,18 +49,24 @@ def sdk_image(
         {
             "service name": {
                 "env1_name":"env1_value",
-                "env2_name":"en2_value"
+                "env2_name":"env2_value",
             }
         }
       platform: platform to run this container on (aws/gcp)
       inside_tee: whether this container is running inside tee.
       recover_client_binaries: if True, auto-restart the client binaries in the container if they failed.
       recover_sdk_binaries: if True, auto-restart the SDK binaries in the container if they failed.
-      client_binaries: Dict of bazel targets of client binaries with arguments.
-        This is in the form:
+      client_binaries: Dict of bazel targets of client binaries with executing command.
+        The binary_file is the executable file name without the path.
+        For some languages, the binary file name is different from the binary_target name.
+        For example, for Java, the binary_file name is binary_target_deploy.jar, and the
+        executing command is "/usr/bin/java -jar /binary_file".
+        Example usage:
         {
-            "client_binary_target" : ["arg1", "arg2"]
+            "client_binary_target" : "/binary_file arg1 arg2"],
         }
+        If no executing args needed and the binary file is the same as the binary target,
+        we can omit the value in the dictionary.
       additional_env_variables: Dict (string-to-string) of environment variables to
         be added to the container.
       additional_files: Additional files to include in the container root.
@@ -109,18 +115,19 @@ def sdk_image(
             restart = recover_sdk_binaries
             if (target in client_targets):
                 restart = recover_client_binaries
+            execute_command = client_targets_dict.get(target, [])
+            if (not execute_command):
+                execute_command = ["/" + target.name]
             if platform == "aws" and inside_tee:
                 executable = {
                     "file_name": "/proxify",
-                    "args": [
-                        "/" + target.name,
-                    ] + client_targets_dict.get(target, []),
+                    "args": execute_command,
                     "restart": restart,
                 }
             else:
                 executable = {
-                    "file_name": "/" + target.name,
-                    "args": client_targets_dict.get(target, []),
+                    "file_name": execute_command[0],
+                    "args": execute_command[1:],
                     "restart": restart,
                 }
             sdk_cmd.append(executable_struct_to_json_str(executable))

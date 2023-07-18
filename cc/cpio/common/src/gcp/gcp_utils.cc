@@ -103,7 +103,7 @@ ExecutionResult GcpUtils::GcpErrorConverter(cloud::Status status) noexcept {
   }
 
   if (!failure.Successful()) {
-    SCP_ERROR(kGcpErrorConverter, kZeroUuid, kZeroUuid, failure,
+    SCP_ERROR(kGcpErrorConverter, kZeroUuid, failure,
               "GCP cloud service error: code is %d, and error message is %s.",
               status_code, status.message().c_str());
   }
@@ -168,7 +168,7 @@ ExecutionResult GcpUtils::GcpErrorConverter(grpc::Status status) noexcept {
   }
 
   if (!failure.Successful()) {
-    SCP_ERROR(kGcpErrorConverter, kZeroUuid, kZeroUuid, failure,
+    SCP_ERROR(kGcpErrorConverter, kZeroUuid, failure,
               "GCP gRPC service error: code is %d, and error message is %s.",
               status_code, status.error_message().c_str());
   }

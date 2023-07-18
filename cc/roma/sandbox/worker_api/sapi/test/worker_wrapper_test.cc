@@ -32,11 +32,22 @@ using google::scp::roma::sandbox::constants::kRequestTypeJavascript;
 using google::scp::roma::sandbox::worker::WorkerFactory;
 
 namespace google::scp::roma::sandbox::worker_api::test {
-TEST(WorkerWrapperTest, CanRunCodeThroughWrapperWithoutPreload) {
+static ::worker_api::WorkerInitParamsProto GetDefaultInitParams() {
   ::worker_api::WorkerInitParamsProto init_params;
   init_params.set_worker_factory_js_engine(
       static_cast<int>(worker::WorkerFactory::WorkerEngine::v8));
   init_params.set_require_code_preload_for_execution(false);
+  init_params.set_compilation_context_cache_size(5);
+  init_params.set_native_js_function_comms_fd(-1);
+  init_params.mutable_native_js_function_names()->Clear();
+  init_params.set_js_engine_initial_heap_size_mb(0);
+  init_params.set_js_engine_maximum_heap_size_mb(0);
+  init_params.set_js_engine_max_wasm_memory_number_of_pages(0);
+  return init_params;
+}
+
+TEST(WorkerWrapperTest, CanRunCodeThroughWrapperWithoutPreload) {
+  auto init_params = GetDefaultInitParams();
   auto result = ::Init(&init_params);
   EXPECT_EQ(SC_OK, result);
 
@@ -61,7 +72,8 @@ TEST(WorkerWrapperTest, CanRunCodeThroughWrapperWithoutPreload) {
 }
 
 TEST(WorkerWrapperTest, FailsToRunCodeWhenPreloadIsRequiredAndExecuteIsSent) {
-  ::worker_api::WorkerInitParamsProto init_params;
+  auto init_params = GetDefaultInitParams();
+  init_params.set_require_code_preload_for_execution(true);
   init_params.set_worker_factory_js_engine(
       static_cast<int>(worker::WorkerFactory::WorkerEngine::v8));
   init_params.set_require_code_preload_for_execution(true);

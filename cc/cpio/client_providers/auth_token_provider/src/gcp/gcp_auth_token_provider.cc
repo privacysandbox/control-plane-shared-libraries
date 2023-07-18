@@ -128,7 +128,7 @@ ExecutionResult GcpAuthTokenProvider::Init() noexcept {
   if (!http_client_) {
     auto execution_result = FailureExecutionResult(
         SC_GCP_INSTANCE_AUTHORIZER_PROVIDER_INITIALIZATION_FAILED);
-    SCP_ERROR(kGcpAuthTokenProvider, kZeroUuid, kZeroUuid, execution_result,
+    SCP_ERROR(kGcpAuthTokenProvider, kZeroUuid, execution_result,
               "Http client cannot be nullptr.");
     return execution_result;
   }

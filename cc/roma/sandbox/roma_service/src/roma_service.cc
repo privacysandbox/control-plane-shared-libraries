@@ -75,7 +75,8 @@ ExecutionResult RomaService::Init() noexcept {
   // TODO: Make max_pending_requests configurable
   dispatcher_ = make_shared<class Dispatcher>(
       async_executor_, worker_pool_,
-      concurrency * worker_queue_cap /*max_pending_requests*/);
+      concurrency * worker_queue_cap /*max_pending_requests*/,
+      config_.code_version_cache_size);
   result = dispatcher_->Init();
   RETURN_IF_FAILURE(result);
 
@@ -181,6 +182,7 @@ ExecutionResult RomaService::SetupWorkers(
     WorkerApiSapiConfig worker_api_sapi_config{
         .worker_js_engine = worker::WorkerFactory::WorkerEngine::v8,
         .js_engine_require_code_preload = true,
+        .compilation_context_cache_size = config_.code_version_cache_size,
         .native_js_function_comms_fd = remote_fds.at(i),
         .native_js_function_names = function_names,
         .max_worker_virtual_memory_mb = config_.max_worker_virtual_memory_mb,

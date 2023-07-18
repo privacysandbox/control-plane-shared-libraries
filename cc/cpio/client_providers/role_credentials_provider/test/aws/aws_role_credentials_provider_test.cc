@@ -85,11 +85,11 @@ class AwsRoleCredentialsProviderTest : public ::testing::Test {
   void SetUp() override {
     role_credentials_provider_ =
         make_shared<MockAwsRoleCredentialsProviderWithOverrides>();
+    EXPECT_SUCCESS(role_credentials_provider_->Init());
     role_credentials_provider_->GetInstanceClientProvider()
         ->instance_resource_name = kResourceNameMock;
-    EXPECT_SUCCESS(role_credentials_provider_->Init());
-    mock_sts_client_ = role_credentials_provider_->GetSTSClient();
     EXPECT_SUCCESS(role_credentials_provider_->Run());
+    mock_sts_client_ = role_credentials_provider_->GetSTSClient();
   }
 
   void TearDown() override {
@@ -150,7 +150,8 @@ TEST_F(AwsRoleCredentialsProviderTest, NullInstanceClientProvider) {
   auto role_credentials_provider = make_shared<AwsRoleCredentialsProvider>(
       nullptr, make_shared<MockAsyncExecutor>(),
       make_shared<MockAsyncExecutor>());
-  EXPECT_THAT(role_credentials_provider->Init(),
+  EXPECT_SUCCESS(role_credentials_provider->Init());
+  EXPECT_THAT(role_credentials_provider->Run(),
               ResultIs(FailureExecutionResult(
                   SC_AWS_ROLE_CREDENTIALS_PROVIDER_INITIALIZATION_FAILED)));
 }
@@ -159,7 +160,8 @@ TEST_F(AwsRoleCredentialsProviderTest, NullCpuAsyncExecutor) {
   auto role_credentials_provider = make_shared<AwsRoleCredentialsProvider>(
       make_shared<mock::MockInstanceClientProvider>(), nullptr,
       make_shared<MockAsyncExecutor>());
-  EXPECT_THAT(role_credentials_provider->Init(),
+  EXPECT_SUCCESS(role_credentials_provider->Init());
+  EXPECT_THAT(role_credentials_provider->Run(),
               ResultIs(FailureExecutionResult(
                   SC_AWS_ROLE_CREDENTIALS_PROVIDER_INITIALIZATION_FAILED)));
 }
@@ -168,7 +170,8 @@ TEST_F(AwsRoleCredentialsProviderTest, NullIoAsyncExecutor) {
   auto role_credentials_provider = make_shared<AwsRoleCredentialsProvider>(
       make_shared<mock::MockInstanceClientProvider>(),
       make_shared<MockAsyncExecutor>(), nullptr);
-  EXPECT_THAT(role_credentials_provider->Init(),
+  EXPECT_SUCCESS(role_credentials_provider->Init());
+  EXPECT_THAT(role_credentials_provider->Run(),
               ResultIs(FailureExecutionResult(
                   SC_AWS_ROLE_CREDENTIALS_PROVIDER_INITIALIZATION_FAILED)));
 }

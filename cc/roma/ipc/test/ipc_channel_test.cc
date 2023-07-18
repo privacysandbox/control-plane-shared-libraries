@@ -19,15 +19,19 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <thread>
 
 #include "core/test/utils/auto_init_run_stop.h"
 #include "public/core/test/interface/execution_result_matchers.h"
+#include "roma/common/src/process.h"
 #include "roma/common/src/shared_memory.h"
 #include "roma/common/src/shared_memory_pool.h"
 
+using google::scp::core::SuccessExecutionResult;
 using google::scp::core::test::AutoInitRunStop;
 using std::make_unique;
 using std::move;
+using std::thread;
 using std::unique_ptr;
 
 namespace {
@@ -35,6 +39,7 @@ constexpr size_t kWorkerQueueCapacity = 100;
 }
 
 namespace google::scp::roma::ipc::test {
+using common::Process;
 using common::SharedMemoryPool;
 using common::SharedMemorySegment;
 
@@ -201,5 +206,52 @@ TEST_F(IpcChannelTest, ShouldNotUpdateLastCodeObjectIfVersionDoesNotChange) {
   EXPECT_STREQ(last_code_obj->id.c_str(), "MyId123");
   EXPECT_EQ(last_code_obj->version_num, 1);
   EXPECT_STREQ(last_code_obj->js.c_str(), "OldJS");
+}
+
+TEST_F(IpcChannelTest, ShouldWorkForSmallSizeWorkQueueWithMultiThread) {
+  IpcChannel channel(segment_, 1 /*worker_container queue size*/);
+  AutoInitRunStop auto_init_run_stop(channel);
+  channel.GetMemPool().SetThisThreadMemPool();
+
+  int total_request = 100;
+
+  std::thread handle_request([&channel, total_request]() {
+    channel.GetMemPool().SetThisThreadMemPool();
+    for (int i = 0; i < total_request; ++i) {
+      Request* request;
+      auto result = channel.PopRequest(request);
+      EXPECT_SUCCESS(result);
+      auto response = make_unique<Response>();
+      response->result = SuccessExecutionResult();
+      result = channel.PushResponse(move(response));
+      EXPECT_SUCCESS(result);
+    }
+    return SuccessExecutionResult();
+  });
+
+  std::thread get_response([&channel, total_request]() {
+    channel.GetMemPool().SetThisThreadMemPool();
+
+    for (int i = 0; i < total_request; ++i) {
+      std::unique_ptr<Response> response;
+      auto result = channel.PopResponse(response);
+      EXPECT_SUCCESS(result);
+      EXPECT_SUCCESS(response->result);
+    }
+  });
+
+  for (int i = 0; i < total_request; i++) {
+    while (!channel.TryAcquirePushRequest().Successful()) {}
+
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = std::to_string(i);
+    Callback callback;
+    auto request_to_push = make_unique<Request>(move(code_obj), callback);
+
+    EXPECT_SUCCESS(channel.PushRequest(move(request_to_push)));
+  }
+
+  handle_request.join();
+  get_response.join();
 }
 }  // namespace google::scp::roma::ipc::test

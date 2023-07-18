@@ -47,6 +47,8 @@ class WorkerSandboxApi : public core::ServiceInterface {
    *
    * @param worker_engine The JS engine type used to build the worker.
    * @param require_preload Whether code preloading is required for this engine.
+   * @param compilation_context_cache_size The number of compilation contexts
+   * to cache.
    * @param native_js_function_comms_fd Filed descriptor to be used for native
    * function calls through the sandbox.
    * @param native_js_function_names The names of the functions that should be
@@ -61,7 +63,8 @@ class WorkerSandboxApi : public core::ServiceInterface {
    * pages. Each page is 64KiB. Max 65536 pages (4GiB).
    */
   WorkerSandboxApi(const worker::WorkerFactory::WorkerEngine& worker_engine,
-                   bool require_preload, int native_js_function_comms_fd,
+                   bool require_preload, size_t compilation_context_cache_size,
+                   int native_js_function_comms_fd,
                    const std::vector<std::string>& native_js_function_names,
                    size_t max_worker_virtual_memory_mb,
                    size_t js_engine_initial_heap_size_mb,
@@ -69,6 +72,7 @@ class WorkerSandboxApi : public core::ServiceInterface {
                    size_t js_engine_max_wasm_memory_number_of_pages) {
     worker_engine_ = worker_engine;
     require_preload_ = require_preload;
+    compilation_context_cache_size_ = compilation_context_cache_size;
     native_js_function_comms_fd_ = native_js_function_comms_fd;
     native_js_function_names_ = native_js_function_names;
     max_worker_virtual_memory_mb_ = max_worker_virtual_memory_mb;
@@ -96,6 +100,9 @@ class WorkerSandboxApi : public core::ServiceInterface {
   core::ExecutionResult Terminate() noexcept;
 
  protected:
+  core::ExecutionResult InternalRunCode(
+      ::worker_api::WorkerParamsProto& params) noexcept;
+
   /**
    * @brief Class to allow overwriting the policy for the SAPI sandbox.
    *
@@ -160,6 +167,7 @@ class WorkerSandboxApi : public core::ServiceInterface {
   std::unique_ptr<WorkerWrapperApi> worker_wrapper_api_;
   worker::WorkerFactory::WorkerEngine worker_engine_;
   bool require_preload_;
+  size_t compilation_context_cache_size_;
   int native_js_function_comms_fd_;
   std::vector<std::string> native_js_function_names_;
   std::unique_ptr<sapi::v::Fd> sapi_native_js_function_comms_fd_;

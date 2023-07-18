@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "roma/sandbox/constants/constants.h"
 #include "roma/sandbox/worker/src/worker_utils.h"
 
 using std::string;

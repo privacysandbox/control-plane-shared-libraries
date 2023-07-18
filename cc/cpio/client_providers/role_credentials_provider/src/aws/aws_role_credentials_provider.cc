@@ -70,27 +70,30 @@ AwsRoleCredentialsProvider::CreateClientConfiguration(
 }
 
 ExecutionResult AwsRoleCredentialsProvider::Init() noexcept {
+  return SuccessExecutionResult();
+};
+
+ExecutionResult AwsRoleCredentialsProvider::Run() noexcept {
   if (!instance_client_provider_) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_ROLE_CREDENTIALS_PROVIDER_INITIALIZATION_FAILED);
-    SCP_ERROR(kAwsRoleCredentialsProvider, kZeroUuid, kZeroUuid,
-              execution_result, "InstanceClientProvider cannot be null.");
+    SCP_ERROR(kAwsRoleCredentialsProvider, kZeroUuid, execution_result,
+              "InstanceClientProvider cannot be null.");
     return execution_result;
   }
 
   if (!cpu_async_executor_ || !io_async_executor_) {
     auto execution_result = FailureExecutionResult(
         SC_AWS_ROLE_CREDENTIALS_PROVIDER_INITIALIZATION_FAILED);
-    SCP_ERROR(kAwsRoleCredentialsProvider, kZeroUuid, kZeroUuid,
-              execution_result, "AsyncExecutor cannot be null.");
+    SCP_ERROR(kAwsRoleCredentialsProvider, kZeroUuid, execution_result,
+              "AsyncExecutor cannot be null.");
     return execution_result;
   }
 
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_provider_);
   if (!region_code_or.Successful()) {
-    SCP_ERROR(kAwsRoleCredentialsProvider, kZeroUuid, kZeroUuid,
-              region_code_or.result(),
+    SCP_ERROR(kAwsRoleCredentialsProvider, kZeroUuid, region_code_or.result(),
               "Failed to get region code for current instance");
     return region_code_or.result();
   }
@@ -103,10 +106,6 @@ ExecutionResult AwsRoleCredentialsProvider::Init() noexcept {
       to_string(TimeProvider::GetSteadyTimestampInNanosecondsAsClockTicks());
   session_name_ = make_shared<string>(timestamp);
 
-  return SuccessExecutionResult();
-};
-
-ExecutionResult AwsRoleCredentialsProvider::Run() noexcept {
   return SuccessExecutionResult();
 }
 

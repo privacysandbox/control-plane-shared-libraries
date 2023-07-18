@@ -35,6 +35,12 @@
 
 using google::scp::core::StatusCode;
 using google::scp::core::common::Stopwatch;
+using google::scp::core::errors::
+    SC_ROMA_WORKER_API_COULD_NOT_DESERIALIZE_INIT_DATA;
+using google::scp::core::errors::
+    SC_ROMA_WORKER_API_COULD_NOT_DESERIALIZE_RUN_CODE_DATA;
+using google::scp::core::errors::
+    SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_RESPONSE_DATA;
 using google::scp::core::errors::SC_ROMA_WORKER_API_UNINITIALIZED_WORKER;
 using google::scp::roma::JsEngineResourceConstraints;
 using google::scp::roma::sandbox::constants::kExecutionMetricJsEngineCallNs;
@@ -59,6 +65,8 @@ StatusCode Init(worker_api::WorkerInitParamsProto* init_params) {
   factory_params.engine = worker_engine;
   factory_params.require_preload =
       init_params->require_code_preload_for_execution();
+  factory_params.compilation_context_cache_size =
+      init_params->compilation_context_cache_size();
 
   if (worker_engine == WorkerFactory::WorkerEngine::v8) {
     vector<string> native_js_function_names(
@@ -90,6 +98,15 @@ StatusCode Init(worker_api::WorkerInitParamsProto* init_params) {
   worker_ = *worker_or;
 
   return worker_->Init().status_code;
+}
+
+extern "C" StatusCode InitFromSerializedData(sapi::LenValStruct* data) {
+  worker_api::WorkerInitParamsProto init_params;
+  if (!init_params.ParseFromArray(data->data, data->size)) {
+    return SC_ROMA_WORKER_API_COULD_NOT_DESERIALIZE_INIT_DATA;
+  }
+
+  return Init(&init_params);
 }
 
 StatusCode Run() {
@@ -137,4 +154,38 @@ StatusCode RunCode(worker_api::WorkerParamsProto* params) {
 
   params->set_response(*response_or);
   return SC_OK;
+}
+
+StatusCode RunCodeFromSerializedData(sapi::LenValStruct* data) {
+  worker_api::WorkerParamsProto params;
+  if (!params.ParseFromArray(data->data, data->size)) {
+    return SC_ROMA_WORKER_API_COULD_NOT_DESERIALIZE_RUN_CODE_DATA;
+  }
+
+  auto result = RunCode(&params);
+  if (result != SC_OK) {
+    return result;
+  }
+
+  // Don't return the input or code
+  params.clear_code();
+  params.clear_input();
+
+  int serialized_size = params.ByteSizeLong();
+  uint8_t* serialized_data = static_cast<uint8_t*>(malloc(serialized_size));
+  if (!serialized_data) {
+    return SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_RESPONSE_DATA;
+  }
+
+  if (!params.SerializeToArray(serialized_data, serialized_size)) {
+    return SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_RESPONSE_DATA;
+  }
+
+  // Free old data
+  free(data->data);
+
+  data->data = serialized_data;
+  data->size = serialized_size;
+
+  return result;
 }

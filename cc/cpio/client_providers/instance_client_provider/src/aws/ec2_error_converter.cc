@@ -66,7 +66,7 @@ FailureExecutionResult EC2ErrorConverter::ConvertEC2Error(
     default:
       failure = FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR);
   }
-  SCP_ERROR(kEC2ErrorConverter, kZeroUuid, kZeroUuid, failure,
+  SCP_ERROR(kEC2ErrorConverter, kZeroUuid, failure,
             "AWS cloud service error: code is %d, and error message is %s.",
             error, error_message.c_str());
   return failure;

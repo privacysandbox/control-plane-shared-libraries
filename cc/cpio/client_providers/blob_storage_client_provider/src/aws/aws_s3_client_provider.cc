@@ -110,10 +110,15 @@ shared_ptr<ClientConfiguration> AwsS3ClientProvider::CreateClientConfiguration(
 }
 
 ExecutionResult AwsS3ClientProvider::Init() noexcept {
+  return SuccessExecutionResult();
+}
+
+ExecutionResult AwsS3ClientProvider::Run() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_);
   if (!region_code_or.Successful()) {
-    SCP_ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, region_code_or.result(),
+    SCP_ERROR(kAwsS3Provider, kZeroUuid,
+              region_code_or.result(),
               "Failed to get region code for current instance");
     return region_code_or.result();
   }
@@ -121,15 +126,11 @@ ExecutionResult AwsS3ClientProvider::Init() noexcept {
   auto client_or = s3_factory_->CreateClient(
       *CreateClientConfiguration(*region_code_or), io_async_executor_);
   if (!client_or.Successful()) {
-    SCP_ERROR(kAwsS3Provider, kZeroUuid, kZeroUuid, client_or.result(),
-              "Failed creating AWS S3 client.");
+    SCP_ERROR(kAwsS3Provider, kZeroUuid,
+              client_or.result(), "Failed creating AWS S3 client.");
     return client_or.result();
   }
   s3_client_ = std::move(*client_or);
-  return SuccessExecutionResult();
-}
-
-ExecutionResult AwsS3ClientProvider::Run() noexcept {
   return SuccessExecutionResult();
 }
 

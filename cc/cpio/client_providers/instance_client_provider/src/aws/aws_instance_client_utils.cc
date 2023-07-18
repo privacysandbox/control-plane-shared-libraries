@@ -73,7 +73,7 @@ ExecutionResultOr<string> AwsInstanceClientUtils::GetCurrentRegionCode(
   if (auto result = instance_client->GetCurrentInstanceResourceNameSync(
           instance_resource_name);
       !result.Successful()) {
-    SCP_ERROR(kAwsInstanceClientUtils, kZeroUuid, kZeroUuid, result,
+    SCP_ERROR(kAwsInstanceClientUtils, kZeroUuid, result,
               "Failed getting instance resource name.");
     return result;
   }
@@ -81,7 +81,7 @@ ExecutionResultOr<string> AwsInstanceClientUtils::GetCurrentRegionCode(
   auto region_code_or = ParseRegionFromResourceName(instance_resource_name);
   if (!region_code_or.Successful()) {
     SCP_ERROR(
-        kAwsInstanceClientUtils, kZeroUuid, kZeroUuid, region_code_or.result(),
+        kAwsInstanceClientUtils, kZeroUuid, region_code_or.result(),
         "Failed to parse instance resource name %s to get aws region code",
         instance_resource_name.c_str());
   }

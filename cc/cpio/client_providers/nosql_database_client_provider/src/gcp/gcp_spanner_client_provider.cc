@@ -277,22 +277,20 @@ ExecutionResult GcpSpannerClientProvider::Init() noexcept {
   if (cpu_async_executor_ == nullptr) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR);
-    SCP_ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, result,
-              "cpu_async_executor_ is null");
+    SCP_ERROR(kGcpSpanner, kZeroUuid, result, "cpu_async_executor_ is null");
     return result;
   }
   if (io_async_executor_ == nullptr) {
     auto result =
         FailureExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR);
-    SCP_ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, result,
-              "io_async_executor_ is null");
+    SCP_ERROR(kGcpSpanner, kZeroUuid, result, "io_async_executor_ is null");
     return result;
   }
 
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_);
   if (!project_id_or.Successful()) {
-    SCP_ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, project_id_or.result(),
+    SCP_ERROR(kGcpSpanner, kZeroUuid, project_id_or.result(),
               "Failed to get project ID for current instance");
     return project_id_or.result();
   }
@@ -305,7 +303,7 @@ ExecutionResult GcpSpannerClientProvider::Init() noexcept {
       *project_id_or, client_options_->instance_name,
       client_options_->database_name);
   if (!client_or.Successful()) {
-    SCP_ERROR(kGcpSpanner, kZeroUuid, kZeroUuid, client_or.result(),
+    SCP_ERROR(kGcpSpanner, kZeroUuid, client_or.result(),
               "Failed creating Spanner clients");
     return client_or.result();
   }

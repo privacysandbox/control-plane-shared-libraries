@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,14 +43,25 @@ class Dispatcher : public core::ServiceInterface {
  public:
   Dispatcher(std::shared_ptr<core::AsyncExecutor>& async_executor,
              std::shared_ptr<worker_pool::WorkerPool>& worker_pool,
-             size_t max_pending_requests)
+             size_t max_pending_requests, size_t code_version_cache_size)
       : async_executor_(async_executor),
         worker_pool_(worker_pool),
         worker_index_(0),
         pending_requests_(0),
         max_pending_requests_(max_pending_requests),
-        allow_dispatch_(true),
-        code_object_cache_(constants::kCodeVersionCacheSize) {}
+        code_object_cache_(code_version_cache_size) {
+    if (max_pending_requests == 0) {
+      auto message = std::string(__FILE__) + ":" + std::to_string(__LINE__) +
+                     ":max_pending_requests cannot be zero.";
+      throw std::invalid_argument(message);
+    }
+
+    if (code_version_cache_size == 0) {
+      auto message = std::string(__FILE__) + ":" + std::to_string(__LINE__) +
+                     ":code_version_cache_size cannot be zero.";
+      throw std::invalid_argument(message);
+    }
+  }
 
   core::ExecutionResult Init() noexcept override;
 
@@ -69,11 +81,6 @@ class Dispatcher : public core::ServiceInterface {
   template <typename RequestT>
   core::ExecutionResult Dispatch(std::unique_ptr<RequestT> request,
                                  Callback callback) noexcept {
-    if (!allow_dispatch_.load()) {
-      return core::FailureExecutionResult(
-          core::errors::
-              SC_ROMA_DISPATCHER_DISPATCH_DISALLOWED_DUE_TO_ONGOING_LOAD);
-    }
     return InternalDispatch(std::move(request), callback);
   }
 
@@ -90,12 +97,6 @@ class Dispatcher : public core::ServiceInterface {
   template <typename RequestT>
   core::ExecutionResult DispatchBatch(std::vector<RequestT>& batch,
                                       BatchCallback batch_callback) noexcept {
-    if (!allow_dispatch_.load()) {
-      return core::FailureExecutionResult(
-          core::errors::
-              SC_ROMA_DISPATCHER_DISPATCH_DISALLOWED_DUE_TO_ONGOING_LOAD);
-    }
-
     auto batch_size = batch.size();
     auto batch_response =
         std::make_shared<std::vector<absl::StatusOr<ResponseObject>>>(
@@ -114,7 +115,14 @@ class Dispatcher : public core::ServiceInterface {
           };
 
       auto request = std::make_unique<RequestT>(batch[index]);
-      while (!Dispatcher::Dispatch(std::move(request), callback).Successful()) {
+      core::ExecutionResult result;
+      while ((result = Dispatcher::Dispatch(std::move(request), callback)) !=
+             core::SuccessExecutionResult()) {
+        // If the first request from the batch got a failure, return failure
+        // without waiting.
+        if (index == 0) {
+          return result;
+        }
         request = std::make_unique<RequestT>(batch[index]);
       }
     }
@@ -146,10 +154,16 @@ class Dispatcher : public core::ServiceInterface {
    */
   template <typename RequestT>
   core::ExecutionResult InternalDispatch(std::unique_ptr<RequestT> request,
-                                         Callback callback) noexcept {
+                                         Callback callback,
+                                         int32_t worker_index = -1) noexcept {
     if (pending_requests_.load() >= max_pending_requests_) {
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_DISPATCHER_DISPATCH_DISALLOWED_DUE_TO_CAPACITY);
+    }
+
+    // We accept empty request IDs, but we will replace them with a placeholder.
+    if (request->id.empty()) {
+      request->id = constants::kDefaultRomaRequestId;
     }
 
     auto validation_result =
@@ -158,9 +172,15 @@ class Dispatcher : public core::ServiceInterface {
       return validation_result;
     }
 
-    auto num_workers = worker_pool_->GetPoolSize();
-    auto index = worker_index_.fetch_add(1);
-    worker_index_ = worker_index_.load() % num_workers;
+    size_t index = 0;
+
+    if (worker_index != -1) {
+      index = worker_index;
+    } else {
+      auto num_workers = worker_pool_->GetPoolSize();
+      index = worker_index_.fetch_add(1) % num_workers;
+      worker_index_ = worker_index_.load() % num_workers;
+    }
 
     if constexpr (std::is_same<RequestT, CodeObject>::value) {
       code_object_cache_.Set(request->version_num, *request);
@@ -267,7 +287,6 @@ class Dispatcher : public core::ServiceInterface {
   std::atomic<size_t> worker_index_;
   std::atomic<size_t> pending_requests_;
   const size_t max_pending_requests_;
-  std::atomic<bool> allow_dispatch_;
   core::common::LruCache<uint64_t, CodeObject> code_object_cache_;
 };
 }  // namespace google::scp::roma::sandbox::dispatcher
