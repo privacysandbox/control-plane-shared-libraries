@@ -81,7 +81,8 @@ Status ExecuteInternal(unique_ptr<RequestT> invocation_req, Callback callback) {
       roma_service->Dispatcher().Dispatch(move(invocation_req), callback);
   if (!result.Successful()) {
     return Status(StatusCode::kInternal,
-                  "Roma Execute failed due to dispatch error.");
+                  "Roma Execute failed due to: " +
+                      std::string(GetErrorMessage(result.status_code)));
   }
   return OkStatus();
 }

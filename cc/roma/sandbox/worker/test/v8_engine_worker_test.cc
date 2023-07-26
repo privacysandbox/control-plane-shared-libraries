@@ -27,6 +27,7 @@
 #include "roma/sandbox/js_engine/src/v8_engine/v8_js_engine.h"
 #include "roma/sandbox/worker/src/worker.h"
 
+using absl::string_view;
 using google::scp::core::test::AutoInitRunStop;
 using google::scp::roma::sandbox::constants::kCodeVersion;
 using google::scp::roma::sandbox::constants::kHandlerName;
@@ -57,7 +58,7 @@ TEST_F(V8EngineWorkerTest, CanRunJsCode) {
   AutoInitRunStop to_handle_worker(worker);
 
   string js_code = "function hello_js() { return \"Hello World!\"; }";
-  vector<string> input;
+  vector<string_view> input;
   unordered_map<string, string> metadata = {
       {kRequestType, kRequestTypeJavascript},
       {kHandlerName, "hello_js"},
@@ -80,7 +81,7 @@ TEST_F(V8EngineWorkerTest, CanRunMultipleVersionsOfTheCode) {
 
   // Load v1
   string js_code = "function hello_js() { return \"Hello Version 1!\"; }";
-  vector<string> input;
+  vector<string_view> input;
   unordered_map<string, string> metadata = {
       {kRequestType, kRequestTypeJavascript},
       {kCodeVersion, "1"},
@@ -146,7 +147,7 @@ TEST_F(V8EngineWorkerTest, CanRunMultipleVersionsOfCompilationContexts) {
             return instance.exports.add(a, b);
           }
         )""";
-  vector<string> input;
+  vector<string_view> input;
   unordered_map<string, string> metadata = {
       {kRequestType, kRequestTypeJavascript},
       {kCodeVersion, "1"},
@@ -218,7 +219,7 @@ TEST_F(V8EngineWorkerTest, ShouldReturnFailureIfVersionIsNotInInCache) {
   AutoInitRunStop to_handle_worker(worker);
 
   string js_code = "function hello_js() { return \"Hello World!\"; }";
-  vector<string> input;
+  vector<string_view> input;
 
   // Load
   unordered_map<string, string> metadata = {

@@ -450,8 +450,8 @@ TEST_F(AwsQueueClientProviderTest, GotTopMessageCallbackWithNoMessage) {
       [this](AsyncContext<GetTopMessageRequest, GetTopMessageResponse>&
                  get_top_message_context) {
         EXPECT_SUCCESS(get_top_message_context.result);
-
-        EXPECT_EQ(get_top_message_context.response, nullptr);
+        // Returns empty response.
+        EXPECT_TRUE(get_top_message_context.response->message_id().empty());
         finish_called_ = true;
       };
 

@@ -2144,4 +2144,104 @@ TEST(RomaBasicE2ETest, BatchExecuteTimeout) {
   status = RomaStop();
   EXPECT_TRUE(status.ok());
 }
+
+TEST(RomaBasicE2ETest, ShouldReturnFailureIfShmAllocationFails) {
+  Config config;
+  config.number_of_workers = 1;
+  config.ipc_memory_size_in_mb = 1;
+  // Only one item in the queue so we can maximize the 1MB shared memory block
+  config.worker_queue_max_items = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  const size_t one_mb = 1 * 1024 * 1024;
+  string one_mb_string("A", one_mb);
+  EXPECT_EQ(one_mb, one_mb_string.length());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = one_mb_string;
+
+    status =
+        LoadCodeObj(move(code_obj),
+                    [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {});
+    // Loading should fail since the item doesn't fit in shared memory
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(
+        "Roma LoadCodeObj failed with: Allocating in the shared memory block "
+        "failed.",
+        status.message());
+  }
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+    WaitUntil([&]() { return load_finished.load(); }, 10s);
+  }
+
+  // Execute with large input, should fail since it can't be allocated
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    // Pass the 1MB string as an input. This will need to be copied into shared
+    // memory, but it shouldn't fit since the SHM block is of 1MB overall.
+    execution_obj->input.push_back(one_mb_string);
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {});
+    // This doesn't even enqueue
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(
+        "Roma Execute failed due to: Allocating in the shared memory block "
+        "failed.",
+        status.message());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+
+    WaitUntil([&]() { return execute_finished.load(); }, 10s);
+    // This one should work since it has a small input
+    EXPECT_EQ(result, R"("Hello world! \"Foobar\"")");
+  }
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
 }  // namespace google::scp::roma::test

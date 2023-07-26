@@ -25,6 +25,7 @@
 #include "roma/sandbox/constants/constants.h"
 #include "roma/sandbox/worker/src/worker_utils.h"
 
+using absl::string_view;
 using std::string;
 using std::unordered_map;
 using std::vector;
@@ -60,7 +61,7 @@ ExecutionResult Worker::Stop() noexcept {
 }
 
 ExecutionResultOr<string> Worker::RunCode(
-    const string& code, const vector<string>& input,
+    const string& code, const vector<string_view>& input,
     const unordered_map<string, string>& metadata) {
   auto request_type_or =
       WorkerUtils::GetValueFromMetadata(metadata, kRequestType);

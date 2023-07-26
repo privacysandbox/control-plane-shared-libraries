@@ -30,6 +30,7 @@ cc_test(
         "//cc/cpio/client_providers/private_key_fetcher_provider/src/aws:aws_private_key_fetcher_provider_lib",
         "//cc/cpio/client_providers/role_credentials_provider/mock:role_credentials_provider_mock",
         "//cc/public/core/test/interface:execution_result_matchers",
+        "@aws_sdk_cpp//:core",
         "@com_google_googletest//:gtest_main",
     ],
 )

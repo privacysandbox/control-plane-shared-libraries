@@ -19,9 +19,14 @@
 #include <utility>
 #include <vector>
 
+#include <aws/core/auth/AWSAuthSigner.h>
+#include <aws/core/auth/AWSCredentialsProvider.h>
+#include <aws/core/http/standard/StandardHttpRequest.h>
 #include <boost/system/error_code.hpp>
 #include <nghttp2/asio_http2.h>
 
+#include "absl/strings/str_cat.h"
+#include "cc/core/utils/src/http.h"
 #include "core/interface/http_client_interface.h"
 #include "cpio/client_providers/interface/auth_token_provider_interface.h"
 #include "cpio/client_providers/interface/role_credentials_provider_interface.h"
@@ -29,6 +34,9 @@
 
 #include "error_codes.h"
 
+using Aws::Auth::AWSCredentials;
+using Aws::Auth::SimpleAWSCredentialsProvider;
+using Aws::Client::AWSAuthV4Signer;
 using boost::system::error_code;
 using google::scp::core::AsyncContext;
 using google::scp::core::AwsV4Signer;
@@ -45,9 +53,12 @@ using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND;
 using google::scp::core::errors::
-    SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_INVALID_URI;
+    SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_FAILED_TO_GET_URI;
+using google::scp::core::errors::
+    SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_FAILED_TO_SIGN;
 using google::scp::core::errors::
     SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_REGION_NOT_FOUND;
+using google::scp::core::utils::GetEscapedUriWithQuery;
 using nghttp2::asio_http2::host_service_from_uri;
 using std::bind;
 using std::make_shared;
@@ -57,10 +68,11 @@ using std::string;
 using std::vector;
 using std::placeholders::_1;
 
-static constexpr char kAwsPrivateKeyFetcherProvider[] =
-    "AwsPrivateKeyFetcherProvider";
+namespace {
+constexpr char kAwsPrivateKeyFetcherProvider[] = "AwsPrivateKeyFetcherProvider";
 /// Generic AWS service name.
-static constexpr char kServiceName[] = "execute-api";
+constexpr char kServiceName[] = "execute-api";
+}  // namespace
 
 namespace google::scp::cpio::client_providers {
 
@@ -131,24 +143,37 @@ ExecutionResult AwsPrivateKeyFetcherProvider::SignHttpRequestUsingV4Signer(
     shared_ptr<HttpRequest>& http_request, const string& access_key,
     const string& secret_key, const string& security_token,
     const string& region) noexcept {
-  http_request->headers = make_shared<HttpHeaders>();
-  error_code http2_error_code;
-  string scheme;
-  string host;
-  string service;
-  if (host_service_from_uri(http2_error_code, scheme, host, service,
-                            *http_request->path)) {
-    auto execution_result =
-        FailureExecutionResult(SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_INVALID_URI);
+  auto credentials = AWSCredentials(access_key.c_str(), secret_key.c_str(),
+                                    security_token.c_str());
+  auto credentials_provider =
+      make_shared<SimpleAWSCredentialsProvider>(move(credentials));
+  auto signer =
+      AWSAuthV4Signer(move(credentials_provider), kServiceName, region.c_str());
+
+  auto path_with_query = GetEscapedUriWithQuery(*http_request);
+  if (!path_with_query.Successful()) {
+    auto execution_result = FailureExecutionResult(
+        SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_FAILED_TO_GET_URI);
     SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, execution_result,
-              "Failed to sign HTTP request for an invalid URI.");
+              "Failed to get URI.");
     return execution_result;
   }
-  http_request->headers->insert({string("Host"), host});
-  AwsV4Signer signer(access_key, secret_key, security_token,
-                     string(kServiceName), region);
-  vector<string> headers_to_sign{"Host", "X-Amz-Date"};
-  return signer.SignRequest(*http_request, headers_to_sign);
+  auto uri = Aws::Http::URI(move(*path_with_query));
+  auto aws_request = Aws::Http::Standard::StandardHttpRequest(
+      move(uri), Aws::Http::HttpMethod::HTTP_GET);
+  if (!signer.SignRequest(aws_request)) {
+    auto execution_result = FailureExecutionResult(
+        SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_FAILED_TO_SIGN);
+    SCP_ERROR(kAwsPrivateKeyFetcherProvider, kZeroUuid, execution_result,
+              "Failed to sign HTTP request.");
+    return execution_result;
+  }
+
+  http_request->headers = make_shared<HttpHeaders>();
+  for (auto& header : aws_request.GetHeaders()) {
+    http_request->headers->insert({header.first, header.second});
+  }
+  return SuccessExecutionResult();
 }
 
 #ifndef TEST_CPIO

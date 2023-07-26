@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "include/libplatform/libplatform.h"
 #include "include/v8.h"
 #include "public/core/interface/execution_result.h"
@@ -70,7 +71,7 @@ class V8JsEngine : public JsEngine {
 
   core::ExecutionResultOr<js_engine::JsEngineExecutionResponse> CompileAndRunJs(
       const std::string& code, const std::string& function_name,
-      const std::vector<std::string>& input,
+      const std::vector<absl::string_view>& input,
       const std::unordered_map<std::string, std::string>& metadata,
       const js_engine::RomaJsEngineCompilationContext& context =
           RomaJsEngineCompilationContext()) noexcept override;
@@ -78,7 +79,7 @@ class V8JsEngine : public JsEngine {
   core::ExecutionResultOr<js_engine::JsEngineExecutionResponse>
   CompileAndRunWasm(
       const std::string& code, const std::string& function_name,
-      const std::vector<std::string>& input,
+      const std::vector<absl::string_view>& input,
       const std::unordered_map<std::string, std::string>& metadata,
       const js_engine::RomaJsEngineCompilationContext& context =
           RomaJsEngineCompilationContext()) noexcept override;

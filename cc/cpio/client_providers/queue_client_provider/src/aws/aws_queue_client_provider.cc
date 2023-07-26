@@ -286,9 +286,11 @@ void AwsQueueClientProvider::OnReceiveMessageCallback(
   }
 
   const auto& messages = receive_message_outcome.GetResult().GetMessages();
+  auto response = make_shared<GetTopMessageResponse>();
   if (messages.size() == 0) {
     SCP_INFO_CONTEXT(kAwsQueueClientProvider, get_top_message_context,
-                     "No messages recevied from the queue.");
+                     "No messages received from the queue.");
+    get_top_message_context.response = move(response);
     FinishContext(execution_result, get_top_message_context,
                   cpu_async_executor_);
     return;
@@ -308,7 +310,6 @@ void AwsQueueClientProvider::OnReceiveMessageCallback(
     return;
   }
 
-  auto response = make_shared<GetTopMessageResponse>();
   const auto& message = messages[0];
   response->set_message_id(message.GetMessageId().c_str());
   response->set_message_body(message.GetBody().c_str());

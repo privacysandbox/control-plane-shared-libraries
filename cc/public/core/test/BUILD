@@ -40,3 +40,14 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "struct_matchers_test",
+    size = "small",
+    srcs = ["struct_matchers_test.cc"],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/public/core/test/interface:struct_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

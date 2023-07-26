@@ -26,6 +26,7 @@
 #include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/wasm/test/testing_utils.h"
 
+using absl::string_view;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER;
@@ -57,7 +58,7 @@ TEST_F(V8JsEngineTest, CanRunJsCode) {
   auto js_code =
       "function hello_js(input1, input2) { return \"Hello World!\" + \" \" + "
       "input1 + \" \" + input2 }";
-  vector<string> input = {"\"vec input 1\"", "\"vec input 2\""};
+  vector<string_view> input = {"\"vec input 1\"", "\"vec input 2\""};
   auto response_or =
       engine.CompileAndRunJs(js_code, "hello_js", input, {} /*metadata*/);
 
@@ -167,7 +168,7 @@ TEST_F(V8JsEngineTest, CanHandleCompilationFailures) {
   AutoInitRunStop to_handle_engine(engine);
 
   auto js_code = "function hello_js(input1, input2) {";
-  vector<string> input = {"\"vec input 1\"", "\"vec input 2\""};
+  vector<string_view> input = {"\"vec input 1\"", "\"vec input 2\""};
   auto response_or =
       engine.CompileAndRunJs(js_code, "hello_js", input, {} /*metadata*/);
 
@@ -183,7 +184,7 @@ TEST_F(V8JsEngineTest, CanRunCodeRequestWithJsonInput) {
   auto js_code =
       "function Handler(a, b) { "
       "return (a[\"value\"] + b[\"value\"]); }";
-  vector<string> input = {"{\"value\":1}", "{\"value\":2}"};
+  vector<string_view> input = {"{\"value\":1}", "{\"value\":2}"};
   auto response_or =
       engine.CompileAndRunJs(js_code, "Handler", input, {} /*metadata*/);
 
@@ -199,7 +200,7 @@ TEST_F(V8JsEngineTest, ShouldFailIfInputIsBadJsonInput) {
   auto js_code =
       "function Handler(a, b) { "
       "return (a[\"value\"] + b[\"value\"]); }";
-  vector<string> input = {"value\":1}", "{\"value\":2}"};
+  vector<string_view> input = {"value\":1}", "{\"value\":2}"};
   auto response_or =
       engine.CompileAndRunJs(js_code, "Handler", input, {} /*metadata*/);
 
@@ -215,7 +216,7 @@ TEST_F(V8JsEngineTest, ShouldSucceedWithEmptyResponseIfHandlerNameIsEmpty) {
   auto js_code =
       "function hello_js(input1, input2) { return \"Hello World!\" + \" \" + "
       "input1 + \" \" + input2 }";
-  vector<string> input = {"\"vec input 1\"", "\"vec input 2\""};
+  vector<string_view> input = {"\"vec input 1\"", "\"vec input 2\""};
 
   // Empty handler
   auto response_or =
@@ -234,7 +235,7 @@ TEST_F(V8JsEngineTest, ShouldFailIfInputCannotBeParsed) {
       "function hello_js(input1, input2) { return \"Hello World!\" + \" \" + "
       "input1 + \" \" + input2 }";
   // Bad input
-  vector<string> input = {"vec input 1\"", "\"vec input 2\""};
+  vector<string_view> input = {"vec input 1\"", "\"vec input 2\""};
 
   auto response_or =
       engine.CompileAndRunJs(js_code, "hello_js", input, {} /*metadata*/);
@@ -251,7 +252,7 @@ TEST_F(V8JsEngineTest, ShouldFailIfHandlerIsNotFound) {
   auto js_code =
       "function hello_js(input1, input2) { return \"Hello World!\" + \" \" + "
       "input1 + \" \" + input2 }";
-  vector<string> input = {"\"vec input 1\"", "\"vec input 2\""};
+  vector<string_view> input = {"\"vec input 1\"", "\"vec input 2\""};
 
   auto response_or =
       engine.CompileAndRunJs(js_code, "not_found", input, {} /*metadata*/);
@@ -269,7 +270,7 @@ TEST_F(V8JsEngineTest, CanRunWasmCode) {
 
   auto wasm_code =
       string(reinterpret_cast<char*>(wasm_bin.data()), wasm_bin.size());
-  vector<string> input = {"\"Some input string\""};
+  vector<string_view> input = {"\"Some input string\""};
 
   auto response_or =
       engine.CompileAndRunWasm(wasm_code, "Handler", input, {} /*metadata*/);
@@ -289,7 +290,7 @@ TEST_F(V8JsEngineTest, WasmShouldSucceedWithEmptyResponseIfHandlerNameIsEmpty) {
 
   auto wasm_code =
       string(reinterpret_cast<char*>(wasm_bin.data()), wasm_bin.size());
-  vector<string> input = {"\"Some input string\""};
+  vector<string_view> input = {"\"Some input string\""};
 
   // Empty handler
   auto response_or =
@@ -311,7 +312,7 @@ TEST_F(V8JsEngineTest, WasmShouldFailIfInputCannotBeParsed) {
   auto wasm_code =
       string(reinterpret_cast<char*>(wasm_bin.data()), wasm_bin.size());
   // Bad input
-  vector<string> input = {"\"Some input string"};
+  vector<string_view> input = {"\"Some input string"};
 
   auto response_or =
       engine.CompileAndRunWasm(wasm_code, "Handler", input, {} /*metadata*/);
@@ -331,7 +332,7 @@ TEST_F(V8JsEngineTest, WasmShouldFailIfBadWasm) {
 
   auto wasm_code = string(reinterpret_cast<char*>(wasm_bin), sizeof(wasm_bin));
   // Bad input
-  vector<string> input = {"\"Some input string\""};
+  vector<string_view> input = {"\"Some input string\""};
 
   auto response_or =
       engine.CompileAndRunWasm(wasm_code, "Handler", input, {} /*metadata*/);
@@ -349,7 +350,7 @@ TEST_F(V8JsEngineTest, CanTimeoutExecutionWithDefaultTimeoutValue) {
       return 0;
       }
   )""";
-  vector<string> input;
+  vector<string_view> input;
   unordered_map<string, string> metadata;
 
   auto response_or =
@@ -378,7 +379,7 @@ TEST_F(V8JsEngineTest, CanTimeoutExecutionWithCustomTimeoutTag) {
         return 0;
       }
   )""";
-  vector<string> input;
+  vector<string_view> input;
 
   {
     unordered_map<string, string> metadata;
@@ -427,7 +428,7 @@ TEST_F(V8JsEngineTest, JsMixedGlobalWasmCompileRunExecute) {
   }
 
   {
-    vector<string> input = {"1", "2"};
+    vector<string_view> input = {"1", "2"};
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
     auto response_string = response_or->response;
@@ -435,7 +436,7 @@ TEST_F(V8JsEngineTest, JsMixedGlobalWasmCompileRunExecute) {
   }
 
   {
-    vector<string> input = {"1", "6"};
+    vector<string_view> input = {"1", "6"};
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
     auto response_string = response_or->response;
@@ -468,7 +469,7 @@ TEST_F(V8JsEngineTest, JsMixedLocalWasmCompileRunExecute) {
   }
 
   {
-    vector<string> input = {"1", "2"};
+    vector<string_view> input = {"1", "2"};
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
     auto response_string = response_or->response;
@@ -476,7 +477,7 @@ TEST_F(V8JsEngineTest, JsMixedLocalWasmCompileRunExecute) {
   }
 
   {
-    vector<string> input = {"1", "6"};
+    vector<string_view> input = {"1", "6"};
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
     auto response_string = response_or->response;

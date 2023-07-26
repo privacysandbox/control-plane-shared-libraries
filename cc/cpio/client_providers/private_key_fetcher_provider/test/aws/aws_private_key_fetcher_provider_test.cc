@@ -21,6 +21,8 @@
 #include <memory>
 #include <string>
 
+#include <aws/core/Aws.h>
+
 #include "core/http2_client/mock/mock_http_client.h"
 #include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"
@@ -30,6 +32,9 @@
 #include "public/core/interface/execution_result.h"
 #include "public/core/test/interface/execution_result_matchers.h"
 
+using Aws::InitAPI;
+using Aws::SDKOptions;
+using Aws::ShutdownAPI;
 using google::scp::core::AsyncContext;
 using google::scp::core::AwsV4Signer;
 using google::scp::core::Byte;
@@ -41,8 +46,6 @@ using google::scp::core::HttpResponse;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
     SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_CREDENTIALS_PROVIDER_NOT_FOUND;
-using google::scp::core::errors::
-    SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_INVALID_URI;
 using google::scp::core::errors::
     SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_REGION_NOT_FOUND;
 using google::scp::core::errors::
@@ -78,6 +81,8 @@ class AwsPrivateKeyFetcherProviderTest : public ::testing::Test {
         aws_private_key_fetcher_provider_(
             make_unique<AwsPrivateKeyFetcherProvider>(http_client_,
                                                       credentials_provider_)) {
+    SDKOptions options;
+    InitAPI(options);
     EXPECT_SUCCESS(aws_private_key_fetcher_provider_->Init());
     EXPECT_SUCCESS(aws_private_key_fetcher_provider_->Run());
 
@@ -94,6 +99,8 @@ class AwsPrivateKeyFetcherProviderTest : public ::testing::Test {
     if (aws_private_key_fetcher_provider_) {
       EXPECT_SUCCESS(aws_private_key_fetcher_provider_->Stop());
     }
+    SDKOptions options;
+    ShutdownAPI(options);
   }
 
   void MockRequest(const string& uri) {
@@ -162,25 +169,6 @@ TEST_F(AwsPrivateKeyFetcherProviderTest, FailedToGetCredentials) {
 
   EXPECT_THAT(aws_private_key_fetcher_provider_->SignHttpRequest(context),
               ResultIs(FailureExecutionResult(SC_UNKNOWN)));
-  WaitUntil([&]() { return condition.load(); });
-}
-
-TEST_F(AwsPrivateKeyFetcherProviderTest, InvalidUriInHttpRequest) {
-  request_->key_vending_endpoint->private_key_vending_service_endpoint =
-      "FailedURI";
-  atomic<bool> condition = false;
-
-  AsyncContext<PrivateKeyFetchingRequest, HttpRequest> context(
-      request_,
-      [&](AsyncContext<PrivateKeyFetchingRequest, HttpRequest>& context) {
-        EXPECT_THAT(context.result,
-                    ResultIs(FailureExecutionResult(
-                        SC_AWS_PRIVATE_KEY_FETCHER_PROVIDER_INVALID_URI)));
-        condition = true;
-      });
-
-  EXPECT_THAT(aws_private_key_fetcher_provider_->SignHttpRequest(context),
-              IsSuccessful());
   WaitUntil([&]() { return condition.load(); });
 }
 }  // namespace google::scp::cpio::client_providers::test

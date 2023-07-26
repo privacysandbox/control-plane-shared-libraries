@@ -16,7 +16,6 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "utils_lib",
-    testonly = True,
     srcs = glob(
         [
             "*.cc",

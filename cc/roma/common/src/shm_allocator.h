@@ -17,9 +17,9 @@
 #pragma once
 
 #include "shared_memory_pool.h"
+#include "shm_allocator_bad_alloc.h"
 
 namespace google::scp::roma::common {
-
 /**
  * @brief An allocator that satisfies the requirements of "Allocator", which
  * allocates in the designated shared memory pool.
@@ -46,7 +46,7 @@ class ShmAllocator {
   T* allocate(size_type n) {
     auto p = mem_pool_.Allocate(n * sizeof(T));
     if (p == nullptr) {
-      throw std::bad_alloc();
+      throw ShmAllocatorBadAlloc();
     }
     return static_cast<T*>(p);
   }

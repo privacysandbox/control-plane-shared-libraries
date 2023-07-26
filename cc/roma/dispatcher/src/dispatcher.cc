@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "roma/common/src/shm_allocator_bad_alloc.h"
 #include "roma/ipc/src/ipc_manager.h"
 
 using absl::Status;
@@ -29,7 +30,9 @@ using absl::StatusOr;
 using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::GetErrorMessage;
+using google::scp::core::errors::SC_ROMA_DISPATCHER_SHM_OUT_OF_MEMORY;
 using google::scp::roma::common::RoleId;
+using google::scp::roma::common::ShmAllocatorBadAlloc;
 using google::scp::roma::ipc::IpcChannel;
 using google::scp::roma::ipc::IpcManager;
 using google::scp::roma::ipc::Request;
@@ -103,12 +106,18 @@ ExecutionResult Dispatcher::Broadcast(unique_ptr<CodeObject> code_object,
     // Switch to the appropriate IpcChannel and mempool
     auto ctx =
         ipc_manager_.SwitchTo(RoleId(worker_index, true /* dispatcher */));
-    auto request =
-        make_unique<Request>(make_unique<CodeObject>(*code_object), callback);
-    request->type = RequestType::kUpdate;
-    auto result = ipc_manager_.GetIpcChannel().PushRequest(move(request));
-    if (!result.Successful()) {
-      return result;
+
+    try {
+      auto request =
+          make_unique<Request>(make_unique<CodeObject>(*code_object), callback);
+      request->type = RequestType::kUpdate;
+      auto result = ipc_manager_.GetIpcChannel().PushRequest(move(request));
+      if (!result.Successful()) {
+        return result;
+      }
+    } catch (const common::ShmAllocatorBadAlloc& e) {
+      return core::FailureExecutionResult(
+          core::errors::SC_ROMA_DISPATCHER_SHM_OUT_OF_MEMORY);
     }
   }
   return SuccessExecutionResult();
@@ -124,9 +133,9 @@ void Dispatcher::ResponsePollerWorker(uint32_t worker_index) noexcept {
   while (!stop_.load()) {
     unique_ptr<Response> response;
 
-    // PopResponse is a blocking call and will always return success when there
-    // is a response. However, when stopping, it will return a Failure. So we
-    // continue to let this main loop exit by evaluating the stop flag.
+    // PopResponse is a blocking call and will always return success when
+    // there is a response. However, when stopping, it will return a Failure.
+    // So we continue to let this main loop exit by evaluating the stop flag.
     auto result = ipc_channel.PopResponse(response);
     if (!result.Successful()) {
       continue;

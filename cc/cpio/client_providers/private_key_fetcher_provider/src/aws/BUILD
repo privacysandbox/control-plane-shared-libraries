@@ -29,6 +29,7 @@ cc_library(
         "//cc/cpio/client_providers/interface:type_def",
         "//cc/cpio/client_providers/private_key_fetcher_provider/src:private_key_fetcher_provider_lib",
         "//cc/public/cpio/interface/private_key_client:type_def",
+        "@aws_sdk_cpp//:core",
         "@boost//:system",
         "@com_github_nghttp2_nghttp2//:nghttp2",
         "@nlohmann_json//:lib",

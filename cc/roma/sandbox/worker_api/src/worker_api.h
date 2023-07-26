@@ -18,10 +18,10 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 
@@ -29,8 +29,8 @@ namespace google::scp::roma::sandbox::worker_api {
 class WorkerApi : public core::ServiceInterface {
  public:
   struct RunCodeRequest {
-    std::string_view code;
-    std::vector<std::string_view> input;
+    absl::string_view code;
+    std::vector<absl::string_view> input;
     std::unordered_map<std::string, std::string> metadata;
   };
 

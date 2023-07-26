@@ -16,7 +16,6 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "execution_result_matchers",
-    testonly = True,
     srcs = ["execution_result_matchers.cc"],
     hdrs = [
         "execution_result_matchers.h",
@@ -26,6 +25,18 @@ cc_library(
         "//cc/core/common/proto:core_common_proto_lib",
         "//cc/public/core/interface:errors",
         "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+cc_library(
+    name = "struct_matchers",
+    testonly = True,
+    hdrs = [
+        "struct_matchers.h",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
         "@com_google_googletest//:gtest",
     ],
 )

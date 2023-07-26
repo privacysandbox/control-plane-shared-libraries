@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 
@@ -79,7 +80,7 @@ class JsEngine : public core::ServiceInterface {
    */
   virtual core::ExecutionResultOr<JsEngineExecutionResponse> CompileAndRunJs(
       const std::string& code, const std::string& function_name,
-      const std::vector<std::string>& input,
+      const std::vector<absl::string_view>& input,
       const std::unordered_map<std::string, std::string>& metadata,
       const RomaJsEngineCompilationContext& context) noexcept = 0;
 
@@ -99,7 +100,7 @@ class JsEngine : public core::ServiceInterface {
    */
   virtual core::ExecutionResultOr<JsEngineExecutionResponse> CompileAndRunWasm(
       const std::string& code, const std::string& function_name,
-      const std::vector<std::string>& input,
+      const std::vector<absl::string_view>& input,
       const std::unordered_map<std::string, std::string>& metadata,
       const RomaJsEngineCompilationContext& context) noexcept = 0;
 };

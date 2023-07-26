@@ -26,8 +26,11 @@
 #include <vector>
 
 #include "core/interface/service_interface.h"
+#include "roma/common/src/shm_allocator_bad_alloc.h"
 #include "roma/interface/roma.h"
 #include "roma/ipc/src/ipc_manager.h"
+
+#include "error_codes.h"
 
 namespace google::scp::roma::dispatcher {
 
@@ -60,11 +63,16 @@ class Dispatcher : public core::ServiceInterface {
     auto result = ipc_manager_.GetIpcChannel().TryAcquirePushRequest();
 
     if (result.Successful()) {
-      // Only allocate the request if we got a spot on the IPC channel
-      auto request =
-          std::make_unique<ipc::Request>(move(invocation_request), callback);
-      request->type = ipc::RequestType::kExecute;
-      result = ipc_manager_.GetIpcChannel().PushRequest(move(request));
+      try {
+        // Only allocate the request if we got a spot on the IPC channel
+        auto request =
+            std::make_unique<ipc::Request>(move(invocation_request), callback);
+        request->type = ipc::RequestType::kExecute;
+        result = ipc_manager_.GetIpcChannel().PushRequest(move(request));
+      } catch (const common::ShmAllocatorBadAlloc& e) {
+        return core::FailureExecutionResult(
+            core::errors::SC_ROMA_DISPATCHER_SHM_OUT_OF_MEMORY);
+      }
     }
     return result;
   }

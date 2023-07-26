@@ -59,9 +59,10 @@ class ExecutionUtils {
     v8::TryCatch try_catch(isolate);
     v8::Local<v8::Context> context(isolate->GetCurrentContext());
 
-    auto str = std::string(js.c_str(), js.size());
     v8::Local<v8::String> js_source =
-        TypeConverter<std::string>::ToV8(isolate, str).As<v8::String>();
+        v8::String::NewFromUtf8(isolate, js.data(), v8::NewStringType::kNormal,
+                                static_cast<uint32_t>(js.length()))
+            .ToLocalChecked();
     v8::Local<v8::Script> script;
     if (!v8::Script::Compile(context, js_source).ToLocal(&script)) {
       ReportException(&try_catch, err_msg);
@@ -103,10 +104,11 @@ class ExecutionUtils {
     v8::TryCatch try_catch(isolate);
     v8::Local<v8::Context> context(isolate->GetCurrentContext());
 
-    // Fetch out the handler name from code object.
-    auto str = std::string(handler_name.c_str(), handler_name.size());
     v8::Local<v8::String> local_name =
-        TypeConverter<std::string>::ToV8(isolate, str).As<v8::String>();
+        v8::String::NewFromUtf8(isolate, handler_name.data(),
+                                v8::NewStringType::kNormal,
+                                static_cast<uint32_t>(handler_name.length()))
+            .ToLocalChecked();
 
     // If there is no handler function, or if it is not a function,
     // bail out
@@ -345,10 +347,11 @@ class ExecutionUtils {
 
     v8::Local<v8::Array> argv = v8::Array::New(isolate, argc);
     for (auto i = 0; i < argc; ++i) {
-      auto str = std::string(input[i].c_str(), input[i].size());
-
       v8::Local<v8::String> arg_str =
-          TypeConverter<std::string>::ToV8(isolate, str).As<v8::String>();
+          v8::String::NewFromUtf8(isolate, input[i].data(),
+                                  v8::NewStringType::kNormal,
+                                  static_cast<uint32_t>(input[i].length()))
+              .ToLocalChecked();
 
       v8::Local<v8::Value> arg = v8::Undefined(isolate);
       if (arg_str->Length() > 0 &&

@@ -118,5 +118,7 @@ class SSMClientFactory {
       Aws::Client::ClientConfiguration& client_config,
       const std::shared_ptr<core::AsyncExecutorInterface>&
           io_async_executor) noexcept;
+
+  virtual ~SSMClientFactory() = default;
 };
 }  // namespace google::scp::cpio::client_providers

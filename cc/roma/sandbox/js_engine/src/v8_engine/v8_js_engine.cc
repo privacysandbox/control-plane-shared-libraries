@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "public/core/interface/execution_result.h"
 #include "roma/config/src/type_converter.h"
 #include "roma/sandbox/constants/constants.h"
@@ -32,6 +33,7 @@
 
 #include "error_codes.h"
 
+using absl::string_view;
 using google::scp::core::ExecutionResult;
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;
@@ -45,6 +47,8 @@ using google::scp::core::errors::SC_ROMA_V8_ENGINE_COULD_NOT_CREATE_ISOLATE;
 using google::scp::core::errors::
     SC_ROMA_V8_ENGINE_COULD_NOT_FIND_HANDLER_BY_NAME;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT;
+using google::scp::core::errors::
+    SC_ROMA_V8_ENGINE_CREATE_COMPILATION_CONTEXT_FAILED_WITH_EMPTY_CODE;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ISOLATE_NOT_INITIALIZED;
 using google::scp::roma::kDefaultExecutionTimeoutMs;
@@ -202,12 +206,12 @@ ExecutionResult V8JsEngine::OneTimeSetup(
     v8::V8::SetFlagsFromString(flag_value.c_str());
   }
 
-  static std::unique_ptr<v8::Platform> v8_platform = [] {
+  static v8::Platform* v8_platform = [] {
     std::unique_ptr<v8::Platform> v8_platform =
         v8::platform::NewDefaultPlatform();
     v8::V8::InitializePlatform(v8_platform.get());
     v8::V8::Initialize();
-    return v8_platform;
+    return v8_platform.release();
   }();
 
   return SuccessExecutionResult();
@@ -315,6 +319,11 @@ void V8JsEngine::StopWatchdogTimer() noexcept {
 ExecutionResultOr<RomaJsEngineCompilationContext>
 V8JsEngine::CreateCompilationContext(const string& code,
                                      string& err_msg) noexcept {
+  if (code.empty()) {
+    return FailureExecutionResult(
+        SC_ROMA_V8_ENGINE_CREATE_COMPILATION_CONTEXT_FAILED_WITH_EMPTY_CODE);
+  }
+
   RomaJsEngineCompilationContext out_context;
   auto snapshot_context = make_shared<SnapshotCompilationContext>();
 
@@ -361,7 +370,8 @@ V8JsEngine::CreateCompilationContext(const string& code,
 
 ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunJs(
     const string& code, const string& function_name,
-    const vector<string>& input, const unordered_map<string, string>& metadata,
+    const vector<string_view>& input,
+    const unordered_map<string, string>& metadata,
     const RomaJsEngineCompilationContext& context) noexcept {
   string err_msg;
   JsEngineExecutionResponse execution_response;
@@ -501,7 +511,7 @@ ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunJs(
 
 ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunWasm(
     const string& code, const string& function_name,
-    const vector<string>& input,
+    const vector<string_view>& input,
     const std::unordered_map<std::string, std::string>& metadata,
     const RomaJsEngineCompilationContext& context) noexcept {
   // temp solution for CompileAndRunWasm(). This will update in next PR soon.

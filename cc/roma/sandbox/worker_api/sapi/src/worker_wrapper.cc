@@ -33,6 +33,7 @@
 
 #include "error_codes.h"
 
+using absl::string_view;
 using google::scp::core::StatusCode;
 using google::scp::core::common::Stopwatch;
 using google::scp::core::errors::
@@ -131,8 +132,8 @@ StatusCode RunCode(worker_api::WorkerParamsProto* params) {
     return SC_ROMA_WORKER_API_UNINITIALIZED_WORKER;
   }
 
-  auto code = params->code();
-  vector<string> input;
+  const auto& code = params->code();
+  vector<string_view> input;
   for (int i = 0; i < params->input_size(); i++) {
     input.push_back(params->input().at(i));
   }

@@ -62,12 +62,12 @@ ExecutionResult RomaService::Init() noexcept {
     v8::V8::SetFlagsFromString(flag_value.c_str());
   }
 
-  static unique_ptr<v8::Platform> platform = [] {
+  static v8::Platform* platform = [] {
       std::unique_ptr<v8::Platform> v8_platform =
           v8::platform::NewDefaultPlatform();
       v8::V8::InitializePlatform(v8_platform.get());
       v8::V8::Initialize();
-      return v8_platform;
+      return v8_platform.release();
     }();
 
   auto* ipc_manager_ = IpcManager::Create(config_);

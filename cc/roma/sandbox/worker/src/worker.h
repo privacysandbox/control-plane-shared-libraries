@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "core/common/lru_cache/src/lru_cache.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
@@ -62,7 +63,7 @@ class Worker : public core::ServiceInterface {
    * @return core::ExecutionResultOr<std::string>
    */
   virtual core::ExecutionResultOr<std::string> RunCode(
-      const std::string& code, const std::vector<std::string>& input,
+      const std::string& code, const std::vector<absl::string_view>& input,
       const std::unordered_map<std::string, std::string>& metadata);
 
  private:
