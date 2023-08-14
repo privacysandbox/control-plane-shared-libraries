@@ -26,6 +26,8 @@
 #include "roma/sandbox/worker_api/sapi/src/worker_params.pb.h"
 #include "sandboxed_api/lenval_core.h"
 
+#include "error_codes.h"
+
 extern "C" google::scp::core::StatusCode Init(
     worker_api::WorkerInitParamsProto* init_params);
 

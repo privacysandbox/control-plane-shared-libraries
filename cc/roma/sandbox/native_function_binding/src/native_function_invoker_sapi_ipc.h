@@ -23,6 +23,7 @@
 #include "public/core/interface/execution_result.h"
 #include "sandboxed_api/sandbox2/comms.h"
 
+#include "error_codes.h"
 #include "native_function_invoker.h"
 
 namespace google::scp::roma::sandbox::native_function_binding {

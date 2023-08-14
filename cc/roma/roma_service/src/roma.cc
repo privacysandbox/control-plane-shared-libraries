@@ -29,6 +29,9 @@
 #include "roma/sandbox/roma_service/src/roma_service.h"
 using google::scp::roma::sandbox::roma_service::RomaService;
 #else
+#warning Roma legacy/v1 has been deprecated and no new features \
+or bug fixes will be added to it. Please use Roma sandboxed/v2.
+
 #include "roma_service.h"
 using google::scp::roma::roma_service::RomaService;
 #endif

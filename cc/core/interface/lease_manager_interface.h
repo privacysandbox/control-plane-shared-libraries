@@ -131,6 +131,14 @@ struct LeaseAcquisitionPreference {
   /// acquired. If this is empty, the 'maximum_number_of_leases_to_hold'
   /// leases can be acquired on any locks.
   std::vector<LeasableLockId> preferred_locks_to_acquire_leases_on;
+
+  // Equal comparision operator.
+  bool operator==(const LeaseAcquisitionPreference& other) const {
+    return maximum_number_of_leases_to_hold ==
+               other.maximum_number_of_leases_to_hold &&
+           preferred_locks_to_acquire_leases_on ==
+               other.preferred_locks_to_acquire_leases_on;
+  }
 };
 
 /**
@@ -290,6 +298,17 @@ class LeaseManagerInterface : public ServiceInterface {
       LeaseTransitionCallback&& lease_transition_callback) noexcept = 0;
 };
 
+class LeaseStatisticsInterface {
+ public:
+  /**
+   * @brief Get the current count of the locks on which a lease is held by this
+   * or any other lease manager.
+   *
+   * @return size_t
+   */
+  virtual size_t GetCurrentlyLeasedLocksCount() noexcept = 0;
+};
+
 /**
  * @brief LeaseManagerV2Interface provides interface for lease acquisition and
  * lease maintenance on multiple LeasableLocks.
@@ -398,6 +417,7 @@ class LeaseAcquisitionPreferenceInterface {
  * be released.
  */
 enum class LeaseRefreshMode {
+  Unknown,
   /**
    * @brief Lease is acquired if possible as part of refresh.
    */

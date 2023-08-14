@@ -24,6 +24,8 @@
 #include "cc/roma/interface/function_binding_io.pb.h"
 #include "public/core/interface/execution_result.h"
 
+#include "error_codes.h"
+
 namespace google::scp::roma::sandbox::native_function_binding {
 typedef std::function<void(
     proto::FunctionBindingIoProto& function_binding_proto)>

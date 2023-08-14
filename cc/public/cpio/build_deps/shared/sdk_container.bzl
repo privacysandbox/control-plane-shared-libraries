@@ -19,7 +19,7 @@ LICENSES_TARGET = Label("//licenses:licenses_tar")
 def sdk_container(
         *,
         name,
-        sdk_binaries,
+        sdk_binaries = {},
         platform,
         inside_tee,
         client_binaries = {},

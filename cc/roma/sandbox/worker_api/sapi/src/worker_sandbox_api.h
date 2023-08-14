@@ -31,6 +31,8 @@
 #include "sandboxed_api/sandbox2/policy.h"
 #include "sandboxed_api/sandbox2/policybuilder.h"
 
+#include "error_codes.h"
+
 namespace google::scp::roma::sandbox::worker_api {
 
 static constexpr int kBadFd = -1;

@@ -113,6 +113,7 @@ constexpr char kQueueMessageId[] = "message-id";
 constexpr char kQueueMessageReceiptInfo[] = "receipt-info";
 constexpr char kJobId[] = "job-id";
 constexpr char kDefaultTimestampValueInString[] = "0";
+constexpr int kDefaultRetryCount = 0;
 const Duration kDefaultVisibilityTimeout = TimeUtil::SecondsToDuration(30);
 const Duration kUpdatedVisibilityTimeout = TimeUtil::SecondsToDuration(90);
 const Duration kExceededVisibilityTimeout = TimeUtil::SecondsToDuration(1000);
@@ -125,6 +126,7 @@ constexpr char kJobStatusColumnName[] = "job_status";
 constexpr char kCreatedTimeColumnName[] = "created_time";
 constexpr char kUpdatedTimeColumnName[] = "updated_time";
 constexpr char kVisibilityTimeoutColumnName[] = "visibility_timeout";
+constexpr char kRetryCountColumnName[] = "retry_count";
 const google::protobuf::Timestamp kCreatedTime =
     TimeUtil::SecondsToTimestamp(1680709200);
 const google::protobuf::Timestamp kLastUpdatedTime =
@@ -147,7 +149,8 @@ Item CreateJobAsDatabaseItem(
     const Any& job_body, const JobStatus& job_status,
     const google::protobuf::Timestamp& current_time,
     const google::protobuf::Timestamp& updated_time,
-    const google::protobuf::Timestamp& visibility_timeout) {
+    const google::protobuf::Timestamp& visibility_timeout,
+    const int retry_count) {
   auto job_body_in_string_or = google::scp::cpio::client_providers::
       JobClientUtils::ConvertAnyToBase64String(job_body);
   Item item;
@@ -170,6 +173,9 @@ Item CreateJobAsDatabaseItem(
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
           kVisibilityTimeoutColumnName, TimeUtil::ToString(visibility_timeout));
+  *item.add_attributes() =
+      google::scp::cpio::client_providers::JobClientUtils::MakeIntAttribute(
+          kRetryCountColumnName, retry_count);
   return item;
 }
 }  // namespace
@@ -253,10 +259,10 @@ TEST_F(JobClientProviderTest, InitWithNullJobClientOptions) {
                   SC_JOB_CLIENT_PROVIDER_JOB_CLIENT_OPTIONS_REQUIRED)));
 }
 
-MATCHER_P6(HasUpsertItemParamsForJobCreations, table_name, job_body_as_string,
+MATCHER_P7(HasUpsertItemParamsForJobCreations, table_name, job_body_as_string,
            job_status_in_int, job_created_time_default_value,
            job_updated_time_default_value, job_visibility_timeout_default_value,
-           "") {
+           retry_count, "") {
   return ExplainMatchResult(Eq(table_name),
                             arg.request->mutable_key()->table_name(),
                             result_listener) &&
@@ -274,6 +280,9 @@ MATCHER_P6(HasUpsertItemParamsForJobCreations, table_name, job_body_as_string,
                             result_listener) &&
          ExplainMatchResult(Ne(job_visibility_timeout_default_value),
                             arg.request->new_attributes(4).value_string(),
+                            result_listener) &&
+         ExplainMatchResult(Eq(retry_count),
+                            arg.request->new_attributes(5).value_int(),
                             result_listener);
 }
 
@@ -303,7 +312,7 @@ TEST_F(JobClientProviderTest, PutJobSuccess) {
       UpsertDatabaseItem(HasUpsertItemParamsForJobCreations(
           kJobsTableName, *encoded_job_body_or, JobStatus::JOB_STATUS_CREATED,
           kDefaultTimestampValueInString, kDefaultTimestampValueInString,
-          kDefaultTimestampValueInString)))
+          kDefaultTimestampValueInString, kDefaultRetryCount)))
       .WillOnce(
           [&job_created_time_in_request](auto& upsert_database_item_context) {
             auto created_time_in_string =
@@ -341,6 +350,7 @@ TEST_F(JobClientProviderTest, PutJobSuccess) {
         EXPECT_EQ(job_output.updated_time(), job_created_time_in_request);
         EXPECT_EQ(job_output.visibility_timeout(),
                   job_created_time_in_request + kDefaultVisibilityTimeout);
+        EXPECT_EQ(job_output.retry_count(), kDefaultRetryCount);
         finish_called_ = true;
       };
 
@@ -443,8 +453,10 @@ TEST_F(JobClientProviderTest, GetNextJobSuccess) {
   auto visibility_timeout = created_time + TimeUtil::SecondsToDuration(30);
   auto job_body = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body, job_status, created_time, updated_time,
+                              visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -458,9 +470,9 @@ TEST_F(JobClientProviderTest, GetNextJobSuccess) {
       });
 
   get_next_job_context_.callback =
-      [this, &created_time, &updated_time,
-       &visibility_timeout](AsyncContext<GetNextJobRequest, GetNextJobResponse>&
-                                get_next_job_context) {
+      [this, &created_time, &updated_time, &visibility_timeout,
+       &retry_count](AsyncContext<GetNextJobRequest, GetNextJobResponse>&
+                         get_next_job_context) {
         EXPECT_SUCCESS(get_next_job_context.result);
         auto job_output = get_next_job_context.response->job();
         EXPECT_EQ(job_output.job_id(), kJobId);
@@ -477,6 +489,7 @@ TEST_F(JobClientProviderTest, GetNextJobSuccess) {
         EXPECT_EQ(job_output.created_time(), created_time);
         EXPECT_EQ(job_output.updated_time(), updated_time);
         EXPECT_EQ(job_output.visibility_timeout(), visibility_timeout);
+        EXPECT_EQ(job_output.retry_count(), retry_count);
 
         EXPECT_EQ(get_next_job_context.response->receipt_info(),
                   kQueueMessageReceiptInfo);
@@ -508,6 +521,28 @@ TEST_F(JobClientProviderTest, GetNextJobWithGetTopMessageFailure) {
 
   EXPECT_THAT(job_client_provider_->GetNextJob(get_next_job_context_),
               ResultIs(FailureExecutionResult(SC_CPIO_INTERNAL_ERROR)));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+}
+
+TEST_F(JobClientProviderTest, GetNextJobWithNoMessagesAvailable) {
+  EXPECT_CALL(*queue_client_provider_, GetTopMessage)
+      .WillOnce([](auto& get_top_message_context) {
+        get_top_message_context.response = make_shared<GetTopMessageResponse>();
+        get_top_message_context.result = SuccessExecutionResult();
+        get_top_message_context.Finish();
+        return SuccessExecutionResult();
+      });
+
+  get_next_job_context_.callback =
+      [this](AsyncContext<GetNextJobRequest, GetNextJobResponse>&
+                 get_next_job_context) {
+        EXPECT_SUCCESS(get_next_job_context.result);
+        EXPECT_TRUE(get_next_job_context.response->job().job_id().empty());
+        finish_called_ = true;
+      };
+
+  EXPECT_SUCCESS(job_client_provider_->GetNextJob(get_next_job_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
 }
@@ -599,8 +634,10 @@ TEST_F(JobClientProviderTest, GetJobById) {
   auto visibility_timeout = created_time + TimeUtil::SecondsToDuration(30);
   auto job_body = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body, job_status, created_time, updated_time,
+                              visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -615,9 +652,9 @@ TEST_F(JobClientProviderTest, GetJobById) {
 
   get_job_by_id_context_.request->set_job_id(kJobId);
   get_job_by_id_context_.callback =
-      [this, &created_time, &updated_time,
-       &visibility_timeout](AsyncContext<GetJobByIdRequest, GetJobByIdResponse>&
-                                get_job_by_id_context) {
+      [this, &created_time, &updated_time, &visibility_timeout,
+       &retry_count](AsyncContext<GetJobByIdRequest, GetJobByIdResponse>&
+                         get_job_by_id_context) {
         EXPECT_SUCCESS(get_job_by_id_context.result);
         auto job_output = get_job_by_id_context.response->job();
         EXPECT_EQ(job_output.job_id(), kJobId);
@@ -634,6 +671,7 @@ TEST_F(JobClientProviderTest, GetJobById) {
         EXPECT_EQ(job_output.created_time(), created_time);
         EXPECT_EQ(job_output.updated_time(), updated_time);
         EXPECT_EQ(job_output.visibility_timeout(), visibility_timeout);
+        EXPECT_EQ(job_output.retry_count(), retry_count);
 
         finish_called_ = true;
       };
@@ -672,8 +710,10 @@ TEST_F(JobClientProviderTest, GetJobByIdWithGetDatabaseItemFailure) {
   auto visibility_timeout = created_time + TimeUtil::SecondsToDuration(30);
   auto job_body = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body, job_status, created_time, updated_time,
+                              visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -757,8 +797,10 @@ TEST_F(JobClientProviderTest, UpdateJobBodySuccess) {
   auto encoded_job_body_or =
       JobClientUtils::ConvertAnyToBase64String(job_body_input);
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -904,8 +946,10 @@ TEST_F(JobClientProviderTest, UpdateJobBodyWithRequestConflictsFailure) {
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -947,8 +991,10 @@ TEST_F(JobClientProviderTest, UpdateJobBodyWithUpsertDatabaseItemFailure) {
   auto encoded_job_body_or =
       JobClientUtils::ConvertAnyToBase64String(job_body_input);
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -997,8 +1043,8 @@ MATCHER_P(HasReceiptInfo, receipt_info, "") {
                             result_listener);
 }
 
-MATCHER_P4(HasUpsertItemParamsForJobStatusUpdates, table_name, job_id,
-           job_status, job_updated_time_default_value, "") {
+MATCHER_P5(HasUpsertItemParamsForJobStatusUpdates, table_name, job_id,
+           job_status, job_updated_time_default_value, retry_count, "") {
   return ExplainMatchResult(Eq(table_name),
                             arg.request->mutable_key()->table_name(),
                             result_listener) &&
@@ -1012,6 +1058,9 @@ MATCHER_P4(HasUpsertItemParamsForJobStatusUpdates, table_name, job_id,
                             result_listener) &&
          ExplainMatchResult(Ne(job_updated_time_default_value),
                             arg.request->new_attributes(1).value_string(),
+                            result_listener) &&
+         ExplainMatchResult(Eq(retry_count),
+                            arg.request->new_attributes(2).value_int(),
                             result_listener);
 }
 
@@ -1024,8 +1073,10 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithJobDeletionSuccess) {
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1038,20 +1089,11 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithJobDeletionSuccess) {
         return SuccessExecutionResult();
       });
 
-  EXPECT_CALL(*queue_client_provider_,
-              DeleteMessage(HasReceiptInfo(kQueueMessageReceiptInfo)))
-      .WillOnce([](auto& delete_message_context) {
-        delete_message_context.response = make_shared<DeleteMessageResponse>();
-        delete_message_context.result = SuccessExecutionResult();
-        delete_message_context.Finish();
-        return SuccessExecutionResult();
-      });
-
   google::protobuf::Timestamp job_updated_time_in_request;
   EXPECT_CALL(*nosql_database_client_provider_,
               UpsertDatabaseItem(HasUpsertItemParamsForJobStatusUpdates(
                   kJobsTableName, kJobId, JobStatus::JOB_STATUS_SUCCESS,
-                  kDefaultTimestampValueInString)))
+                  kDefaultTimestampValueInString, retry_count)))
       .WillOnce(
           [&job_updated_time_in_request](auto& upsert_database_item_context) {
             auto updated_time_in_string =
@@ -1066,20 +1108,33 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithJobDeletionSuccess) {
             return SuccessExecutionResult();
           });
 
+  EXPECT_CALL(*queue_client_provider_,
+              DeleteMessage(HasReceiptInfo(kQueueMessageReceiptInfo)))
+      .WillOnce([](auto& delete_message_context) {
+        delete_message_context.response = make_shared<DeleteMessageResponse>();
+        delete_message_context.result = SuccessExecutionResult();
+        delete_message_context.Finish();
+        return SuccessExecutionResult();
+      });
+
   *update_job_status_context_.request->mutable_job_id() = kJobId;
-  update_job_status_context_.request->set_job_status(
-      JobStatus::JOB_STATUS_SUCCESS);
+  auto updated_job_status = JobStatus::JOB_STATUS_SUCCESS;
+  update_job_status_context_.request->set_job_status(updated_job_status);
   *update_job_status_context_.request->mutable_most_recent_updated_time() =
       kLastUpdatedTime;
   *update_job_status_context_.request->mutable_receipt_info() =
       kQueueMessageReceiptInfo;
   update_job_status_context_.callback =
-      [this, &job_updated_time_in_request](
+      [this, &updated_job_status, &job_updated_time_in_request, &retry_count](
           AsyncContext<UpdateJobStatusRequest, UpdateJobStatusResponse>&
               update_job_status_context) {
         EXPECT_SUCCESS(update_job_status_context.result);
+        EXPECT_EQ(update_job_status_context.response->job_status(),
+                  updated_job_status);
         EXPECT_EQ(update_job_status_context.response->updated_time(),
                   job_updated_time_in_request);
+        EXPECT_EQ(update_job_status_context.response->retry_count(),
+                  retry_count);
         finish_called_ = true;
       };
 
@@ -1089,7 +1144,7 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithJobDeletionSuccess) {
   WaitUntil([this]() { return finish_called_.load(); });
 }
 
-TEST_F(JobClientProviderTest, UpdateJobStatusWithNoJobDeletionSuccess) {
+TEST_F(JobClientProviderTest, UpdateJobStatusWithProcessingSuccess) {
   EXPECT_SUCCESS(job_client_provider_->Init());
   EXPECT_SUCCESS(job_client_provider_->Run());
 
@@ -1098,8 +1153,10 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithNoJobDeletionSuccess) {
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1116,7 +1173,7 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithNoJobDeletionSuccess) {
   EXPECT_CALL(*nosql_database_client_provider_,
               UpsertDatabaseItem(HasUpsertItemParamsForJobStatusUpdates(
                   kJobsTableName, kJobId, JobStatus::JOB_STATUS_PROCESSING,
-                  kDefaultTimestampValueInString)))
+                  kDefaultTimestampValueInString, retry_count + 1)))
       .WillOnce(
           [&job_updated_time_in_request](auto& upsert_database_item_context) {
             auto updated_time_in_string =
@@ -1132,17 +1189,21 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithNoJobDeletionSuccess) {
           });
 
   *update_job_status_context_.request->mutable_job_id() = kJobId;
-  update_job_status_context_.request->set_job_status(
-      JobStatus::JOB_STATUS_PROCESSING);
+  auto updated_job_status = JobStatus::JOB_STATUS_PROCESSING;
+  update_job_status_context_.request->set_job_status(updated_job_status);
   *update_job_status_context_.request->mutable_most_recent_updated_time() =
       kLastUpdatedTime;
   update_job_status_context_.callback =
-      [this, &job_updated_time_in_request](
+      [this, &updated_job_status, &job_updated_time_in_request, &retry_count](
           AsyncContext<UpdateJobStatusRequest, UpdateJobStatusResponse>&
               update_job_status_context) {
         EXPECT_SUCCESS(update_job_status_context.result);
+        EXPECT_EQ(update_job_status_context.response->job_status(),
+                  updated_job_status);
         EXPECT_EQ(update_job_status_context.response->updated_time(),
                   job_updated_time_in_request);
+        EXPECT_EQ(update_job_status_context.response->retry_count(),
+                  retry_count + 1);
         finish_called_ = true;
       };
 
@@ -1209,8 +1270,10 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithDeleteMessageFailed) {
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1220,6 +1283,18 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithDeleteMessageFailed) {
         *get_database_item_context.response->mutable_item() = item;
         get_database_item_context.result = SuccessExecutionResult();
         get_database_item_context.Finish();
+        return SuccessExecutionResult();
+      });
+
+  EXPECT_CALL(*nosql_database_client_provider_,
+              UpsertDatabaseItem(HasUpsertItemParamsForJobStatusUpdates(
+                  kJobsTableName, kJobId, JobStatus::JOB_STATUS_FAILURE,
+                  kDefaultTimestampValueInString, retry_count)))
+      .WillOnce([](auto& upsert_database_item_context) {
+        upsert_database_item_context.response =
+            make_shared<UpsertDatabaseItemResponse>();
+        upsert_database_item_context.result = SuccessExecutionResult();
+        upsert_database_item_context.Finish();
         return SuccessExecutionResult();
       });
 
@@ -1262,8 +1337,10 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithUpsertDatabaseItemFailed) {
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1273,15 +1350,6 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithUpsertDatabaseItemFailed) {
         *get_database_item_context.response->mutable_item() = item;
         get_database_item_context.result = SuccessExecutionResult();
         get_database_item_context.Finish();
-        return SuccessExecutionResult();
-      });
-
-  EXPECT_CALL(*queue_client_provider_,
-              DeleteMessage(HasReceiptInfo(kQueueMessageReceiptInfo)))
-      .WillOnce([](auto& delete_message_context) {
-        delete_message_context.response = make_shared<DeleteMessageResponse>();
-        delete_message_context.result = SuccessExecutionResult();
-        delete_message_context.Finish();
         return SuccessExecutionResult();
       });
 
@@ -1324,8 +1392,10 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithInvalidJobStatusFailure) {
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1369,8 +1439,10 @@ TEST_F(JobClientProviderTest, UpdateJobStatusWithRequestConflictsFailure) {
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1439,8 +1511,10 @@ TEST_F(JobClientProviderTest, UpdateJobVisibilityTimeoutSuccess) {
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1696,8 +1770,10 @@ TEST_F(JobClientProviderTest,
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1743,8 +1819,10 @@ TEST_F(JobClientProviderTest,
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))
@@ -1797,8 +1875,10 @@ TEST_F(JobClientProviderTest,
   auto visibility_timeout = kLastUpdatedTime + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
-  auto item = CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
-                                      updated_time, visibility_timeout);
+  auto retry_count = kDefaultRetryCount;
+  auto item =
+      CreateJobAsDatabaseItem(job_body_input, job_status, created_time,
+                              updated_time, visibility_timeout, retry_count);
 
   EXPECT_CALL(*nosql_database_client_provider_,
               GetDatabaseItem(HasGetDatabaseItemParams(kJobsTableName, kJobId)))

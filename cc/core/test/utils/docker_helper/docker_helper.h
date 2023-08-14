@@ -76,4 +76,14 @@ std::string BuildStartContainerCmd(
  */
 std::string GetIpAddress(const std::string& network_name,
                          const std::string& container_name);
+
+/**
+ * @brief Run docker command to grant 666 permission to the given folder inside
+ * the given container.
+ *
+ * @param container_name the name of the given container.
+ * @param folder the given folder.
+ */
+void GrantPermissionToFolder(const std::string& container_name,
+                             const std::string& folder);
 }  // namespace google::scp::core::test

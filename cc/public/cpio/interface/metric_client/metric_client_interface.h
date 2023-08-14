@@ -41,15 +41,14 @@ class MetricClientInterface : public core::ServiceInterface {
   /**
    * @brief Records custom metrics on Cloud.
    *
-   * @param request request for the call.
-   * @param callback callback will be triggered when the call completes
-   * including when the call fails.
+   * @param context put metric operation context.
    * @return core::ExecutionResult scheduling result returned synchronously.
    */
   virtual core::ExecutionResult PutMetrics(
-      google::cmrt::sdk::metric_service::v1::PutMetricsRequest request,
-      Callback<google::cmrt::sdk::metric_service::v1::PutMetricsResponse>
-          callback) noexcept = 0;
+      core::AsyncContext<
+          google::cmrt::sdk::metric_service::v1::PutMetricsRequest,
+          google::cmrt::sdk::metric_service::v1::PutMetricsResponse>
+          context) noexcept = 0;
 };
 
 /// Factory to create MetricClient.

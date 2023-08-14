@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <memory>
 
 #include <aws/s3/S3Client.h>
@@ -23,7 +25,6 @@
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/ListObjectsRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
-#include <gmock/gmock.h>
 
 namespace google::scp::cpio::client_providers::mock {
 
@@ -52,6 +53,30 @@ class MockS3Client : public Aws::S3::S3Client {
   MOCK_METHOD(void, DeleteObjectAsync,
               (const Aws::S3::Model::DeleteObjectRequest&,
                const Aws::S3::DeleteObjectResponseReceivedHandler&,
+               const std::shared_ptr<const Aws::Client::AsyncCallerContext>&),
+              (const, override));
+
+  MOCK_METHOD(void, CreateMultipartUploadAsync,
+              (const Aws::S3::Model::CreateMultipartUploadRequest&,
+               const Aws::S3::CreateMultipartUploadResponseReceivedHandler&,
+               const std::shared_ptr<const Aws::Client::AsyncCallerContext>&),
+              (const, override));
+
+  MOCK_METHOD(void, UploadPartAsync,
+              (const Aws::S3::Model::UploadPartRequest&,
+               const Aws::S3::UploadPartResponseReceivedHandler&,
+               const std::shared_ptr<const Aws::Client::AsyncCallerContext>&),
+              (const, override));
+
+  MOCK_METHOD(void, CompleteMultipartUploadAsync,
+              (const Aws::S3::Model::CompleteMultipartUploadRequest&,
+               const Aws::S3::CompleteMultipartUploadResponseReceivedHandler&,
+               const std::shared_ptr<const Aws::Client::AsyncCallerContext>&),
+              (const, override));
+
+  MOCK_METHOD(void, AbortMultipartUploadAsync,
+              (const Aws::S3::Model::AbortMultipartUploadRequest&,
+               const Aws::S3::AbortMultipartUploadResponseReceivedHandler&,
                const std::shared_ptr<const Aws::Client::AsyncCallerContext>&),
               (const, override));
 };

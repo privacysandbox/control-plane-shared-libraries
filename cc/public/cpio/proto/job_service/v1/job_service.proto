@@ -66,6 +66,9 @@ message Job {
 
   // The time the job becomes visible for other consumers to process.
   google.protobuf.Timestamp visibility_timeout = 6;
+
+  // The number of times the job has been attempted for processing.
+  int32 retry_count = 7;
 }
 
 // Job status enum.
@@ -172,8 +175,12 @@ message UpdateJobStatusRequest {
 message UpdateJobStatusResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;
+  // The updated job status.
+  JobStatus job_status = 2;
   // The time the job is updated.
-  google.protobuf.Timestamp updated_time = 2;
+  google.protobuf.Timestamp updated_time = 3;
+  // The number of times the job has been attempted for processing.
+  int32 retry_count = 4;
 }
 
 // Request to update visibility timeout of a job.

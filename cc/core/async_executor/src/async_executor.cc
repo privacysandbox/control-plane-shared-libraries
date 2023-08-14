@@ -259,20 +259,20 @@ ExecutionResult AsyncExecutor::ScheduleFor(const AsyncOperation& work,
 ExecutionResult AsyncExecutor::ScheduleFor(
     const AsyncOperation& work, Timestamp timestamp,
     AsyncExecutorAffinitySetting affinity) noexcept {
-  function<bool()> cancellation_callback = {};
+  TaskCancellationLambda cancellation_callback = {};
   return ScheduleFor(work, timestamp, cancellation_callback, affinity);
 }
 
 ExecutionResult AsyncExecutor::ScheduleFor(
     const AsyncOperation& work, Timestamp timestamp,
-    function<bool()>& cancellation_callback) noexcept {
+    TaskCancellationLambda& cancellation_callback) noexcept {
   return ScheduleFor(work, timestamp, cancellation_callback,
                      AsyncExecutorAffinitySetting::NonAffinitized);
 }
 
 ExecutionResult AsyncExecutor::ScheduleFor(
     const AsyncOperation& work, Timestamp timestamp,
-    function<bool()>& cancellation_callback,
+    TaskCancellationLambda& cancellation_callback,
     AsyncExecutorAffinitySetting affinity) noexcept {
   if (!running_) {
     return FailureExecutionResult(errors::SC_ASYNC_EXECUTOR_NOT_RUNNING);

@@ -24,6 +24,7 @@
 #include "roma/sandbox/worker_api/src/worker_api.h"
 #include "roma/sandbox/worker_api/src/worker_api_sapi.h"
 
+#include "error_codes.h"
 #include "worker_pool.h"
 
 namespace google::scp::roma::sandbox::worker_pool {

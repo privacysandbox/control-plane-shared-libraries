@@ -14,4 +14,4 @@
 
 CC_BUILD_CONTAINER_REGISTRY = "public.ecr.aws/h3r7l8o5"
 CC_BUILD_CONTAINER_REPOSITORY = "cc-build-linux-x86-64"
-CC_BUILD_CONTAINER_TAG = "cc_build_image_debian_11_v00027"
+CC_BUILD_CONTAINER_TAG = "cc_build_image_debian_11_v00028"

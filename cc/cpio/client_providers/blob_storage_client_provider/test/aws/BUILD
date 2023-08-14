@@ -18,6 +18,7 @@ cc_test(
     name = "aws_s3_test",
     size = "small",
     srcs = [
+        "aws_s3_client_provider_stream_test.cc",
         "aws_s3_client_provider_test.cc",
         "aws_s3_utils_test.cc",
         "mock_s3_client.h",

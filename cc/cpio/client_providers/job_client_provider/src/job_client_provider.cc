@@ -22,6 +22,7 @@
 #include "core/common/uuid/src/uuid.h"
 #include "core/interface/async_context.h"
 #include "core/interface/type_def.h"
+#include "cpio/client_providers/nosql_database_client_provider/src/common/error_codes.h"
 #include "google/protobuf/util/time_util.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/proto/job_service/v1/job_service.pb.h"
@@ -76,6 +77,7 @@ using google::scp::core::errors::
 using google::scp::core::errors::SC_JOB_CLIENT_PROVIDER_MISSING_JOB_ID;
 using google::scp::core::errors::SC_JOB_CLIENT_PROVIDER_SERIALIZATION_FAILED;
 using google::scp::core::errors::SC_JOB_CLIENT_PROVIDER_UPDATION_CONFLICT;
+using google::scp::core::errors::SC_NO_SQL_DATABASE_PROVIDER_RECORD_NOT_FOUND;
 using std::bind;
 using std::make_shared;
 using std::move;
@@ -86,6 +88,7 @@ using std::placeholders::_1;
 namespace {
 constexpr char kJobClientProvider[] = "JobClientProvider";
 constexpr char kDefaultsJobsTableName[] = "jobs";
+constexpr int kDefaultRetryCount = 0;
 constexpr int kMaximumVisibilityTimeoutInSeconds = 600;
 const Duration kDefaultVisibilityTimeout = TimeUtil::SecondsToDuration(30);
 
@@ -160,7 +163,8 @@ void JobClientProvider::OnEnqueueMessageCallback(
   auto current_time = TimeUtil::GetCurrentTime();
   auto job = make_shared<Job>(JobClientUtils::CreateJob(
       job_id, job_body, JobStatus::JOB_STATUS_CREATED, current_time,
-      current_time, current_time + kDefaultVisibilityTimeout));
+      current_time, current_time + kDefaultVisibilityTimeout,
+      kDefaultRetryCount));
 
   auto upsert_job_request = JobClientUtils::CreateUpsertJobRequest(
       job_table_name_, *job, *job_body_as_string_or);
@@ -232,6 +236,15 @@ void JobClientProvider::OnGetTopMessageCallback(
     return;
   }
 
+  if (get_top_message_context.response->message_id().empty()) {
+    get_next_job_context.response = make_shared<GetNextJobResponse>();
+    SCP_INFO_CONTEXT(kJobClientProvider, get_top_message_context,
+                     "No jobs received from the job queue.");
+    FinishContext(get_top_message_context.result, get_next_job_context,
+                  async_executor_);
+    return;
+  }
+
   const string& job_id = get_top_message_context.response->message_body();
   shared_ptr<string> receipt_info(
       get_top_message_context.response->release_receipt_info());
@@ -266,11 +279,21 @@ void JobClientProvider::OnGetNextJobItemCallback(
       get_database_item_context.request->key().partition_key().value_string();
   if (!get_database_item_context.result.Successful()) {
     auto execution_result = get_database_item_context.result;
-    SCP_ERROR_CONTEXT(
-        kJobClientProvider, get_next_job_context, execution_result,
-        "Failed to get next job due to get job from NoSQL database "
-        "failed. Job id: %s",
-        job_id.c_str());
+    if (execution_result.status_code ==
+        SC_NO_SQL_DATABASE_PROVIDER_RECORD_NOT_FOUND) {
+      SCP_ERROR_CONTEXT(
+          kJobClientProvider, get_next_job_context, execution_result,
+          "Failed to get next job due to the entry for the job id %s from the "
+          "job queue is missing in the NoSQL database.",
+          job_id.c_str());
+
+    } else {
+      SCP_ERROR_CONTEXT(kJobClientProvider, get_next_job_context,
+                        execution_result,
+                        "Failed to get next job due to get job from NoSQL "
+                        "database failed. Job id: %s",
+                        job_id.c_str());
+    }
     FinishContext(execution_result, get_next_job_context, async_executor_);
     return;
   }
@@ -327,11 +350,20 @@ void JobClientProvider::OnGetJobItemByJobIdCallback(
   const string& job_id = get_job_by_id_context.request->job_id();
   if (!get_database_item_context.result.Successful()) {
     auto execution_result = get_database_item_context.result;
-    SCP_ERROR_CONTEXT(kJobClientProvider, get_job_by_id_context,
-                      execution_result,
-                      "Failed to get job by job id due to get job from NoSQL "
-                      "database failed. Job id: %s",
-                      job_id.c_str());
+    if (execution_result.status_code ==
+        SC_NO_SQL_DATABASE_PROVIDER_RECORD_NOT_FOUND) {
+      SCP_ERROR_CONTEXT(kJobClientProvider, get_job_by_id_context,
+                        execution_result,
+                        "Failed to get job by job id due to the entry for the "
+                        "job id %s is missing in the NoSQL database.",
+                        job_id.c_str());
+    } else {
+      SCP_ERROR_CONTEXT(kJobClientProvider, get_job_by_id_context,
+                        execution_result,
+                        "Failed to get job by job id due to get job from NoSQL "
+                        "database failed. Job id: %s",
+                        job_id.c_str());
+    }
     FinishContext(execution_result, get_job_by_id_context, async_executor_);
     return;
   }
@@ -590,15 +622,14 @@ void JobClientProvider::OnGetJobItemForUpdateJobStatusCallback(
     return;
   }
 
+  int retry_count = job_or->retry_count();
   switch (job_status_in_request) {
     // TODO: Add new failure status for retry mechanism.
+    case JobStatus::JOB_STATUS_PROCESSING:
+      retry_count++;
     case JobStatus::JOB_STATUS_FAILURE:
     case JobStatus::JOB_STATUS_SUCCESS: {
-      DeleteJobMessage(update_job_status_context);
-      return;
-    }
-    case JobStatus::JOB_STATUS_PROCESSING: {
-      UpsertUpdatedJobStatusJobItem(update_job_status_context);
+      UpsertUpdatedJobStatusJobItem(update_job_status_context, retry_count);
       return;
     }
     case JobStatus::JOB_STATUS_UNKNOWN:
@@ -617,54 +648,10 @@ void JobClientProvider::OnGetJobItemForUpdateJobStatusCallback(
   }
 }
 
-void JobClientProvider::DeleteJobMessage(
-    AsyncContext<UpdateJobStatusRequest, UpdateJobStatusResponse>&
-        update_job_status_context) noexcept {
-  const string& job_id = update_job_status_context.request->job_id();
-
-  auto delete_message_request = make_shared<DeleteMessageRequest>();
-  delete_message_request->set_allocated_receipt_info(
-      update_job_status_context.request->release_receipt_info());
-  AsyncContext<DeleteMessageRequest, DeleteMessageResponse>
-      delete_message_context(move(delete_message_request),
-                             bind(&JobClientProvider::OnDeleteMessageCallback,
-                                  this, update_job_status_context, _1),
-                             update_job_status_context);
-
-  auto execution_result =
-      queue_client_provider_->DeleteMessage(delete_message_context);
-  if (!execution_result.Successful()) {
-    SCP_ERROR_CONTEXT(
-        kJobClientProvider, update_job_status_context, execution_result,
-        "Cannot delete message from queue. Job id: %s", job_id.c_str());
-    FinishContext(execution_result, update_job_status_context, async_executor_);
-    return;
-  }
-}
-
-void JobClientProvider::OnDeleteMessageCallback(
-    AsyncContext<UpdateJobStatusRequest, UpdateJobStatusResponse>&
-        update_job_status_context,
-    AsyncContext<DeleteMessageRequest, DeleteMessageResponse>&
-        delete_messasge_context) noexcept {
-  const string& job_id = update_job_status_context.request->job_id();
-  if (!delete_messasge_context.result.Successful()) {
-    auto execution_result = delete_messasge_context.result;
-    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
-                      execution_result,
-                      "Failed to update job status due to job message deletion "
-                      "failed. Job id; %s",
-                      job_id.c_str());
-    FinishContext(execution_result, update_job_status_context, async_executor_);
-    return;
-  }
-
-  UpsertUpdatedJobStatusJobItem(update_job_status_context);
-}
-
 void JobClientProvider::UpsertUpdatedJobStatusJobItem(
     AsyncContext<UpdateJobStatusRequest, UpdateJobStatusResponse>&
-        update_job_status_context) noexcept {
+        update_job_status_context,
+    const int retry_count) noexcept {
   const string& job_id = update_job_status_context.request->job_id();
   auto update_time =
       make_shared<google::protobuf::Timestamp>(TimeUtil::GetCurrentTime());
@@ -675,6 +662,7 @@ void JobClientProvider::UpsertUpdatedJobStatusJobItem(
   *job_for_update.mutable_updated_time() = *update_time;
   job_for_update.set_job_status(
       update_job_status_context.request->job_status());
+  job_for_update.set_retry_count(retry_count);
 
   auto upsert_job_request = JobClientUtils::CreateUpsertJobRequest(
       job_table_name_, job_for_update, "" /* job body */);
@@ -683,7 +671,8 @@ void JobClientProvider::UpsertUpdatedJobStatusJobItem(
       upsert_database_item_context(
           move(upsert_job_request),
           bind(&JobClientProvider::OnUpsertUpdatedJobStatusJobItemCallback,
-               this, update_job_status_context, move(update_time), _1),
+               this, update_job_status_context, move(update_time), retry_count,
+               _1),
           update_job_status_context);
 
   auto execution_result = nosql_database_client_provider_->UpsertDatabaseItem(
@@ -701,7 +690,7 @@ void JobClientProvider::UpsertUpdatedJobStatusJobItem(
 void JobClientProvider::OnUpsertUpdatedJobStatusJobItemCallback(
     AsyncContext<UpdateJobStatusRequest, UpdateJobStatusResponse>&
         update_job_status_context,
-    shared_ptr<google::protobuf::Timestamp> update_time,
+    shared_ptr<google::protobuf::Timestamp> update_time, const int retry_count,
     AsyncContext<UpsertDatabaseItemRequest, UpsertDatabaseItemResponse>&
         upsert_database_item_context) noexcept {
   if (!upsert_database_item_context.result.Successful()) {
@@ -715,8 +704,76 @@ void JobClientProvider::OnUpsertUpdatedJobStatusJobItemCallback(
     return;
   }
 
+  auto job_status_in_request = update_job_status_context.request->job_status();
+  switch (job_status_in_request) {
+    case JobStatus::JOB_STATUS_FAILURE:
+    case JobStatus::JOB_STATUS_SUCCESS:
+      DeleteJobMessage(update_job_status_context, update_time, retry_count);
+      return;
+    case JobStatus::JOB_STATUS_PROCESSING:
+    default:
+      update_job_status_context.response =
+          make_shared<UpdateJobStatusResponse>();
+      update_job_status_context.response->set_job_status(job_status_in_request);
+      *update_job_status_context.response->mutable_updated_time() =
+          *update_time;
+      update_job_status_context.response->set_retry_count(retry_count);
+      FinishContext(SuccessExecutionResult(), update_job_status_context,
+                    async_executor_);
+  }
+}
+
+void JobClientProvider::DeleteJobMessage(
+    AsyncContext<UpdateJobStatusRequest, UpdateJobStatusResponse>&
+        update_job_status_context,
+    shared_ptr<google::protobuf::Timestamp> update_time,
+    const int retry_count) noexcept {
+  const string& job_id = update_job_status_context.request->job_id();
+
+  auto delete_message_request = make_shared<DeleteMessageRequest>();
+  delete_message_request->set_allocated_receipt_info(
+      update_job_status_context.request->release_receipt_info());
+  AsyncContext<DeleteMessageRequest, DeleteMessageResponse>
+      delete_message_context(
+          move(delete_message_request),
+          bind(&JobClientProvider::OnDeleteMessageCallback, this,
+               update_job_status_context, move(update_time), retry_count, _1),
+          update_job_status_context);
+
+  auto execution_result =
+      queue_client_provider_->DeleteMessage(delete_message_context);
+  if (!execution_result.Successful()) {
+    SCP_ERROR_CONTEXT(
+        kJobClientProvider, update_job_status_context, execution_result,
+        "Cannot delete message from queue. Job id: %s", job_id.c_str());
+    FinishContext(execution_result, update_job_status_context, async_executor_);
+    return;
+  }
+}
+
+void JobClientProvider::OnDeleteMessageCallback(
+    AsyncContext<UpdateJobStatusRequest, UpdateJobStatusResponse>&
+        update_job_status_context,
+    shared_ptr<google::protobuf::Timestamp> update_time, const int retry_count,
+    AsyncContext<DeleteMessageRequest, DeleteMessageResponse>&
+        delete_messasge_context) noexcept {
+  const string& job_id = update_job_status_context.request->job_id();
+  if (!delete_messasge_context.result.Successful()) {
+    auto execution_result = delete_messasge_context.result;
+    SCP_ERROR_CONTEXT(kJobClientProvider, update_job_status_context,
+                      execution_result,
+                      "Failed to update job status due to job message deletion "
+                      "failed. Job id; %s",
+                      job_id.c_str());
+    FinishContext(execution_result, update_job_status_context, async_executor_);
+    return;
+  }
+
   update_job_status_context.response = make_shared<UpdateJobStatusResponse>();
+  update_job_status_context.response->set_job_status(
+      update_job_status_context.request->job_status());
   *update_job_status_context.response->mutable_updated_time() = *update_time;
+  update_job_status_context.response->set_retry_count(retry_count);
   FinishContext(SuccessExecutionResult(), update_job_status_context,
                 async_executor_);
 }

@@ -220,7 +220,6 @@ maven_install(
 # Download Indirect Dependencies: Begin
 ################################################################################
 # Note: The order of statements in this section is extremely fragile
-
 load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_java_toolchains")
 
 rules_java_dependencies()

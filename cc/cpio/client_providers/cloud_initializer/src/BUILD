@@ -16,13 +16,6 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
     name = "cloud_initializer_select_lib",
-    srcs = select(
-        {
-            "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/cloud_initializer/src/aws:aws_initializer_srcs"],
-            "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/cloud_initializer/src/gcp:no_op_initializer_srcs"],
-        },
-        no_match_error = "Please build for AWS or GCP",
-    ),
     deps = select(
         {
             "//cc/public/cpio/interface:aws_cpio_lib": [

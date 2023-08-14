@@ -79,6 +79,10 @@ DEFINE_ERROR_CODE(
     "Create compilation context failed with empty source code.",
     HttpStatusCode::BAD_REQUEST)
 
+DEFINE_ERROR_CODE(SC_ROMA_V8_ENGINE_EXECUTION_TIMEOUT, SC_ROMA_V8_ENGINE,
+                  0x000D, "V8 execution terminated due to timeout.",
+                  HttpStatusCode::BAD_REQUEST)
+
 REGISTER_COMPONENT_CODE(SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING, 0x0A01)
 
 DEFINE_ERROR_CODE(SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING_INVALID_ISOLATE,

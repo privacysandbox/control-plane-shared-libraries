@@ -50,6 +50,7 @@ using google::scp::core::errors::SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT;
 using google::scp::core::errors::
     SC_ROMA_V8_ENGINE_CREATE_COMPILATION_CONTEXT_FAILED_WITH_EMPTY_CODE;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER;
+using google::scp::core::errors::SC_ROMA_V8_ENGINE_EXECUTION_TIMEOUT;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ISOLATE_NOT_INITIALIZED;
 using google::scp::roma::kDefaultExecutionTimeoutMs;
 using google::scp::roma::TypeConverter;
@@ -93,8 +94,6 @@ using v8::Value;
 using v8::WasmModuleObject;
 
 namespace {
-constexpr char kTimeoutErrorMsg[] = "ROMA: Request execution timeout.";
-
 shared_ptr<string> GetCodeFromContext(
     const RomaJsEngineCompilationContext& context) {
   shared_ptr<string> code;
@@ -104,36 +103,6 @@ shared_ptr<string> GetCodeFromContext(
   }
 
   return code;
-}
-
-ExecutionResult GetError(Isolate*& isolate, TryCatch& try_catch,
-                         uint64_t& error_code) {
-  vector<string> errors;
-
-  errors.push_back(GetErrorMessage(error_code));
-
-  // Checks isolate is currently terminating because of a call to
-  // TerminateExecution.
-  if (isolate->IsExecutionTerminating()) {
-    errors.push_back(kTimeoutErrorMsg);
-  }
-
-  if (try_catch.HasCaught()) {
-    string error_msg;
-    if (!try_catch.Message().IsEmpty() &&
-        TypeConverter<string>::FromV8(isolate, try_catch.Message()->Get(),
-                                      &error_msg)) {
-      errors.push_back(error_msg);
-    }
-  }
-
-  string error_string;
-  for (auto& e : errors) {
-    error_string += "\n" + e;
-  }
-  _ROMA_LOG_ERROR(error_string)
-
-  return FailureExecutionResult(error_code);
 }
 
 /**
@@ -159,6 +128,29 @@ ExecutionResult CreateV8Context(
   return SuccessExecutionResult();
 }
 
+ExecutionResult GetError(Isolate* isolate, TryCatch& try_catch,
+                         uint64_t error_code) noexcept {
+  vector<string> errors;
+
+  errors.push_back(GetErrorMessage(error_code));
+
+  if (try_catch.HasCaught()) {
+    string error_msg;
+    if (!try_catch.Message().IsEmpty() &&
+        TypeConverter<string>::FromV8(isolate, try_catch.Message()->Get(),
+                                      &error_msg)) {
+      errors.push_back(error_msg);
+    }
+  }
+
+  string error_string;
+  for (auto& e : errors) {
+    error_string += "\n" + e;
+  }
+  _ROMA_LOG_ERROR(error_string)
+
+  return FailureExecutionResult(error_code);
+}
 }  // namespace
 
 namespace google::scp::roma::sandbox::js_engine::v8_js_engine {
@@ -368,43 +360,11 @@ V8JsEngine::CreateCompilationContext(const string& code,
   return out_context;
 }
 
-ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunJs(
-    const string& code, const string& function_name,
-    const vector<string_view>& input,
-    const unordered_map<string, string>& metadata,
-    const RomaJsEngineCompilationContext& context) noexcept {
-  string err_msg;
-  JsEngineExecutionResponse execution_response;
-  shared_ptr<SnapshotCompilationContext> current_compilation_context;
-  if (!context.has_context) {
-    auto context_or = CreateCompilationContext(code, err_msg);
-    if (!context_or.result().Successful()) {
-      _ROMA_LOG_ERROR(string("CreateCompilationContext failed with ") +
-                      err_msg);
-      return context_or.result();
-    }
-
-    execution_response.compilation_context = context_or.value();
-    current_compilation_context =
-        std::static_pointer_cast<SnapshotCompilationContext>(
-            context_or.value().context);
-  } else {
-    current_compilation_context =
-        std::static_pointer_cast<SnapshotCompilationContext>(context.context);
-  }
-
+core::ExecutionResultOr<std::string> V8JsEngine::ExecuteJs(
+    const shared_ptr<SnapshotCompilationContext>& current_compilation_context,
+    const string& function_name, const vector<string_view>& input,
+    const unordered_map<string, string>& metadata) noexcept {
   auto v8_isolate = current_compilation_context->v8_isolate;
-
-  if (!v8_isolate) {
-    return FailureExecutionResult(SC_ROMA_V8_ENGINE_ISOLATE_NOT_INITIALIZED);
-  }
-
-  // No function_name just return execution_response which may contain
-  // RomaJsEngineCompilationContext.
-  if (function_name.empty()) {
-    return execution_response;
-  }
-
   Isolate::Scope isolate_scope(v8_isolate);
   // Create a handle scope to keep the temporary object references.
   HandleScope handle_scope(v8_isolate);
@@ -414,6 +374,7 @@ ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunJs(
   Local<Context> v8_context = Context::New(v8_isolate);
   Context::Scope context_scope(v8_context);
 
+  string err_msg;
   // Binding UnboundScript to current context when the compilation context is
   // kUnboundScript.
   if (current_compilation_context->cache_type == CacheType::kUnboundScript) {
@@ -432,9 +393,6 @@ ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunJs(
     return result;
   }
 
-  // Start execution watchdog to timeout the execution if it runs overtime.
-  StartWatchdogTimer(v8_isolate, metadata);
-
   string execution_response_string;
   {
     Local<Function> handler_func = handler.As<Function>();
@@ -443,10 +401,8 @@ ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunJs(
     Local<Array> argv_array = ExecutionUtils::ParseAsJsInput(input);
     // If argv_array size doesn't match with input. Input conversion failed.
     if (argv_array.IsEmpty() || argv_array->Length() != argc) {
-      auto exception_result =
-          ExecutionUtils::ReportException(&try_catch, err_msg);
-      return ExecutionUtils::GetExecutionResult(
-          exception_result, SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT);
+      return GetError(v8_isolate, try_catch,
+                      SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT);
     }
     Local<Value> argv[argc];
     for (size_t i = 0; i < argc; ++i) {
@@ -501,12 +457,63 @@ ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunJs(
     }
   }
 
-  execution_response.response = execution_response_string;
+  return execution_response_string;
+}
+
+ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunJs(
+    const string& code, const string& function_name,
+    const vector<string_view>& input,
+    const unordered_map<string, string>& metadata,
+    const RomaJsEngineCompilationContext& context) noexcept {
+  string err_msg;
+  JsEngineExecutionResponse execution_response;
+  shared_ptr<SnapshotCompilationContext> current_compilation_context;
+  if (!context.has_context) {
+    auto context_or = CreateCompilationContext(code, err_msg);
+    if (!context_or.result().Successful()) {
+      _ROMA_LOG_ERROR(string("CreateCompilationContext failed with ") +
+                      err_msg);
+      return context_or.result();
+    }
+
+    execution_response.compilation_context = context_or.value();
+    current_compilation_context =
+        std::static_pointer_cast<SnapshotCompilationContext>(
+            context_or.value().context);
+  } else {
+    current_compilation_context =
+        std::static_pointer_cast<SnapshotCompilationContext>(context.context);
+  }
+
+  if (!current_compilation_context->v8_isolate) {
+    return FailureExecutionResult(SC_ROMA_V8_ENGINE_ISOLATE_NOT_INITIALIZED);
+  }
+
+  // No function_name just return execution_response which may contain
+  // RomaJsEngineCompilationContext.
+  if (function_name.empty()) {
+    return execution_response;
+  }
+
+  // Start execution watchdog to timeout the execution if it runs overtime.
+  StartWatchdogTimer(current_compilation_context->v8_isolate, metadata);
+
+  auto execution_result =
+      ExecuteJs(current_compilation_context, function_name, input, metadata);
 
   // End execution_watchdog_ in case it terminate the standby isolate.
   StopWatchdogTimer();
 
-  return execution_response;
+  if (execution_result.Successful()) {
+    execution_response.response = execution_result.value();
+    return execution_response;
+  }
+
+  // Return timeout error if the watchdog called isolate terminate.
+  if (execution_watchdog_->IsTerminateCalled()) {
+    return FailureExecutionResult(SC_ROMA_V8_ENGINE_EXECUTION_TIMEOUT);
+  }
+  return execution_result.result();
 }
 
 ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunWasm(
@@ -560,7 +567,7 @@ ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunWasm(
     auto result = ExecutionUtils::CompileRunWASM(input_code, errors);
     if (!result.Successful()) {
       _ROMA_LOG_ERROR(errors);
-      return result;
+      return GetError(v8_isolate_, try_catch, result.status_code);
     }
 
     if (!function_name.empty()) {
@@ -569,7 +576,7 @@ ExecutionResultOr<JsEngineExecutionResponse> V8JsEngine::CompileAndRunWasm(
           ExecutionUtils::GetWasmHandler(function_name, wasm_handler, errors);
       if (!result.Successful()) {
         _ROMA_LOG_ERROR(errors);
-        return result;
+        return GetError(v8_isolate_, try_catch, result.status_code);
       }
 
       auto wasm_input_array =

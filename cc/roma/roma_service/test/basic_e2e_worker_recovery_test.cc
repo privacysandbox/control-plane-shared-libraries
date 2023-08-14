@@ -26,7 +26,6 @@
 
 #include "core/test/utils/conditional_wait.h"
 #include "roma/interface/roma.h"
-#include "roma/roma_service/src/roma_service.h"
 
 using absl::StatusOr;
 using google::scp::core::test::WaitUntil;

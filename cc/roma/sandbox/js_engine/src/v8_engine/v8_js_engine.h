@@ -135,6 +135,22 @@ class V8JsEngine : public JsEngine {
   void StopWatchdogTimer() noexcept;
 
   /**
+   * @brief Execute invocation request in current compilation context.
+   *
+   * @param current_compilation_context
+   * @param function_name
+   * @param input
+   * @param metadata
+   * @return core::ExecutionResultOr<std::string>
+   */
+  core::ExecutionResultOr<std::string> ExecuteJs(
+      const std::shared_ptr<SnapshotCompilationContext>&
+          current_compilation_context,
+      const std::string& function_name,
+      const std::vector<absl::string_view>& input,
+      const std::unordered_map<std::string, std::string>& metadata) noexcept;
+
+  /**
    * @brief Initialize and run a execution watchdog for current v8_isolate.
    *
    * @return core::ExecutionResult
@@ -148,11 +164,10 @@ class V8JsEngine : public JsEngine {
   /// heap) which are needed for serialization of the v8 snapshot.
   std::vector<intptr_t> external_references_;
 
+  /// v8 heap resource constraints.
+  const JsEngineResourceConstraints v8_resource_constraints_;
   /// @brief A timer thread watches the code execution in v8 isolate and
   /// timeouts the execution in set time.
   std::unique_ptr<roma::worker::ExecutionWatchDog> execution_watchdog_{nullptr};
-
-  /// v8 heap resource constraints.
-  const JsEngineResourceConstraints v8_resource_constraints_;
 };
 }  // namespace google::scp::roma::sandbox::js_engine::v8_js_engine

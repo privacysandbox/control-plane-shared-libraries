@@ -165,10 +165,8 @@ class ExecutionUtilsTest : public ::testing::Test {
           ExecutionUtils::InputToLocalArgv(input, is_wasm_run).As<Array>();
       // If argv_array size doesn't match with input. Input conversion failed.
       if (argv_array.IsEmpty() || argv_array->Length() != argc) {
-        auto exception_result =
-            ExecutionUtils::ReportException(&try_catch, err_msg);
-        return ExecutionUtils::GetExecutionResult(
-            exception_result, SC_ROMA_V8_WORKER_BAD_INPUT_ARGS);
+        err_msg = ExecutionUtils::DescribeError(isolate_, &try_catch);
+        return FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS);
       }
       for (size_t i = 0; i < argc; ++i) {
         argv[i] = argv_array->Get(context, i).ToLocalChecked();
@@ -179,10 +177,8 @@ class ExecutionUtilsTest : public ::testing::Test {
     Local<Value> result;
     if (!handler_func->Call(context, context->Global(), argc, argv)
              .ToLocal(&result)) {
-      auto exception_result =
-          ExecutionUtils::ReportException(&try_catch, err_msg);
-      return ExecutionUtils::GetExecutionResult(
-          exception_result, SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE);
+      err_msg = ExecutionUtils::DescribeError(isolate_, &try_catch);
+      return FailureExecutionResult(SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE);
     }
 
     // If this is a WASM run then we need to deserialize the returned data
@@ -196,10 +192,8 @@ class ExecutionUtilsTest : public ::testing::Test {
     auto json_string_maybe = JSON::Stringify(context, result);
     Local<String> json_string;
     if (!json_string_maybe.ToLocal(&json_string)) {
-      auto exception_result =
-          ExecutionUtils::ReportException(&try_catch, err_msg);
-      return ExecutionUtils::GetExecutionResult(
-          exception_result, SC_ROMA_V8_WORKER_RESULT_PARSE_FAILURE);
+      err_msg = ExecutionUtils::DescribeError(isolate_, &try_catch);
+      return FailureExecutionResult(SC_ROMA_V8_WORKER_RESULT_PARSE_FAILURE);
     }
 
     String::Utf8Value result_utf8(isolate_, json_string);

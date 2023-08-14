@@ -28,6 +28,8 @@
 #include "roma/sandbox/native_function_binding/src/native_function_table.h"
 #include "roma/sandbox/worker_pool/src/worker_pool.h"
 
+#include "error_codes.h"
+
 namespace google::scp::roma::sandbox::roma_service {
 class RomaService : public core::ServiceInterface {
  public:

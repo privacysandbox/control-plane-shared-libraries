@@ -29,10 +29,9 @@ def cc_utils():
     maybe(
         git_repository,
         name = "oneTBB",
-        # Commits on Apr 18, 2022
-        commit = "9d2a3477ce276d437bf34b1582781e5b11f9b37a",
+        # Commits on Apr 6, 2023, v2021.9.0
+        commit = "a00cc3b8b5fb4d8115e9de56bf713157073ed68c",
         remote = "https://github.com/oneapi-src/oneTBB.git",
-        shallow_since = "1648820995 +0300",
     )
 
     maybe(

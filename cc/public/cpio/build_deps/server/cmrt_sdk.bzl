@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load(":sdk_container.bzl", "sdk_container")
+load("//cc/public/cpio/build_deps/shared:sdk_container.bzl", "sdk_container")
 
 # Bring up all SDK servers.
 def cmrt_sdk(

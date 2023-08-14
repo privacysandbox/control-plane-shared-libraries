@@ -27,12 +27,14 @@
 #include <utility>
 #include <vector>
 
+#include "core/common/time_provider/src/stopwatch.h"
 #include "core/test/utils/conditional_wait.h"
 #include "roma/config/src/config.h"
 #include "roma/interface/roma.h"
 #include "roma/wasm/test/testing_utils.h"
 
 using absl::StatusOr;
+using google::scp::core::common::Stopwatch;
 using google::scp::core::test::WaitUntil;
 using google::scp::roma::wasm::testing::WasmTestingUtils;
 using std::atomic;
@@ -47,6 +49,8 @@ using std::to_string;
 using std::tuple;
 using std::unique_ptr;
 using std::vector;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
 using ::testing::HasSubstr;
 
 using namespace std::placeholders;     // NOLINT
@@ -1123,7 +1127,7 @@ TEST(SandboxedServiceTest, CanExecuteWasmCode) {
   EXPECT_TRUE(status.ok());
 }
 
-TEST(SandboxedServiceTest, ExecuteCodeGotTimeoutError) {
+TEST(SandboxedServiceTest, ShouldReturnCorrectErrorForDifferentException) {
   Config config;
   config.number_of_workers = 1;
   auto status = RomaInit(config);
@@ -1131,7 +1135,9 @@ TEST(SandboxedServiceTest, ExecuteCodeGotTimeoutError) {
 
   string result;
   atomic<bool> load_finished = false;
-  atomic<bool> execute_finished = false;
+  atomic<bool> execute_timeout = false;
+  atomic<bool> execute_failed = false;
+  atomic<bool> execute_success = false;
 
   {
     auto code_obj = make_unique<CodeObject>();
@@ -1145,9 +1151,13 @@ TEST(SandboxedServiceTest, ExecuteCodeGotTimeoutError) {
         currentDate = Date.now();
       } while (currentDate - date < milliseconds);
     }
-    function hello_js() {
+    let x;
+    function hello_js(input) {
         sleep(200);
-        return 0;
+        if (input === undefined) {
+          return x.value;
+        }
+        return "Hello world!"
       }
     )""";
 
@@ -1159,6 +1169,7 @@ TEST(SandboxedServiceTest, ExecuteCodeGotTimeoutError) {
     EXPECT_TRUE(status.ok());
   }
 
+  // The execution should timeout as the kTimeoutMsTag value is too small.
   {
     auto execution_obj = make_unique<InvocationRequestStrInput>();
     execution_obj->id = "foo";
@@ -1169,15 +1180,56 @@ TEST(SandboxedServiceTest, ExecuteCodeGotTimeoutError) {
     status = Execute(move(execution_obj),
                      [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
                        EXPECT_FALSE(resp->ok());
-                       // Timeout error only shows in err_msg not result.
+                       // Timeout error.
                        EXPECT_EQ(resp->status().message(),
-                                 "Error when invoking the handler.");
-                       execute_finished.store(true);
+                                 "V8 execution terminated due to timeout.");
+                       execute_timeout.store(true);
                      });
     EXPECT_TRUE(status.ok());
   }
+
+  // The execution should return invoking error as it try to get value from
+  // undefined var.
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "hello_js";
+    execution_obj->tags[kTimeoutMsTag] = "300";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_FALSE(resp->ok());
+                       EXPECT_EQ(resp->status().message(),
+                                 "Error when invoking the handler.");
+                       execute_failed.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // The execution should success.
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "hello_js";
+    execution_obj->input.push_back("\"0\"");
+    execution_obj->tags[kTimeoutMsTag] = "300";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       EXPECT_EQ(code_resp.resp, "\"Hello world!\"");
+                       execute_success.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
   WaitUntil([&]() { return load_finished.load(); }, 10s);
-  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_timeout.load(); }, 10s);
+  WaitUntil([&]() { return execute_failed.load(); }, 10s);
+  WaitUntil([&]() { return execute_success.load(); }, 10s);
 
   status = RomaStop();
   EXPECT_TRUE(status.ok());
@@ -1691,6 +1743,562 @@ TEST(SandboxedServiceTest, ShouldAllowLoadingVersionWhileDispatching) {
   WaitUntil([&]() { return execute_finished.load(); }, 10s);
 
   EXPECT_EQ(result, R"("Hello world1! \"Foobar\"")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ShouldTimeOutIfExecutionExceedsDeadline) {
+  Config config;
+  config.number_of_workers = 1;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // Code to sleep for the number of milliseconds passed as input
+    code_obj->js = R"JS_CODE(
+    function sleep(milliseconds) {
+      const date = Date.now();
+      let currentDate = null;
+      do {
+        currentDate = Date.now();
+      } while (currentDate - date < milliseconds);
+    }
+
+    function Handler(input) {
+      sleep(parseInt(input));
+      return "Hello world!";
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  Stopwatch timer;
+
+  timer.Start();
+  {
+    // Should not timeout since we only sleep for 9 sec but the timeout is 10
+    // sec.
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"9000\"");
+    execution_obj->tags["TimeoutMs"] = "10000";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return execute_finished.load(); }, 30s);
+  auto elapsed_time_ms = duration_cast<milliseconds>(timer.Stop()).count();
+  // Should have elapsed more than 9sec.
+  EXPECT_GE(elapsed_time_ms, 9000);
+  // But less than 10.
+  EXPECT_LE(elapsed_time_ms, 10000);
+  EXPECT_EQ(result, R"("Hello world!")");
+
+  result = "";
+  execute_finished = false;
+  timer.Start();
+
+  {
+    // Should time out since we sleep for 11 which is longer than the 10
+    // sec timeout.
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"11000\"");
+    execution_obj->tags["TimeoutMs"] = "10000";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_FALSE(resp->ok());
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return execute_finished.load(); }, 30s);
+  elapsed_time_ms = duration_cast<milliseconds>(timer.Stop()).count();
+  // Should have elapsed more than 10sec since that's our timeout.
+  EXPECT_GE(elapsed_time_ms, 10000);
+  // But less than 11
+  EXPECT_LE(elapsed_time_ms, 11000);
+  EXPECT_EQ(result, "");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ShouldGetCompileErrorForBadJsCode) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // Bad JS code.
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+  )JS_CODE";
+
+    status = LoadCodeObj(
+        move(code_obj), [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+          EXPECT_FALSE(resp->ok());
+          EXPECT_EQ(resp->status().message(),
+                    "Failed to compile JavaScript code object.");
+          load_finished.store(true);
+        });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeThrowError) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+  atomic<bool> execute_failed = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+      function Handler(input) {
+        if (input === "0") {
+          throw new Error('Yeah...Input cannot be 0!');
+        }
+        return "Hello world! " + JSON.stringify(input);
+      }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("9000");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       EXPECT_EQ(code_resp.resp, "\"Hello world! 9000\"");
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"0\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_FALSE(resp->ok());
+                       EXPECT_EQ(resp->status().message(),
+                                 "Error when invoking the handler.");
+                       execute_failed.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_failed.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ShouldGetExecutionErrorWhenJsCodeReturnUndefined) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+  atomic<bool> execute_failed = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+      let x;
+      function Handler(input) {
+        if (input === "0") {
+          return "Hello world! " + x.value;
+        }
+        return "Hello world! " + JSON.stringify(input);
+      }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("9000");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       EXPECT_EQ(code_resp.resp, "\"Hello world! 9000\"");
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"0\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_FALSE(resp->ok());
+                       EXPECT_EQ(resp->status().message(),
+                                 "Error when invoking the handler.");
+                       execute_failed.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_failed.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, CanHandleMultipleInputs) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input1, input2) {
+      return input1 + input2;
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar1\"");
+    execution_obj->input.push_back("\" Barfoo2\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("Foobar1 Barfoo2")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ErrorShouldBeExplicitWhenInputCannotBeParsed) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) {
+      return input;
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // Not a JSON string
+    execution_obj->input.push_back("Foobar1");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_FALSE(resp->ok());
+                       // Should return failure
+                       EXPECT_EQ("Error parsing input as valid JSON.",
+                                 resp->status().message());
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest,
+     ShouldGetErrorIfLoadFailsButExecutionIsSentForVersion) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // Bad syntax so load should fail
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "123
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           // Load should have failed
+                           EXPECT_FALSE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(
+        move(execution_obj),
+        [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+          // Execution should fail since load didn't work for this
+          // code version
+          EXPECT_FALSE(resp->ok());
+          EXPECT_EQ(
+              "Could not find a stored context for the execution request.",
+              resp->status().message());
+          execute_finished.store(true);
+        });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  // Should be able to load same version
+  load_finished = false;
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler() { return "Hello there";}
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  // Execution should work now
+  execute_finished = false;
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       EXPECT_EQ("\"Hello there\"", (*resp)->resp);
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+void ByteOutFunction(proto::FunctionBindingIoProto& io) {
+  const vector<uint8_t> data = {1, 2, 3, 4, 4, 3, 2, 1};
+  io.set_output_bytes(data.data(), data.size());
+}
+
+TEST(SandboxedServiceTest,
+     CanRegisterBindingAndExecuteCodeThatCallsItWithOutputBytes) {
+  Config config;
+  config.number_of_workers = 2;
+  auto function_binding_object = make_unique<FunctionBindingObjectV2>();
+  function_binding_object->function = ByteOutFunction;
+  function_binding_object->function_name = "get_some_bytes";
+  config.RegisterFunctionBinding(move(function_binding_object));
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler() {
+      bytes = get_some_bytes();
+      if (bytes instanceof Uint8Array) {
+        return bytes;
+      }
+
+      return "Didn't work :(";
+    }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       result = code_resp.resp;
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  EXPECT_EQ(result, R"({"0":1,"1":2,"2":3,"3":4,"4":4,"5":3,"6":2,"7":1})");
 
   status = RomaStop();
   EXPECT_TRUE(status.ok());

@@ -24,6 +24,8 @@
 #include "roma/config/src/config.h"
 #include "roma/sandbox/worker/src/worker.h"
 
+#include "error_codes.h"
+
 namespace google::scp::roma::sandbox::worker {
 class WorkerFactory {
  public:

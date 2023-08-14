@@ -35,6 +35,7 @@ using google::scp::core::errors::SC_ROMA_V8_WORKER_BIND_UNBOUND_SCRIPT_FAILED;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_FAILED_TO_PARSE_TIMEOUT_TAG;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_RESULT_PARSE_FAILURE;
+using google::scp::core::errors::SC_ROMA_V8_WORKER_SCRIPT_EXECUTION_TIMEOUT;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_UNKNOWN_CODE_TYPE;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_UNKNOWN_WASM_RETURN_TYPE;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_UNMATCHED_CODE_VERSION_NUM;
@@ -138,6 +139,15 @@ ExecutionResult ExecutionManager::Run() noexcept {
 ExecutionResult ExecutionManager::Stop() noexcept {
   DisposeV8Isolate();
   return SuccessExecutionResult();
+}
+
+ExecutionResult ExecutionManager::GetError(
+    const ExecutionResult& failure_result) noexcept {
+  if (execution_watchdog_->IsTerminateCalled()) {
+    return FailureExecutionResult(SC_ROMA_V8_WORKER_SCRIPT_EXECUTION_TIMEOUT);
+  } else {
+    return failure_result;
+  }
 }
 
 ExecutionResult ExecutionManager::Create(const RomaCodeObj& code_obj,
@@ -298,10 +308,11 @@ ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
       ExecutionUtils::InputToLocalArgv(input, code_type_ == CodeType::kWasm);
   // If argv_array size doesn't match with input. Input conversion failed.
   if (argv_array.IsEmpty() || argv_array->Length() != argc) {
-    auto exception_result =
-        ExecutionUtils::ReportException(&try_catch, err_msg);
-    return ExecutionUtils::GetExecutionResult(exception_result,
-                                              SC_ROMA_V8_WORKER_BAD_INPUT_ARGS);
+    err_msg = ExecutionUtils::DescribeError(v8_isolate_, &try_catch);
+#if defined(_SCP_ROMA_LOG_ERRORS)
+    std::cout << "Error input parse: " << err_msg << "\n" << std::endl;
+#endif
+    return FailureExecutionResult(SC_ROMA_V8_WORKER_BAD_INPUT_ARGS);
   }
   Local<Value> argv[argc];
   for (size_t i = 0; i < argc; ++i) {
@@ -313,13 +324,12 @@ ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
   Local<Value> result;
   if (!handler_func->Call(context, context->Global(), argc, argv)
            .ToLocal(&result)) {
-    execution_result = ExecutionUtils::ReportException(&try_catch, err_msg);
+    err_msg = ExecutionUtils::DescribeError(v8_isolate_, &try_catch);
 #if defined(_SCP_ROMA_LOG_ERRORS)
-    std::cout << "Error Handler Call:" << err_msg << "\n" << std::endl;
+    std::cout << "Error Handler Call: " << err_msg << "\n" << std::endl;
 #endif
-
-    return ExecutionUtils::GetExecutionResult(
-        execution_result, SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE);
+    return GetError(
+        FailureExecutionResult(SC_ROMA_V8_WORKER_CODE_EXECUTION_FAILURE));
   }
 
   // If this is a WASM run then we need to deserialize the returned data
@@ -332,20 +342,25 @@ ExecutionResult ExecutionManager::Process(const RomaCodeObj& code_obj,
   if (result->IsPromise()) {
     execution_result =
         ExecutionUtils::V8PromiseHandler(v8_isolate_, result, err_msg);
+    if (!execution_result.Successful()) {
 #if defined(_SCP_ROMA_LOG_ERRORS)
-    std::cout << "Error from V8 Promise execution: " << err_msg << "\n"
-              << std::endl;
+      std::cout << "Error from V8 Promise execution: " << err_msg << "\n"
+                << std::endl;
 #endif
-    RETURN_IF_FAILURE(execution_result);
+      return GetError(execution_result);
+    }
   }
 
   // Fetch execution result and handle exceptions.
   auto result_json_maybe = JSON::Stringify(context, result);
   Local<String> result_json;
   if (!result_json_maybe.ToLocal(&result_json)) {
-    auto result = ExecutionUtils::ReportException(&try_catch, err_msg);
-    return ExecutionUtils::GetExecutionResult(
-        result, SC_ROMA_V8_WORKER_RESULT_PARSE_FAILURE);
+    err_msg = ExecutionUtils::DescribeError(v8_isolate_, &try_catch);
+#if defined(_SCP_ROMA_LOG_ERRORS)
+    std::cout << "Error result parse: " << err_msg << "\n" << std::endl;
+#endif
+    return GetError(
+        FailureExecutionResult(SC_ROMA_V8_WORKER_RESULT_PARSE_FAILURE));
   }
 
   String::Utf8Value result_utf8(v8_isolate_, result_json);
@@ -380,8 +395,8 @@ void ExecutionManager::CreateV8Isolate(
   if (startup_data_.raw_size > 0 && startup_data_.data != nullptr) {
     create_params.snapshot_blob = &startup_data_;
   }
-  create_params.array_buffer_allocator =
-      v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+  v8_array_allocator_.reset(v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+  create_params.array_buffer_allocator = v8_array_allocator_.get();
   v8_isolate_ = Isolate::New(create_params);
 
   // Start execution_watchdog_ thread to monitor the execution time for each

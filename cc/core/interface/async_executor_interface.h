@@ -86,6 +86,8 @@ enum class AsyncExecutorAffinitySetting {
   AffinitizedToCallingAsyncExecutor = 1,
 };
 
+using TaskCancellationLambda = std::function<bool()>;
+
 /**
  * @brief AsyncExecutor is the main thread-pool of the service. It controls the
  * number of threads that are used across the application and is capable of
@@ -145,7 +147,7 @@ class AsyncExecutorInterface : public ServiceInterface {
    */
   virtual ExecutionResult ScheduleFor(
       const AsyncOperation& work, Timestamp timestamp,
-      std::function<bool()>& cancellation_callback) noexcept = 0;
+      TaskCancellationLambda& cancellation_callback) noexcept = 0;
 
   /**
    * @brief Same as above but with the given affinity setting.
@@ -153,7 +155,7 @@ class AsyncExecutorInterface : public ServiceInterface {
    */
   virtual ExecutionResult ScheduleFor(
       const AsyncOperation& work, Timestamp timestamp,
-      std::function<bool()>& cancellation_callback,
+      TaskCancellationLambda& cancellation_callback,
       AsyncExecutorAffinitySetting affinity) noexcept = 0;
 };
 }  // namespace google::scp::core

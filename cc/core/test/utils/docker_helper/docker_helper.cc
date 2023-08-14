@@ -14,11 +14,13 @@
 
 #include "docker_helper.h"
 
+#include <chrono>
 #include <cstdio>
 #include <iostream>
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
@@ -177,5 +179,17 @@ std::string GetIpAddress(const std::string& network_name,
     length -= 1;
   }
   return result.substr(0, length);
+}
+
+void GrantPermissionToFolder(const string& container_name,
+                             const string& folder) {
+  string s = absl::StrCat("docker exec -itd " + container_name + " chmod 666 " +
+                          folder);
+  auto result = std::system(s.c_str());
+  if (result != 0) {
+    throw runtime_error("Failed to grant permission!");
+  } else {
+    std::cout << "Succeeded to grant permission!" << std::endl;
+  }
 }
 }  // namespace google::scp::core::test

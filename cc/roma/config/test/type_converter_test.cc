@@ -16,6 +16,7 @@
 
 #include "roma/config/src/type_converter.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <stdint.h>
@@ -26,7 +27,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <gmock/gmock.h>
 #include <libplatform/libplatform.h>
 
 #include "include/v8.h"
@@ -49,24 +49,25 @@ using v8::Local;
 using v8::Number;
 using v8::String;
 using v8::Uint32;
+using v8::Uint8Array;
 
 namespace google::scp::roma::config::test {
 class TypeConverterTest : public ::testing::Test {
  protected:
-  void SetUp() override {
-    if (!platform_) {
-      int my_pid = getpid();
-      string proc_exe_path = string("/proc/") + to_string(my_pid) + "/exe";
-      auto my_path = make_unique<char[]>(PATH_MAX);
-      ssize_t sz = readlink(proc_exe_path.c_str(), my_path.get(), PATH_MAX);
-      ASSERT_GT(sz, 0);
-      v8::V8::InitializeICUDefaultLocation(my_path.get());
-      v8::V8::InitializeExternalStartupData(my_path.get());
-      platform_ = v8::platform::NewDefaultPlatform();
-      v8::V8::InitializePlatform(platform_.get());
-      v8::V8::Initialize();
-    }
+  static void SetUpTestSuite() {
+    const int my_pid = getpid();
+    const string proc_exe_path = string("/proc/") + to_string(my_pid) + "/exe";
+    auto my_path = std::make_unique<char[]>(PATH_MAX);
+    ssize_t sz = readlink(proc_exe_path.c_str(), my_path.get(), PATH_MAX);
+    ASSERT_GT(sz, 0);
+    v8::V8::InitializeICUDefaultLocation(my_path.get());
+    v8::V8::InitializeExternalStartupData(my_path.get());
+    platform_ = v8::platform::NewDefaultPlatform().release();
+    v8::V8::InitializePlatform(platform_);
+    v8::V8::Initialize();
+  }
 
+  void SetUp() override {
     create_params_.array_buffer_allocator =
         v8::ArrayBuffer::Allocator::NewDefaultAllocator();
     isolate_ = Isolate::New(create_params_);
@@ -77,12 +78,12 @@ class TypeConverterTest : public ::testing::Test {
     delete create_params_.array_buffer_allocator;
   }
 
-  static unique_ptr<v8::Platform> platform_;
+  static v8::Platform* platform_;
   Isolate::CreateParams create_params_;
   Isolate* isolate_;
 };
 
-unique_ptr<v8::Platform> TypeConverterTest::platform_{nullptr};
+v8::Platform* TypeConverterTest::platform_{nullptr};
 
 static void AssertStringEquality(Isolate* isolate, string& native_str,
                                  Local<String>& v8_str) {
@@ -553,5 +554,34 @@ TEST_F(TypeConverterTest, v8Uint32ToNativeShouldFailWithUnknownType) {
 
   uint32_t native_val;
   EXPECT_FALSE(TypeConverter<uint32_t>::FromV8(isolate_, v8_val, &native_val));
+}
+
+TEST_F(TypeConverterTest, NativeUint8PointerToV8) {
+  Isolate::Scope isolate_scope(isolate_);
+  HandleScope handle_scope(isolate_);
+  // Array allocation requires a context
+  Local<Context> global_context = Context::New(isolate_);
+  Context::Scope context_scope(global_context);
+
+  const vector<uint8_t> native_val = {1, 2, 3, 4};
+
+  Local<Uint8Array> v8_val = TypeConverter<uint8_t*>::ToV8(
+                                 isolate_, native_val.data(), native_val.size())
+                                 .As<Uint8Array>();
+
+  // Make sure sizes match
+  EXPECT_EQ(native_val.size(), v8_val->Length());
+
+  // Compare the actual values
+  for (int i = 0; i < native_val.size(); i++) {
+    const auto val = v8_val->Get(global_context, i).ToLocalChecked();
+    uint32_t native_int;
+    TypeConverter<uint32_t>::FromV8(isolate_, val, &native_int);
+    EXPECT_EQ(native_val.at(i), native_int);
+  }
+
+  // The above should be enough, but also compare the buffers to be thorough
+  EXPECT_EQ(
+      0, memcmp(native_val.data(), v8_val->Buffer()->Data(), v8_val->Length()));
 }
 }  // namespace google::scp::roma::config::test

@@ -128,6 +128,11 @@ static Local<Value> ProtoToV8Type(Isolate* isolate,
     }
     return TypeConverter<unordered_map<string, string>>::ToV8(isolate,
                                                               output_map);
+  } else if (proto.has_output_bytes()) {
+    const auto& bytes = proto.output_bytes();
+    return TypeConverter<uint8_t*>::ToV8(
+        isolate, reinterpret_cast<const uint8_t*>(bytes.data()),
+        bytes.length());
   }
 
   return Undefined(isolate);

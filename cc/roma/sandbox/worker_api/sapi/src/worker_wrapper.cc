@@ -179,6 +179,10 @@ StatusCode RunCodeFromSerializedData(sapi::LenValStruct* data) {
   }
 
   if (!params.SerializeToArray(serialized_data, serialized_size)) {
+    // In this failure scenario, free the buffer.
+    // We don't free it otherwise, as it is free'd in the destructor of the
+    // LenValStruct* passed to this function, which is owned by SAPI.
+    free(serialized_data);
     return SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_RESPONSE_DATA;
   }
 

@@ -63,7 +63,7 @@ cc_library(
 
 string_flag(
     name = "service",
-    build_setting_default = "legacy",
+    build_setting_default = "sandboxed",
     values = [
         "legacy",
         "sandboxed",

@@ -14,14 +14,14 @@
 
 load("//build_defs/aws/enclave:enclave_ami.bzl", "generic_enclave_ami_pkr_script")
 load("//build_defs/shared:packer_build.bzl", "packer_build")
-load("//cc/public/cpio/container:cmrt_sdk.bzl", "cmrt_sdk")
+load("//cc/public/cpio/build_deps/server:cmrt_sdk.bzl", "cmrt_sdk")
 
 _LICENSES_TARGET = Label("//licenses:licenses_tar")
 
-def aws_sdk_enclave_ami(
+def aws_sdk_server_enclave_ami(
         name,
         client_binaries,
-        ami_name = Label("//cc/public/cpio/container/aws:aws_sdk_enclave_ami_name"),
+        ami_name = Label("//cc/public/cpio/build_deps/server/aws:aws_sdk_server_enclave_ami_name"),
         aws_region = "us-east-1",
         job_service_configs = {},
         private_key_service_configs = {},

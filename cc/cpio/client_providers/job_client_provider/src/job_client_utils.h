@@ -58,6 +58,8 @@ class JobClientUtils {
    * @param created_time The created time of the job.
    * @param updated_time The updated time of the job.
    * @param visibility_timeout The visibility timeout of the job.
+   * @param retry_count The number of times the job has been attempted for
+   * processing.
    * @return google::cmrt::sdk::job_service::v1::Job The created job.
    */
   static google::cmrt::sdk::job_service::v1::Job CreateJob(
@@ -65,7 +67,8 @@ class JobClientUtils {
       const google::cmrt::sdk::job_service::v1::JobStatus& job_status,
       const google::protobuf::Timestamp& created_time,
       const google::protobuf::Timestamp& updated_time,
-      const google::protobuf::Timestamp& visibility_timeout) noexcept;
+      const google::protobuf::Timestamp& visibility_timeout,
+      const int retry_count = 0) noexcept;
 
   /**
    * @brief Convert google::protobuf::Any to string in Base64 digits.

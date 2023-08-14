@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <memory>
-
 #include <gmock/gmock.h>
+
+#include <memory>
 
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/metric_client_interface.h"
@@ -39,12 +39,11 @@ class MockMetricClient : public MetricClientInterface {
   MOCK_METHOD(core::ExecutionResult, Run, (), (noexcept, override));
   MOCK_METHOD(core::ExecutionResult, Stop, (), (noexcept, override));
 
-  MOCK_METHOD(
-      core::ExecutionResult, PutMetrics,
-      (google::cmrt::sdk::metric_service::v1::PutMetricsRequest request,
-       Callback<google::cmrt::sdk::metric_service::v1::PutMetricsResponse>
-           callback),
-      (noexcept, override));
+  MOCK_METHOD(core::ExecutionResult, PutMetrics,
+              ((core::AsyncContext<
+                  google::cmrt::sdk::metric_service::v1::PutMetricsRequest,
+                  google::cmrt::sdk::metric_service::v1::PutMetricsResponse>)),
+              (noexcept, override));
 };
 
 }  // namespace google::scp::cpio

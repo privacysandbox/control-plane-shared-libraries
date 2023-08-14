@@ -16,6 +16,8 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
+load("@rules_java//java:defs.bzl", "java_library", "java_plugin")
+
 alias(
     name = "guava",
     actual = "@maven//:com_google_guava_guava",
@@ -58,7 +60,7 @@ java_library(
         ":autoservice_plugin",
     ],
     neverlink = True,
-    exports = [":autoservice_plugin"],
+    exports = [":autoservice_annotations"],
 )
 
 alias(
@@ -181,7 +183,7 @@ java_library(
         ":autovalue_plugin",
     ],
     neverlink = True,
-    exports = [":autovalue_plugin"],
+    exports = [":autovalue_annotations"],
 )
 
 alias(

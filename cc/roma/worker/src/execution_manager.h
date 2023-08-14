@@ -103,6 +103,14 @@ class ExecutionManager : public core::ServiceInterface {
       const ipc::RomaCodeObj& code_obj, v8::Local<v8::Value>& handler,
       common::RomaString& err_msg) noexcept;
 
+  /**
+   * @brief Check if the isolate is terminated due to timeout and then return
+   * the correct error.
+   *
+   */
+  core::ExecutionResult GetError(
+      const core::ExecutionResult& failure_result) noexcept;
+
   /// @brief Create a v8 isolate instance.
   virtual void CreateV8Isolate(const intptr_t* external_references) noexcept;
 
@@ -132,6 +140,9 @@ class ExecutionManager : public core::ServiceInterface {
 
   /// An instance of UnboundScript used to cache compiled code in isolate.
   v8::Global<v8::UnboundScript> unbound_script_;
+
+  /// @brief The V8 allocator is kept here so that it's not leaked.
+  std::unique_ptr<v8::ArrayBuffer::Allocator> v8_array_allocator_;
 
   /// @brief An instance of v8 isolate.
   v8::Isolate* v8_isolate_{nullptr};

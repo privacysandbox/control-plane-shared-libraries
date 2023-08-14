@@ -29,7 +29,7 @@
 
 namespace google::scp::roma {
 enum class [[deprecated(
-    "Going forward, this value will be ignore and the only supported return "
+    "Going forward, this value will be ignored and the only supported return "
     "type will be string.")]] WasmDataType{kUnknownType, kUint32, kString,
                                            kListOfString};
 /// @brief The key of timeout tag for request.

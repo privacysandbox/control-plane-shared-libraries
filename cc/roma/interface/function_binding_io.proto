@@ -67,5 +67,6 @@ message FunctionBindingIoProto {
     string output_string = 6;
     ListOfStringProto output_list_of_string = 7;
     MapOfStringProto output_map_of_string = 8;
+    bytes output_bytes = 9;
   }
 }

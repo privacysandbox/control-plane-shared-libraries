@@ -16,24 +16,6 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
     name = "kms_client_provider_select_lib",
-    srcs =
-        select(
-            {
-                "//cc/public/cpio/interface:aws_cpio_lib_inside_tee": [
-                    "//cc/cpio/client_providers/kms_client_provider/src/aws:tee_aws_kms_client_provider_srcs",
-                ],
-                "//cc/public/cpio/interface:aws_cpio_lib_outside_tee": [
-                    "//cc/cpio/client_providers/kms_client_provider/src/aws:nontee_aws_kms_client_provider_srcs",
-                ],
-                "//cc/public/cpio/interface:gcp_cpio_lib_inside_tee": [
-                    "//cc/cpio/client_providers/kms_client_provider/src/gcp:tee_gcp_kms_client_provider_srcs",
-                ],
-                "//cc/public/cpio/interface:gcp_cpio_lib_outside_tee": [
-                    "//cc/cpio/client_providers/kms_client_provider/src/gcp:nontee_gcp_kms_client_provider_srcs",
-                ],
-            },
-            no_match_error = "Please build for AWS or GCP, inside TEE or outside TEE",
-        ),
     deps =
         select(
             {

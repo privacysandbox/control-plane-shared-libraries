@@ -133,12 +133,22 @@ ExecutionResult HttpConnectionPool::GetConnection(
       auto execution_result = http_connection->Init();
 
       if (!execution_result.Successful()) {
+        // Stop the connections already created before.
+        http_connection_entry->http_connections.pop_back();
+        for (auto& http_connection : http_connection_entry->http_connections) {
+          http_connection->Stop();
+        }
         connections_.Erase(pair.first);
         return execution_result;
       }
 
       execution_result = http_connection->Run();
       if (!execution_result.Successful()) {
+        // Stop the connections already created before.
+        http_connection_entry->http_connections.pop_back();
+        for (auto& http_connection : http_connection_entry->http_connections) {
+          http_connection->Stop();
+        }
         connections_.Erase(pair.first);
         return execution_result;
       }

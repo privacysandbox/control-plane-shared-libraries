@@ -28,7 +28,6 @@
 
 #include "core/test/utils/conditional_wait.h"
 #include "roma/interface/roma.h"
-#include "roma/roma_service/src/roma_service.h"
 #include "roma/wasm/test/testing_utils.h"
 
 using absl::StatusOr;

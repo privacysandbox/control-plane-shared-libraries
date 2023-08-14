@@ -66,6 +66,7 @@ constexpr char kJobStatusColumnName[] = "job_status";
 constexpr char kCreatedTimeColumnName[] = "created_time";
 constexpr char kUpdatedTimeColumnName[] = "updated_time";
 constexpr char kVisibilityTimeoutColumnName[] = "visibility_timeout";
+constexpr char kRetryCountColumnName[] = "retry_count";
 
 Any CreateHelloWorldProtoAsAny(google::protobuf::Timestamp created_time) {
   HelloWorld hello_world_input;
@@ -82,7 +83,8 @@ Item CreateJobAsDatabaseItem(
     const Any& job_body, const JobStatus& job_status,
     const google::protobuf::Timestamp& current_time,
     const google::protobuf::Timestamp& updated_time,
-    const google::protobuf::Timestamp& visibility_timeout) {
+    const google::protobuf::Timestamp& visibility_timeout,
+    const int retry_count) {
   auto job_body_in_string_or = google::scp::cpio::client_providers::
       JobClientUtils::ConvertAnyToBase64String(job_body);
 
@@ -105,6 +107,9 @@ Item CreateJobAsDatabaseItem(
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
           kVisibilityTimeoutColumnName, TimeUtil::ToString(visibility_timeout));
+  *item.add_attributes() =
+      google::scp::cpio::client_providers::JobClientUtils::MakeIntAttribute(
+          kRetryCountColumnName, retry_count);
 
   return item;
 }
@@ -148,10 +153,11 @@ TEST(JobClientUtilsTest, CreateJob) {
   auto visibility_timeout = current_time + TimeUtil::SecondsToDuration(30);
   auto job_body = CreateHelloWorldProtoAsAny(current_time);
   auto job_status = JobStatus::JOB_STATUS_CREATED;
+  auto retry_count = 3;
 
   auto job =
       JobClientUtils::CreateJob(kJobId, job_body, job_status, current_time,
-                                updated_time, visibility_timeout);
+                                updated_time, visibility_timeout, retry_count);
 
   EXPECT_EQ(job.job_id(), kJobId);
   HelloWorld hello_world_output;
@@ -163,6 +169,7 @@ TEST(JobClientUtilsTest, CreateJob) {
   EXPECT_EQ(job.created_time(), current_time);
   EXPECT_EQ(job.updated_time(), updated_time);
   EXPECT_EQ(job.visibility_timeout(), visibility_timeout);
+  EXPECT_EQ(job.retry_count(), retry_count);
 }
 
 TEST(JobClientUtilsTest, ConvertAnyToBase64String) {
@@ -201,13 +208,14 @@ TEST(JobClientUtilsTest, ConvertBase64StringToAny) {
 
 TEST(JobClientUtilsTest, ConvertDatabaseItemToJob) {
   auto current_time = TimeUtil::GetCurrentTime();
-  auto updated_time = current_time;
-  auto visibility_timeout = current_time + TimeUtil::SecondsToDuration(30);
   auto job_body = CreateHelloWorldProtoAsAny(current_time);
   auto job_status = JobStatus::JOB_STATUS_PROCESSING;
+  auto updated_time = current_time;
+  auto visibility_timeout = current_time + TimeUtil::SecondsToDuration(30);
+  auto retry_count = 4;
   auto job_or = JobClientUtils::ConvertDatabaseItemToJob(
       CreateJobAsDatabaseItem(job_body, job_status, current_time, updated_time,
-                              visibility_timeout));
+                              visibility_timeout, retry_count));
 
   EXPECT_SUCCESS(job_or);
 
@@ -222,6 +230,7 @@ TEST(JobClientUtilsTest, ConvertDatabaseItemToJob) {
   EXPECT_EQ(job.created_time(), current_time);
   EXPECT_EQ(job.updated_time(), updated_time);
   EXPECT_EQ(job.visibility_timeout(), visibility_timeout);
+  EXPECT_EQ(job.retry_count(), retry_count);
 }
 
 TEST(JobClientUtilsTest,
@@ -232,6 +241,7 @@ TEST(JobClientUtilsTest,
           kJobsTablePartitionKeyName, kJobId);
 
   auto current_time = TimeUtil::GetCurrentTime();
+  auto retry_count = 0;
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeIntAttribute(
           kJobStatusColumnName, JobStatus::JOB_STATUS_PROCESSING);
@@ -249,6 +259,9 @@ TEST(JobClientUtilsTest,
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
           kVisibilityTimeoutColumnName, TimeUtil::ToString(current_time));
+  *item.add_attributes() =
+      google::scp::cpio::client_providers::JobClientUtils::MakeIntAttribute(
+          kRetryCountColumnName, retry_count);
 
   EXPECT_SUCCESS(JobClientUtils::ConvertDatabaseItemToJob(item));
 }
@@ -291,13 +304,14 @@ TEST(JobClientUtilsTest,
 
 TEST(JobClientUtilsTest, CreateUpsertJobRequest) {
   auto current_time = TimeUtil::GetCurrentTime();
-  auto updated_time = current_time;
-  auto visibility_timeout = current_time + TimeUtil::SecondsToDuration(30);
   auto job_body_input = CreateHelloWorldProtoAsAny(current_time);
   auto job_status = JobStatus::JOB_STATUS_PROCESSING;
-  auto job =
-      JobClientUtils::CreateJob(kJobId, job_body_input, job_status,
-                                current_time, updated_time, visibility_timeout);
+  auto updated_time = current_time;
+  auto visibility_timeout = current_time + TimeUtil::SecondsToDuration(30);
+  auto retry_count = 2;
+  auto job = JobClientUtils::CreateJob(kJobId, job_body_input, job_status,
+                                       current_time, updated_time,
+                                       visibility_timeout, retry_count);
 
   auto job_body_input_or =
       JobClientUtils::ConvertAnyToBase64String(job_body_input);
@@ -307,7 +321,7 @@ TEST(JobClientUtilsTest, CreateUpsertJobRequest) {
   EXPECT_EQ(request->key().table_name(), kJobsTableName);
   EXPECT_EQ(request->key().partition_key().name(), kJobsTablePartitionKeyName);
   EXPECT_EQ(request->key().partition_key().value_string(), kJobId);
-  EXPECT_EQ(request->new_attributes().size(), 5);
+  EXPECT_EQ(request->new_attributes().size(), 6);
   EXPECT_EQ(request->new_attributes(0).name(), kJobBodyColumnName);
 
   EXPECT_EQ(request->new_attributes(0).value_string(), *job_body_input_or);
@@ -322,6 +336,8 @@ TEST(JobClientUtilsTest, CreateUpsertJobRequest) {
   EXPECT_EQ(request->new_attributes(4).name(), kVisibilityTimeoutColumnName);
   EXPECT_EQ(request->new_attributes(4).value_string(),
             TimeUtil::ToString(job.visibility_timeout()));
+  EXPECT_EQ(request->new_attributes(5).name(), kRetryCountColumnName);
+  EXPECT_EQ(request->new_attributes(5).value_int(), retry_count);
 }
 
 TEST(JobClientUtilsTest, CreateUpsertJobRequestWithPartialUpdate) {
@@ -336,7 +352,7 @@ TEST(JobClientUtilsTest, CreateUpsertJobRequestWithPartialUpdate) {
   EXPECT_EQ(request->key().table_name(), kJobsTableName);
   EXPECT_EQ(request->key().partition_key().name(), kJobsTablePartitionKeyName);
   EXPECT_EQ(request->key().partition_key().value_string(), job.job_id());
-  EXPECT_EQ(request->new_attributes().size(), 2);
+  EXPECT_EQ(request->new_attributes().size(), 3);
   EXPECT_EQ(request->new_attributes(0).name(), kJobStatusColumnName);
   EXPECT_EQ(request->new_attributes(0).value_int(), job.job_status());
   EXPECT_EQ(request->new_attributes(1).name(), kUpdatedTimeColumnName);
@@ -361,6 +377,8 @@ INSTANTIATE_TEST_SUITE_P(
                    SuccessExecutionResult()),
         make_tuple(JobStatus::JOB_STATUS_CREATED, JobStatus::JOB_STATUS_FAILURE,
                    SuccessExecutionResult()),
+        make_tuple(JobStatus::JOB_STATUS_PROCESSING,
+                   JobStatus::JOB_STATUS_PROCESSING, SuccessExecutionResult()),
         make_tuple(JobStatus::JOB_STATUS_PROCESSING,
                    JobStatus::JOB_STATUS_SUCCESS, SuccessExecutionResult()),
         make_tuple(JobStatus::JOB_STATUS_PROCESSING,

@@ -29,7 +29,7 @@ cc_test(
         "//cc/roma/testing/rust_wasm_list_of_string_in_list_of_string_out_example",
         "//cc/roma/testing/rust_wasm_string_in_string_out_example",
     ],
-    tags = ["exclusive"],
+    tags = ["manual"],
     deps = [
         "//cc/core/test/utils:utils_lib",
         "//cc/roma/roma_service/src:roma_service_lib",
@@ -48,6 +48,7 @@ cc_test(
     data = [
         "//cc/roma/testing/cpp_wasm_allocate_memory",
     ],
+    tags = ["manual"],
     deps = [
         "//cc/core/test/utils:utils_lib",
         "//cc/roma/roma_service/src:roma_service_lib",
@@ -64,7 +65,7 @@ cc_test(
     copts = [
         "-std=c++17",
     ],
-    tags = ["exclusive"],
+    tags = ["manual"],
     deps = [
         "//cc/core/test/utils:utils_lib",
         "//cc/roma/roma_service/src:roma_service_lib",
@@ -83,8 +84,8 @@ cc_test(
         "//cc/roma/testing/cpp_wasm_allocate_memory",
         "//cc/roma/testing/cpp_wasm_string_in_string_out_example",
     ],
-    tags = ["manual"],
     deps = [
+        "//cc/core/common/time_provider/src:time_provider_lib",
         "//cc/core/test/utils:utils_lib",
         "//cc/roma/roma_service/src:roma_service_lib",
         "//cc/roma/wasm/test:roma_wasm_testing_lib",

@@ -177,7 +177,7 @@ container_run_and_commit_layer(
 container_run_and_commit_layer(
     name = "container_to_build_cc_enclaves",
     commands = [
-        "curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.60",
+        "curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.63",
         "mkdir /tmp/crt-builder",
         "cd /tmp/crt-builder",
         "git clone --depth 1 -b v1.3.46 https://github.com/aws/s2n-tls.git",
@@ -213,9 +213,8 @@ container_run_and_commit_layer(
         "mv /tmp/crt-builder/aws-nitro-enclaves-nsm-api/target/release/libnsm.so /opt/deps/lib",
         "mv /tmp/crt-builder/aws-nitro-enclaves-nsm-api/target/release/nsm.h /opt/deps/include",
         "cd /tmp/crt-builder",
-        "git clone --depth 1 https://github.com/aws/aws-nitro-enclaves-sdk-c.git",
+        "git clone --depth 1 -b v0.4.0 https://github.com/aws/aws-nitro-enclaves-sdk-c.git",
         "cd aws-nitro-enclaves-sdk-c",
-        "git checkout 207dd09230ec176e9f34190a691b27bdd2777180",
         "git apply /opt/deps/aws_nitro_enclaves_sdk.patch",
         "cmake -DCMAKE_PREFIX_PATH=/opt/deps -DCMAKE_INSTALL_PREFIX=/opt/deps -DBUILD_SHARED_LIBS=OFF -GNinja -S . -B build",
         "cmake --build build --parallel $(nproc) --target install",

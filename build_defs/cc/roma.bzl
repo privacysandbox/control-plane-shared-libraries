@@ -14,7 +14,9 @@
 
 load("//build_defs/cc:v8.bzl", "import_v8")
 load("//build_defs/cc/shared:sandboxed_api.bzl", "sandboxed_api")
+load("//build_defs/cc:google_benchmark.bzl", "google_benchmark")
 
 def roma_dependencies(scp_repo_name = ""):
     import_v8(scp_repo_name)
     sandboxed_api(scp_repo_name)
+    google_benchmark()

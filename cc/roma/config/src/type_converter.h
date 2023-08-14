@@ -222,4 +222,15 @@ struct TypeConverter<uint32_t> {
     return true;
   }
 };
+
+template <>
+struct TypeConverter<uint8_t*> {
+  static v8::Local<v8::Value> ToV8(v8::Isolate* isolate, const uint8_t* data,
+                                   size_t data_size) {
+    v8::Local<v8::ArrayBuffer> buffer =
+        v8::ArrayBuffer::New(isolate, data_size);
+    memcpy(buffer->Data(), data, data_size);
+    return v8::Uint8Array::New(buffer, 0, data_size);
+  }
+};
 }  // namespace google::scp::roma

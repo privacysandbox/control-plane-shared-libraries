@@ -221,39 +221,17 @@ class JobClientProvider : public JobClientProviderInterface {
           get_database_item_context) noexcept;
 
   /**
-   * @brief Delete job with JOB_STATUS_SUCCEEDED status.
-   *
-   * @param update_job_status_context the update job status context.
-   */
-  void DeleteJobMessage(
-      core::AsyncContext<cmrt::sdk::job_service::v1::UpdateJobStatusRequest,
-                         cmrt::sdk::job_service::v1::UpdateJobStatusResponse>&
-          update_job_status_context) noexcept;
-
-  /**
-   * @brief Is called when the object is returned from the delete message
-   * callback.
-   *
-   * @param update_job_status_context the update job status context.
-   * @param delete_messasge_context the delete message context.
-   */
-  void OnDeleteMessageCallback(
-      core::AsyncContext<cmrt::sdk::job_service::v1::UpdateJobStatusRequest,
-                         cmrt::sdk::job_service::v1::UpdateJobStatusResponse>&
-          update_job_status_context,
-      core::AsyncContext<cmrt::sdk::queue_service::v1::DeleteMessageRequest,
-                         cmrt::sdk::queue_service::v1::DeleteMessageResponse>&
-          delete_messasge_context) noexcept;
-
-  /**
    * @brief Upsert job item with updated job status from database.
    *
    * @param update_job_status_context the update job status context.
+   * @param retry_count the number of times the job has been attempted for
+   * processing.
    */
   void UpsertUpdatedJobStatusJobItem(
       core::AsyncContext<cmrt::sdk::job_service::v1::UpdateJobStatusRequest,
                          cmrt::sdk::job_service::v1::UpdateJobStatusResponse>&
-          update_job_status_context) noexcept;
+          update_job_status_context,
+      const int retry_count) noexcept;
 
   /**
    * @brief Is called when the object is returned from the upsert job item with
@@ -261,6 +239,8 @@ class JobClientProvider : public JobClientProviderInterface {
    *
    * @param update_job_status_context the update job status context.
    * @param update_time the time when job status is updated.
+   * @param retry_count the number of times the job has been attempted for
+   * processing.
    * @param upsert_database_item_context the upsert database item context.
    */
   void OnUpsertUpdatedJobStatusJobItemCallback(
@@ -268,10 +248,46 @@ class JobClientProvider : public JobClientProviderInterface {
                          cmrt::sdk::job_service::v1::UpdateJobStatusResponse>&
           update_job_status_context,
       std::shared_ptr<google::protobuf::Timestamp> update_time,
+      const int retry_count,
       core::AsyncContext<
           cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest,
           cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemResponse>&
           upsert_database_item_context) noexcept;
+
+  /**
+   * @brief Delete job with JOB_STATUS_SUCCEEDED or JOB_STATUS_FAILED status.
+   *
+   * @param update_job_status_context the update job status context.
+   * @param update_time the time when job status is updated.
+   * @param retry_count the number of times the job has been attempted for
+   * processing.
+   */
+  void DeleteJobMessage(
+      core::AsyncContext<cmrt::sdk::job_service::v1::UpdateJobStatusRequest,
+                         cmrt::sdk::job_service::v1::UpdateJobStatusResponse>&
+          update_job_status_context,
+      std::shared_ptr<google::protobuf::Timestamp> update_time,
+      const int retry_count) noexcept;
+
+  /**
+   * @brief Is called when the object is returned from the delete message
+   * callback.
+   *
+   * @param update_job_status_context the update job status context.
+   * @param update_time the time when job status is updated.
+   * @param retry_count the number of times the job has been attempted for
+   * processing.
+   * @param delete_messasge_context the delete message context.
+   */
+  void OnDeleteMessageCallback(
+      core::AsyncContext<cmrt::sdk::job_service::v1::UpdateJobStatusRequest,
+                         cmrt::sdk::job_service::v1::UpdateJobStatusResponse>&
+          update_job_status_context,
+      std::shared_ptr<google::protobuf::Timestamp> update_time,
+      const int retry_count,
+      core::AsyncContext<cmrt::sdk::queue_service::v1::DeleteMessageRequest,
+                         cmrt::sdk::queue_service::v1::DeleteMessageResponse>&
+          delete_messasge_context) noexcept;
 
   /**
    * @brief Is called when the object is returned from the get job item for

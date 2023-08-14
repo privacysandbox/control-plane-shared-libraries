@@ -27,9 +27,9 @@ _PROXY_BINARY_FILES = [
 def sdk_image(
         *,
         name,
-        sdk_binaries,
         platform,
         inside_tee,
+        sdk_binaries = {},
         recover_client_binaries = True,
         recover_sdk_binaries = True,
         client_binaries = {},

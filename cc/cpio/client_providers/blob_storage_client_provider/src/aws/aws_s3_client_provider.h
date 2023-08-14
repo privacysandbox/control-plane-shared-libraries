@@ -22,6 +22,9 @@
 
 #include <aws/core/Aws.h>
 #include <aws/s3/S3Client.h>
+#include <aws/s3/model/CompleteMultipartUploadRequest.h>
+#include <aws/s3/model/CompletedMultipartUpload.h>
+#include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/ListObjectsRequest.h>
 
@@ -149,6 +152,140 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
       const Aws::S3::S3Client* s3_client,
       const Aws::S3::Model::PutObjectRequest& put_object_request,
       Aws::S3::Model::PutObjectOutcome put_object_outcome,
+      const std::shared_ptr<const Aws::Client::AsyncCallerContext>
+          async_context) noexcept;
+
+  struct PutBlobStreamTracker {
+    // The expected bucket and blob name for this upload. If this is different
+    // at any point in the upload, the upload fails.
+    std::string bucket_name, blob_name;
+    // The unique identifier to use for this upload.
+    std::string upload_id;
+    // The part number to use for the next part.
+    int64_t next_part_number = 1;
+    // The object used to complete the upload.
+    Aws::S3::Model::CompletedMultipartUpload completed_multipart_upload;
+
+    // Timestamp in nanoseconds of when this PutBlobStream session should
+    // expire.
+    std::chrono::nanoseconds expiry_time_ns =
+        std::chrono::duration<int64_t>::min();
+  };
+
+  /**
+   * @brief Is called when the multipart upload is created.
+   *
+   * @param put_blob_stream_context The put blob stream context object.
+   * @param s3_client An instance of the S3 client.
+   * @param create_multipart_upload_request The create multipart upload request.
+   * @param create_multipart_upload_outcome The create multipart upload outcome
+   * of the async operation.
+   * @param async_context The Aws async context. This arg is not used.
+   */
+  void OnCreateMultipartUploadCallback(
+      core::ProducerStreamingContext<
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
+          put_blob_stream_context,
+      const Aws::S3::S3Client* s3_client,
+      const Aws::S3::Model::CreateMultipartUploadRequest&
+          create_multipart_upload_request,
+      Aws::S3::Model::CreateMultipartUploadOutcome
+          create_multipart_upload_outcome,
+      const std::shared_ptr<const Aws::Client::AsyncCallerContext>
+          async_context) noexcept;
+
+  /**
+   * @brief Is called when an UploadPart is done.
+   *
+   * @param put_blob_stream_context The put blob stream context object.
+   * @param s3_client An instance of the S3 client.
+   * @param upload_part_request The upload part request.
+   * @param upload_part_outcome The upload part outcome of the async operation.
+   * @param async_context The Aws async context. This arg is not used.
+   */
+  void OnUploadPartCallback(
+      core::ProducerStreamingContext<
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
+          put_blob_stream_context,
+      std::shared_ptr<PutBlobStreamTracker> tracker,
+      const Aws::S3::S3Client* s3_client,
+      const Aws::S3::Model::UploadPartRequest& upload_part_request,
+      Aws::S3::Model::UploadPartOutcome upload_part_outcome,
+      const std::shared_ptr<const Aws::Client::AsyncCallerContext>
+          async_context) noexcept;
+
+  /**
+   * @brief Completes a multipart upload.
+   *
+   * @param put_blob_stream_context
+   * @param tracker
+   */
+  void CompleteUpload(
+      core::ProducerStreamingContext<
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
+          put_blob_stream_context,
+      std::shared_ptr<PutBlobStreamTracker> tracker);
+
+  /**
+   * @brief Is called when CompleteMultipartUpload is done.
+   *
+   * @param put_blob_stream_context The put blob stream context object.
+   * @param s3_client An instance of the S3 client.
+   * @param complete_multipart_upload_request The complete multipart upload
+   * request.
+   * @param complete_multipart_upload_outcome The complete multipart upload
+   * outcome of the async operation.
+   * @param async_context The Aws async context. This arg is not used.
+   */
+  void OnCompleteMultipartUploadCallback(
+      core::ProducerStreamingContext<
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
+          put_blob_stream_context,
+      const Aws::S3::S3Client* s3_client,
+      const Aws::S3::Model::CompleteMultipartUploadRequest&
+          complete_multipart_upload_request,
+      Aws::S3::Model::CompleteMultipartUploadOutcome
+          complete_multipart_upload_outcome,
+      const std::shared_ptr<const Aws::Client::AsyncCallerContext>
+          async_context) noexcept;
+
+  /**
+   * @brief Aborts a multipart upload.
+   *
+   * @param put_blob_stream_context
+   * @param tracker
+   */
+  void AbortUpload(
+      core::ProducerStreamingContext<
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
+          put_blob_stream_context,
+      std::shared_ptr<PutBlobStreamTracker> tracker);
+
+  /**
+   * @brief Is called when AbortMultipartUpload is done.
+   *
+   * @param put_blob_stream_context The put blob stream context object.
+   * @param s3_client An instance of the S3 client.
+   * @param abort_multipart_upload_request The abort multipart upload request.
+   * @param abort_multipart_upload_outcome The abort multipart upload outcome of
+   * the async operation.
+   * @param async_context The Aws async context. This arg is not used.
+   */
+  void OnAbortMultipartUploadCallback(
+      core::ProducerStreamingContext<
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
+          put_blob_stream_context,
+      const Aws::S3::S3Client* s3_client,
+      const Aws::S3::Model::AbortMultipartUploadRequest&
+          abort_multipart_upload_request,
+      Aws::S3::Model::AbortMultipartUploadOutcome
+          abort_multipart_upload_outcome,
       const std::shared_ptr<const Aws::Client::AsyncCallerContext>
           async_context) noexcept;
 

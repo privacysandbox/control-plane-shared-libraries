@@ -111,11 +111,11 @@ class AsyncExecutor : public AsyncExecutorInterface {
 
   ExecutionResult ScheduleFor(
       const AsyncOperation& work, Timestamp timestamp,
-      std::function<bool()>& cancellation_callback) noexcept override;
+      TaskCancellationLambda& cancellation_callback) noexcept override;
 
   ExecutionResult ScheduleFor(
       const AsyncOperation& work, Timestamp timestamp,
-      std::function<bool()>& cancellation_callback,
+      TaskCancellationLambda& cancellation_callback,
       AsyncExecutorAffinitySetting affinity) noexcept override;
 
  protected:

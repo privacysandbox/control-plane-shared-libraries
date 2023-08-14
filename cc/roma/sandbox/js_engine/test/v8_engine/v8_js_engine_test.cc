@@ -30,6 +30,7 @@ using absl::string_view;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER;
+using google::scp::core::errors::SC_ROMA_V8_ENGINE_EXECUTION_TIMEOUT;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_CODE_COMPILE_FAILURE;
 using google::scp::core::test::AutoInitRunStop;
 using google::scp::core::test::ResultIs;
@@ -356,9 +357,9 @@ TEST_F(V8JsEngineTest, CanTimeoutExecutionWithDefaultTimeoutValue) {
   auto response_or =
       engine.CompileAndRunJs(js_code, "hello_js", input, metadata);
 
-  EXPECT_THAT(response_or.result(),
-              ResultIs(FailureExecutionResult(
-                  SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER)));
+  EXPECT_THAT(
+      response_or.result(),
+      ResultIs(FailureExecutionResult(SC_ROMA_V8_ENGINE_EXECUTION_TIMEOUT)));
 }
 
 TEST_F(V8JsEngineTest, CanTimeoutExecutionWithCustomTimeoutTag) {
@@ -390,9 +391,9 @@ TEST_F(V8JsEngineTest, CanTimeoutExecutionWithCustomTimeoutTag) {
     auto response_or =
         engine.CompileAndRunJs(js_code, "hello_js", input, metadata);
 
-    EXPECT_THAT(response_or.result(),
-                ResultIs(FailureExecutionResult(
-                    SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER)));
+    EXPECT_THAT(
+        response_or.result(),
+        ResultIs(FailureExecutionResult(SC_ROMA_V8_ENGINE_EXECUTION_TIMEOUT)));
   }
 
   {

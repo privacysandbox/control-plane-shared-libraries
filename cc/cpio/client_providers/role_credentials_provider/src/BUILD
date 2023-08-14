@@ -16,13 +16,6 @@ package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
     name = "role_credentials_provider_select_lib",
-    srcs = select(
-        {
-            "//cc/public/cpio/interface:aws_cpio_lib": ["//cc/cpio/client_providers/role_credentials_provider/src/aws:aws_role_credentials_provider_srcs"],
-            "//cc/public/cpio/interface:gcp_cpio_lib": ["//cc/cpio/client_providers/role_credentials_provider/src/gcp:gcp_role_credentials_provider_srcs"],
-        },
-        no_match_error = "Please build for AWS or GCP",
-    ),
     deps = select(
         {
             "//cc/public/cpio/interface:aws_cpio_lib": [

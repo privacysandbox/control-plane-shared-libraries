@@ -63,11 +63,19 @@ ExecutionResult ExecutionWatchDog::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
+bool ExecutionWatchDog::IsTerminateCalled() noexcept {
+  return is_terminate_called_.load();
+}
+
 void ExecutionWatchDog::StartTimer(
     v8::Isolate* isolate, core::TimeDuration ms_before_timeout) noexcept {
   {
     lock_guard lock(mutex_);
+    // Cancel TerminateExecution in case there was a previous
+    // isolate->TerminateExecution() flag alive
+    isolate->CancelTerminateExecution();
     v8_isolate_ = isolate;
+    is_terminate_called_.store(false);
     nanoseconds_before_timeout_ = ms_before_timeout * kMsToNsConversionBase;
     timeout_timestamp_ =
         TimeProvider::GetSteadyTimestampInNanosecondsAsClockTicks() +
@@ -89,6 +97,7 @@ void ExecutionWatchDog::WaitForTimeout() noexcept {
         TimeProvider::GetSteadyTimestampInNanosecondsAsClockTicks();
     if (current_timestamp > timeout_timestamp_) {
       v8_isolate_->TerminateExecution();
+      is_terminate_called_.store(true);
       timeout_timestamp_ = UINT64_MAX;
     }
 

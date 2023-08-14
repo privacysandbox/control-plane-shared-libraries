@@ -77,9 +77,9 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  PutMetricsRequest request;
-  request.set_metric_namespace("test");
-  auto metric = request.add_metrics();
+  auto request = make_shared<PutMetricsRequest>();
+  request->set_metric_namespace("test");
+  auto metric = request->add_metrics();
   metric->set_name("test_metric");
   metric->set_value("12");
   metric->set_unit(MetricUnit::METRIC_UNIT_COUNT);
@@ -87,17 +87,18 @@ int main(int argc, char* argv[]) {
   labels->insert(MapPair(string("lable_key"), string("label_value")));
 
   atomic<bool> finished = false;
-  result = metric_client->PutMetrics(
+  auto context = AsyncContext<PutMetricsRequest, PutMetricsResponse>(
       move(request),
-      [&](const ExecutionResult result, PutMetricsResponse response) {
-        if (!result.Successful()) {
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse> context) {
+        if (!context.result.Successful()) {
           std::cout << "PutMetrics failed: "
-                    << GetErrorMessage(result.status_code) << std::endl;
+                    << GetErrorMessage(context.result.status_code) << std::endl;
         } else {
           std::cout << "PutMetrics succeeded." << std::endl;
         }
         finished = true;
       });
+  result = metric_client->PutMetrics(context);
   if (!result.Successful()) {
     std::cout << "PutMetrics failed immediately: "
               << GetErrorMessage(result.status_code) << std::endl;

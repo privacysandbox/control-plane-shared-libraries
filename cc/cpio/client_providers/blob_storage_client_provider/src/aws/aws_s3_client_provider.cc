@@ -24,10 +24,16 @@
 #include <aws/core/Aws.h>
 #include <aws/core/utils/Outcome.h>
 #include <aws/s3/S3Client.h>
+#include <aws/s3/model/AbortMultipartUploadRequest.h>
+#include <aws/s3/model/CompleteMultipartUploadRequest.h>
+#include <aws/s3/model/CompletedMultipartUpload.h>
+#include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/ListObjectsRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
+#include <aws/s3/model/UploadPartRequest.h>
+#include <google/protobuf/util/time_util.h>
 
 #include "absl/strings/str_cat.h"
 #include "core/async_executor/src/aws/aws_async_executor.h"
@@ -45,6 +51,14 @@ using Aws::StringStream;
 using Aws::Client::AsyncCallerContext;
 using Aws::Client::ClientConfiguration;
 using Aws::S3::S3Client;
+using Aws::S3::Model::AbortMultipartUploadOutcome;
+using Aws::S3::Model::AbortMultipartUploadRequest;
+using Aws::S3::Model::CompletedMultipartUpload;
+using Aws::S3::Model::CompletedPart;
+using Aws::S3::Model::CompleteMultipartUploadOutcome;
+using Aws::S3::Model::CompleteMultipartUploadRequest;
+using Aws::S3::Model::CreateMultipartUploadOutcome;
+using Aws::S3::Model::CreateMultipartUploadRequest;
 using Aws::S3::Model::DeleteObjectOutcome;
 using Aws::S3::Model::DeleteObjectRequest;
 using Aws::S3::Model::DeleteObjectResult;
@@ -57,6 +71,8 @@ using Aws::S3::Model::ListObjectsResult;
 using Aws::S3::Model::PutObjectOutcome;
 using Aws::S3::Model::PutObjectRequest;
 using Aws::S3::Model::PutObjectResult;
+using Aws::S3::Model::UploadPartOutcome;
+using Aws::S3::Model::UploadPartRequest;
 using google::cmrt::sdk::blob_storage_service::v1::Blob;
 using google::cmrt::sdk::blob_storage_service::v1::BlobMetadata;
 using google::cmrt::sdk::blob_storage_service::v1::DeleteBlobRequest;
@@ -71,6 +87,7 @@ using google::cmrt::sdk::blob_storage_service::v1::PutBlobRequest;
 using google::cmrt::sdk::blob_storage_service::v1::PutBlobResponse;
 using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest;
 using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse;
+using google::protobuf::util::TimeUtil;
 using google::scp::core::AsyncContext;
 using google::scp::core::AsyncExecutorInterface;
 using google::scp::core::AsyncPriority;
@@ -82,9 +99,15 @@ using google::scp::core::ProducerStreamingContext;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
+using google::scp::core::common::TimeProvider;
+using google::scp::core::errors::SC_BLOB_STORAGE_PROVIDER_EMPTY_ETAG;
 using google::scp::core::errors::SC_BLOB_STORAGE_PROVIDER_ERROR_GETTING_BLOB;
 using google::scp::core::errors::SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS;
 using google::scp::core::errors::SC_BLOB_STORAGE_PROVIDER_RETRIABLE_ERROR;
+using google::scp::core::errors::
+    SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_CANCELLED;
+using google::scp::core::errors::
+    SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_EXPIRED;
 using google::scp::core::utils::Base64Encode;
 using google::scp::core::utils::CalculateMd5Hash;
 using google::scp::cpio::client_providers::AwsInstanceClientUtils;
@@ -94,14 +117,48 @@ using std::move;
 using std::shared_ptr;
 using std::string;
 using std::vector;
+using std::chrono::duration_cast;
+using std::chrono::minutes;
+using std::chrono::nanoseconds;
+using std::chrono::seconds;
 using std::placeholders::_1;
 using std::placeholders::_2;
 using std::placeholders::_3;
 using std::placeholders::_4;
 
-static constexpr char kAwsS3Provider[] = "AwsS3ClientProvider";
-static constexpr size_t kMaxConcurrentConnections = 1000;
-static constexpr size_t kListBlobsMetadataMaxResults = 1000;
+namespace {
+constexpr char kAwsS3Provider[] = "AwsS3ClientProvider";
+constexpr size_t kMaxConcurrentConnections = 1000;
+constexpr size_t kListBlobsMetadataMaxResults = 1000;
+constexpr nanoseconds kDefaultStreamKeepaliveNanos =
+    duration_cast<nanoseconds>(minutes(5));
+constexpr nanoseconds kMaximumStreamKeepaliveNanos =
+    duration_cast<nanoseconds>(minutes(10));
+constexpr seconds kPutBlobRescanTime = seconds(5);
+
+template <typename Context, typename Request>
+ExecutionResult SetContentMd5(Context& context, Request& request,
+                              const string& body) {
+  string md5_checksum;
+  auto execution_result = CalculateMd5Hash(body, md5_checksum);
+  if (!execution_result.Successful()) {
+    SCP_ERROR_CONTEXT(kAwsS3Provider, context, execution_result,
+                      "MD5 Hash generation failed");
+    return execution_result;
+  }
+
+  string base64_md5_checksum;
+  execution_result = Base64Encode(md5_checksum, base64_md5_checksum);
+  if (!execution_result.Successful()) {
+    SCP_ERROR_CONTEXT(kAwsS3Provider, context, execution_result,
+                      "Encoding MD5 to base64 failed");
+    return execution_result;
+  }
+  request.SetContentMD5(base64_md5_checksum.c_str());
+  return SuccessExecutionResult();
+}
+
+}  // namespace
 
 namespace google::scp::cpio::client_providers {
 shared_ptr<ClientConfiguration> AwsS3ClientProvider::CreateClientConfiguration(
@@ -117,8 +174,7 @@ ExecutionResult AwsS3ClientProvider::Run() noexcept {
   auto region_code_or =
       AwsInstanceClientUtils::GetCurrentRegionCode(instance_client_);
   if (!region_code_or.Successful()) {
-    SCP_ERROR(kAwsS3Provider, kZeroUuid,
-              region_code_or.result(),
+    SCP_ERROR(kAwsS3Provider, kZeroUuid, region_code_or.result(),
               "Failed to get region code for current instance");
     return region_code_or.result();
   }
@@ -126,8 +182,8 @@ ExecutionResult AwsS3ClientProvider::Run() noexcept {
   auto client_or = s3_factory_->CreateClient(
       *CreateClientConfiguration(*region_code_or), io_async_executor_);
   if (!client_or.Successful()) {
-    SCP_ERROR(kAwsS3Provider, kZeroUuid,
-              client_or.result(), "Failed creating AWS S3 client.");
+    SCP_ERROR(kAwsS3Provider, kZeroUuid, client_or.result(),
+              "Failed creating AWS S3 client.");
     return client_or.result();
   }
   s3_client_ = std::move(*client_or);
@@ -343,24 +399,12 @@ ExecutionResult AwsS3ClientProvider::PutBlob(
   put_object_request.SetBucket(bucket_name);
   put_object_request.SetKey(blob_name);
 
-  string md5_checksum;
-  auto execution_result = CalculateMd5Hash(request.blob().data(), md5_checksum);
-  if (!execution_result.Successful()) {
-    SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_context, execution_result,
-                      "MD5 Hash generation failed");
-    put_blob_context.result = execution_result;
+  if (auto md5_result = SetContentMd5(put_blob_context, put_object_request,
+                                      request.blob().data());
+      !md5_result.Successful()) {
+    put_blob_context.result = md5_result;
     put_blob_context.Finish();
-    return execution_result;
-  }
-
-  string base64_md5_checksum;
-  execution_result = Base64Encode(md5_checksum, base64_md5_checksum);
-  if (!execution_result.Successful()) {
-    SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_context, execution_result,
-                      "Encoding MD5 to base64 failed");
-    put_blob_context.result = execution_result;
-    put_blob_context.Finish();
-    return execution_result;
+    return put_blob_context.result;
   }
 
   auto input_data = Aws::MakeShared<Aws::StringStream>(
@@ -370,7 +414,6 @@ ExecutionResult AwsS3ClientProvider::PutBlob(
                     request.blob().data().size());
 
   put_object_request.SetBody(input_data);
-  put_object_request.SetContentMD5(base64_md5_checksum.c_str());
 
   s3_client_->PutObjectAsync(put_object_request,
                              bind(&AwsS3ClientProvider::OnPutObjectCallback,
@@ -405,7 +448,318 @@ void AwsS3ClientProvider::OnPutObjectCallback(
 ExecutionResult AwsS3ClientProvider::PutBlobStream(
     ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
         put_blob_stream_context) noexcept {
-  return FailureExecutionResult(SC_UNKNOWN);
+  const auto& request = *put_blob_stream_context.request;
+  if (request.blob_portion().metadata().bucket_name().empty() ||
+      request.blob_portion().metadata().blob_name().empty() ||
+      request.blob_portion().data().empty()) {
+    put_blob_stream_context.result =
+        FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
+    SCP_ERROR_CONTEXT(
+        kAwsS3Provider, put_blob_stream_context, put_blob_stream_context.result,
+        "Put blob stream request failed. Ensure that bucket name, blob "
+        "name, and data are present.");
+    put_blob_stream_context.Finish();
+    return put_blob_stream_context.result;
+  }
+
+  CreateMultipartUploadRequest create_request;
+  create_request.SetBucket(
+      request.blob_portion().metadata().bucket_name().c_str());
+  create_request.SetKey(request.blob_portion().metadata().blob_name().c_str());
+  s3_client_->CreateMultipartUploadAsync(
+      create_request,
+      bind(&AwsS3ClientProvider::OnCreateMultipartUploadCallback, this,
+           put_blob_stream_context, _1, _2, _3, _4),
+      nullptr);
+
+  return SuccessExecutionResult();
+}
+
+void AwsS3ClientProvider::OnCreateMultipartUploadCallback(
+    ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
+        put_blob_stream_context,
+    const S3Client* s3_client,
+    const CreateMultipartUploadRequest& create_multipart_upload_request,
+    CreateMultipartUploadOutcome create_multipart_upload_outcome,
+    const std::shared_ptr<const AsyncCallerContext> async_context) noexcept {
+  if (!create_multipart_upload_outcome.IsSuccess()) {
+    put_blob_stream_context.result =
+        AwsS3Utils::ConvertS3ErrorToExecutionResult(
+            create_multipart_upload_outcome.GetError().GetErrorType());
+    SCP_ERROR_CONTEXT(
+        kAwsS3Provider, put_blob_stream_context, put_blob_stream_context.result,
+        "Create multipart upload request failed. Error code: %d, "
+        "message: %s",
+        create_multipart_upload_outcome.GetError().GetResponseCode(),
+        create_multipart_upload_outcome.GetError().GetMessage().c_str());
+    FinishStreamingContext(put_blob_stream_context.result,
+                           put_blob_stream_context, cpu_async_executor_,
+                           AsyncPriority::High);
+    return;
+  }
+  auto& request = *put_blob_stream_context.request;
+  auto tracker = make_shared<PutBlobStreamTracker>();
+  tracker->bucket_name = request.blob_portion().metadata().bucket_name();
+  tracker->blob_name = request.blob_portion().metadata().blob_name();
+  tracker->upload_id =
+      create_multipart_upload_outcome.GetResult().GetUploadId();
+  auto duration = request.has_stream_keepalive_duration()
+                      ? nanoseconds(TimeUtil::DurationToNanoseconds(
+                            request.stream_keepalive_duration()))
+                      : kDefaultStreamKeepaliveNanos;
+  if (duration > kMaximumStreamKeepaliveNanos) {
+    auto result = FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
+    SCP_ERROR_CONTEXT(
+        kAwsS3Provider, put_blob_stream_context, result,
+        "Supplied keepalive duration is greater than the maximum of "
+        "10 minutes.");
+    FinishStreamingContext(result, put_blob_stream_context,
+                           cpu_async_executor_);
+    return;
+  }
+  tracker->expiry_time_ns =
+      TimeProvider::GetWallTimestampInNanoseconds() + duration;
+
+  // Upload the first part as it is in this request.
+  UploadPartRequest part_request;
+  part_request.SetBucket(tracker->bucket_name.c_str());
+  part_request.SetKey(tracker->blob_name.c_str());
+  part_request.SetPartNumber(1);
+  part_request.SetUploadId(tracker->upload_id.c_str());
+
+  part_request.SetBody(MakeShared<StringStream>("WriteStream::Upload",
+                                                request.blob_portion().data()));
+
+  if (auto md5_result = SetContentMd5(put_blob_stream_context, part_request,
+                                      request.blob_portion().data());
+      !md5_result.Successful()) {
+    put_blob_stream_context.result = md5_result;
+    FinishStreamingContext(put_blob_stream_context.result,
+                           put_blob_stream_context, cpu_async_executor_);
+    return;
+  }
+
+  s3_client->UploadPartAsync(
+      part_request,
+      bind(&AwsS3ClientProvider::OnUploadPartCallback, this,
+           put_blob_stream_context, tracker, _1, _2, _3, _4),
+      nullptr);
+}
+
+void AwsS3ClientProvider::OnUploadPartCallback(
+    ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
+        put_blob_stream_context,
+    shared_ptr<PutBlobStreamTracker> tracker, const S3Client* s3_client,
+    const UploadPartRequest& upload_part_request,
+    UploadPartOutcome upload_part_outcome,
+    const std::shared_ptr<const AsyncCallerContext> async_context) noexcept {
+  // We get called in 2 ways:
+  // 1. UploadPart succeeds
+  // 2. The wakeup time has elapsed.
+  //
+  // In the case of 1, the part number in the request will be equal to our
+  // next_part_number. In the case of 2, the part number in the request will be
+  // the part number of the previously uploaded part - i.e. next_part_number
+  // - 1.
+  if (tracker->next_part_number == upload_part_request.GetPartNumber()) {
+    // If the most recently uploaded part is the same as the "next" one, update
+    // the trackers.
+    if (!upload_part_outcome.IsSuccess()) {
+      put_blob_stream_context.result =
+          AwsS3Utils::ConvertS3ErrorToExecutionResult(
+              upload_part_outcome.GetError().GetErrorType());
+      SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_stream_context,
+                        put_blob_stream_context.result,
+                        "Upload part request failed. Error code: %d, "
+                        "message: %s",
+                        upload_part_outcome.GetError().GetResponseCode(),
+                        upload_part_outcome.GetError().GetMessage().c_str());
+      AbortUpload(put_blob_stream_context, tracker);
+      return;
+    }
+    CompletedPart completed_part;
+    completed_part.SetPartNumber(upload_part_request.GetPartNumber());
+    const auto& etag = upload_part_outcome.GetResult().GetETag();
+    if (etag.empty()) {
+      put_blob_stream_context.result =
+          FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_EMPTY_ETAG);
+      SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_stream_context,
+                        put_blob_stream_context.result,
+                        "Upload part request failed. Error code: %d, "
+                        "message: %s",
+                        upload_part_outcome.GetError().GetResponseCode(),
+                        upload_part_outcome.GetError().GetMessage().c_str());
+      AbortUpload(put_blob_stream_context, tracker);
+      return;
+    }
+    completed_part.SetETag(etag);
+    tracker->completed_multipart_upload.AddParts(move(completed_part));
+    tracker->next_part_number++;
+  }
+
+  if (put_blob_stream_context.IsCancelled()) {
+    put_blob_stream_context.result = FailureExecutionResult(
+        SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_CANCELLED);
+    SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_stream_context,
+                      put_blob_stream_context.result,
+                      "Put blob stream request was cancelled");
+    AbortUpload(put_blob_stream_context, tracker);
+    return;
+  }
+  // If there's no message, schedule again. If there's a message - write it.
+  auto request = put_blob_stream_context.TryGetNextRequest();
+  if (request == nullptr) {
+    if (put_blob_stream_context.IsMarkedDone()) {
+      CompleteUpload(put_blob_stream_context, tracker);
+      return;
+    }
+    // If this session expired, cancel the upload and finish.
+    if (TimeProvider::GetWallTimestampInNanoseconds() >=
+        tracker->expiry_time_ns) {
+      put_blob_stream_context.result = FailureExecutionResult(
+          SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_EXPIRED);
+      SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_stream_context,
+                        put_blob_stream_context.result,
+                        "Put blob stream session expired.");
+      AbortUpload(put_blob_stream_context, tracker);
+      return;
+    }
+    // Schedule checking for a new message.
+    // Forward the old arguments to this callback so it knows that an upload was
+    // not done.
+    auto schedule_result = io_async_executor_->ScheduleFor(
+        bind(&AwsS3ClientProvider::OnUploadPartCallback, this,
+             put_blob_stream_context, tracker, s3_client, upload_part_request,
+             upload_part_outcome, async_context),
+        (TimeProvider::GetSteadyTimestampInNanoseconds() + kPutBlobRescanTime)
+            .count());
+    if (!schedule_result.Successful()) {
+      put_blob_stream_context.result = schedule_result;
+      SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_stream_context,
+                        put_blob_stream_context.result,
+                        "Put blob stream request failed to be scheduled");
+      FinishStreamingContext(schedule_result, put_blob_stream_context,
+                             cpu_async_executor_);
+    }
+    return;
+  }
+  // Validate that the new request specifies the same blob.
+  if (request->blob_portion().metadata().bucket_name() !=
+          tracker->bucket_name ||
+      request->blob_portion().metadata().blob_name() != tracker->blob_name) {
+    auto result = FailureExecutionResult(SC_BLOB_STORAGE_PROVIDER_INVALID_ARGS);
+    SCP_ERROR_CONTEXT(kAwsS3Provider, put_blob_stream_context, result,
+                      "Enqueued message does not specify the same blob (bucket "
+                      "name, blob name) as previously.");
+    FinishStreamingContext(result, put_blob_stream_context,
+                           cpu_async_executor_);
+    return;
+  }
+
+  // Upload the next part.
+  UploadPartRequest new_upload_request;
+  new_upload_request.SetBucket(tracker->bucket_name.c_str());
+  new_upload_request.SetKey(tracker->blob_name.c_str());
+  new_upload_request.SetPartNumber(tracker->next_part_number);
+  new_upload_request.SetUploadId(tracker->upload_id.c_str());
+
+  new_upload_request.SetBody(MakeShared<StringStream>(
+      "WriteStream::Upload", request->blob_portion().data()));
+
+  if (auto md5_result =
+          SetContentMd5(put_blob_stream_context, new_upload_request,
+                        request->blob_portion().data());
+      !md5_result.Successful()) {
+    put_blob_stream_context.result = md5_result;
+    FinishStreamingContext(put_blob_stream_context.result,
+                           put_blob_stream_context, cpu_async_executor_);
+    return;
+  }
+
+  s3_client->UploadPartAsync(
+      new_upload_request,
+      bind(&AwsS3ClientProvider::OnUploadPartCallback, this,
+           put_blob_stream_context, tracker, _1, _2, _3, _4),
+      nullptr);
+}
+
+void AwsS3ClientProvider::CompleteUpload(
+    ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
+        put_blob_stream_context,
+    shared_ptr<PutBlobStreamTracker> tracker) {
+  CompleteMultipartUploadRequest complete_request;
+  complete_request.SetBucket(tracker->bucket_name.c_str());
+  complete_request.SetKey(tracker->blob_name.c_str());
+  complete_request.SetUploadId(tracker->upload_id.c_str());
+  complete_request.WithMultipartUpload(tracker->completed_multipart_upload);
+
+  s3_client_->CompleteMultipartUploadAsync(
+      complete_request,
+      bind(&AwsS3ClientProvider::OnCompleteMultipartUploadCallback, this,
+           put_blob_stream_context, _1, _2, _3, _4),
+      nullptr);
+}
+
+void AwsS3ClientProvider::OnCompleteMultipartUploadCallback(
+    ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
+        put_blob_stream_context,
+    const S3Client* s3_client,
+    const CompleteMultipartUploadRequest& complete_multipart_upload_request,
+    CompleteMultipartUploadOutcome complete_multipart_upload_outcome,
+    const std::shared_ptr<const AsyncCallerContext> async_context) noexcept {
+  put_blob_stream_context.result = SuccessExecutionResult();
+  if (!complete_multipart_upload_outcome.IsSuccess()) {
+    put_blob_stream_context.result =
+        AwsS3Utils::ConvertS3ErrorToExecutionResult(
+            complete_multipart_upload_outcome.GetError().GetErrorType());
+    SCP_ERROR_CONTEXT(
+        kAwsS3Provider, put_blob_stream_context, put_blob_stream_context.result,
+        "Complete multipart upload request failed. Error code: %d, "
+        "message: %s",
+        complete_multipart_upload_outcome.GetError().GetResponseCode(),
+        complete_multipart_upload_outcome.GetError().GetMessage().c_str());
+  }
+  FinishStreamingContext(put_blob_stream_context.result,
+                         put_blob_stream_context, cpu_async_executor_,
+                         AsyncPriority::High);
+}
+
+void AwsS3ClientProvider::AbortUpload(
+    ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
+        put_blob_stream_context,
+    shared_ptr<PutBlobStreamTracker> tracker) {
+  AbortMultipartUploadRequest abort_request;
+  abort_request.SetBucket(tracker->bucket_name.c_str());
+  abort_request.SetKey(tracker->blob_name.c_str());
+  abort_request.SetUploadId(tracker->upload_id.c_str());
+
+  s3_client_->AbortMultipartUploadAsync(
+      abort_request,
+      bind(&AwsS3ClientProvider::OnAbortMultipartUploadCallback, this,
+           put_blob_stream_context, _1, _2, _3, _4),
+      nullptr);
+}
+
+void AwsS3ClientProvider::OnAbortMultipartUploadCallback(
+    ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>&
+        put_blob_stream_context,
+    const S3Client* s3_client,
+    const AbortMultipartUploadRequest& abort_multipart_upload_request,
+    AbortMultipartUploadOutcome abort_multipart_upload_outcome,
+    const std::shared_ptr<const AsyncCallerContext> async_context) noexcept {
+  if (!abort_multipart_upload_outcome.IsSuccess()) {
+    auto abort_result = AwsS3Utils::ConvertS3ErrorToExecutionResult(
+        abort_multipart_upload_outcome.GetError().GetErrorType());
+    SCP_ERROR_CONTEXT(
+        kAwsS3Provider, put_blob_stream_context, abort_result,
+        "Abort multipart upload request failed. Error code: %d, "
+        "message: %s",
+        abort_multipart_upload_outcome.GetError().GetResponseCode(),
+        abort_multipart_upload_outcome.GetError().GetMessage().c_str());
+  }
+  FinishStreamingContext(put_blob_stream_context.result,
+                         put_blob_stream_context, cpu_async_executor_,
+                         AsyncPriority::High);
 }
 
 ExecutionResult AwsS3ClientProvider::DeleteBlob(

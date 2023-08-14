@@ -40,9 +40,9 @@ class ExecutionWatchDog : public core::ServiceInterface {
 
   ~ExecutionWatchDog() { Stop(); }
 
-  virtual core::ExecutionResult Init() noexcept;
-  virtual core::ExecutionResult Run() noexcept;
-  virtual core::ExecutionResult Stop() noexcept;
+  core::ExecutionResult Init() noexcept;
+  core::ExecutionResult Run() noexcept;
+  core::ExecutionResult Stop() noexcept;
 
   /**
    * @brief Start timing the execution in the input isolate. If the execution is
@@ -51,22 +51,25 @@ class ExecutionWatchDog : public core::ServiceInterface {
    * @param isolate
    * @param ms_before_timeout
    */
-  virtual void StartTimer(v8::Isolate* isolate,
-                          core::TimeDuration ms_before_timeout) noexcept;
+  void StartTimer(v8::Isolate* isolate,
+                  core::TimeDuration ms_before_timeout) noexcept;
 
   /// @brief End timing execution. This function will reset the
   /// timeout_timestamp_ to UINT64_MAX to avoid terminate standby isolate.
-  virtual void EndTimer() noexcept;
+  void EndTimer() noexcept;
 
- protected:
+  bool IsTerminateCalled() noexcept;
+
+ private:
   /// @brief Timer function running in ExecutionWatchDog thread.
   virtual void WaitForTimeout() noexcept;
 
- private:
   /// @brief An instance of v8 isolate.
   v8::Isolate* v8_isolate_{nullptr};
   /// @brief Stop signal of ExecutionWatchDog.
   std::atomic<bool> is_stop_called_{false};
+
+  std::atomic<bool> is_terminate_called_{false};
 
   /// @brief Execution time limit for one script.
   core::TimeDuration nanoseconds_before_timeout_{UINT64_MAX};

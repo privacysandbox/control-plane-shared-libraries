@@ -66,19 +66,20 @@ static constexpr char WasmUnCompilableError[] =
 
 class ExecutionManagerTest : public ::testing::Test {
  protected:
+  static void SetUpTestSuite() {
+    const int my_pid = getpid();
+    const string proc_exe_path = string("/proc/") + to_string(my_pid) + "/exe";
+    auto my_path = std::make_unique<char[]>(PATH_MAX);
+    ssize_t sz = readlink(proc_exe_path.c_str(), my_path.get(), PATH_MAX);
+    ASSERT_GT(sz, 0);
+    v8::V8::InitializeICUDefaultLocation(my_path.get());
+    v8::V8::InitializeExternalStartupData(my_path.get());
+    platform_ = v8::platform::NewDefaultPlatform().release();
+    v8::V8::InitializePlatform(platform_);
+    v8::V8::Initialize();
+  }
+
   void SetUp() override {
-    if (!platform_) {
-      int my_pid = getpid();
-      string proc_exe_path = string("/proc/") + to_string(my_pid) + "/exe";
-      auto my_path = std::make_unique<char[]>(PATH_MAX);
-      ssize_t sz = readlink(proc_exe_path.c_str(), my_path.get(), PATH_MAX);
-      ASSERT_GT(sz, 0);
-      v8::V8::InitializeICUDefaultLocation(my_path.get());
-      v8::V8::InitializeExternalStartupData(my_path.get());
-      platform_ = v8::platform::NewDefaultPlatform();
-      v8::V8::InitializePlatform(platform_.get());
-      v8::V8::Initialize();
-    }
     config.number_of_workers = 1;
   }
 
@@ -101,10 +102,10 @@ class ExecutionManagerTest : public ::testing::Test {
 
   Config config;
   v8::Isolate* isolate_{nullptr};
-  static unique_ptr<v8::Platform> platform_;
+  static v8::Platform* platform_;
 };
 
-unique_ptr<v8::Platform> ExecutionManagerTest::platform_{nullptr};
+v8::Platform* ExecutionManagerTest::platform_{nullptr};
 
 TEST_F(ExecutionManagerTest, ProcessJsCodeMixedWithGlobalWebAssembly) {
   unique_ptr<IpcManager> manager(IpcManager::Create(config));

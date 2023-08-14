@@ -61,20 +61,20 @@ using namespace std::placeholders;  // NOLINT
 namespace google::scp::roma::config::test {
 class FunctionBindingTest : public ::testing::Test {
  protected:
-  void SetUp() override {
-    if (!platform_) {
-      int my_pid = getpid();
-      string proc_exe_path = string("/proc/") + to_string(my_pid) + "/exe";
-      auto my_path = make_unique<char[]>(PATH_MAX);
-      ssize_t sz = readlink(proc_exe_path.c_str(), my_path.get(), PATH_MAX);
-      ASSERT_GT(sz, 0);
-      v8::V8::InitializeICUDefaultLocation(my_path.get());
-      v8::V8::InitializeExternalStartupData(my_path.get());
-      platform_ = v8::platform::NewDefaultPlatform();
-      v8::V8::InitializePlatform(platform_.get());
-      v8::V8::Initialize();
-    }
+  static void SetUpTestSuite() {
+    const int my_pid = getpid();
+    const string proc_exe_path = string("/proc/") + to_string(my_pid) + "/exe";
+    auto my_path = std::make_unique<char[]>(PATH_MAX);
+    ssize_t sz = readlink(proc_exe_path.c_str(), my_path.get(), PATH_MAX);
+    ASSERT_GT(sz, 0);
+    v8::V8::InitializeICUDefaultLocation(my_path.get());
+    v8::V8::InitializeExternalStartupData(my_path.get());
+    platform_ = v8::platform::NewDefaultPlatform().release();
+    v8::V8::InitializePlatform(platform_);
+    v8::V8::Initialize();
+  }
 
+  void SetUp() override {
     create_params_.array_buffer_allocator =
         v8::ArrayBuffer::Allocator::NewDefaultAllocator();
     isolate_ = Isolate::New(create_params_);
@@ -85,12 +85,12 @@ class FunctionBindingTest : public ::testing::Test {
     delete create_params_.array_buffer_allocator;
   }
 
-  static unique_ptr<v8::Platform> platform_;
+  static v8::Platform* platform_;
   Isolate::CreateParams create_params_;
   Isolate* isolate_;
 };
 
-unique_ptr<v8::Platform> FunctionBindingTest::platform_{nullptr};
+v8::Platform* FunctionBindingTest::platform_{nullptr};
 
 // Entry point to be able to call the user-provided JS function
 static void GlobalV8FunctionCallback(const FunctionCallbackInfo<Value>& info) {

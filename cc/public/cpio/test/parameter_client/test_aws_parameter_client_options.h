@@ -25,7 +25,8 @@
 namespace google::scp::cpio {
 /// ParameterClientOptions for testing on AWS.
 struct TestAwsParameterClientOptions : public ParameterClientOptions {
-  std::shared_ptr<std::string> ssm_endpoint_override;
+  std::shared_ptr<std::string> ssm_endpoint_override =
+      std::make_shared<std::string>();
 };
 }  // namespace google::scp::cpio
 

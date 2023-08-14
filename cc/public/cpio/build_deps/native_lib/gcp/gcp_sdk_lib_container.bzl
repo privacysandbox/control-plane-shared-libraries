@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//cc/public/cpio/container:cmrt_sdk.bzl", "cmrt_sdk")
+load("//cc/public/cpio/build_deps/shared:sdk_container.bzl", "sdk_container")
 load("@io_bazel_rules_docker//container:container.bzl", "container_push")
 
-def gcp_sdk_image(
+def gcp_sdk_lib_container(
         name,
         client_binaries,
-        image_registry,
         image_repository,
+        image_registry,
         image_tag,
         inside_tee = True,
-        job_service_configs = {},
-        nosql_database_service_configs = {},
-        private_key_service_configs = {},
-        public_key_service_configs = {},
-        queue_service_configs = {}):
+        recover_client_binaries = True,
+        additional_env_variables = {},
+        additional_files = [],
+        additional_tars = [],
+        pkgs_to_install = [],
+        sdk_cmd_override = []):
     """
     Creates a runnable target for pubshing a GCP SDK image to gcloud.
     The image name is the given name, and the image will be pushed to the given
@@ -35,21 +36,22 @@ def gcp_sdk_image(
     To push the image, `bazel run` the provided name of this target.
     """
 
-    cmrt_sdk_name = "%s_cmrt_sdk" % name
-    cmrt_sdk(
-        name = cmrt_sdk_name,
-        platform = "gcp",
-        inside_tee = inside_tee,
+    sdk_container_name = "%s_sdk_container" % name
+    sdk_container(
+        name = sdk_container_name,
         client_binaries = client_binaries,
-        job_service_configs = job_service_configs,
-        nosql_database_service_configs = nosql_database_service_configs,
-        private_key_service_configs = private_key_service_configs,
-        public_key_service_configs = public_key_service_configs,
-        queue_service_configs = queue_service_configs,
+        inside_tee = inside_tee,
+        platform = "gcp",
+        additional_env_variables = additional_env_variables,
+        recover_client_binaries = recover_client_binaries,
+        additional_files = additional_files,
+        additional_tars = additional_tars,
+        pkgs_to_install = pkgs_to_install,
+        sdk_cmd_override = sdk_cmd_override,
     )
 
     # Push image to GCP
-    reproducible_container_name = "%s_reproducible_container" % cmrt_sdk_name
+    reproducible_container_name = "%s_reproducible_container" % sdk_container_name
     container_push(
         name = name,
         format = "Docker",

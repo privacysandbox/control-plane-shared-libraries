@@ -41,6 +41,12 @@ struct PartitionMetadata {
 
   PartitionId Id() const { return partition_id; }
 
+  bool operator==(const PartitionMetadata& other) const {
+    return this->partition_id == other.partition_id &&
+           this->partition_type == other.partition_type &&
+           this->partition_address_uri == other.partition_address_uri;
+  }
+
   const PartitionId partition_id;
   const PartitionType partition_type;
   const PartitionAddressUri partition_address_uri;

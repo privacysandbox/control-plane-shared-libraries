@@ -276,15 +276,6 @@ Local<Object> ExecutionUtils::GenerateWasmImports(Isolate* isolate) {
   return imports_object;
 }
 
-ExecutionResult ExecutionUtils::GetExecutionResult(
-    const ExecutionResult& exception_result, StatusCode defined_code) noexcept {
-  if (exception_result != FailureExecutionResult(SC_UNKNOWN)) {
-    return exception_result;
-  }
-
-  return FailureExecutionResult(defined_code);
-}
-
 Local<Value> ExecutionUtils::ReadFromWasmMemory(Isolate* isolate,
                                                 Local<Context>& context,
                                                 int32_t offset,

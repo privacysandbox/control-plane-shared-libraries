@@ -64,9 +64,11 @@ constexpr char kJobStatusColumnName[] = "job_status";
 constexpr char kCreatedTimeColumnName[] = "created_time";
 constexpr char kUpdatedTimeColumnName[] = "updated_time";
 constexpr char kVisibilityTimeoutColumnName[] = "visibility_timeout";
+constexpr char kRetryCountColumnName[] = "retry_count";
 const vector<string> kJobsTableRequiredColumns = {
-    kJobBodyColumnName, kJobStatusColumnName, kCreatedTimeColumnName,
-    kUpdatedTimeColumnName, kVisibilityTimeoutColumnName};
+    kJobBodyColumnName,           kJobStatusColumnName,
+    kCreatedTimeColumnName,       kUpdatedTimeColumnName,
+    kVisibilityTimeoutColumnName, kRetryCountColumnName};
 const google::protobuf::Timestamp kDefaultTimestampValue =
     TimeUtil::SecondsToTimestamp(0);
 
@@ -75,7 +77,8 @@ const map<JobStatus, set<JobStatus>> allowed_status_to_update = {
      {JobStatus::JOB_STATUS_PROCESSING, JobStatus::JOB_STATUS_SUCCESS,
       JobStatus::JOB_STATUS_FAILURE}},
     {JobStatus::JOB_STATUS_PROCESSING,
-     {JobStatus::JOB_STATUS_SUCCESS, JobStatus::JOB_STATUS_FAILURE}}};
+     {JobStatus::JOB_STATUS_PROCESSING, JobStatus::JOB_STATUS_SUCCESS,
+      JobStatus::JOB_STATUS_FAILURE}}};
 
 ExecutionResult ValidateJobItem(const Item& item) noexcept {
   if (!item.has_key() || !item.key().has_partition_key() ||
@@ -125,7 +128,8 @@ Job JobClientUtils::CreateJob(
     const string& job_id, const Any& job_body, const JobStatus& job_status,
     const google::protobuf::Timestamp& created_time,
     const google::protobuf::Timestamp& updated_time,
-    const google::protobuf::Timestamp& visibility_timeout) noexcept {
+    const google::protobuf::Timestamp& visibility_timeout,
+    const int retry_count) noexcept {
   Job job;
   job.set_job_id(job_id);
   job.set_job_status(job_status);
@@ -133,6 +137,7 @@ Job JobClientUtils::CreateJob(
   *job.mutable_created_time() = created_time;
   *job.mutable_updated_time() = updated_time;
   *job.mutable_visibility_timeout() = visibility_timeout;
+  job.set_retry_count(retry_count);
   return job;
 }
 
@@ -186,9 +191,11 @@ ExecutionResultOr<Job> JobClientUtils::ConvertDatabaseItemToJob(
   TimeUtil::FromString(
       job_attributes_map.at(kVisibilityTimeoutColumnName).value_string(),
       &visibility_timeout);
+  const int retry_count =
+      job_attributes_map.at(kRetryCountColumnName).value_int();
 
   return CreateJob(job_id, job_body, job_status, created_time, updated_time,
-                   visibility_timeout);
+                   visibility_timeout, retry_count);
 }
 
 shared_ptr<UpsertDatabaseItemRequest> JobClientUtils::CreateUpsertJobRequest(
@@ -222,6 +229,8 @@ shared_ptr<UpsertDatabaseItemRequest> JobClientUtils::CreateUpsertJobRequest(
         MakeStringAttribute(kVisibilityTimeoutColumnName,
                             TimeUtil::ToString(job.visibility_timeout()));
   }
+  *request->add_new_attributes() =
+      MakeIntAttribute(kRetryCountColumnName, job.retry_count());
   return request;
 }
 

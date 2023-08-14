@@ -65,7 +65,7 @@ class ExecutionUtils {
             .ToLocalChecked();
     v8::Local<v8::Script> script;
     if (!v8::Script::Compile(context, js_source).ToLocal(&script)) {
-      ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_CODE_COMPILE_FAILURE);
     }
@@ -76,7 +76,7 @@ class ExecutionUtils {
 
     v8::Local<v8::Value> script_result;
     if (!script->Run(context).ToLocal(&script_result)) {
-      ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_SCRIPT_RUN_FAILURE);
     }
@@ -114,9 +114,8 @@ class ExecutionUtils {
     // bail out
     if (!context->Global()->Get(context, local_name).ToLocal(&handler) ||
         !handler->IsFunction()) {
-      auto exception_result = ReportException(&try_catch, err_msg);
-      return GetExecutionResult(
-          exception_result,
+      err_msg = DescribeError(isolate, &try_catch);
+      return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_HANDLER_INVALID_FUNCTION);
     }
 
@@ -145,7 +144,7 @@ class ExecutionUtils {
                      wasm.length()));
     v8::Local<v8::WasmModuleObject> wasm_module;
     if (!module_maybe.ToLocal(&wasm_module)) {
-      ExecutionUtils::ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_WASM_COMPILE_FAILURE);
     }
@@ -155,7 +154,7 @@ class ExecutionUtils {
              ->Get(context, v8::String::NewFromUtf8(isolate, kWebAssemblyTag)
                                 .ToLocalChecked())
              .ToLocal(&web_assembly)) {
-      ExecutionUtils::ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_WASM_OBJECT_CREATION_FAILURE);
     }
@@ -165,7 +164,7 @@ class ExecutionUtils {
              ->Get(context, v8::String::NewFromUtf8(isolate, kInstanceTag)
                                 .ToLocalChecked())
              .ToLocal(&wasm_instance)) {
-      ExecutionUtils::ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_WASM_OBJECT_CREATION_FAILURE);
     }
@@ -177,7 +176,7 @@ class ExecutionUtils {
     if (!wasm_instance.As<v8::Object>()
              ->CallAsConstructor(context, 2, instance_args)
              .ToLocal(&wasm_construct)) {
-      ExecutionUtils::ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_WASM_OBJECT_CREATION_FAILURE);
     }
@@ -188,7 +187,7 @@ class ExecutionUtils {
                  context,
                  v8::String::NewFromUtf8(isolate, kExportsTag).ToLocalChecked())
              .ToLocal(&wasm_exports)) {
-      ExecutionUtils::ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_WASM_OBJECT_CREATION_FAILURE);
     }
@@ -200,7 +199,7 @@ class ExecutionUtils {
                        .ToLocalChecked(),
                    wasm_exports)
              .ToChecked()) {
-      ExecutionUtils::ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_WASM_OBJECT_CREATION_FAILURE);
     }
@@ -231,7 +230,7 @@ class ExecutionUtils {
                    v8::String::NewFromUtf8(isolate, kRegisteredWasmExports)
                        .ToLocalChecked())
              .ToLocal(&wasm_exports)) {
-      ExecutionUtils::ReportException(&try_catch, err_msg);
+      err_msg = DescribeError(isolate, &try_catch);
       return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_WASM_OBJECT_RETRIEVAL_FAILURE);
     }
@@ -247,42 +246,12 @@ class ExecutionUtils {
              ->Get(context, local_name)
              .ToLocal(&handler) ||
         !handler->IsFunction()) {
-      auto exception_result =
-          ExecutionUtils::ReportException(&try_catch, err_msg);
-      return GetExecutionResult(
-          exception_result,
+      err_msg = DescribeError(isolate, &try_catch);
+      return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_HANDLER_INVALID_FUNCTION);
     }
 
     return core::SuccessExecutionResult();
-  }
-
-  /**
-   * @brief Reports the caught exception from v8 isolate to error
-   * message, and returns associated execution result.
-   *
-   * @param try_catch the pointer to v8 try catch object.
-   * @param err_msg the reference to error message.
-   * @return core::ExecutionResult
-   */
-  template <typename StringT = common::RomaString>
-  static core::ExecutionResult ReportException(v8::TryCatch* try_catch,
-                                               StringT& err_msg) noexcept {
-    auto isolate = v8::Isolate::GetCurrent();
-    v8::HandleScope handle_scope(isolate);
-    v8::String::Utf8Value exception(isolate, try_catch->Exception());
-
-    // Checks isolate is currently terminating because of a call to
-    // TerminateExecution.
-    if (isolate->IsExecutionTerminating()) {
-      err_msg = StringT(kTimeoutErrorMsg);
-      return core::FailureExecutionResult(
-          core::errors::SC_ROMA_V8_WORKER_SCRIPT_EXECUTION_TIMEOUT);
-    }
-
-    err_msg = DescribeError(isolate, try_catch);
-
-    return core::FailureExecutionResult(SC_UNKNOWN);
   }
 
   /**
@@ -295,19 +264,6 @@ class ExecutionUtils {
   static v8::Local<v8::Array> InputToLocalArgv(
       const common::RomaVector<common::RomaString>& input,
       bool is_wasm = false) noexcept;
-
-  /**
-   * @brief Gets the execution result based on the exception_result and
-   * predefined_result. Returns the exception_result if it is defined.
-   * Otherwise, return the predefined_result.
-   *
-   * @param exception_result The exception_result from ReportException().
-   * @param defined_code The pre-defined status code.
-   * @return core::ExecutionResult
-   */
-  static core::ExecutionResult GetExecutionResult(
-      const core::ExecutionResult& exception_result,
-      core::StatusCode defined_code) noexcept;
 
   /**
    * @brief Read a value from WASM memory
@@ -599,10 +555,8 @@ class ExecutionUtils {
     v8::Local<v8::Value> script_result;
     if (!unbound_script->BindToCurrentContext()->Run(context).ToLocal(
             &script_result)) {
-      auto exception_result =
-          ExecutionUtils::ReportException(&try_catch, err_msg);
-      return ExecutionUtils::GetExecutionResult(
-          exception_result,
+      err_msg = DescribeError(isolate, &try_catch);
+      return core::FailureExecutionResult(
           core::errors::SC_ROMA_V8_WORKER_BIND_UNBOUND_SCRIPT_FAILED);
     }
 

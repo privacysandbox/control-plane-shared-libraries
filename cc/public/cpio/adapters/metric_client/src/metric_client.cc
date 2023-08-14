@@ -117,11 +117,8 @@ ExecutionResult MetricClient::Stop() noexcept {
 }
 
 core::ExecutionResult MetricClient::PutMetrics(
-    PutMetricsRequest request, Callback<PutMetricsResponse> callback) noexcept {
-  return Execute<PutMetricsRequest, PutMetricsResponse>(
-      bind(&MetricClientProviderInterface::PutMetrics, metric_client_provider_,
-           _1),
-      request, callback);
+    AsyncContext<PutMetricsRequest, PutMetricsResponse> context) noexcept {
+  return metric_client_provider_->PutMetrics(context);
 }
 
 std::unique_ptr<MetricClientInterface> MetricClientFactory::Create(
