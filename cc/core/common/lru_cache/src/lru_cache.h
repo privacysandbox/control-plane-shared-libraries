@@ -56,9 +56,7 @@ class LruCache {
     return data_.size();
   }
 
-  size_t Capacity() {
-    return capacity_;
-  }
+  size_t Capacity() { return capacity_; }
 
   bool Contains(const TKey& key) {
     std::lock_guard lock(data_mutex_);

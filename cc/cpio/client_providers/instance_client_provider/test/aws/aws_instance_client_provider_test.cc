@@ -14,6 +14,7 @@
 
 #include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <map>
@@ -25,7 +26,6 @@
 #include <aws/ec2/EC2Client.h>
 #include <aws/ec2/model/DescribeInstancesRequest.h>
 #include <aws/ec2/model/DescribeTagsRequest.h>
-#include <gmock/gmock.h>
 
 #include "absl/strings/str_format.h"
 #include "core/async_executor/mock/mock_async_executor.h"

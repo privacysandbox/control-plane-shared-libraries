@@ -33,11 +33,11 @@ filegroup(
 cmake(
     name = "s2n_tls",
     cache_entries = {
+        "BUILD_S2N": "true",
+        "BUILD_SHARED_LIBS": "ON",
         "BUILD_TESTING": "0",
         "DISABLE_WERROR": "ON",
         "S2N_LIBCRYPTO": "boringssl",
-        "BUILD_SHARED_LIBS": "ON",
-        "BUILD_S2N": "true",
     },
     includes = [
         "include",

@@ -19,13 +19,16 @@
 #include <unistd.h>
 
 #include <string>
-#include <unordered_map>
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/strings/numbers.h"
 
 #include "error_codes.h"
 
+using absl::flat_hash_map;
+using absl::SimpleAtoi;
 using std::string;
-using std::unordered_map;
 using std::vector;
 
 using google::scp::core::ExecutionResult;
@@ -38,7 +41,7 @@ using google::scp::core::errors::SC_ROMA_WORKER_STR_CONVERT_INT_FAIL;
 namespace google::scp::roma::sandbox::worker {
 
 ExecutionResultOr<string> WorkerUtils::GetValueFromMetadata(
-    const unordered_map<string, string>& metadata, const string& key) noexcept {
+    const flat_hash_map<string, string>& metadata, const string& key) noexcept {
   if (metadata.find(key) == metadata.end()) {
     return FailureExecutionResult(SC_ROMA_WORKER_MISSING_METADATA_ITEM);
   }
@@ -48,12 +51,11 @@ ExecutionResultOr<string> WorkerUtils::GetValueFromMetadata(
 
 ExecutionResultOr<int> WorkerUtils::ConvertStrToInt(
     const string& value) noexcept {
-  try {
-    auto timeout_ms = stoi(value);
-    return timeout_ms;
-  } catch (...) {
+  int converted_int;
+  if (!SimpleAtoi(value, &converted_int)) {
     return FailureExecutionResult(SC_ROMA_WORKER_STR_CONVERT_INT_FAIL);
   }
+  return converted_int;
 }
 
 }  // namespace google::scp::roma::sandbox::worker

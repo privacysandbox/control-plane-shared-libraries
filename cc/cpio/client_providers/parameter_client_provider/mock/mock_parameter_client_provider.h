@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <memory>
-
 #include <gmock/gmock.h>
+
+#include <memory>
 
 #include "cpio/client_providers/interface/parameter_client_provider_interface.h"
 

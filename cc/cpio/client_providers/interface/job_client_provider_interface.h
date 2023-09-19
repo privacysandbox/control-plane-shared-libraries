@@ -21,9 +21,9 @@
 
 #include "core/interface/async_context.h"
 #include "core/interface/service_interface.h"
-#include "cpio/client_providers/interface/nosql_database_client_provider_interface.h"
-#include "cpio/client_providers/interface/queue_client_provider_interface.h"
+#include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/job_client/type_def.h"
 #include "public/cpio/proto/job_service/v1/job_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
@@ -90,14 +90,17 @@ class JobClientProviderInterface : public core::ServiceInterface {
           cmrt::sdk::job_service::v1::UpdateJobVisibilityTimeoutRequest,
           cmrt::sdk::job_service::v1::UpdateJobVisibilityTimeoutResponse>&
           update_job_visibility_timeout_context) noexcept = 0;
-};
 
-/// Configurations for JobClient.
-struct JobClientOptions {
-  virtual ~JobClientOptions() = default;
-
-  // The name of the table to store job data.
-  std::string job_table_name;
+  /**
+   * @brief Deletes the orphaned job from the job queue.
+   * @param delete_orphaned_job_context context of the operation.
+   * @return ExecutionResult result of the operation.
+   */
+  virtual core::ExecutionResult DeleteOrphanedJobMessage(
+      core::AsyncContext<
+          cmrt::sdk::job_service::v1::DeleteOrphanedJobMessageRequest,
+          cmrt::sdk::job_service::v1::DeleteOrphanedJobMessageResponse>&
+          delete_orphaned_job_context) noexcept = 0;
 };
 
 class JobClientProviderFactory {
@@ -106,18 +109,17 @@ class JobClientProviderFactory {
    * @brief Factory to create JobClientProvider.
    *
    * @param options JobClientOptions.
-   * @param queue_client Queue Client.
-   * @param nosql_database_client NoSQL Database Client.
-   * @param async_executor Async Eexcutor.
+   * @param instance_client Instance Client.
+   * @param cpu_async_executor CPU Async Eexcutor.
+   * @param io_async_executor IO Async Eexcutor.
    * @return std::shared_ptr<JobClientProviderInterface> created
    * JobClientProviderProvider.
    */
   static std::shared_ptr<JobClientProviderInterface> Create(
       const std::shared_ptr<JobClientOptions>& options,
-      const std::shared_ptr<QueueClientProviderInterface>& queue_client,
-      const std::shared_ptr<NoSQLDatabaseClientProviderInterface>&
-          nosql_database_client,
+      const std::shared_ptr<InstanceClientProviderInterface> instance_client,
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
       const std::shared_ptr<core::AsyncExecutorInterface>&
-          async_executor) noexcept;
+          io_async_executor) noexcept;
 };
 }  // namespace google::scp::cpio::client_providers

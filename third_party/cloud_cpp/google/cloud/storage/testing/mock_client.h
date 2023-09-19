@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_TESTING_MOCK_CLIENT_H_
 #define THIRD_PARTY_CLOUD_CPP_GOOGLE_CLOUD_STORAGE_TESTING_MOCK_CLIENT_H_
 
-#include "google/cloud/storage/client.h"
-#include "google/cloud/storage/internal/raw_client.h"
-#include <gmock/gmock.h>
 #include <memory>
 #include <string>
 #include <utility>
+
+#include <gmock/gmock.h>
+
+#include "google/cloud/storage/client.h"
+#include "google/cloud/storage/internal/raw_client.h"
 
 namespace google {
 namespace cloud {

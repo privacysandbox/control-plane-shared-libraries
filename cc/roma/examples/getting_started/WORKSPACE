@@ -47,14 +47,15 @@ load("@com_google_scp//build_defs/cc:roma.bzl", "roma_dependencies")
 
 roma_dependencies("@com_google_scp")
 
+load(
+    "@com_google_sandboxed_api//sandboxed_api/bazel:llvm_config.bzl",
+    "llvm_disable_optional_support_deps",
+)
+
 # Must be right after roma_dependencies
 load(
     "@com_google_sandboxed_api//sandboxed_api/bazel:sapi_deps.bzl",
     "sapi_deps",
-)
-load(
-    "@com_google_sandboxed_api//sandboxed_api/bazel:llvm_config.bzl",
-    "llvm_disable_optional_support_deps",
 )
 
 llvm_disable_optional_support_deps()

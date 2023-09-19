@@ -61,18 +61,18 @@ packer_build = rule(
     """,
     implementation = _packer_build_impl,
     attrs = {
+        "packer_binary": attr.label(
+            default = Label("@packer//:packer"),
+            executable = True,
+            cfg = "exec",
+            allow_single_file = True,
+        ),
         "packer_file": attr.label(
             mandatory = True,
             allow_single_file = True,
             # TODO: should ensuring runfiles are passed forward be enforced by
             # requiring a custom "PackerInfo" provider?
             doc = "Packer file to run. Must end in '.pkr.hcl'",
-        ),
-        "packer_binary": attr.label(
-            default = Label("@packer//:packer"),
-            executable = True,
-            cfg = "host",
-            allow_single_file = True,
         ),
     },
     executable = True,

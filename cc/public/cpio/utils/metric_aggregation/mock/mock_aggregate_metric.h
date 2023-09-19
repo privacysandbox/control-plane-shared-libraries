@@ -24,7 +24,7 @@
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/utils/metric_aggregation/interface/aggregate_metric_interface.h"
 
-namespace google::scp::cpio::client_providers::mock {
+namespace google::scp::cpio {
 class MockAggregateMetric : public AggregateMetricInterface {
  public:
   MockAggregateMetric() {}
@@ -43,8 +43,13 @@ class MockAggregateMetric : public AggregateMetricInterface {
 
   core::ExecutionResult Increment(
       const std::string& event_code) noexcept override {
+    return IncrementBy(1, event_code);
+  }
+
+  core::ExecutionResult IncrementBy(
+      uint64_t value, const std::string& event_code) noexcept override {
     std::unique_lock lock(mutex_);
-    metric_count_map_[event_code] = GetCounter(event_code) + 1;
+    metric_count_map_[event_code] = GetCounter(event_code) + value;
     return core::SuccessExecutionResult();
   }
 
@@ -59,4 +64,4 @@ class MockAggregateMetric : public AggregateMetricInterface {
   std::mutex mutex_;
   absl::flat_hash_map<std::string, size_t> metric_count_map_;
 };
-}  // namespace google::scp::cpio::client_providers::mock
+}  // namespace google::scp::cpio

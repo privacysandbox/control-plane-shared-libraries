@@ -308,27 +308,6 @@ TEST_F(FunctionBindingTest, PassingNullValueToFunction) {
 }
 
 // User provided JS function
-static string FunctionThatThrows(tuple<string>& input) {
-  throw runtime_error("Some error :)");
-  return "";
-}
-
-TEST_F(FunctionBindingTest, FunctionBindingThrowsException) {
-  // Function that returns a string and takes in a string as input
-  FunctionBindingObject<string, string> func;
-  // Set the name by which the function will be called in JS
-  func.function_name = "func_that_throws";
-  // Set the C++ callback for the JS function
-  func.function = FunctionThatThrows;
-
-  auto result = RunV8Function(isolate_, "func_that_throws('Input');", func);
-
-  EXPECT_EQ(result,
-            "Uncaught Error: (func_that_throws) Error encountered while "
-            "executing c++ function: Some error :)");
-}
-
-// User provided JS function
 static vector<string> StringInputVectorOfStringOutput(tuple<string>& input) {
   vector<string> output;
   output.push_back(get<0>(input));

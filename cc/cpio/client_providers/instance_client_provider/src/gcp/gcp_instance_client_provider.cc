@@ -64,6 +64,8 @@ using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
     SC_GCP_INSTANCE_CLIENT_INSTANCE_DETAILS_RESPONSE_MALFORMED;
 using google::scp::core::errors::
+    SC_GCP_INSTANCE_CLIENT_INVALID_INSTANCE_RESOURCE_TYPE;
+using google::scp::core::errors::
     SC_GCP_INSTANCE_CLIENT_PROVIDER_SERVICE_UNAVAILABLE;
 using google::scp::core::errors::
     SC_GCP_INSTANCE_CLIENT_RESOURCE_TAGS_RESPONSE_MALFORMED;
@@ -108,7 +110,7 @@ constexpr char kMetadataFlavorHeaderKey[] = "Metadata-Flavor";
 constexpr char kMetadataFlavorHeaderValue[] = "Google";
 
 constexpr char kGcpInstanceRNFormatString[] =
-    "//compute.googleapis.com/%s/instances/%s";
+    "//compute.googleapis.com/projects/%s/zones/%s/instances/%s";
 
 constexpr char kInstanceResourceNamePrefix[] = "//compute.googleapis.com/";
 constexpr char kGcpInstanceGetUrlPrefix[] =
@@ -217,6 +219,11 @@ ExecutionResult GcpInstanceClientProvider::GetCurrentInstanceResourceName(
       make_shared<InstanceResourceNameTracker>();
 
   auto execution_result = MakeHttpRequestsForInstanceResourceName(
+      get_resource_name_context, http_uri_project_id_,
+      instance_resource_name_tracker, ResourceType::kProjectId);
+  RETURN_IF_FAILURE(execution_result);
+
+  execution_result = MakeHttpRequestsForInstanceResourceName(
       get_resource_name_context, http_uri_instance_zone_,
       instance_resource_name_tracker, ResourceType::kZone);
   RETURN_IF_FAILURE(execution_result);
@@ -302,12 +309,36 @@ void GcpInstanceClientProvider::OnGetInstanceResourceName(
     return;
   }
 
-  if (type == ResourceType::kInstanceId) {
-    instance_resource_name_tracker->instance_id =
-        http_client_context.response->body.ToString();
-  } else {
-    instance_resource_name_tracker->instance_zone_resp =
-        http_client_context.response->body.ToString();
+  switch (type) {
+    case ResourceType::kProjectId: {
+      instance_resource_name_tracker->project_id =
+          http_client_context.response->body.ToString();
+      break;
+    }
+    case ResourceType::kInstanceId: {
+      instance_resource_name_tracker->instance_id =
+          http_client_context.response->body.ToString();
+      break;
+    }
+    case ResourceType::kZone: {
+      // The response from zone fetching is
+      // `projects/PROJECT_NUMBER/zones/ZONE_ID`, and the project number is
+      // different from project ID. In some cases, the project number doesn't
+      // work. (e.g, in the spanner, using project number will have permission
+      // issue)
+      vector<string> splits =
+          absl::StrSplit(http_client_context.response->body.ToString(), "/");
+      instance_resource_name_tracker->instance_zone = move(splits.back());
+      break;
+    }
+    default: {
+      get_resource_name_context.result = FailureExecutionResult(
+          SC_GCP_INSTANCE_CLIENT_INVALID_INSTANCE_RESOURCE_TYPE);
+      SCP_ERROR_CONTEXT(kGcpInstanceClientProvider, get_resource_name_context,
+                        get_resource_name_context.result,
+                        "Invalid instance resource type %d.", type);
+      get_resource_name_context.Finish();
+    }
   }
 
   auto prev_unfinished =
@@ -315,14 +346,12 @@ void GcpInstanceClientProvider::OnGetInstanceResourceName(
   if (prev_unfinished == 1) {
     get_resource_name_context.response =
         make_shared<GetCurrentInstanceResourceNameResponse>();
-    // The response from zone fetching is `projects/PROJECT_ID/zones/ZONE_ID`;
-    // The response from instance id fetching is just `INSTANCE_ID`;
-    // Format these two responses to
+    // The instance resource name is
     // `projects/PROJECT_ID/zones/ZONE_ID/instances/INSTANCE_ID`.
-    auto resource_name =
-        StrFormat(kGcpInstanceRNFormatString,
-                  instance_resource_name_tracker->instance_zone_resp,
-                  instance_resource_name_tracker->instance_id);
+    auto resource_name = StrFormat(
+        kGcpInstanceRNFormatString, instance_resource_name_tracker->project_id,
+        instance_resource_name_tracker->instance_zone,
+        instance_resource_name_tracker->instance_id);
     get_resource_name_context.response->set_instance_resource_name(
         resource_name);
     get_resource_name_context.result = SuccessExecutionResult();

@@ -24,6 +24,7 @@
 #include "core/interface/service_interface.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/metric_client/metric_client_interface.h"
 #include "public/cpio/interface/metric_client/type_def.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 #include "public/cpio/utils/metric_aggregation/interface/type_def.h"
@@ -56,34 +57,15 @@ struct MetricBatchingOptions {
       std::chrono::milliseconds(30000);
 };
 
-/**
- * @brief Responsible to record custom metrics for clients.
- */
-class MetricClientProviderInterface : public core::ServiceInterface {
- public:
-  virtual ~MetricClientProviderInterface() = default;
-
-  /**
-   * @brief Records the custom Metric for Clients.
-   *
-   * @param record_metric_context the context of custom metric.
-   * @return core::ExecutionResult the execution result of the operation.
-   */
-  virtual core::ExecutionResult PutMetrics(
-      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
-                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
-          record_metric_context) noexcept = 0;
-};
-
 class MetricClientProviderFactory {
  public:
   /**
    * @brief Factory to create MetricClientProvider.
    *
-   * @return std::shared_ptr<MetricClientProviderInterface> created
+   * @return std::shared_ptr<MetricClientInterface> created
    * MetricClientProvider.
    */
-  static std::shared_ptr<MetricClientProviderInterface> Create(
+  static std::shared_ptr<MetricClientInterface> Create(
       const std::shared_ptr<MetricClientOptions>& options,
       const std::shared_ptr<InstanceClientProviderInterface>&
           instance_client_provider,

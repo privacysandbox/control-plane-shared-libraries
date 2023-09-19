@@ -28,11 +28,12 @@
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/metric_client/metric_client_interface.h"
 
 namespace google::scp::cpio::client_providers {
-/*! @copydoc MetricClientProviderInterface
+/*! @copydoc MetricClientInterface
  */
-class MetricClientProvider : public MetricClientProviderInterface {
+class MetricClientProvider : public MetricClientInterface {
  public:
   virtual ~MetricClientProvider() = default;
 
@@ -61,7 +62,7 @@ class MetricClientProvider : public MetricClientProviderInterface {
 
   core::ExecutionResult PutMetrics(
       core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
-                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>
           record_metric_context) noexcept override;
 
  protected:

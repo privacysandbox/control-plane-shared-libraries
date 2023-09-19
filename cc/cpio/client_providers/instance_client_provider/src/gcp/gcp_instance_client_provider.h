@@ -70,12 +70,14 @@ class GcpInstanceClientProvider : public InstanceClientProviderInterface {
  private:
   // The tracker for instance resource id fetching status.
   struct InstanceResourceNameTracker {
+    // Project ID fetching response.
+    std::string project_id;
     // Instance zone fetching response.
-    std::string instance_zone_resp;
+    std::string instance_zone;
     // Instance id fetching response.
     std::string instance_id;
     // Num of outstanding calls left.
-    std::atomic<size_t> num_outstanding_calls{2};
+    std::atomic<size_t> num_outstanding_calls{3};
     // Whether get_resource_name_context got failure result
     std::atomic<bool> got_failure{false};
   };
@@ -83,6 +85,7 @@ class GcpInstanceClientProvider : public InstanceClientProviderInterface {
   enum class ResourceType {
     kZone = 1,
     kInstanceId = 2,
+    kProjectId = 3,
   };
 
   /**

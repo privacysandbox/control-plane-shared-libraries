@@ -37,6 +37,8 @@ static constexpr char kTimeoutMsTag[] = "TimeoutMs";
 /// @brief Default value for request execution timeout. If no timeout tag is
 /// set, the default value will be used.
 static constexpr int kDefaultExecutionTimeoutMs = 5000;
+/// @brief The wasm code array name tag for request.
+static constexpr char kWasmCodeArrayName[] = "roma.request.wasm_array_name";
 
 // The code object containing untrusted code to be loaded into the Worker.
 struct CodeObject {
@@ -46,8 +48,10 @@ struct CodeObject {
   uint64_t version_num;
   // The javascript code to execute. If empty, this code object is wasm only.
   std::string js;
-  // The wasm code to execute or to call from js.
+  // The wasm code to be executed in standalone mode.
   std::string wasm;
+  // The wasm code array to be loaded and instantiated from the driver JS code.
+  std::vector<std::uint8_t> wasm_bin;
   // Any key-value pair tags associated with this code object.
   absl::flat_hash_map<std::string, std::string> tags;
 };
@@ -82,7 +86,8 @@ struct InvocationRequest {
       "type will be string.")]] WasmDataType wasm_return_type;
   // Any key-value pair tags associated with this code object.
   absl::flat_hash_map<std::string, std::string> tags;
-  // The input arguments to invoke the handler function.
+  // The input arguments to invoke the handler function. The InputType string is
+  // in a format that can be parsed as JSON.
   std::vector<InputType> input;
 };
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -30,5 +32,6 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/core/interface:type_def_lib",
         "//cc/public/core/interface:execution_result",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+
 package(default_visibility = ["//visibility:public"])
 
 java_test(
@@ -19,6 +21,7 @@ java_test(
     srcs = ["FrontendServiceImplTest.java"],
     deps = [
         ":service",
+        "//cc/public/cpio/proto/job_service/v1:job_service_java_proto",
         "//java/com/google/scp/operator/frontend/injection/modules/testing:fake_frontend_module",
         "//java/com/google/scp/operator/frontend/service",
         "//java/com/google/scp/operator/frontend/service/converter",
@@ -53,6 +56,7 @@ java_library(
     name = "service",
     srcs = ["ServiceJobGenerator.java"],
     deps = [
+        "//cc/public/cpio/proto/job_service/v1:job_service_java_proto",
         "//java/com/google/scp/operator/frontend/service/model",
         "//java/com/google/scp/operator/shared/model",
         "//java/external:acai",

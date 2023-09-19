@@ -1,7 +1,7 @@
 # ParameterClient
 
-Responsible for manage parameter metadata in cloud.  
-In AWS, the parameter metadata are stored in ParameterStore.  
+Responsible for manage parameter metadata in cloud.
+In AWS, the parameter metadata are stored in ParameterStore.
 In GCP, the parameter metadata are stored in SecretManager.
 
 # Build

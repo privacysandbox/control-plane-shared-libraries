@@ -24,23 +24,15 @@
 
 #include "core/interface/errors.h"
 #include "core/os/src/linux/system_resource_info_provider_linux.h"
-
-#if defined(_SCP_ROMA_SANDBOXED_LIBRARY)
+#include "roma/logging/src/logging.h"
 #include "roma/sandbox/roma_service/src/roma_service.h"
-using google::scp::roma::sandbox::roma_service::RomaService;
-#else
-#warning Roma legacy/v1 has been deprecated and no new features \
-or bug fixes will be added to it. Please use Roma sandboxed/v2.
-
-#include "roma_service.h"
-using google::scp::roma::roma_service::RomaService;
-#endif
 
 using absl::OkStatus;
 using absl::Status;
 using absl::StatusCode;
 using google::scp::core::errors::GetErrorMessage;
 using google::scp::core::os::linux::SystemResourceInfoProviderLinux;
+using google::scp::roma::sandbox::roma_service::RomaService;
 using std::make_unique;
 using std::move;
 using std::string;
@@ -104,7 +96,8 @@ Status BatchExecuteInternal(vector<RequestT>& batch,
   auto result = roma_service->Dispatcher().DispatchBatch(batch, batch_callback);
   if (!result.Successful()) {
     return Status(StatusCode::kInternal,
-                  "Roma Batch Execute failed due to dispatch error.");
+                  "Roma Batch Execute failed due to dispatch error: " +
+                      string(GetErrorMessage(result.status_code)));
   }
   return OkStatus();
 }
@@ -116,6 +109,8 @@ static bool RomaHasEnoughMemoryForStartup(const Config& config) {
 
   SystemResourceInfoProviderLinux mem_info;
   auto available_memory_or = mem_info.GetAvailableMemoryKb();
+  ROMA_VLOG(1) << "Available memory is " << available_memory_or.value()
+               << " Kb";
   if (!available_memory_or.result().Successful()) {
     // Failing to read the meminfo file should not stop startup.
     // This mem check is a best-effort check.
@@ -132,6 +127,8 @@ static bool RomaHasEnoughMemoryForStartup(const Config& config) {
       (config.number_of_workers > 0 && config.number_of_workers <= cpu_count)
           ? config.number_of_workers
           : cpu_count;
+
+  ROMA_VLOG(1) << "Number of workers is " << num_processes;
 
   auto minimum_memory_needed =
       num_processes * kDefaultMinimumStartupMemoryNeededPerWorkerKb;
@@ -203,6 +200,18 @@ Status LoadCodeObj(unique_ptr<CodeObject> code_object, Callback callback) {
     return Status(StatusCode::kInternal,
                   "Roma LoadCodeObj failed due to empty code content.");
   }
+  if (!code_object->wasm.empty() && !code_object->wasm_bin.empty()) {
+    return Status(StatusCode::kInternal,
+                  "Roma LoadCodeObj failed due to wasm code and wasm code "
+                  "array conflict.");
+  }
+  if (!code_object->wasm_bin.empty() !=
+      code_object->tags.contains(kWasmCodeArrayName)) {
+    return Status(StatusCode::kInternal,
+                  "Roma LoadCodeObj failed due to empty wasm_bin or "
+                  "missing wasm code array name tag.");
+  }
+
   auto* roma_service = RomaService::Instance();
   auto result =
       roma_service->Dispatcher().Broadcast(move(code_object), callback);

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -68,6 +70,7 @@ cc_library(
         "//cc/public/core/interface:execution_result",
         "//cc/roma/interface:roma_function_binding_io_cc_proto",
         "//cc/roma/sandbox/constants:roma_constants_lib",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_sandboxed_api//sandboxed_api:sapi",
         "@com_google_sandboxed_api//sandboxed_api:vars",
     ],

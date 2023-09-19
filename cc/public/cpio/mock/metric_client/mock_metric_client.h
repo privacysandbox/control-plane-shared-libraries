@@ -24,7 +24,7 @@
 #include "public/cpio/interface/metric_client/metric_client_interface.h"
 
 namespace google::scp::cpio {
-class MockMetricClient : public MetricClientInterface {
+class MockMetricClient : public testing::NiceMock<MetricClientInterface> {
  public:
   MockMetricClient() {
     ON_CALL(*this, Init)

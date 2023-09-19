@@ -29,9 +29,9 @@
 #include "core/message_router/src/error_codes.h"
 #include "core/message_router/src/message_router.h"
 #include "core/test/utils/conditional_wait.h"
-#include "cpio/client_providers/metric_client_provider/mock/mock_metric_client_provider.h"
 #include "public/core/interface/execution_result.h"
 #include "public/core/test/interface/execution_result_matchers.h"
+#include "public/cpio/mock/metric_client/mock_metric_client.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 #include "public/cpio/utils/metric_aggregation/interface/type_def.h"
 #include "public/cpio/utils/metric_aggregation/mock/mock_simple_metric_with_overrides.h"
@@ -47,8 +47,7 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::test::WaitUntil;
-using google::scp::cpio::client_providers::mock::MockMetricClientProvider;
-using google::scp::cpio::client_providers::mock::MockSimpleMetricOverrides;
+using google::scp::cpio::MockMetricClient;
 using std::make_shared;
 using std::shared_ptr;
 using std::static_pointer_cast;
@@ -57,7 +56,7 @@ using std::vector;
 
 namespace google::scp::cpio {
 TEST(SimpleMetricTest, Push) {
-  auto mock_metric_client = make_shared<MockMetricClientProvider>();
+  auto mock_metric_client = make_shared<MockMetricClient>();
   auto metric_name = make_shared<MetricName>("FrontEndRequestCount");
   auto metric_unit = make_shared<MetricUnit>(MetricUnit::kCount);
   auto metric_info = make_shared<MetricDefinition>(metric_name, metric_unit);
@@ -100,7 +99,7 @@ TEST(SimpleMetricTest, Push) {
 }
 
 TEST(SimpleMetricTest, RunMetricPush) {
-  auto mock_metric_client = make_shared<MockMetricClientProvider>();
+  auto mock_metric_client = make_shared<MockMetricClient>();
   auto metric_name = make_shared<MetricName>("FrontEndRequestCount");
   auto metric_unit = make_shared<MetricUnit>(MetricUnit::kCount);
   auto metric_info = make_shared<MetricDefinition>(metric_name, metric_unit);
@@ -122,7 +121,7 @@ TEST(SimpleMetricTest, RunMetricPush) {
   Metric metric_received;
   bool record_metric_is_called = false;
 
-  EXPECT_CALL(*mock_metric_client, PutMetrics).WillOnce([&](auto& context) {
+  EXPECT_CALL(*mock_metric_client, PutMetrics).WillOnce([&](auto context) {
     record_metric_is_called = true;
     metric_received.CopyFrom(context.request->metrics()[0]);
     context.result = FailureExecutionResult(123);

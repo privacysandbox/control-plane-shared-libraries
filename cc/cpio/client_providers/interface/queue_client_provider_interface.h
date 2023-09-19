@@ -85,16 +85,6 @@ struct QueueClientOptions {
    *
    */
   std::string queue_name;
-
-  /**
-   * @brief Optional. The default value of visibility timeout. When a message is
-   * received from a client, it stays in the queue. The queue sets the
-   * visibility timeout to the message, a period of time during which queue
-   * prevents other client from receiving and processing this message. The
-   * default visiblity timeout is 600 seconds. The minimum is 0 sesocnds and
-   * maximum is 600 seconds.
-   */
-  uint16_t default_visibility_timeout_in_seconds;
 };
 
 class QueueClientProviderFactory {
@@ -111,7 +101,7 @@ class QueueClientProviderFactory {
    */
   static std::shared_ptr<QueueClientProviderInterface> Create(
       const std::shared_ptr<QueueClientOptions>& options,
-      std::shared_ptr<InstanceClientProviderInterface> instance_client,
+      const std::shared_ptr<InstanceClientProviderInterface> instance_client,
       const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
       const std::shared_ptr<core::AsyncExecutorInterface>&
           io_async_executor) noexcept;

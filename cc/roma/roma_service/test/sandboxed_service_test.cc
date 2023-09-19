@@ -33,9 +33,12 @@
 #include "roma/interface/roma.h"
 #include "roma/wasm/test/testing_utils.h"
 
+using absl::Status;
+using absl::StatusCode;
 using absl::StatusOr;
 using google::scp::core::common::Stopwatch;
 using google::scp::core::test::WaitUntil;
+using google::scp::roma::kWasmCodeArrayName;
 using google::scp::roma::wasm::testing::WasmTestingUtils;
 using std::atomic;
 using std::bind;
@@ -57,6 +60,12 @@ using namespace std::placeholders;     // NOLINT
 using namespace std::chrono_literals;  // NOLINT
 
 namespace google::scp::roma::test {
+static const vector<uint8_t> kWasmBin = {
+    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x07, 0x01,
+    0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x03, 0x02, 0x01, 0x00, 0x07,
+    0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, 0x0a, 0x09, 0x01,
+    0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b};
+
 TEST(SandboxedServiceTest, InitStop) {
   auto status = RomaInit();
   EXPECT_TRUE(status.ok());
@@ -127,6 +136,80 @@ TEST(SandboxedServiceTest, ExecuteCode) {
   }
   WaitUntil([&]() { return load_finished.load(); }, 10s);
   WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("Hello world! \"Foobar\"")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ShouldFailWithInvalidHandlerName) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+  atomic<bool> failed_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "WrongHandler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       // Execute should fail with the expected error.
+                       EXPECT_FALSE(resp->ok());
+                       EXPECT_EQ("Failed to get valid function handler.",
+                                 resp->status().message());
+                       failed_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  WaitUntil([&]() { return failed_finished.load(); }, 10s);
   EXPECT_EQ(result, R"("Hello world! \"Foobar\"")");
 
   status = RomaStop();
@@ -551,7 +634,7 @@ TEST(SandboxedServiceTest, MultiThreadedBatchExecuteSmallQueue) {
     EXPECT_TRUE(status.ok());
   }
 
-  WaitUntil([&]() { return load_finished.load(); });
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
 
   int num_threads = 10;
   vector<thread> threads;
@@ -587,11 +670,11 @@ TEST(SandboxedServiceTest, MultiThreadedBatchExecuteSmallQueue) {
 
       EXPECT_TRUE(batch_status.ok());
 
-      WaitUntil([&]() { return local_execute.load(); });
+      WaitUntil([&]() { return local_execute.load(); }, 10s);
     });
   }
 
-  WaitUntil([&]() { return execute_finished >= num_threads; });
+  WaitUntil([&]() { return execute_finished >= num_threads; }, 10s);
   EXPECT_EQ(res_count.load(), batch_size * num_threads);
 
   for (auto& t : threads) {
@@ -902,7 +985,7 @@ TEST(SandboxedServiceTest,
     code_obj->id = "foo";
     code_obj->version_num = 1;
     code_obj->js = R"JS_CODE(
-    function Handler() { 
+    function Handler() {
       some_map = [["key-a","value-a"], ["key-b","value-b"]];
       // Since we can't stringify a Map, we build an array from the resulting map entries.
       returned_map = cool_function(new Map(some_map));
@@ -941,64 +1024,6 @@ TEST(SandboxedServiceTest,
   // keys so we assert that the expected key-value pairs are present.
   EXPECT_THAT(result, HasSubstr("[\"key-a1\",\"value-a1\"]"));
   EXPECT_THAT(result, HasSubstr("[\"key-b2\",\"value-b2\"]"));
-
-  status = RomaStop();
-  EXPECT_TRUE(status.ok());
-}
-
-void StringInStringOutFunctionThatThrows(proto::FunctionBindingIoProto& io) {
-  io.set_output_string(io.input_string() + " String from C++");
-  throw std::runtime_error("An error :(");
-}
-
-TEST(SandboxedServiceTest, ShouldFailGracefullyIfBindingExecutionFails) {
-  Config config;
-  config.number_of_workers = 2;
-  auto function_binding_object = make_unique<FunctionBindingObjectV2>();
-  function_binding_object->function = StringInStringOutFunctionThatThrows;
-  function_binding_object->function_name = "cool_function";
-  config.RegisterFunctionBinding(move(function_binding_object));
-
-  auto status = RomaInit(config);
-  EXPECT_TRUE(status.ok());
-
-  string result;
-  atomic<bool> load_finished = false;
-  atomic<bool> execute_finished = false;
-
-  {
-    auto code_obj = make_unique<CodeObject>();
-    code_obj->id = "foo";
-    code_obj->version_num = 1;
-    code_obj->js = R"JS_CODE(
-    function Handler(input) { return cool_function(input);}
-    )JS_CODE";
-
-    status = LoadCodeObj(move(code_obj),
-                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
-                           EXPECT_TRUE(resp->ok());
-                           load_finished.store(true);
-                         });
-    EXPECT_TRUE(status.ok());
-  }
-
-  {
-    auto execution_obj = make_unique<InvocationRequestStrInput>();
-    execution_obj->id = "foo";
-    execution_obj->version_num = 1;
-    execution_obj->handler_name = "Handler";
-    execution_obj->input.push_back("\"Foobar\"");
-
-    status = Execute(move(execution_obj),
-                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
-                       // Failure in execution
-                       EXPECT_FALSE(resp->ok());
-                       execute_finished.store(true);
-                     });
-    EXPECT_TRUE(status.ok());
-  }
-  WaitUntil([&]() { return load_finished.load(); }, 10s);
-  WaitUntil([&]() { return execute_finished.load(); }, 10s);
 
   status = RomaStop();
   EXPECT_TRUE(status.ok());
@@ -1195,7 +1220,6 @@ TEST(SandboxedServiceTest, ShouldReturnCorrectErrorForDifferentException) {
     execution_obj->id = "foo";
     execution_obj->version_num = 1;
     execution_obj->handler_name = "hello_js";
-    execution_obj->tags[kTimeoutMsTag] = "300";
 
     status = Execute(move(execution_obj),
                      [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
@@ -1522,12 +1546,15 @@ TEST(SandboxedServiceTest, ShouldGetMetricsInResponse) {
           EXPECT_GT(resp->value().metrics["roma.metric.sandboxed_code_run_ns"],
                     0);
           EXPECT_GT(resp->value().metrics["roma.metric.code_run_ns"], 0);
-
-          std::cout
-              << "Metrics:\n roma.metric.sandboxed_code_run_ns:"
-              << resp->value().metrics["roma.metric.sandboxed_code_run_ns"]
-              << "\n roma.metric.code_run_ns:"
-              << resp->value().metrics["roma.metric.code_run_ns"] << std::endl;
+          EXPECT_GT(resp->value().metrics["roma.metric.json_input_parsing_ns"],
+                    0);
+          EXPECT_GT(
+              resp->value().metrics["roma.metric.js_engine_handler_call_ns"],
+              0);
+          std::cout << "Metrics:" << std::endl;
+          for (const auto& pair : resp->value().metrics) {
+            std::cout << pair.first << ": " << pair.second << std::endl;
+          }
 
           execute_finished.store(true);
         });
@@ -2303,4 +2330,961 @@ TEST(SandboxedServiceTest,
   status = RomaStop();
   EXPECT_TRUE(status.ok());
 }
+
+TEST(SandboxedServiceTest, ShouldBeAbleToOverwriteVersion) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  // Load v1
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "version 1"; }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  // Execute version 1
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       EXPECT_EQ("\"version 1\"", (*resp)->resp);
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  // Should be able to load same version
+  load_finished = false;
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler() { return "version 1 but updated";}
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  // Execution should run the new version of the code
+  execute_finished = false;
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       EXPECT_EQ("\"version 1 but updated\"", (*resp)->resp);
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+void ByteInFunction(proto::FunctionBindingIoProto& io) {
+  auto data_len = io.input_bytes().size();
+  EXPECT_EQ(5, data_len);
+  auto byte_data = io.input_bytes().data();
+  EXPECT_EQ(5, byte_data[0]);
+  EXPECT_EQ(4, byte_data[1]);
+  EXPECT_EQ(3, byte_data[2]);
+  EXPECT_EQ(2, byte_data[3]);
+  EXPECT_EQ(1, byte_data[4]);
+
+  io.set_output_string("Hello there :)");
+}
+
+TEST(SandboxedServiceTest,
+     CanRegisterBindingAndExecuteCodeThatCallsItWithInputBytes) {
+  Config config;
+  config.number_of_workers = 2;
+  auto function_binding_object = make_unique<FunctionBindingObjectV2>();
+  function_binding_object->function = ByteInFunction;
+  function_binding_object->function_name = "set_some_bytes";
+  config.RegisterFunctionBinding(move(function_binding_object));
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler() {
+      bytes =  new Uint8Array(5);
+      bytes[0] = 5;
+      bytes[1] = 4;
+      bytes[2] = 3;
+      bytes[3] = 2;
+      bytes[4] = 1;
+
+      return set_some_bytes(bytes);
+    }
+    )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       result = code_resp.resp;
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+  EXPECT_EQ(result, "\"Hello there :)\"");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, CanExecuteJSWithWasmCode) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    absl::flat_hash_map<string, string> tags;
+
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+          const module = new WebAssembly.Module(addModule);
+          const instance = new WebAssembly.Instance(module);
+          function hello_js(a, b) {
+            return instance.exports.add(a, b);
+          }
+    )JS_CODE";
+    tags[kWasmCodeArrayName] = "addModule";
+
+    code_obj->wasm_bin = kWasmBin;
+    code_obj->tags = tags;
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "hello_js";
+    execution_obj->input.push_back("1");
+    execution_obj->input.push_back("2");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, "3");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, LoadJSWithWasmCodeShouldFailOnInvalidRequest) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished1 = false;
+  atomic<bool> load_finished2 = false;
+
+  absl::flat_hash_map<string, string> tags;
+  tags[kWasmCodeArrayName] = "addModule";
+  string js_code = R"JS_CODE(
+          const module = new WebAssembly.Module(addModule);
+          const instance = new WebAssembly.Instance(module);
+          function hello_js(a, b) {
+            return instance.exports.add(a, b);
+          }
+  )JS_CODE";
+  // Passing both the wasm and wasm_bin
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = js_code;
+
+    code_obj->wasm_bin = kWasmBin;
+    code_obj->tags = tags;
+    code_obj->wasm = "test";
+
+    status =
+        LoadCodeObj(move(code_obj),
+                    [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {});
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), StatusCode::kInternal);
+    EXPECT_EQ(status.message(),
+              "Roma LoadCodeObj failed due to wasm code and wasm code "
+              "array conflict.");
+  }
+
+  // Missing JS code
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->wasm_bin = kWasmBin;
+    code_obj->tags = tags;
+
+    status =
+        LoadCodeObj(move(code_obj),
+                    [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {});
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), StatusCode::kInternal);
+    EXPECT_EQ(status.message(),
+              "Roma LoadCodeObj failed due to empty code content.");
+  }
+
+  // Missing wasm code array name tag
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->js = js_code;
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->wasm_bin = kWasmBin;
+
+    status =
+        LoadCodeObj(move(code_obj),
+                    [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {});
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), StatusCode::kInternal);
+    EXPECT_EQ(status.message(),
+              "Roma LoadCodeObj failed due to empty wasm_bin or "
+              "missing wasm code array name tag.");
+  }
+
+  // Missing wasm_bin
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->js = js_code;
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->tags = tags;
+
+    status =
+        LoadCodeObj(move(code_obj),
+                    [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {});
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), StatusCode::kInternal);
+    EXPECT_EQ(status.message(),
+              "Roma LoadCodeObj failed due to empty wasm_bin or "
+              "missing wasm code array name tag.");
+  }
+
+  // Wrong wasm array name tag
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->js = js_code;
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->wasm_bin = kWasmBin;
+    tags[kWasmCodeArrayName] = "wrongName";
+    code_obj->tags = tags;
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_FALSE(resp->ok());
+                           load_finished1.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // Invalid wasm code array
+  {
+    vector<uint8_t> invalid_wasm_bin{
+        0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x07,
+        0x01, 0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, 0x0a,
+        0x09, 0x01, 0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b};
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->js = js_code;
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->wasm_bin = invalid_wasm_bin;
+    tags[kWasmCodeArrayName] = "addModule";
+    code_obj->tags = tags;
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_FALSE(resp->ok());
+                           load_finished2.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished1.load(); }, 10s);
+  WaitUntil([&]() { return load_finished2.load(); }, 10s);
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, CanExecuteJSWithWasmCodeWithStandaloneJS) {
+  Config config;
+  config.number_of_workers = 2;
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+          function hello_js(a, b) {
+            return a + b;
+          }
+  )JS_CODE";
+
+    code_obj->wasm_bin = kWasmBin;
+    absl::flat_hash_map<string, string> tags;
+    tags[kWasmCodeArrayName] = "addModule";
+    code_obj->tags = tags;
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "hello_js";
+    execution_obj->input.push_back("1");
+    execution_obj->input.push_back("2");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, "3");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest,
+     ShouldBeAbleToExecuteJsWithWasmBinEvenAfterWorkerCrash) {
+  Config config;
+  // Only one worker so we can make sure it's actually restarted.
+  config.number_of_workers = 1;
+  // Too large an allocation will cause the worker to crash and be restarted
+  // since we're giving it a max of 15 MB of heap for JS execution.
+  config.ConfigureJsEngineResourceConstraints(1 /*initial_heap_size_in_mb*/,
+                                              15 /*maximum_heap_size_in_mb*/);
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+  atomic<bool> execute_finished = false;
+
+  // dummy code that gets killed by the JS engine if it allocates too much
+  // memory
+  string js_code = R"JS_CODE(
+          const module = new WebAssembly.Module(addModule);
+          const instance = new WebAssembly.Instance(module);
+          function Handler(a, b, c) {
+            const bigObject = [];
+            for (let i = 0; i < 1024*512*Number(c); i++) {
+              var person = {
+              name: 'test',
+              age: 24,
+              };
+              bigObject.push(person);
+            }
+            return instance.exports.add(a, b);
+          }
+  )JS_CODE";
+  absl::flat_hash_map<string, string> tags;
+  tags[kWasmCodeArrayName] = "addModule";
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->version_num = 1;
+    code_obj->js = js_code;
+    code_obj->id = "foo";
+    code_obj->wasm_bin = kWasmBin;
+    code_obj->tags = tags;
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // Large input which should fail
+    execution_obj->input.push_back("1");
+    execution_obj->input.push_back("2");
+    execution_obj->input.push_back("10");
+
+    status = Execute(
+        move(execution_obj),
+        [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+          EXPECT_FALSE(resp->ok());
+          EXPECT_EQ("Sandbox worker crashed during execution of request.",
+                    resp->status().message());
+          execute_finished.store(true);
+        });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return execute_finished.load(); }, 10s);
+  execute_finished.store(false);
+
+  {
+    string result;
+
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // Small input which should work
+    execution_obj->input.push_back("1");
+    execution_obj->input.push_back("2");
+    execution_obj->input.push_back("1");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       if (resp->ok()) {
+                         auto& code_resp = **resp;
+                         result = code_resp.resp;
+                       }
+                       execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+
+    WaitUntil([&]() { return execute_finished.load(); }, 10s);
+
+    EXPECT_EQ("3", result);
+  }
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, LoadingShouldSucceedIfPayloadLargerThanBufferSize) {
+  Config config;
+  config.number_of_workers = 2;
+  // The buffer size is 1MB.
+  config.sandbox_request_response_shared_buffer_size_mb = 1;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = false;
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> success_execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // The js payload size is larger than the Buffer capacity.
+    auto payload_size = 1024 * 1024 * 1.2;
+    string dummy_js_string(payload_size, 'a');
+    code_obj->js = "function Handler(input) { let x = \"" + dummy_js_string +
+                   "\"; return \"Hello world! \"}";
+    EXPECT_GE(code_obj->js.length(), payload_size);
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    ASSERT_TRUE(status.ok());
+  }
+
+  // execute success
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       result = code_resp.resp;
+                       success_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return success_execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("Hello world! ")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ExecutionShouldSucceedIfRequestPayloadOversize) {
+  Config config;
+  config.number_of_workers = 2;
+  // The buffer size is 1MB.
+  config.sandbox_request_response_shared_buffer_size_mb = 1;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = false;
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> oversize_execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // The input payload size is larger than the Buffer capacity.
+    auto payload_size = 1024 * 1024 * 1.2;
+    string dummy_string(payload_size, 'A');
+    execution_obj->input.push_back("\"" + dummy_string + "\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       EXPECT_GE(code_resp.resp.length(), payload_size);
+                       oversize_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return oversize_execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest, ExecutionShouldSucceedIfResponsePayloadOversize) {
+  Config config;
+  config.number_of_workers = 2;
+  // The buffer size is 1MB.
+  config.sandbox_request_response_shared_buffer_size_mb = 1;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = false;
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+  atomic<bool> oversize_execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // Will generate a response with input size.
+    code_obj->js = R"JS_CODE(
+    function Handler(input) {
+      let dummy_string = 'x'.repeat(input);
+      return "Hello world! " + JSON.stringify(dummy_string);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // execute success when the response payload size is larger than buffer
+  // capacity.
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // The response payload size is larger than the Buffer capacity.
+    auto payload_size = 1024 * 1024 * 1.2;
+    execution_obj->input.push_back("\"" + to_string(payload_size) + "\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       EXPECT_GE(code_resp.resp.length(), payload_size);
+                       oversize_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return oversize_execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest,
+     EnableBufferOnlyLoadingShouldFailGracefullyIfPayloadOversize) {
+  Config config;
+  config.number_of_workers = 2;
+  // The buffer size is 1MB.
+  config.sandbox_request_response_shared_buffer_size_mb = 1;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = true;
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // The js payload size is larger than the Buffer capacity.
+    auto payload_size = 1024 * 1024 * 1.2;
+    string dummy_js_string(payload_size, 'A');
+    code_obj->js = "\"" + dummy_js_string + "\"";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_FALSE(resp->ok());
+                           EXPECT_EQ(resp->status().message(),
+                                     "The size of request serialized data is "
+                                     "larger than the Buffer capacity.");
+                           load_finished.store(true);
+                         });
+    ASSERT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest,
+     EnableBufferOnlyExecutionShouldFailGracefullyIfRequestPayloadOversize) {
+  Config config;
+  config.number_of_workers = 2;
+  // The buffer size is 1MB.
+  config.sandbox_request_response_shared_buffer_size_mb = 1;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = true;
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  string result;
+  atomic<bool> load_finished = false;
+  atomic<bool> success_execute_finished = false;
+  atomic<bool> failed_execute_finished = false;
+  string retry_result;
+  atomic<bool> retry_success_execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    code_obj->js = R"JS_CODE(
+    function Handler(input) { return "Hello world! " + JSON.stringify(input);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // execute success
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       result = code_resp.resp;
+                       success_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // Failure in execution as oversize input.
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // The input payload size is larger than the Buffer capacity.
+    auto payload_size = 1024 * 1024 * 1.2;
+    string dummy_string(payload_size, 'A');
+    execution_obj->input.push_back("\"" + dummy_string + "\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_FALSE(resp->ok());
+                       EXPECT_EQ(resp->status().message(),
+                                 "The size of request serialized data is "
+                                 "larger than the Buffer capacity.");
+                       failed_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // execute success
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"Foobar\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       ASSERT_TRUE(resp->ok());
+                       auto& code_resp = **resp;
+                       retry_result = code_resp.resp;
+                       retry_success_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return success_execute_finished.load(); }, 10s);
+  WaitUntil([&]() { return failed_execute_finished.load(); }, 10s);
+  WaitUntil([&]() { return retry_success_execute_finished.load(); }, 10s);
+  EXPECT_EQ(result, R"("Hello world! \"Foobar\"")");
+  EXPECT_EQ(retry_result, R"("Hello world! \"Foobar\"")");
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(SandboxedServiceTest,
+     EnableBufferOnlyExecutionShouldFailGracefullyIfResponsePayloadOversize) {
+  Config config;
+  config.number_of_workers = 10;
+  // The buffer size is 1MB.
+  config.sandbox_request_response_shared_buffer_size_mb = 1;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = true;
+
+  auto status = RomaInit(config);
+  EXPECT_TRUE(status.ok());
+
+  atomic<bool> load_finished = false;
+  atomic<bool> success_execute_finished = false;
+  atomic<bool> failed_execute_finished = false;
+  atomic<bool> retry_success_execute_finished = false;
+
+  {
+    auto code_obj = make_unique<CodeObject>();
+    code_obj->id = "foo";
+    code_obj->version_num = 1;
+    // Will generate a response with input size.
+    code_obj->js = R"JS_CODE(
+    function Handler(input) {
+      let dummy_string = 'x'.repeat(input);
+      return "Hello world! " + JSON.stringify(dummy_string);
+    }
+  )JS_CODE";
+
+    status = LoadCodeObj(move(code_obj),
+                         [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                           EXPECT_TRUE(resp->ok());
+                           load_finished.store(true);
+                         });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // execute success
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    execution_obj->input.push_back("\"1024\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       success_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // execute failed as the response payload size is larger than buffer capacity.
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    // The response payload size is larger than the Buffer capacity.
+    auto payload_size = 1024 * 1024 * 1.2;
+    execution_obj->input.push_back("\"" + to_string(payload_size) + "\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       // Failure in execution
+                       EXPECT_FALSE(resp->ok());
+                       EXPECT_EQ(resp->status().message(),
+                                 "The size of response serialized data is "
+                                 "larger than the Buffer capacity.");
+                       failed_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  // execute success
+  {
+    auto execution_obj = make_unique<InvocationRequestStrInput>();
+    execution_obj->id = "foo";
+    execution_obj->version_num = 1;
+    execution_obj->handler_name = "Handler";
+    auto payload_size = 1024 * 800;
+    execution_obj->input.push_back("\"" + to_string(payload_size) + "\"");
+
+    status = Execute(move(execution_obj),
+                     [&](unique_ptr<absl::StatusOr<ResponseObject>> resp) {
+                       EXPECT_TRUE(resp->ok());
+                       retry_success_execute_finished.store(true);
+                     });
+    EXPECT_TRUE(status.ok());
+  }
+
+  WaitUntil([&]() { return load_finished.load(); }, 10s);
+  WaitUntil([&]() { return success_execute_finished.load(); }, 10s);
+  WaitUntil([&]() { return failed_execute_finished.load(); }, 10s);
+  WaitUntil([&]() { return retry_success_execute_finished.load(); }, 10s);
+
+  status = RomaStop();
+  EXPECT_TRUE(status.ok());
+}
+
 }  // namespace google::scp::roma::test

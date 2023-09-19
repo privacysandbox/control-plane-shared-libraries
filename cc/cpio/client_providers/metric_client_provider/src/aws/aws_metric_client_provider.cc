@@ -33,6 +33,7 @@
 #include "cpio/client_providers/interface/metric_client_provider_interface.h"
 #include "cpio/common/src/aws/aws_utils.h"
 #include "public/core/interface/execution_result.h"
+#include "public/cpio/interface/metric_client/metric_client_interface.h"
 #include "public/cpio/interface/metric_client/type_def.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
@@ -249,8 +250,7 @@ void AwsMetricClientProvider::OnPutMetricDataAsyncCallback(
 }
 
 #ifndef TEST_CPIO
-std::shared_ptr<MetricClientProviderInterface>
-MetricClientProviderFactory::Create(
+std::shared_ptr<MetricClientInterface> MetricClientProviderFactory::Create(
     const shared_ptr<MetricClientOptions>& options,
     const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
     const shared_ptr<AsyncExecutorInterface>& async_executor,

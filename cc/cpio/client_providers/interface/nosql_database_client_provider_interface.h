@@ -75,9 +75,22 @@ class NoSQLDatabaseClientProviderInterface : public core::ServiceInterface {
           get_database_item_context) noexcept = 0;
 
   /**
-   * @brief Upserts a database record using provided metadta.
+   * @brief Creates a database record using provided metadata.
    *
-   * @param get_database_item_context The context object for the database
+   * @param create_database_item_context The context object for the database
+   * operation.
+   * @return ExecutionResult The execution result of the operation.
+   */
+  virtual core::ExecutionResult CreateDatabaseItem(
+      core::AsyncContext<
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest,
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse>&
+          create_database_item_context) noexcept = 0;
+
+  /**
+   * @brief Upserts a database record using provided metadata.
+   *
+   * @param upsert_database_item_context The context object for the database
    * operation.
    * @return ExecutionResult The execution result of the operation.
    */
@@ -122,14 +135,17 @@ class NoSQLDatabaseClientProviderFactory {
   /**
    * @brief Factory to create NoSQLDatabaseClientProviderInterface.
    *
-   * @param instance_client_provider
-   * @param client_options
+   * @param options NoSQLDatabaseClientOptions.
+   * @param instance_client Instance Client.
+   * @param cpu_async_executor CPU Async Eexcutor.
+   * @param io_async_executor IO Async Eexcutor.
    * @return std::shared_ptr<NoSQLDatabaseClientProviderInterface>
    */
   static std::shared_ptr<NoSQLDatabaseClientProviderInterface> Create(
-      const std::shared_ptr<InstanceClientProviderInterface>&
-          instance_client_provider,
-      const std::shared_ptr<NoSQLDatabaseClientOptions>& client_options);
+      const std::shared_ptr<NoSQLDatabaseClientOptions>& options,
+      const std::shared_ptr<InstanceClientProviderInterface>& instance_client,
+      const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor);
 };
 
 }  // namespace google::scp::cpio::client_providers

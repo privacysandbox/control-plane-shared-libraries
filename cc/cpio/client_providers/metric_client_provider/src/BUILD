@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
@@ -45,6 +47,7 @@ cc_library(
         "//cc/cpio/client_providers/interface:type_def",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:cpio_errors",
+        "//cc/public/cpio/interface/metric_client:metric_client_interface",
         "//cc/public/cpio/interface/metric_client:type_def",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/utils/metric_aggregation/interface:type_def",

@@ -24,6 +24,10 @@ build_container_tar_path=$3
 container_name_to_build=$4
 container_tar_target_path=$5
 
+# build_flags. 'opt' for optimized. 'dbg' for debug.
+# go/cpp-stacktraces#s3
+build_flags="-c opt --copt=-gmlt --strip=never"
+
 args=""
 
 # Customized flags/args start from the 6th argument.
@@ -74,7 +78,7 @@ bash -c "echo 'startup --output_user_root=/tmp/bazel_build_output' >> /scp/.baze
 
 # Build the container image
 docker exec -w /scp $container_name \
-bash -c "bazel build -c opt --action_env=BAZEL_CXXOPTS=\"-std=c++17\" $args $container_tar_target_path"
+bash -c "bazel build $build_flags --action_env=BAZEL_CXXOPTS=\"-std=c++17\" $args $container_tar_target_path"
 
 # Change the build output directory permissions to the user running this script
 user_id="$(id -u)"

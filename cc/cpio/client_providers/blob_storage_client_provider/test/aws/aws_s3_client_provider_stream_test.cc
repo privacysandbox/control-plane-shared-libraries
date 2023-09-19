@@ -28,6 +28,7 @@
 #include <aws/s3/model/UploadPartRequest.h>
 #include <google/protobuf/util/time_util.h>
 
+#include "absl/strings/str_cat.h"
 #include "core/async_executor/mock/mock_async_executor.h"
 #include "core/async_executor/src/async_executor.h"
 #include "core/test/utils/conditional_wait.h"
@@ -58,16 +59,22 @@ using Aws::S3::Model::CompleteMultipartUploadResult;
 using Aws::S3::Model::CreateMultipartUploadOutcome;
 using Aws::S3::Model::CreateMultipartUploadRequest;
 using Aws::S3::Model::CreateMultipartUploadResult;
+using Aws::S3::Model::GetObjectOutcome;
+using Aws::S3::Model::GetObjectRequest;
+using Aws::S3::Model::GetObjectResult;
 using Aws::S3::Model::Object;
 using Aws::S3::Model::UploadPartOutcome;
 using Aws::S3::Model::UploadPartRequest;
 using Aws::S3::Model::UploadPartResult;
 using google::cmrt::sdk::blob_storage_service::v1::Blob;
 using google::cmrt::sdk::blob_storage_service::v1::BlobMetadata;
+using google::cmrt::sdk::blob_storage_service::v1::GetBlobStreamRequest;
+using google::cmrt::sdk::blob_storage_service::v1::GetBlobStreamResponse;
 using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest;
 using google::cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse;
 using google::protobuf::util::TimeUtil;
 using google::scp::core::AsyncExecutor;
+using google::scp::core::ConsumerStreamingContext;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::ProducerStreamingContext;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
@@ -76,6 +83,7 @@ using google::scp::core::errors::
     SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_CANCELLED;
 using google::scp::core::errors::
     SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_EXPIRED;
+using google::scp::core::errors::SC_STREAMING_CONTEXT_DONE;
 using google::scp::core::test::IsSuccessful;
 using google::scp::core::test::ResultIs;
 using google::scp::core::test::WaitUntil;
@@ -96,6 +104,7 @@ using testing::Eq;
 using testing::ExplainMatchResult;
 using testing::InSequence;
 using testing::NiceMock;
+using testing::Pointwise;
 using testing::Return;
 using testing::UnorderedPointwise;
 
@@ -105,6 +114,7 @@ constexpr char kResourceNameMock[] =
 constexpr char kBucketName[] = "bucket";
 constexpr char kBlobName[] = "blob";
 
+constexpr size_t kMinimumPartSize = 5 << 20;
 constexpr int64_t kStreamKeepAliveMicrosCount = 100;
 }  // namespace
 
@@ -137,6 +147,11 @@ class AwsS3ClientProviderStreamTest : public ::testing::Test {
     put_blob_stream_context_.request = make_shared<PutBlobStreamRequest>();
     put_blob_stream_context_.callback = [this](auto) { finish_called_ = true; };
 
+    get_blob_stream_context_.request = make_shared<GetBlobStreamRequest>();
+    get_blob_stream_context_.process_callback = [this](auto, auto) {
+      finish_called_ = true;
+    };
+
     EXPECT_SUCCESS(provider_.Init());
     EXPECT_SUCCESS(provider_.Run());
   }
@@ -151,6 +166,9 @@ class AwsS3ClientProviderStreamTest : public ::testing::Test {
 
   ProducerStreamingContext<PutBlobStreamRequest, PutBlobStreamResponse>
       put_blob_stream_context_;
+
+  ConsumerStreamingContext<GetBlobStreamRequest, GetBlobStreamResponse>
+      get_blob_stream_context_;
 
   // We check that this gets flipped after every call to ensure the context's
   // Finish() is called.
@@ -214,6 +232,7 @@ TEST_F(AwsS3ClientProviderStreamTest, PutBlobStream) {
 
   put_blob_stream_context_.callback = [this](auto& context) {
     EXPECT_SUCCESS(context.result);
+    EXPECT_NE(context.response, nullptr);
 
     finish_called_ = true;
   };
@@ -269,10 +288,11 @@ TEST_F(AwsS3ClientProviderStreamTest, PutBlobStreamMultiplePortions) {
       ->mutable_metadata()
       ->set_blob_name(kBlobName);
 
-  string bytes_str = "initial";
+  string bytes_str(kMinimumPartSize, 'a');
   put_blob_stream_context_.request->mutable_blob_portion()->set_data(bytes_str);
 
-  vector<string> strings{"next one", "final one"};
+  vector<string> strings{string(kMinimumPartSize, 'b'),
+                         string(kMinimumPartSize, 'c')};
   auto request2 = *put_blob_stream_context_.request;
   request2.mutable_blob_portion()->set_data(strings[0]);
   auto request3 = *put_blob_stream_context_.request;
@@ -354,6 +374,95 @@ TEST_F(AwsS3ClientProviderStreamTest, PutBlobStreamMultiplePortions) {
   WaitUntil([this]() { return finish_called_.load(); });
 }
 
+TEST_F(AwsS3ClientProviderStreamTest, PutBlobStreamAccumulates) {
+  put_blob_stream_context_.request->mutable_blob_portion()
+      ->mutable_metadata()
+      ->set_bucket_name(kBucketName);
+  put_blob_stream_context_.request->mutable_blob_portion()
+      ->mutable_metadata()
+      ->set_blob_name(kBlobName);
+
+  string bytes_str = "initial";
+  put_blob_stream_context_.request->mutable_blob_portion()->set_data(bytes_str);
+
+  // With this setup, we would expect "initialnext oneaaaaa..." to be one
+  // UploadPart and "final one" be another.
+  vector<string> strings{"next one", string(kMinimumPartSize, 'a'),
+                         "final one"};
+  auto request2 = *put_blob_stream_context_.request;
+  request2.mutable_blob_portion()->set_data(strings[0]);
+  auto request3 = *put_blob_stream_context_.request;
+  request3.mutable_blob_portion()->set_data(strings[1]);
+  auto request4 = *put_blob_stream_context_.request;
+  request4.mutable_blob_portion()->set_data(strings[2]);
+  put_blob_stream_context_.TryPushRequest(move(request2));
+  put_blob_stream_context_.TryPushRequest(move(request3));
+  put_blob_stream_context_.TryPushRequest(move(request4));
+  put_blob_stream_context_.MarkDone();
+
+  put_blob_stream_context_.callback = [this](auto& context) {
+    EXPECT_SUCCESS(context.result);
+
+    finish_called_ = true;
+  };
+
+  InSequence in_sequence;
+
+  string upload_id = "upload id";
+
+  EXPECT_CALL(*s3_client_, CreateMultipartUploadAsync(
+                               HasBucketAndKey(kBucketName, kBlobName), _, _))
+      .WillOnce([this, &upload_id](auto request, auto& callback, auto) {
+        CreateMultipartUploadResult result;
+        result.SetUploadId(upload_id);
+        CreateMultipartUploadOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  string etag1 = "tag 1", etag2 = "tag 2";
+
+  string expected_accumulated_string = bytes_str + strings[0] + strings[1];
+  EXPECT_CALL(
+      *s3_client_,
+      UploadPartAsync(UploadPartRequestEquals(kBucketName, kBlobName, upload_id,
+                                              1, expected_accumulated_string),
+                      _, _))
+      .WillOnce([this, &etag1](auto request, auto& callback, auto) {
+        UploadPartResult result;
+        result.SetETag(etag1);
+        UploadPartOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  EXPECT_CALL(*s3_client_,
+              UploadPartAsync(UploadPartRequestEquals(kBucketName, kBlobName,
+                                                      upload_id, 2, strings[2]),
+                              _, _))
+      .WillOnce([this, &etag2](auto request, auto& callback, auto) {
+        UploadPartResult result;
+        result.SetETag(etag2);
+        UploadPartOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  CompletedMultipartUpload upload;
+  upload.AddParts(MakeCompletedPart(etag1, 1));
+  upload.AddParts(MakeCompletedPart(etag2, 2));
+
+  EXPECT_CALL(*s3_client_,
+              CompleteMultipartUploadAsync(
+                  HasBucketKeyAndUpload(kBucketName, kBlobName, upload), _, _))
+      .WillOnce([this](auto request, auto& callback, auto) {
+        CompleteMultipartUploadResult result;
+        CompleteMultipartUploadOutcome outcome(move(result));
+        callback(abstract_client_, request, outcome, nullptr);
+      });
+
+  EXPECT_SUCCESS(provider_.PutBlobStream(put_blob_stream_context_));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+}
+
 TEST_F(AwsS3ClientProviderStreamTest,
        PutBlobStreamMultiplePortionsWithNoOpCycles) {
   // In order to test the "no message" path, we must have real async executors.
@@ -375,10 +484,11 @@ TEST_F(AwsS3ClientProviderStreamTest,
       ->mutable_metadata()
       ->set_blob_name(kBlobName);
 
-  string bytes_str = "initial";
+  string bytes_str(kMinimumPartSize, 'a');
   put_blob_stream_context_.request->mutable_blob_portion()->set_data(bytes_str);
 
-  vector<string> strings{"next one", "final one"};
+  vector<string> strings{string(kMinimumPartSize, 'b'),
+                         string(kMinimumPartSize, 'c')};
   auto request2 = *put_blob_stream_context_.request;
   request2.mutable_blob_portion()->set_data(strings[0]);
   auto request3 = *put_blob_stream_context_.request;
@@ -678,18 +788,6 @@ TEST_F(AwsS3ClientProviderStreamTest, PutBlobStreamFailsIfStreamExpires) {
         callback(abstract_client_, request, move(outcome), nullptr);
       });
 
-  string etag = "tag 1";
-
-  EXPECT_CALL(*s3_client_,
-              UploadPartAsync(UploadPartRequestEquals(kBucketName, kBlobName,
-                                                      upload_id, 1, bytes_str),
-                              _, _))
-      .WillOnce([this, &etag](auto request, auto& callback, auto) {
-        UploadPartResult result;
-        result.SetETag(etag);
-        UploadPartOutcome outcome(move(result));
-        callback(abstract_client_, request, move(outcome), nullptr);
-      });
   EXPECT_CALL(*s3_client_, AbortMultipartUploadAsync)
       .WillOnce([this](auto request, auto& callback, auto) {
         AWSError<S3Errors> s3_error(S3Errors::ACCESS_DENIED, false);
@@ -738,18 +836,6 @@ TEST_F(AwsS3ClientProviderStreamTest, PutBlobStreamFailsIfStreamCancelled) {
         callback(abstract_client_, request, move(outcome), nullptr);
       });
 
-  string etag = "tag 1";
-
-  EXPECT_CALL(*s3_client_,
-              UploadPartAsync(UploadPartRequestEquals(kBucketName, kBlobName,
-                                                      upload_id, 1, bytes_str),
-                              _, _))
-      .WillOnce([this, &etag](auto request, auto& callback, auto) {
-        UploadPartResult result;
-        result.SetETag(etag);
-        UploadPartOutcome outcome(move(result));
-        callback(abstract_client_, request, move(outcome), nullptr);
-      });
   EXPECT_CALL(*s3_client_, AbortMultipartUploadAsync)
       .WillOnce([this](auto request, auto& callback, auto) {
         AWSError<S3Errors> s3_error(S3Errors::ACCESS_DENIED, false);
@@ -760,6 +846,401 @@ TEST_F(AwsS3ClientProviderStreamTest, PutBlobStreamFailsIfStreamCancelled) {
   EXPECT_SUCCESS(provider_.PutBlobStream(put_blob_stream_context_));
 
   WaitUntil([this]() { return finish_called_.load(); });
+}
+
+///////////// GetBlobStream ///////////////////////////////////////////////////
+
+MATCHER_P3(HasBucketKeyAndRange, bucket_name, blob_name, range, "") {
+  return ExplainMatchResult(HasBucketAndKey(bucket_name, blob_name), arg,
+                            result_listener) &&
+         ExplainMatchResult(Eq(range), arg.GetRange(), result_listener);
+}
+
+// Compares 2 BlobMetadata's bucket_name and blob_name.
+MATCHER_P(BlobMetadataEquals, expected_metadata, "") {
+  return ExplainMatchResult(arg.bucket_name(), expected_metadata.bucket_name(),
+                            result_listener) &&
+         ExplainMatchResult(arg.blob_name(), expected_metadata.blob_name(),
+                            result_listener);
+}
+
+// Compares 2 Blobs, their metadata and data.
+MATCHER_P(BlobEquals, expected_blob, "") {
+  return ExplainMatchResult(BlobMetadataEquals(expected_blob.metadata()),
+                            arg.metadata(), result_listener) &&
+         ExplainMatchResult(expected_blob.data(), arg.data(), result_listener);
+}
+
+MATCHER_P(GetBlobStreamResponseEquals, expected, "") {
+  return ExplainMatchResult(BlobEquals(expected.blob_portion()),
+                            arg.blob_portion(), result_listener) &&
+         ExplainMatchResult(expected.byte_range().begin_byte_index(),
+                            arg.byte_range().begin_byte_index(),
+                            result_listener) &&
+         ExplainMatchResult(expected.byte_range().end_byte_index(),
+                            arg.byte_range().end_byte_index(), result_listener);
+}
+
+MATCHER(GetBlobStreamResponseEquals, "") {
+  const auto& [actual, expected] = arg;
+  return ExplainMatchResult(GetBlobStreamResponseEquals(expected), actual,
+                            result_listener);
+}
+
+TEST_F(AwsS3ClientProviderStreamTest, GetBlobStream) {
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_bucket_name(
+      kBucketName);
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_blob_name(
+      kBlobName);
+
+  // 15 chars.
+  string bytes_str = "response_string";
+  GetBlobStreamResponse expected_response;
+  expected_response.mutable_blob_portion()->mutable_metadata()->CopyFrom(
+      get_blob_stream_context_.request->blob_metadata());
+  *expected_response.mutable_blob_portion()->mutable_data() = bytes_str;
+  expected_response.mutable_byte_range()->set_begin_byte_index(0);
+  expected_response.mutable_byte_range()->set_end_byte_index(14);
+
+  EXPECT_CALL(
+      *s3_client_,
+      GetObjectAsync(
+          HasBucketKeyAndRange(kBucketName, kBlobName, "bytes=0-65535"), _, _))
+      .WillOnce([this, &bytes_str](auto request, auto& callback, auto) {
+        GetObjectResult result;
+        result.ReplaceBody(new StringStream(bytes_str));
+        result.SetContentRange("bytes 0-14/15");
+        result.SetContentLength(bytes_str.length());
+        GetObjectOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  vector<GetBlobStreamResponse> actual_responses;
+  get_blob_stream_context_.process_callback = [this, &actual_responses](
+                                                  auto& context, bool) {
+    auto resp = context.TryGetNextResponse();
+    if (resp != nullptr) {
+      actual_responses.push_back(move(*resp));
+    } else {
+      if (!context.IsMarkedDone()) {
+        ADD_FAILURE();
+      }
+      EXPECT_SUCCESS(context.result);
+      finish_called_ = true;
+    }
+  };
+
+  EXPECT_SUCCESS(provider_.GetBlobStream(get_blob_stream_context_));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+  EXPECT_TRUE(get_blob_stream_context_.IsMarkedDone());
+  EXPECT_THAT(actual_responses,
+              ElementsAre(GetBlobStreamResponseEquals(expected_response)));
+}
+
+TEST_F(AwsS3ClientProviderStreamTest, GetBlobStreamMultipleResponses) {
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_bucket_name(
+      kBucketName);
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_blob_name(
+      kBlobName);
+  get_blob_stream_context_.request->set_max_bytes_per_response(2);
+
+  // 15 chars.
+  string bytes_str = "response_string";
+  // Expect to get responses with data: ["re", "sp", ... "g"]
+  vector<GetBlobStreamResponse> expected_responses;
+  for (size_t i = 0; i < bytes_str.length(); i += 2) {
+    GetBlobStreamResponse resp;
+    resp.mutable_blob_portion()->mutable_metadata()->CopyFrom(
+        get_blob_stream_context_.request->blob_metadata());
+    // The last 1 character is by itself
+    if (i + 1 == bytes_str.length()) {
+      *resp.mutable_blob_portion()->mutable_data() = bytes_str.substr(i, 1);
+      resp.mutable_byte_range()->set_begin_byte_index(i);
+      resp.mutable_byte_range()->set_end_byte_index(i);
+    } else {
+      *resp.mutable_blob_portion()->mutable_data() = bytes_str.substr(i, 2);
+      resp.mutable_byte_range()->set_begin_byte_index(i);
+      resp.mutable_byte_range()->set_end_byte_index(i + 1);
+    }
+    expected_responses.push_back(resp);
+  }
+
+  InSequence in_sequence;
+  for (size_t i = 0; i < bytes_str.length(); i += 2) {
+    EXPECT_CALL(*s3_client_,
+                GetObjectAsync(
+                    HasBucketKeyAndRange(kBucketName, kBlobName,
+                                         absl::StrCat("bytes=", i, "-", i + 1)),
+                    _, _))
+        .WillOnce([this, &bytes_str, i](auto request, auto& callback, auto) {
+          auto end_index = std::min(i + 1, bytes_str.length() - 1);
+          GetObjectResult result;
+          result.ReplaceBody(new StringStream(bytes_str.substr(i, 2)));
+          result.SetContentRange(
+              absl::StrCat("bytes ", i, "-", end_index, "/15"));
+          result.SetContentLength(end_index - i + 1);
+          GetObjectOutcome outcome(move(result));
+          callback(abstract_client_, request, move(outcome), nullptr);
+        });
+  }
+
+  vector<GetBlobStreamResponse> actual_responses;
+  get_blob_stream_context_.process_callback = [this, &actual_responses](
+                                                  auto& context, bool) {
+    auto resp = context.TryGetNextResponse();
+    if (resp != nullptr) {
+      actual_responses.push_back(move(*resp));
+    } else {
+      if (!context.IsMarkedDone()) {
+        ADD_FAILURE();
+      }
+      EXPECT_SUCCESS(context.result);
+      finish_called_ = true;
+    }
+  };
+
+  EXPECT_SUCCESS(provider_.GetBlobStream(get_blob_stream_context_));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+  EXPECT_TRUE(get_blob_stream_context_.IsMarkedDone());
+  EXPECT_THAT(actual_responses,
+              Pointwise(GetBlobStreamResponseEquals(), expected_responses));
+}
+
+TEST_F(AwsS3ClientProviderStreamTest, GetBlobStreamByteRange) {
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_bucket_name(
+      kBucketName);
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_blob_name(
+      kBlobName);
+  get_blob_stream_context_.request->set_max_bytes_per_response(3);
+  get_blob_stream_context_.request->mutable_byte_range()->set_begin_byte_index(
+      3);
+  get_blob_stream_context_.request->mutable_byte_range()->set_end_byte_index(6);
+
+  // We slice "response_string" to indices 3-6.
+  string bytes_str = "pons";
+  // Expect to get responses with data: ["pon", "s"]
+  vector<GetBlobStreamResponse> expected_responses;
+  GetBlobStreamResponse resp1, resp2;
+  resp1.mutable_blob_portion()->mutable_metadata()->CopyFrom(
+      get_blob_stream_context_.request->blob_metadata());
+  resp2.mutable_blob_portion()->mutable_metadata()->CopyFrom(
+      get_blob_stream_context_.request->blob_metadata());
+  *resp1.mutable_blob_portion()->mutable_data() = "pon";
+  resp1.mutable_byte_range()->set_begin_byte_index(3);
+  resp1.mutable_byte_range()->set_end_byte_index(5);
+  *resp2.mutable_blob_portion()->mutable_data() = "s";
+  resp2.mutable_byte_range()->set_begin_byte_index(6);
+  resp2.mutable_byte_range()->set_end_byte_index(6);
+  expected_responses.push_back(resp1);
+  expected_responses.push_back(resp2);
+
+  InSequence in_sequence;
+  EXPECT_CALL(
+      *s3_client_,
+      GetObjectAsync(HasBucketKeyAndRange(kBucketName, kBlobName,
+                                          absl::StrCat("bytes=", 3, "-", 5)),
+                     _, _))
+      .WillOnce([this, &bytes_str](auto request, auto& callback, auto) {
+        GetObjectResult result;
+        result.ReplaceBody(new StringStream(bytes_str.substr(0, 3)));
+        // Set actual length to be 15 so that it thinks there is more object
+        // than we're getting.
+        result.SetContentRange(absl::StrCat("bytes ", 3, "-", 5, "/15"));
+        result.SetContentLength(3);
+        GetObjectOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+  EXPECT_CALL(
+      *s3_client_,
+      GetObjectAsync(HasBucketKeyAndRange(kBucketName, kBlobName,
+                                          absl::StrCat("bytes=", 6, "-", 6)),
+                     _, _))
+      .WillOnce([this, &bytes_str](auto request, auto& callback, auto) {
+        GetObjectResult result;
+        result.ReplaceBody(new StringStream(bytes_str.substr(3, 3)));
+        // Set actual length to be 15 so that it thinks there is more object
+        // than we're getting.
+        result.SetContentRange(absl::StrCat("bytes ", 6, "-", 6, "/15"));
+        result.SetContentLength(1);
+        GetObjectOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  vector<GetBlobStreamResponse> actual_responses;
+  get_blob_stream_context_.process_callback = [this, &actual_responses](
+                                                  auto& context, bool) {
+    auto resp = context.TryGetNextResponse();
+    if (resp != nullptr) {
+      actual_responses.push_back(move(*resp));
+    } else {
+      if (!context.IsMarkedDone()) {
+        ADD_FAILURE();
+      }
+      EXPECT_SUCCESS(context.result);
+      finish_called_ = true;
+    }
+  };
+
+  EXPECT_SUCCESS(provider_.GetBlobStream(get_blob_stream_context_));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+  EXPECT_TRUE(get_blob_stream_context_.IsMarkedDone());
+  EXPECT_THAT(actual_responses,
+              Pointwise(GetBlobStreamResponseEquals(), expected_responses));
+}
+
+TEST_F(AwsS3ClientProviderStreamTest, GetBlobStreamIndexBeyondEnd) {
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_bucket_name(
+      kBucketName);
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_blob_name(
+      kBlobName);
+  get_blob_stream_context_.request->mutable_byte_range()->set_begin_byte_index(
+      0);
+  get_blob_stream_context_.request->mutable_byte_range()->set_end_byte_index(
+      1000);
+
+  // 15 chars.
+  string bytes_str = "response_string";
+  GetBlobStreamResponse expected_response;
+  expected_response.mutable_blob_portion()->mutable_metadata()->CopyFrom(
+      get_blob_stream_context_.request->blob_metadata());
+  *expected_response.mutable_blob_portion()->mutable_data() = bytes_str;
+  expected_response.mutable_byte_range()->set_begin_byte_index(0);
+  expected_response.mutable_byte_range()->set_end_byte_index(14);
+
+  EXPECT_CALL(
+      *s3_client_,
+      GetObjectAsync(
+          HasBucketKeyAndRange(kBucketName, kBlobName, "bytes=0-1000"), _, _))
+      .WillOnce([this, &bytes_str](auto request, auto& callback, auto) {
+        GetObjectResult result;
+        result.ReplaceBody(new StringStream(bytes_str));
+        result.SetContentRange("bytes 0-14/15");
+        result.SetContentLength(bytes_str.length());
+        GetObjectOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  vector<GetBlobStreamResponse> actual_responses;
+  get_blob_stream_context_.process_callback = [this, &actual_responses](
+                                                  auto& context, bool) {
+    auto resp = context.TryGetNextResponse();
+    if (resp != nullptr) {
+      actual_responses.push_back(move(*resp));
+    } else {
+      if (!context.IsMarkedDone()) {
+        ADD_FAILURE();
+      }
+      EXPECT_SUCCESS(context.result);
+      finish_called_ = true;
+    }
+  };
+
+  EXPECT_SUCCESS(provider_.GetBlobStream(get_blob_stream_context_));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+  EXPECT_TRUE(get_blob_stream_context_.IsMarkedDone());
+  EXPECT_THAT(actual_responses,
+              ElementsAre(GetBlobStreamResponseEquals(expected_response)));
+}
+
+TEST_F(AwsS3ClientProviderStreamTest, GetBlobStreamFailsIfGetObjectFails) {
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_bucket_name(
+      kBucketName);
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_blob_name(
+      kBlobName);
+
+  EXPECT_CALL(*s3_client_, GetObjectAsync)
+      .WillOnce([this](auto request, auto& callback, auto) {
+        AWSError<S3Errors> s3_error(S3Errors::ACCESS_DENIED, false);
+        GetObjectOutcome outcome(move(s3_error));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  get_blob_stream_context_.process_callback = [this](auto& context, bool) {
+    EXPECT_THAT(
+        context.result,
+        ResultIs(FailureExecutionResult(SC_AWS_INTERNAL_SERVICE_ERROR)));
+    finish_called_ = true;
+  };
+
+  EXPECT_SUCCESS(provider_.GetBlobStream(get_blob_stream_context_));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+  EXPECT_TRUE(get_blob_stream_context_.IsMarkedDone());
+}
+
+TEST_F(AwsS3ClientProviderStreamTest, GetBlobStreamFailsIfQueueDone) {
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_bucket_name(
+      kBucketName);
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_blob_name(
+      kBlobName);
+  get_blob_stream_context_.MarkDone();
+
+  // 15 chars.
+  string bytes_str = "response_string";
+
+  EXPECT_CALL(
+      *s3_client_,
+      GetObjectAsync(
+          HasBucketKeyAndRange(kBucketName, kBlobName, "bytes=0-65535"), _, _))
+      .WillOnce([this, &bytes_str](auto request, auto& callback, auto) {
+        GetObjectResult result;
+        result.ReplaceBody(new StringStream(bytes_str));
+        result.SetContentRange("bytes 0-14/15");
+        result.SetContentLength(bytes_str.length());
+        GetObjectOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  get_blob_stream_context_.process_callback = [this](auto& context, bool) {
+    EXPECT_THAT(context.result,
+                ResultIs(FailureExecutionResult(SC_STREAMING_CONTEXT_DONE)));
+    finish_called_ = true;
+  };
+
+  EXPECT_SUCCESS(provider_.GetBlobStream(get_blob_stream_context_));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+  EXPECT_TRUE(get_blob_stream_context_.IsMarkedDone());
+}
+
+TEST_F(AwsS3ClientProviderStreamTest, GetBlobStreamFailsIfRequestCancelled) {
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_bucket_name(
+      kBucketName);
+  get_blob_stream_context_.request->mutable_blob_metadata()->set_blob_name(
+      kBlobName);
+  get_blob_stream_context_.TryCancel();
+
+  // 15 chars.
+  string bytes_str = "response_string";
+
+  EXPECT_CALL(
+      *s3_client_,
+      GetObjectAsync(
+          HasBucketKeyAndRange(kBucketName, kBlobName, "bytes=0-65535"), _, _))
+      .WillOnce([this, &bytes_str](auto request, auto& callback, auto) {
+        GetObjectResult result;
+        result.ReplaceBody(new StringStream(bytes_str));
+        result.SetContentRange("bytes 0-14/15");
+        result.SetContentLength(bytes_str.length());
+        GetObjectOutcome outcome(move(result));
+        callback(abstract_client_, request, move(outcome), nullptr);
+      });
+
+  get_blob_stream_context_.process_callback = [this](auto& context, bool) {
+    EXPECT_THAT(context.result,
+                ResultIs(FailureExecutionResult(
+                    SC_BLOB_STORAGE_PROVIDER_STREAM_SESSION_CANCELLED)));
+    finish_called_ = true;
+  };
+
+  EXPECT_SUCCESS(provider_.GetBlobStream(get_blob_stream_context_));
+
+  WaitUntil([this]() { return finish_called_.load(); });
+  EXPECT_TRUE(get_blob_stream_context_.IsMarkedDone());
 }
 
 }  // namespace google::scp::cpio::client_providers

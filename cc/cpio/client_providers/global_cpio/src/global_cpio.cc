@@ -19,6 +19,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/log/check.h"
 #include "cpio/client_providers/interface/cpio_provider_interface.h"
 
 using std::move;
@@ -28,10 +29,17 @@ namespace google::scp::cpio::client_providers {
 static std::unique_ptr<CpioProviderInterface> cpio_instance_;
 
 const unique_ptr<CpioProviderInterface>& GlobalCpio::GetGlobalCpio() {
+  CHECK(cpio_instance_.get() != nullptr)
+      << "Cpio must be initialized with Cpio::InitCpio before client "
+         "use";
   return cpio_instance_;
 }
 
 void GlobalCpio::SetGlobalCpio(unique_ptr<CpioProviderInterface>& cpio) {
   cpio_instance_ = move(cpio);
+}
+
+void GlobalCpio::ShutdownGlobalCpio() {
+  cpio_instance_ = nullptr;
 }
 }  // namespace google::scp::cpio::client_providers

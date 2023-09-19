@@ -26,14 +26,19 @@ namespace google::scp::core::utils {
  * @brief Calculates MD5 hash of the input data and sets it in checksum input
  * parameter as a binary string.
  *
- * @param[in] buffer The buffer to calculate the hash.
- * @param[out] checksum The checksum value.
- * @return ExecutionResult The execution result of the operation.
+ * @param buffer The buffer to calculate the hash.
+ * @return ExecutionResultOr<string> The checksum value.
  */
+ExecutionResultOr<std::string> CalculateMd5Hash(const BytesBuffer& buffer);
+
+// Same as above but accepts a string.
+ExecutionResultOr<std::string> CalculateMd5Hash(const std::string& buffer);
+
+// DEPRECATED, please use the above options.
 ExecutionResult CalculateMd5Hash(const BytesBuffer& buffer,
                                  std::string& checksum);
 
-// Same as above but accepts a string.
+// DEPRECATED, please use the above options.
 ExecutionResult CalculateMd5Hash(const std::string& buffer,
                                  std::string& checksum);
 

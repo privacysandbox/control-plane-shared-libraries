@@ -14,9 +14,10 @@
 
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <string>
 
-#include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 
 namespace google::scp::core::test {

@@ -38,6 +38,8 @@ struct WorkerApiSapiConfig {
   size_t max_worker_virtual_memory_mb;
   JsEngineResourceConstraints js_engine_resource_constraints;
   size_t js_engine_max_wasm_memory_number_of_pages;
+  size_t sandbox_request_response_shared_buffer_size_mb;
+  bool enable_sandbox_sharing_request_response_with_buffer_only;
 };
 
 class WorkerApiSapi : public WorkerApi {
@@ -50,7 +52,9 @@ class WorkerApiSapi : public WorkerApi {
         config.max_worker_virtual_memory_mb,
         config.js_engine_resource_constraints.initial_heap_size_in_mb,
         config.js_engine_resource_constraints.maximum_heap_size_in_mb,
-        config.js_engine_max_wasm_memory_number_of_pages);
+        config.js_engine_max_wasm_memory_number_of_pages,
+        config.sandbox_request_response_shared_buffer_size_mb,
+        config.enable_sandbox_sharing_request_response_with_buffer_only);
   }
 
   core::ExecutionResult Init() noexcept override;

@@ -18,9 +18,9 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "roma/sandbox/constants/constants.h"
 #include "roma/sandbox/js_engine/src/v8_engine/v8_isolate_visitor.h"
 #include "roma/sandbox/js_engine/src/v8_engine/v8_isolate_visitor_function_binding.h"
@@ -29,6 +29,7 @@
 
 #include "error_codes.h"
 
+using absl::flat_hash_map;
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::errors::SC_ROMA_WORKER_FACTORY_UNKNOWN_ENGINE_TYPE;
@@ -43,13 +44,12 @@ using std::make_shared;
 using std::shared_ptr;
 using std::string;
 using std::to_string;
-using std::unordered_map;
 using std::vector;
 
 namespace google::scp::roma::sandbox::worker {
-static unordered_map<string, string> GetEngineOneTimeSetup(
+static flat_hash_map<string, string> GetEngineOneTimeSetup(
     const WorkerFactory::FactoryParams& params) {
-  unordered_map<string, string> one_time_setup;
+  flat_hash_map<string, string> one_time_setup;
   one_time_setup[kJsEngineOneTimeSetupWasmPagesKey] =
       to_string(params.v8_worker_engine_params.max_wasm_memory_number_of_pages);
   return one_time_setup;

@@ -14,13 +14,13 @@
 
 #include "cpio/client_providers/auth_token_provider/src/gcp/gcp_auth_token_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
 #include <utility>
 
-#include <gmock/gmock.h>
 #include <nlohmann/json.hpp>
 
 #include "absl/strings/str_cat.h"

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -30,6 +32,7 @@ cc_library(
         "//cc/core/interface:interface_lib",
         "//cc/core/interface:type_def_lib",
         "//cc/public/core/interface:execution_result",
+        "//cc/roma/logging/src:roma_logging_lib",
         "//cc/roma/sandbox/dispatcher/src:roma_dispatcher_lib",
         "//cc/roma/sandbox/native_function_binding/src:roma_native_function_handler_sapi_ipc_lib",
         "//cc/roma/sandbox/worker_api/src:roma_worker_api_sapi_lib",

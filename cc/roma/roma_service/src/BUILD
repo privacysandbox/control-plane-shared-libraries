@@ -12,70 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
-legacy_service_srcs = [
-    "roma_service.cc",
-    "roma_service.h",
-    "roma.cc",
-]
-
-legacy_service_deps = [
-    "//cc:cc_base_include_dir",
-    "//cc/core/interface:interface_lib",
-    "//cc/roma/dispatcher/src:roma_dispatcher_lib",
-    "//cc/roma/interface:roma_interface_lib",
-    "//cc/roma/worker/src:roma_worker_lib",
-    "//cc/core/os/src/linux:system_resource_info_provider_linux_lib",
-]
-
-sandboxed_service_deps = [
-    "//cc:cc_base_include_dir",
-    "//cc/core/interface:interface_lib",
-    "//cc/roma/sandbox/dispatcher/src:roma_dispatcher_lib",
-    "//cc/roma/sandbox/roma_service/src:roma_service_lib",
-    "//cc/core/os/src/linux:system_resource_info_provider_linux_lib",
-]
-
-service_copts = select({
-    "roma_service_sandboxed": [
-        "-D_SCP_ROMA_SANDBOXED_LIBRARY=1",
-    ],
-    "//conditions:default": [],
-})
-
 cc_library(
     name = "roma_service_lib",
-    srcs = select({
-        "roma_service_legacy": legacy_service_srcs,
-        "roma_service_sandboxed": ["roma.cc"],
-    }),
-    copts = service_copts + [
+    srcs = ["roma.cc"],
+    copts = [
         "-std=c++17",
     ],
-    deps = select({
-        "roma_service_legacy": legacy_service_deps,
-        "roma_service_sandboxed": sandboxed_service_deps,
-    }),
-)
-
-string_flag(
-    name = "service",
-    build_setting_default = "sandboxed",
-    values = [
-        "legacy",
-        "sandboxed",
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/interface:interface_lib",
+        "//cc/core/os/src/linux:system_resource_info_provider_linux_lib",
+        "//cc/roma/sandbox/dispatcher/src:roma_dispatcher_lib",
+        "//cc/roma/sandbox/roma_service/src:roma_service_lib",
     ],
-)
-
-config_setting(
-    name = "roma_service_legacy",
-    flag_values = {"service": "legacy"},
-)
-
-config_setting(
-    name = "roma_service_sandboxed",
-    flag_values = {"service": "sandboxed"},
 )

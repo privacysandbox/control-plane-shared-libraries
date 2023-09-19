@@ -27,26 +27,35 @@
 #include <vector>
 
 #include "core/async_executor/mock/mock_async_executor.h"
+#include "core/async_executor/src/async_executor.h"
 #include "core/common/auto_expiry_concurrent_map/mock/mock_auto_expiry_concurrent_map.h"
 #include "core/common/time_provider/src/time_provider.h"
 #include "core/test/utils/conditional_wait.h"
+#include "core/test/utils/error_codes.h"
 #include "public/core/test/interface/execution_result_matchers.h"
 
+using google::scp::core::AsyncExecutor;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::common::AutoExpiryConcurrentMap;
 using google::scp::core::common::auto_expiry_concurrent_map::mock::
     MockAutoExpiryConcurrentMap;
 using google::scp::core::test::ResultIs;
+using google::scp::core::test::TestTimeoutException;
 using google::scp::core::test::WaitUntil;
+using google::scp::core::test::WaitUntilOrReturn;
 using std::defer_lock;
 using std::find;
 using std::function;
 using std::make_shared;
+using std::move;
 using std::shared_lock;
 using std::shared_ptr;
 using std::shared_timed_mutex;
 using std::static_pointer_cast;
+using std::string;
+using std::unique_lock;
 using std::vector;
+using std::chrono::milliseconds;
 using std::chrono::seconds;
 
 namespace google::scp::core::common::test {
@@ -669,5 +678,83 @@ TEST(AutoExpiryConcurrentMapEntryTest, IsEntryExpired) {
   entry.expiration_time =
       (current_time + seconds(2)).count(); /* adding 2 seconds */
   EXPECT_EQ(entry.IsExpired(), false);
+}
+
+TEST(AutoExpiryConcurrentMapEntryTest, StopShouldWaitForScheduledWork) {
+  std::mutex gc_completion_lambdas_mutex;
+  std::vector<std::function<void(bool)>> gc_completion_lambdas;
+  auto async_executor =
+      make_shared<AsyncExecutor>(/*thread_count=*/4, /*queue_capacity=*/100);
+
+  // Do not invoke the completion lambdas yet, but collect them and invoke them
+  // later.
+  auto on_before_gc_lambda = [&gc_completion_lambdas,
+                              &gc_completion_lambdas_mutex](
+                                 string&, shared_ptr<string>&,
+                                 std::function<void(bool)> completion_lambda) {
+    unique_lock lock(gc_completion_lambdas_mutex);
+    gc_completion_lambdas.push_back(move(completion_lambda));
+  };
+
+  AutoExpiryConcurrentMap<string, shared_ptr<string>> map(
+      /*evict_timeout=*/1, /*extend_entry_lifetime_on_access=*/false,
+      /*block_entry_while_eviction=*/false, on_before_gc_lambda,
+      async_executor);
+
+  // Insert 3 entries. 3 callback lambdas will be invoked once the garbage
+  // collection work is started.
+  {
+    shared_ptr<string> out_value;
+    EXPECT_SUCCESS(map.Insert(make_pair("key1", make_shared<string>("value1")),
+                              out_value));
+  }
+  {
+    shared_ptr<string> out_value;
+    EXPECT_SUCCESS(map.Insert(make_pair("key2", make_shared<string>("value2")),
+                              out_value));
+  }
+  {
+    shared_ptr<string> out_value;
+    EXPECT_SUCCESS(map.Insert(make_pair("key3", make_shared<string>("value3")),
+                              out_value));
+  }
+
+  EXPECT_SUCCESS(async_executor->Init());
+  EXPECT_SUCCESS(async_executor->Run());
+
+  EXPECT_SUCCESS(map.Init());
+  EXPECT_SUCCESS(map.Run());
+
+  WaitUntil([&gc_completion_lambdas, &gc_completion_lambdas_mutex]() {
+    unique_lock lock(gc_completion_lambdas_mutex);
+    return gc_completion_lambdas.size() == 3;
+  });
+
+  // Stopper thread. Start stoping the map...
+  std::atomic<bool> stop_completed = false;
+  std::thread stop_thread([&map, &stop_completed]() {
+    EXPECT_SUCCESS(map.Stop());
+    stop_completed = true;
+  });
+
+  // Cannot be stopped because there is pending work..
+  EXPECT_THAT(
+      WaitUntilOrReturn([&stop_completed]() { return stop_completed.load(); },
+                        /*timeout=*/milliseconds(2000)),
+      ResultIs(FailureExecutionResult(
+          core::test::errors::SC_TEST_UTILS_TEST_WAIT_TIMEOUT)));
+
+  // Invoke the lambdas to complete the pending work, and unblocking the stopper
+  // thread.
+  for (auto& lambda : gc_completion_lambdas) {
+    lambda(true);
+  }
+
+  EXPECT_SUCCESS(
+      WaitUntilOrReturn([&stop_completed]() { return stop_completed.load(); },
+                        /*timeout=*/milliseconds(2000)));
+
+  stop_thread.join();
+  EXPECT_SUCCESS(async_executor->Stop());
 }
 }  // namespace google::scp::core::common::test

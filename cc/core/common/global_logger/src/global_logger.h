@@ -31,6 +31,7 @@ class GlobalLogger {
   static void SetGlobalLogLevels(
       const std::unordered_set<LogLevel>& log_levels);
   static void SetGlobalLogger(std::unique_ptr<core::LoggerInterface> logger);
+  static void ShutdownGlobalLogger();
 };
 }  // namespace google::scp::core::common
 

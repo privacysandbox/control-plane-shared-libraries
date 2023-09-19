@@ -47,12 +47,6 @@ DEFINE_ERROR_CODE(SC_ROMA_FUNCTION_TABLE_COULD_NOT_FIND_FUNCTION_NAME,
                   HttpStatusCode::BAD_REQUEST)
 
 DEFINE_ERROR_CODE(
-    SC_ROMA_FUNCTION_TABLE_FAILED_WHILE_CALLING_USER_PROVIDED_FUNC,
-    SC_ROMA_FUNCTION_TABLE, 0x0002,
-    "Failed while calling user-provided C++ function binding.",
-    HttpStatusCode::BAD_REQUEST)
-
-DEFINE_ERROR_CODE(
     SC_ROMA_FUNCTION_TABLE_NAME_ALREADY_REGISTERED, SC_ROMA_FUNCTION_TABLE,
     0x0003,
     "A function with this name has already been registered in the table.",

@@ -24,12 +24,12 @@
 #include "public/cpio/utils/metric_aggregation/interface/type_def.h"
 #include "public/cpio/utils/metric_aggregation/src/simple_metric.h"
 
-namespace google::scp::cpio::client_providers::mock {
+namespace google::scp::cpio {
 class MockSimpleMetricOverrides : public SimpleMetric {
  public:
   explicit MockSimpleMetricOverrides(
       const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
-      const std::shared_ptr<MetricClientProviderInterface>& metric_client,
+      const std::shared_ptr<MetricClientInterface>& metric_client,
       const std::shared_ptr<MetricDefinition>& metric_info)
       : SimpleMetric(async_executor, metric_client, metric_info) {}
 
@@ -62,4 +62,4 @@ class MockSimpleMetricOverrides : public SimpleMetric {
   }
 };
 
-}  // namespace google::scp::cpio::client_providers::mock
+}  // namespace google::scp::cpio

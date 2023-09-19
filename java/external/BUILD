@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_java//java:defs.bzl", "java_library", "java_plugin")
+
 package(
     default_visibility = ["//visibility:public"],
 )
-
-load("@rules_java//java:defs.bzl", "java_library", "java_plugin")
 
 alias(
     name = "guava",
@@ -285,6 +285,11 @@ alias(
 alias(
     name = "aws_s3",
     actual = "@maven//:software_amazon_awssdk_s3",
+)
+
+alias(
+    name = "aws_sns",
+    actual = "@maven//:software_amazon_awssdk_sns",
 )
 
 alias(

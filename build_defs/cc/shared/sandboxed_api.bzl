@@ -19,10 +19,10 @@ def sandboxed_api(scp_repo_name = ""):
     maybe(
         git_repository,
         name = "com_google_sandboxed_api",
-        # main as of 07-17-2023
-        commit = "4ba75ea0a29b55874f08ee10cc8878f5ad847cd1",
+        # main as of 08-24-2023
+        commit = "d5ff466c59993553fe546776488b86e9bb794b5c",
         remote = "https://github.com/google/sandboxed-api.git",
         patch_args = ["-p1"],
         patches = [scp_repo_name + "//build_defs/cc/shared:sandboxed_api.patch"],
-        shallow_since = "1689611482 -0700",
+        shallow_since = "1692892706 -0700",
     )

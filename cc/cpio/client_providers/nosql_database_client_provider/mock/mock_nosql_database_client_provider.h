@@ -55,6 +55,13 @@ class MockNoSQLDatabaseClientProvider
       (noexcept, override));
 
   MOCK_METHOD(
+      core::ExecutionResult, CreateDatabaseItem,
+      ((core::AsyncContext<
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest,
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse>&)),
+      (noexcept, override));
+
+  MOCK_METHOD(
       core::ExecutionResult, UpsertDatabaseItem,
       ((core::AsyncContext<
           cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest,

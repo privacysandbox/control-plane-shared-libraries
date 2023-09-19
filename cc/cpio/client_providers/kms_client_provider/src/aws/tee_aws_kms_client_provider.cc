@@ -230,9 +230,13 @@ ExecutionResult TeeAwsKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
   if (!pipe) {
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_KMSTOOL_CLI_EXECUTION_FAILED);
-    SCP_ERROR(
-        kTeeAwsKmsClientProvider, kZeroUuid, execution_result,
-        "Enclaves KMSTool Cli execution failed on initializing pipe stream.");
+    // popen will put the error in errno.
+    char buffer_arr[9999];
+    char* error_msg = strerror_r(errno, buffer_arr, 9999);
+    SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, execution_result,
+              "Enclaves KMSTool Cli execution failed on initializing pipe "
+              "stream. Command: %s Error message: %s.",
+              command.c_str(), error_msg);
     return execution_result;
   }
 
@@ -244,8 +248,13 @@ ExecutionResult TeeAwsKmsClientProvider::DecryptUsingEnclavesKmstoolCli(
   if (return_status == EXIT_FAILURE) {
     auto execution_result = FailureExecutionResult(
         SC_TEE_AWS_KMS_CLIENT_PROVIDER_KMSTOOL_CLI_EXECUTION_FAILED);
+    // pclose will put the error in errno.
+    char buffer_arr[9999];
+    char* error_msg = strerror_r(errno, buffer_arr, 9999);
     SCP_ERROR(kTeeAwsKmsClientProvider, kZeroUuid, execution_result,
-              "Enclaves KMSTool Cli execution failed on closing pipe stream.");
+              "Enclaves KMSTool Cli execution failed on closing pipe stream. "
+              "Command: %s Error message: %s",
+              command.c_str(), error_msg);
     return execution_result;
   }
 

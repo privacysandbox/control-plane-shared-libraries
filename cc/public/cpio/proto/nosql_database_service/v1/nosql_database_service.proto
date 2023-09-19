@@ -28,15 +28,16 @@ option cc_enable_arenas = true;
 // Provides NoSQL Database functionalities.
 service NoSqlDatabaseService {
   // Creates a table in the database.
-  rpc CreateTable(CreateTableRequest)
-      returns (CreateTableResponse) {}
+  rpc CreateTable(CreateTableRequest) returns (CreateTableResponse) {}
   // Deletes a table from the database.
-  rpc DeleteTable(DeleteTableRequest)
-      returns (DeleteTableResponse) {}
+  rpc DeleteTable(DeleteTableRequest) returns (DeleteTableResponse) {}
 
   // Gets an item from the database.
   rpc GetDatabaseItem(GetDatabaseItemRequest)
       returns (GetDatabaseItemResponse) {}
+  // Creates an item in the database.
+  rpc CreateDatabaseItem(CreateDatabaseItemRequest)
+      returns (CreateDatabaseItemResponse) {}
   // Upserts an item into the database.
   rpc UpsertDatabaseItem(UpsertDatabaseItemRequest)
       returns (UpsertDatabaseItemResponse) {}
@@ -133,6 +134,22 @@ message GetDatabaseItemResponse {
 
   // The item to get.
   Item item = 2;
+}
+
+// Request object for creating an object in the database.
+// Creation will fail if the item key already exists.
+message CreateDatabaseItemRequest {
+  // The identifier for the item to upsert.
+  ItemKey key = 1;
+
+  // The attributes for the Item to be given.
+  repeated ItemAttribute attributes = 2;
+}
+
+// Response object for creating an object in the database.
+message CreateDatabaseItemResponse {
+  // The execution result.
+  scp.core.common.proto.ExecutionResult result = 1;
 }
 
 // Request object for upserting an object into the database.

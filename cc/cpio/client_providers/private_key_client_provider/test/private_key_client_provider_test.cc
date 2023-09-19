@@ -52,7 +52,7 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::GetErrorMessage;
 using google::scp::core::errors::
-    SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA;
+    SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLITS;
 using google::scp::core::test::EqualsProto;
 using google::scp::core::test::ExpectTimestampEquals;
 using google::scp::core::test::IsSuccessful;
@@ -540,6 +540,53 @@ TEST_F(PrivateKeyClientProviderTest, FirstEndpointMissingMultipleKeySplits) {
   WaitUntil([&]() { return response_count.load() == 1; });
 }
 
+TEST_F(PrivateKeyClientProviderTest,
+       IgnoreUnmatchedEndpointsAndKeyDataSplitsFailureForListByAge) {
+  auto mock_result = SuccessExecutionResult();
+  SetMockKmsClient(mock_result, 7);
+
+  map<string, PrivateKeyFetchingResponse> responses;
+  for (int i = 1; i < 3; ++i) {
+    PrivateKeyFetchingResponse mock_fetching_response;
+    for (int j = 0; j < 2; ++j) {
+      GetPrivateKeyFetchingResponse(mock_fetching_response, j, i);
+    }
+    responses[kTestEndpoints[i]] = mock_fetching_response;
+  }
+  PrivateKeyFetchingResponse corrupted_response;
+  for (int j = 0; j < 3; ++j) {
+    GetPrivateKeyFetchingResponse(corrupted_response, j, 0);
+  }
+  corrupted_response.encryption_keys[0]->key_data.pop_back();
+  responses[kTestEndpoints[0]] = corrupted_response;
+
+  SetMockPrivateKeyFetchingClientForListByAge(
+      kMockSuccessKeyFetchingResultsForListByAge, responses);
+
+  ListPrivateKeysRequest request;
+  request.set_max_age_seconds(kTestCreationTime);
+
+  string encoded_private_key;
+  Base64Encode(kTestPrivateKey, encoded_private_key);
+  atomic<size_t> response_count = 0;
+  AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse> context(
+      make_shared<ListPrivateKeysRequest>(request),
+      [&](AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse>&
+              context) {
+        EXPECT_THAT(context.response->private_keys().size(), 2);
+        auto expected_keys =
+            BuildExpectedPrivateKeys(encoded_private_key, 0, 1);
+        EXPECT_THAT(context.response->private_keys(),
+                    Pointwise(EqualsProto(), expected_keys));
+        EXPECT_SUCCESS(context.result);
+        response_count.fetch_add(1);
+      });
+
+  auto result = private_key_client_provider->ListPrivateKeys(context);
+  EXPECT_SUCCESS(result);
+  WaitUntil([&]() { return response_count.load() == 1; });
+}
+
 TEST_F(PrivateKeyClientProviderTest, FetchingPrivateKeysFailed) {
   PrivateKeyFetchingResponse mock_fetching_response;
   GetPrivateKeyFetchingResponse(mock_fetching_response, 0, 0);
@@ -595,7 +642,7 @@ TEST_F(PrivateKeyClientProviderTest,
   request.add_key_ids(kTestKeyIds[2]);
 
   auto expected_result = FailureExecutionResult(
-      SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA);
+      SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLITS);
   atomic<size_t> response_count = 0;
   AsyncContext<ListPrivateKeysRequest, ListPrivateKeysResponse> context(
       make_shared<ListPrivateKeysRequest>(request),

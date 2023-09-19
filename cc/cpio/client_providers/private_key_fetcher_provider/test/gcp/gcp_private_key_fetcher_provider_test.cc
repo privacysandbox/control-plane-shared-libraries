@@ -15,13 +15,12 @@
 
 #include "cpio/client_providers/private_key_fetcher_provider/src/gcp/gcp_private_key_fetcher_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <functional>
 #include <memory>
 #include <string>
-
-#include <gmock/gmock.h>
 
 #include "absl/strings/str_cat.h"
 #include "core/http2_client/mock/mock_http_client.h"

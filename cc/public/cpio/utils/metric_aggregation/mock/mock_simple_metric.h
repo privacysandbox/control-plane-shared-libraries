@@ -22,7 +22,7 @@
 #include "public/cpio/utils/metric_aggregation/interface/simple_metric_interface.h"
 #include "public/cpio/utils/metric_aggregation/interface/type_def.h"
 
-namespace google::scp::cpio::client_providers::mock {
+namespace google::scp::cpio {
 class MockSimpleMetric : public SimpleMetricInterface {
  public:
   MockSimpleMetric() {}
@@ -42,4 +42,4 @@ class MockSimpleMetric : public SimpleMetricInterface {
   void Push(const std::shared_ptr<MetricValue>& metric_value,
             const std::shared_ptr<MetricTag>& metric_tag) noexcept override {}
 };
-}  // namespace google::scp::cpio::client_providers::mock
+}  // namespace google::scp::cpio

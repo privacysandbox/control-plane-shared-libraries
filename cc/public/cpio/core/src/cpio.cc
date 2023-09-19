@@ -101,12 +101,14 @@ ExecutionResult Cpio::ShutdownCpio(CpioOptions options) {
     if (!execution_result.Successful()) {
       return execution_result;
     }
+    GlobalLogger::ShutdownGlobalLogger();
   }
   if (GlobalCpio::GetGlobalCpio()) {
     auto execution_result = GlobalCpio::GetGlobalCpio()->Stop();
     if (!execution_result.Successful()) {
       return execution_result;
     }
+    GlobalCpio::ShutdownGlobalCpio();
   }
 
   return SuccessExecutionResult();

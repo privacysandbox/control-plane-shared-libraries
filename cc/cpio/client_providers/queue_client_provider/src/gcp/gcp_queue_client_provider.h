@@ -133,7 +133,7 @@ class GcpQueueClientProvider : public QueueClientProviderInterface {
   std::shared_ptr<InstanceClientProviderInterface> instance_client_provider_;
 
   /// The instance of the async executor.
-  const std::shared_ptr<core::AsyncExecutorInterface>cpu_async_executor_,
+  const std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
       io_async_executor_;
 
   /// Project ID of current instance.

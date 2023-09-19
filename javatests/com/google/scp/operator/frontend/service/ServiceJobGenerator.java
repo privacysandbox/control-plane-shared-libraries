@@ -19,6 +19,8 @@ package com.google.scp.operator.frontend.service;
 import static com.google.scp.operator.frontend.service.model.Constants.JOB_PARAM_ATTRIBUTION_REPORT_TO;
 import static com.google.scp.operator.frontend.service.model.Constants.JOB_PARAM_DEBUG_PRIVACY_BUDGET_LIMIT;
 
+import com.google.cmrt.sdk.job_service.v1.GetJobByIdRequest;
+import com.google.cmrt.sdk.job_service.v1.PutJobRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.Timestamp;
@@ -135,5 +137,13 @@ public final class ServiceJobGenerator {
             .build();
 
     return getJobResponse;
+  }
+
+  public static PutJobRequest createFakePutJobRequest() {
+    return PutJobRequest.newBuilder().build();
+  }
+
+  public static GetJobByIdRequest createFakeGetJobByIdRequest() {
+    return GetJobByIdRequest.newBuilder().build();
   }
 }

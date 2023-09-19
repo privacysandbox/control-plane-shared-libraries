@@ -26,17 +26,21 @@
 #include "public/cpio/utils/metric_aggregation/interface/type_def.h"
 #include "public/cpio/utils/metric_aggregation/src/aggregate_metric.h"
 
-namespace google::scp::cpio::client_providers::mock {
+namespace google::scp::cpio {
 class MockAggregateMetricOverrides : public AggregateMetric {
  public:
   explicit MockAggregateMetricOverrides(
       const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
-      const std::shared_ptr<MetricClientProviderInterface>& metric_client,
+      const std::shared_ptr<MetricClientInterface>& metric_client,
       const std::shared_ptr<MetricDefinition>& metric_info,
-      const core::TimeDuration time_duration,
+      const core::TimeDuration aggregation_time_duration_ms,
       const std::shared_ptr<std::vector<std::string>>& event_list = nullptr)
       : AggregateMetric(async_executor, metric_client, metric_info,
-                        time_duration, event_list) {}
+                        aggregation_time_duration_ms, event_list) {
+    // For mocking purposes, we should be able to accept incoming metric even if
+    // the mock is not Run().
+    can_accept_incoming_increments_ = true;
+  }
 
   std::function<void()> run_metric_push_mock;
 
@@ -92,4 +96,4 @@ class MockAggregateMetricOverrides : public AggregateMetric {
   }
 };
 
-}  // namespace google::scp::cpio::client_providers::mock
+}  // namespace google::scp::cpio

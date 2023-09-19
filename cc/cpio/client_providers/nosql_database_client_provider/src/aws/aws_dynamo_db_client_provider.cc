@@ -24,10 +24,12 @@
 #include <aws/core/Aws.h>
 #include <aws/core/utils/Outcome.h>
 #include <aws/dynamodb/model/AttributeDefinition.h>
+#include <aws/dynamodb/model/PutItemRequest.h>
 #include <aws/dynamodb/model/QueryRequest.h>
 #include <aws/dynamodb/model/UpdateItemRequest.h>
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "core/async_executor/src/aws/aws_async_executor.h"
 #include "cpio/client_providers/instance_client_provider/src/aws/aws_instance_client_utils.h"
 #include "cpio/common/src/aws/aws_utils.h"
@@ -42,11 +44,15 @@ using Aws::Client::ClientConfiguration;
 using Aws::DynamoDB::DynamoDBClient;
 using Aws::DynamoDB::DynamoDBError;
 using Aws::DynamoDB::Model::AttributeValue;
+using Aws::DynamoDB::Model::PutItemRequest;
+using Aws::DynamoDB::Model::PutItemResult;
 using Aws::DynamoDB::Model::QueryRequest;
 using Aws::DynamoDB::Model::QueryResult;
 using Aws::DynamoDB::Model::UpdateItemRequest;
 using Aws::DynamoDB::Model::UpdateItemResult;
 using Aws::Utils::Outcome;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse;
 using google::cmrt::sdk::nosql_database_service::v1::CreateTableRequest;
 using google::cmrt::sdk::nosql_database_service::v1::CreateTableResponse;
 using google::cmrt::sdk::nosql_database_service::v1::DeleteTableRequest;
@@ -285,6 +291,93 @@ void AwsDynamoDBClientProvider::OnGetDatabaseItemCallback(
                 cpu_async_executor_);
 }
 
+ExecutionResult AwsDynamoDBClientProvider::CreateDatabaseItem(
+    AsyncContext<CreateDatabaseItemRequest, CreateDatabaseItemResponse>&
+        create_database_item_context) noexcept {
+  const auto& request = *create_database_item_context.request;
+  PutItemRequest put_item_request;
+  // Set the table name
+  const String table_name(request.key().table_name().c_str(),
+                          request.key().table_name().size());
+  put_item_request.SetTableName(table_name);
+
+  const auto key_container_or = AwsDynamoDBUtils::GetPartitionAndSortKeyValues(
+      create_database_item_context);
+  if (!key_container_or.Successful()) {
+    create_database_item_context.result = key_container_or.result();
+    create_database_item_context.Finish();
+    return key_container_or.result();
+  }
+
+  String condition_expression = absl::StrFormat(
+      "attribute_not_exists(%s)", key_container_or->partition_key_name);
+  // Set the partition key
+  put_item_request.AddItem(move(key_container_or->partition_key_name),
+                           move(key_container_or->partition_key_val));
+
+  // Sort key is optional
+  if (key_container_or->sort_key_name.has_value()) {
+    condition_expression = absl::StrFormat("%s and attribute_not_exists(%s)",
+                                           condition_expression.c_str(),
+                                           *key_container_or->sort_key_name);
+    // Set the sort key
+    put_item_request.AddItem(move(*key_container_or->sort_key_name),
+                             move(*key_container_or->sort_key_val));
+  }
+
+  if (!request.attributes().empty()) {
+    for (size_t attribute_index = 0;
+         attribute_index < request.attributes_size(); ++attribute_index) {
+      auto attribute_value_or =
+          AwsDynamoDBUtils::ConvertItemAttributeToDynamoDBType(
+              request.attributes(attribute_index));
+      if (!attribute_value_or.Successful()) {
+        create_database_item_context.result = attribute_value_or.result();
+        SCP_ERROR_CONTEXT(kDynamoDB, create_database_item_context,
+                          attribute_value_or.result(),
+                          "Error converting ItemAttribute type for table %s",
+                          request.key().table_name().c_str());
+        create_database_item_context.Finish();
+        return attribute_value_or.result();
+      }
+      put_item_request.AddItem(request.attributes(attribute_index).name(),
+                               attribute_value_or.release());
+    }
+  }
+
+  // Set the condition expression so we fail if the entry exists already.
+  put_item_request.SetConditionExpression(move(condition_expression));
+
+  dynamo_db_client_->PutItemAsync(
+      put_item_request,
+      bind(&AwsDynamoDBClientProvider::OnCreateDatabaseItemCallback, this,
+           create_database_item_context, _1, _2, _3, _4),
+      nullptr);
+
+  return SuccessExecutionResult();
+}
+
+void AwsDynamoDBClientProvider::OnCreateDatabaseItemCallback(
+    AsyncContext<CreateDatabaseItemRequest, CreateDatabaseItemResponse>&
+        create_database_item_context,
+    const DynamoDBClient* dynamo_db_client,
+    const PutItemRequest& put_item_request,
+    const Outcome<PutItemResult, DynamoDBError>& outcome,
+    const shared_ptr<const AsyncCallerContext> async_context) noexcept {
+  ExecutionResult result = SuccessExecutionResult();
+  if (!outcome.IsSuccess()) {
+    result = AwsDynamoDBUtils::ConvertDynamoErrorToExecutionResult(
+        outcome.GetError().GetErrorType());
+    SCP_ERROR_CONTEXT(kDynamoDB, create_database_item_context, result,
+                      "Upsert database item request failed. Error code: %d, "
+                      "message: %s",
+                      outcome.GetError().GetResponseCode(),
+                      outcome.GetError().GetMessage().c_str());
+  }
+
+  FinishContext(result, create_database_item_context, cpu_async_executor_);
+}
+
 ExecutionResult AwsDynamoDBClientProvider::UpsertDatabaseItem(
     AsyncContext<UpsertDatabaseItemRequest, UpsertDatabaseItemResponse>&
         upsert_database_item_context) noexcept {
@@ -399,6 +492,16 @@ void AwsDynamoDBClientProvider::OnUpsertDatabaseItemCallback(
 ExecutionResultOr<shared_ptr<DynamoDBClient>> DynamoDBFactory::CreateClient(
     const ClientConfiguration& client_config) noexcept {
   return make_shared<DynamoDBClient>(client_config);
+}
+
+shared_ptr<NoSQLDatabaseClientProviderInterface>
+NoSQLDatabaseClientProviderFactory::Create(
+    const shared_ptr<NoSQLDatabaseClientOptions>& options,
+    const shared_ptr<InstanceClientProviderInterface>& instance_client,
+    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
+  return make_shared<AwsDynamoDBClientProvider>(
+      instance_client, cpu_async_executor, io_async_executor);
 }
 
 }  // namespace google::scp::cpio::client_providers

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -33,5 +35,6 @@ cc_library(
         "//cc/roma/sandbox/constants:roma_constants_lib",
         "//cc/roma/sandbox/worker_api/src:roma_worker_api_lib",
         "//cc/roma/sandbox/worker_api/src:roma_worker_api_sapi_lib",
+        "@com_google_absl//absl/log:check",
     ],
 )

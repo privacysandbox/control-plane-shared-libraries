@@ -121,15 +121,10 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
     return execution_result;
   }
 
-  if (queue_client_options_->default_visibility_timeout_in_seconds >
-      kMaxAckDeadlineSeconds) {
-    execution_result = FailureExecutionResult(
-        SC_GCP_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT);
-    SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, execution_result,
-              "Invalid visibility timeout.");
-    return execution_result;
-  }
+  return SuccessExecutionResult();
+}
 
+ExecutionResult GcpQueueClientProvider::Run() noexcept {
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_provider_);
   if (!project_id_or.Successful()) {
@@ -142,7 +137,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
   publisher_stub_ =
       pubsub_stub_factory_->CreatePublisherStub(queue_client_options_);
   if (!publisher_stub_) {
-    execution_result =
+    auto execution_result =
         FailureExecutionResult(SC_GCP_QUEUE_CLIENT_PROVIDER_PUBLISHER_REQUIRED);
     SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, execution_result,
               "Failed to create publisher.");
@@ -152,7 +147,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
   subscriber_stub_ =
       pubsub_stub_factory_->CreateSubscriberStub(queue_client_options_);
   if (!subscriber_stub_) {
-    execution_result = FailureExecutionResult(
+    auto execution_result = FailureExecutionResult(
         SC_GCP_QUEUE_CLIENT_PROVIDER_SUBSCRIBER_REQUIRED);
     SCP_ERROR(kGcpQueueClientProvider, kZeroUuid, execution_result,
               "Failed to create subscriber.");
@@ -163,10 +158,7 @@ ExecutionResult GcpQueueClientProvider::Init() noexcept {
                           queue_client_options_->queue_name);
   subscription_name_ = StrFormat(kGcpSubscriptionFormatString, project_id_,
                                  queue_client_options_->queue_name);
-  return SuccessExecutionResult();
-}
 
-ExecutionResult GcpQueueClientProvider::Run() noexcept {
   return SuccessExecutionResult();
 }
 
@@ -427,11 +419,11 @@ ExecutionResult GcpQueueClientProvider::DeleteMessage(
   if (delete_message_context.request->receipt_info().empty()) {
     auto execution_result =
         FailureExecutionResult(SC_GCP_QUEUE_CLIENT_PROVIDER_INVALID_MESSAGE);
-    SCP_ERROR_CONTEXT(
-        kGcpQueueClientProvider, delete_message_context, execution_result,
-        "Failed to delete message lifetime due to missing receipt "
-        "info in the request. Subscription: %s",
-        subscription_name_.c_str());
+    SCP_ERROR_CONTEXT(kGcpQueueClientProvider, delete_message_context,
+                      execution_result,
+                      "Failed to delete message due to missing receipt info in "
+                      "the request. Subscription: %s",
+                      subscription_name_.c_str());
     delete_message_context.result = execution_result;
     delete_message_context.Finish();
     return execution_result;
@@ -468,11 +460,11 @@ void GcpQueueClientProvider::DeleteMessageAsync(
       &client_context, acknowledge_request, &acknowledge_response);
   if (!status.ok()) {
     auto execution_result = GcpUtils::GcpErrorConverter(status);
-    SCP_ERROR_CONTEXT(
-        kGcpQueueClientProvider, delete_message_context, execution_result,
-        "Failed to acknowledge message due to GCP Pub/Sub service "
-        "error. Subscription: %s",
-        subscription_name_.c_str());
+    SCP_ERROR_CONTEXT(kGcpQueueClientProvider, delete_message_context,
+                      execution_result,
+                      "Failed to acknowledge message due to GCP Pub/Sub "
+                      "service error. Subscription: %s",
+                      subscription_name_.c_str());
     FinishContext(execution_result, delete_message_context,
                   cpu_async_executor_);
     return;
@@ -510,7 +502,7 @@ GcpPubSubStubFactory::CreateSubscriberStub(
 #ifndef TEST_CPIO
 shared_ptr<QueueClientProviderInterface> QueueClientProviderFactory::Create(
     const shared_ptr<QueueClientOptions>& options,
-    shared_ptr<InstanceClientProviderInterface> instance_client,
+    const shared_ptr<InstanceClientProviderInterface> instance_client,
     const shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
     const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
   return make_shared<GcpQueueClientProvider>(

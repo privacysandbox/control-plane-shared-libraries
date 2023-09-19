@@ -18,12 +18,54 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
+#include <nlohmann/json.hpp>
+
+#include "google/protobuf/any.pb.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/proto/job_service/v1/job_service.pb.h"
 #include "public/cpio/proto/nosql_database_service/v1/nosql_database_service.pb.h"
 
 namespace google::scp::cpio::client_providers {
+constexpr char kJobsTablePartitionKeyName[] = "JobId";
+constexpr char kServerJobIdColumnName[] = "ServerJobId";
+
+struct JobMessageBody {
+  std::string job_id;
+  std::string server_job_id;
+
+  JobMessageBody(const std::string& job_id, const std::string& server_job_id)
+      : job_id(job_id), server_job_id(server_job_id) {}
+
+  /**
+   * @brief Create a JobMessageBody with Job ID and Server Job ID.
+   *
+   * @param job_id Job ID.
+   * @param server_job_id Server Job ID.
+   * @return string The message contains Job ID and Server Job ID in JSON
+   * format.
+   */
+  explicit JobMessageBody(const std::string& json_string) {
+    auto message_body = nlohmann::json::parse(json_string);
+    job_id = message_body[kJobsTablePartitionKeyName];
+    server_job_id = message_body[kServerJobIdColumnName];
+  }
+
+  /**
+   * @brief Convert a Json string into Job ID and Server Job ID.
+   *
+   * @param json_string The Json string contains Job ID and Server Job ID.
+   * @return pair<string, string> The pair of Job ID and Server Job ID.
+   */
+  std::string ToJsonString() {
+    nlohmann::json message_body;
+    message_body[kJobsTablePartitionKeyName] = job_id;
+    message_body[kServerJobIdColumnName] = server_job_id;
+    return message_body.dump();
+  }
+};
+
 class JobClientUtils {
  public:
   /**
@@ -53,21 +95,23 @@ class JobClientUtils {
    * @brief Create a job item.
    *
    * @param job_id Job ID.
+   * @param server_job_id Server job ID.
    * @param job_body Job Body.
    * @param job_status The status of the job.
    * @param created_time The created time of the job.
    * @param updated_time The updated time of the job.
-   * @param visibility_timeout The visibility timeout of the job.
+   * @param processing_started_time The started time of the job.
    * @param retry_count The number of times the job has been attempted for
    * processing.
    * @return google::cmrt::sdk::job_service::v1::Job The created job.
    */
   static google::cmrt::sdk::job_service::v1::Job CreateJob(
-      const std::string& job_id, const google::protobuf::Any& job_body,
+      const std::string& job_id, const std::string& server_job_id,
+      const std::string& job_body,
       const google::cmrt::sdk::job_service::v1::JobStatus& job_status,
       const google::protobuf::Timestamp& created_time,
       const google::protobuf::Timestamp& updated_time,
-      const google::protobuf::Timestamp& visibility_timeout,
+      const google::protobuf::Timestamp& processing_started_time,
       const int retry_count = 0) noexcept;
 
   /**
@@ -102,7 +146,22 @@ class JobClientUtils {
       const google::cmrt::sdk::nosql_database_service::v1::Item& item) noexcept;
 
   /**
-   * @brief Create an UpsertDatabaseItemRequest for job creation. The signature
+   * @brief Create an CreateDatabaseItemRequest for job creation.
+   *
+   * @param job_table_name The name of the table to create.
+   * @param job Job.
+   * @return
+   * google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest
+   * The request for created job in the database.
+   */
+  static core::ExecutionResultOr<
+      google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest>
+  CreatePutJobRequest(
+      const std::string& job_table_name,
+      const google::cmrt::sdk::job_service::v1::Job& job) noexcept;
+
+  /**
+   * @brief Create an UpsertDatabaseItemRequest for job update. The signature
    * has all parameters for upsert request, but only job_table_name and job_id
    * in the job are required. Parameters and the fields in the job that are not
    * set and are in default values will not be added to the attributes of the
@@ -111,30 +170,52 @@ class JobClientUtils {
    *
    * @param job_table_name The name of the table to upsert.
    * @param job Job.
-   * @param job_body_as_string The string generated from job body.
    * @return
    * google::cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest
    * The request for created job upsertion.
    */
-  static std::shared_ptr<
+  static core::ExecutionResultOr<
       google::cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest>
-  CreateUpsertJobRequest(const std::string& job_table_name,
-                         const google::cmrt::sdk::job_service::v1::Job& job,
-                         const std::string& job_body_as_string = "") noexcept;
+  CreateUpsertJobRequest(
+      const std::string& job_table_name,
+      const google::cmrt::sdk::job_service::v1::Job& job) noexcept;
 
   /**
-   * @brief Create an GetDatabaseItemRequest for get job from database.
+   * @brief Create an GetDatabaseItemRequest for get next job from database.
+   *
+   *
+   * server_job_id is a requried attribute in the GetDatabaseItemRequest,
+   * because this field is always unique for the job. This request will only be
+   * succeed if the job entry in the table has the same server_job_id in the
+   * job message in the queue.
    *
    * @param job_table_name The name of the table to upsert.
    * @param job_id The job id of the job to get.
+   * @param server_job_id The server job id of the job to get.
    * @return
    * google::cmrt::sdk::nosql_database_service::v1::GetDatabaseItemRequest
    * The request for get job from database.
    */
   static std::shared_ptr<
       google::cmrt::sdk::nosql_database_service::v1::GetDatabaseItemRequest>
-  CreateGetJobRequest(const std::string& job_table_name,
-                      const std::string& job_id) noexcept;
+  CreateGetNextJobRequest(const std::string& job_table_name,
+                          const std::string& job_id,
+                          const std::string& server_job_id) noexcept;
+
+  /**
+   * @brief Create an GetDatabaseItemRequest for get job by job id from
+   * database.
+   *
+   * @param job_table_name The name of the table to upsert.
+   * @param job_id The job id of the job to get.
+   * @return
+   * google::cmrt::sdk::nosql_database_service::v1::GetDatabaseItemRequest
+   * The request for get job by job id from database.
+   */
+  static std::shared_ptr<
+      google::cmrt::sdk::nosql_database_service::v1::GetDatabaseItemRequest>
+  CreateGetJobByJobIdRequest(const std::string& job_table_name,
+                             const std::string& job_id) noexcept;
 
   /**
    * @brief Validate job status.

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -31,38 +33,8 @@ cc_library(
         "//cc/core/interface:type_def_lib",
         "//cc/public/core/interface:execution_result",
         "//cc/roma/config/src:roma_config_lib",
-        "//cc/roma/ipc/src:roma_ipc_lib",
+        "//cc/roma/interface:roma_interface_lib",
         "//cc/roma/wasm/src:roma_wasm_lib",
-        "@v8//:v8_icu",
-    ],
-)
-
-cc_library(
-    name = "roma_worker_lib",
-    srcs =
-        [
-            "error_codes.h",
-            "execution_manager.cc",
-            "execution_manager.h",
-            "worker.cc",
-            "worker.h",
-            "worker_pool.cc",
-            "worker_pool.h",
-        ],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "roma_execution_utils_lib",
-        "//cc:cc_base_include_dir",
-        "//cc/core/common/time_provider/src:time_provider_lib",
-        "//cc/core/interface:interface_lib",
-        "//cc/core/interface:type_def_lib",
-        "//cc/public/core/interface:execution_result",
-        "//cc/roma/config/src:roma_config_lib",
-        "//cc/roma/ipc/src:roma_ipc_lib",
-        "//cc/roma/wasm/src:roma_wasm_lib",
-        "//cc/roma/worker/src:execution_watchdog_lib",
         "@v8//:v8_icu",
     ],
 )
@@ -83,7 +55,6 @@ cc_library(
         "//cc/core/interface:type_def_lib",
         "//cc/public/core/interface:execution_result",
         "//cc/roma/config/src:roma_config_lib",
-        "//cc/roma/ipc/src:roma_ipc_lib",
         "//cc/roma/wasm/src:roma_wasm_lib",
         "@v8//:v8_icu",
     ],

@@ -17,9 +17,9 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "include/v8.h"
 #include "roma/common/src/containers.h"
 
@@ -152,9 +152,10 @@ struct TypeConverter<common::Map<std::string, std::string>> {
 };
 
 template <>
-struct TypeConverter<std::unordered_map<std::string, std::string>> {
+struct TypeConverter<absl::flat_hash_map<std::string, std::string>> {
   static v8::Local<v8::Value> ToV8(
-      v8::Isolate* isolate, std::unordered_map<std::string, std::string>& val) {
+      v8::Isolate* isolate,
+      absl::flat_hash_map<std::string, std::string>& val) {
     auto map = v8::Map::New(isolate);
 
     for (const auto& kvp : val) {
@@ -167,7 +168,7 @@ struct TypeConverter<std::unordered_map<std::string, std::string>> {
   }
 
   static bool FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val,
-                     std::unordered_map<std::string, std::string>* out) {
+                     absl::flat_hash_map<std::string, std::string>* out) {
     if (!out || val.IsEmpty() || !val->IsMap()) {
       return false;
     }
@@ -231,6 +232,23 @@ struct TypeConverter<uint8_t*> {
         v8::ArrayBuffer::New(isolate, data_size);
     memcpy(buffer->Data(), data, data_size);
     return v8::Uint8Array::New(buffer, 0, data_size);
+  }
+
+  static bool FromV8(v8::Isolate* isolate, v8::Local<v8::Value> val,
+                     uint8_t* out, size_t out_buffer_size) {
+    if (val.IsEmpty() || !val->IsUint8Array() || out == nullptr) {
+      return false;
+    }
+
+    auto val_array = val.As<v8::Uint8Array>();
+    // The buffer size needs to match the size of the data we're trying to
+    // write.
+    if (val_array->Length() != out_buffer_size) {
+      return false;
+    }
+
+    memcpy(out, val_array->Buffer()->Data(), val_array->Length());
+    return true;
   }
 };
 }  // namespace google::scp::roma

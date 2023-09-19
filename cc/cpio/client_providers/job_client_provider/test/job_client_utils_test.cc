@@ -22,8 +22,10 @@
 #include "cc/cpio/client_providers/job_client_provider/src/error_codes.h"
 #include "core/common/serialization/src/serialization.h"
 #include "core/interface/async_context.h"
+#include "core/test/utils/proto_test_utils.h"
 #include "core/utils/src/base64.h"
 #include "cpio/client_providers/job_client_provider/test/hello_world.pb.h"
+#include "google/protobuf/util/json_util.h"
 #include "google/protobuf/util/time_util.h"
 #include "public/core/interface/execution_result.h"
 #include "public/core/test/interface/execution_result_matchers.h"
@@ -31,11 +33,13 @@
 
 using google::cmrt::sdk::job_service::v1::Job;
 using google::cmrt::sdk::job_service::v1::JobStatus;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest;
+using google::cmrt::sdk::nosql_database_service::v1::GetDatabaseItemRequest;
 using google::cmrt::sdk::nosql_database_service::v1::Item;
-using google::cmrt::sdk::nosql_database_service::v1::ItemAttribute;
 using google::cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest;
 using google::protobuf::Any;
 using google::protobuf::Duration;
+using google::protobuf::util::MessageToJsonString;
 using google::protobuf::util::TimeUtil;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
@@ -43,7 +47,7 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::SC_JOB_CLIENT_PROVIDER_INVALID_JOB_ITEM;
 using google::scp::core::errors::SC_JOB_CLIENT_PROVIDER_INVALID_JOB_STATUS;
 using google::scp::core::errors::SC_JOB_CLIENT_PROVIDER_SERIALIZATION_FAILED;
-using google::scp::core::test::IsSuccessful;
+using google::scp::core::test::EqualsProto;
 using google::scp::core::test::ResultIs;
 using google::scp::core::utils::Base64Decode;
 using google::scp::core::utils::Base64Encode;
@@ -56,17 +60,20 @@ using std::tuple;
 namespace {
 constexpr char kHelloWorldName[] = "hello";
 constexpr int kHelloWorldId = 55678413;
+const google::protobuf::Timestamp kHelloWorldProtoCreatedTime =
+    TimeUtil::SecondsToTimestamp(1672531200);
 
 constexpr char kJobId[] = "job-id";
-
-constexpr char kJobsTableName[] = "jobs";
-constexpr char kJobsTablePartitionKeyName[] = "job_id";
-constexpr char kJobBodyColumnName[] = "job_body";
-constexpr char kJobStatusColumnName[] = "job_status";
-constexpr char kCreatedTimeColumnName[] = "created_time";
-constexpr char kUpdatedTimeColumnName[] = "updated_time";
-constexpr char kVisibilityTimeoutColumnName[] = "visibility_timeout";
-constexpr char kRetryCountColumnName[] = "retry_count";
+constexpr char kServerJobId[] = "server-job-id";
+constexpr char kJobsTableName[] = "Jobs";
+constexpr char kJobsTablePartitionKeyName[] = "JobId";
+constexpr char kServerJobIdColumnName[] = "ServerJobId";
+constexpr char kJobBodyColumnName[] = "JobBody";
+constexpr char kJobStatusColumnName[] = "JobStatus";
+constexpr char kCreatedTimeColumnName[] = "CreatedTime";
+constexpr char kUpdatedTimeColumnName[] = "UpdatedTime";
+constexpr char kRetryCountColumnName[] = "RetryCount";
+constexpr char kProcessingStartedTimeColumnName[] = "ProcessingStartedTime";
 
 Any CreateHelloWorldProtoAsAny(google::protobuf::Timestamp created_time) {
   HelloWorld hello_world_input;
@@ -79,22 +86,35 @@ Any CreateHelloWorldProtoAsAny(google::protobuf::Timestamp created_time) {
   return any;
 }
 
-Item CreateJobAsDatabaseItem(
-    const Any& job_body, const JobStatus& job_status,
-    const google::protobuf::Timestamp& current_time,
-    const google::protobuf::Timestamp& updated_time,
-    const google::protobuf::Timestamp& visibility_timeout,
-    const int retry_count) {
-  auto job_body_in_string_or = google::scp::cpio::client_providers::
-      JobClientUtils::ConvertAnyToBase64String(job_body);
+string CreateHelloWorldProtoAsJsonString() {
+  HelloWorld hello_world_input;
+  hello_world_input.set_name(kHelloWorldName);
+  hello_world_input.set_id(kHelloWorldId);
+  *hello_world_input.mutable_created_time() = kHelloWorldProtoCreatedTime;
 
+  string json_string;
+  MessageToJsonString(hello_world_input, &json_string);
+  return json_string;
+}
+
+Item CreateJobAsDatabaseItem(
+    const string& job_body, const JobStatus& job_status,
+    const google::protobuf::Timestamp& current_time,
+    const google::protobuf::Timestamp& updated_time, const int retry_count,
+    const google::protobuf::Timestamp& processing_started_time) {
   Item item;
   *item.mutable_key()->mutable_partition_key() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
           kJobsTablePartitionKeyName, kJobId);
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
-          kJobBodyColumnName, *job_body_in_string_or);
+          kServerJobIdColumnName, kServerJobId);
+
+  string encoded_job_body;
+  Base64Encode(job_body, encoded_job_body);
+  *item.add_attributes() =
+      google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
+          kJobBodyColumnName, encoded_job_body);
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeIntAttribute(
           kJobStatusColumnName, job_status);
@@ -105,12 +125,12 @@ Item CreateJobAsDatabaseItem(
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
           kUpdatedTimeColumnName, TimeUtil::ToString(updated_time));
   *item.add_attributes() =
-      google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
-          kVisibilityTimeoutColumnName, TimeUtil::ToString(visibility_timeout));
-  *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeIntAttribute(
           kRetryCountColumnName, retry_count);
-
+  *item.add_attributes() =
+      google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
+          kProcessingStartedTimeColumnName,
+          TimeUtil::ToString(processing_started_time));
   return item;
 }
 }  // namespace
@@ -147,29 +167,44 @@ TEST(JobClientUtilsTest, MakeIntAttribute) {
   EXPECT_EQ(item_attribute.value_int(), value);
 }
 
+TEST(JobClientUtilsTest, CreateJobMessageBody) {
+  auto json_string = "{\"JobId\":\"6677\",\"ServerJobId\":\"90000\"}";
+  auto job_message_body = JobMessageBody(json_string);
+
+  EXPECT_EQ(job_message_body.job_id, "6677");
+  EXPECT_EQ(job_message_body.server_job_id, "90000");
+}
+
+TEST(JobClientUtilsTest, ConvertJobMessageBodyToJsonString) {
+  JobMessageBody job_message_body = JobMessageBody("1234", "55678");
+  auto json_string = job_message_body.ToJsonString();
+
+  EXPECT_EQ(json_string, "{\"JobId\":\"1234\",\"ServerJobId\":\"55678\"}");
+}
+
 TEST(JobClientUtilsTest, CreateJob) {
   auto current_time = TimeUtil::GetCurrentTime();
   auto updated_time = current_time + TimeUtil::SecondsToDuration(5);
-  auto visibility_timeout = current_time + TimeUtil::SecondsToDuration(30);
-  auto job_body = CreateHelloWorldProtoAsAny(current_time);
+  auto job_body = CreateHelloWorldProtoAsJsonString();
   auto job_status = JobStatus::JOB_STATUS_CREATED;
   auto retry_count = 3;
+  auto processing_started_time = current_time + TimeUtil::SecondsToDuration(10);
 
-  auto job =
-      JobClientUtils::CreateJob(kJobId, job_body, job_status, current_time,
-                                updated_time, visibility_timeout, retry_count);
+  auto job = JobClientUtils::CreateJob(kJobId, kServerJobId, job_body,
+                                       job_status, current_time, updated_time,
+                                       processing_started_time, retry_count);
 
-  EXPECT_EQ(job.job_id(), kJobId);
-  HelloWorld hello_world_output;
-  job.job_body().UnpackTo(&hello_world_output);
-  EXPECT_EQ(hello_world_output.name(), kHelloWorldName);
-  EXPECT_EQ(hello_world_output.id(), kHelloWorldId);
-  EXPECT_EQ(hello_world_output.created_time(), current_time);
-  EXPECT_EQ(job.job_status(), job_status);
-  EXPECT_EQ(job.created_time(), current_time);
-  EXPECT_EQ(job.updated_time(), updated_time);
-  EXPECT_EQ(job.visibility_timeout(), visibility_timeout);
-  EXPECT_EQ(job.retry_count(), retry_count);
+  Job expected_job;
+  expected_job.set_job_id(kJobId);
+  expected_job.set_server_job_id(kServerJobId);
+  expected_job.set_job_status(job_status);
+  *expected_job.mutable_job_body() = job_body;
+  *expected_job.mutable_created_time() = current_time;
+  *expected_job.mutable_updated_time() = updated_time;
+  expected_job.set_retry_count(retry_count);
+  *expected_job.mutable_processing_started_time() = processing_started_time;
+
+  EXPECT_THAT(job, EqualsProto(expected_job));
 }
 
 TEST(JobClientUtilsTest, ConvertAnyToBase64String) {
@@ -208,29 +243,28 @@ TEST(JobClientUtilsTest, ConvertBase64StringToAny) {
 
 TEST(JobClientUtilsTest, ConvertDatabaseItemToJob) {
   auto current_time = TimeUtil::GetCurrentTime();
-  auto job_body = CreateHelloWorldProtoAsAny(current_time);
+  auto job_body = CreateHelloWorldProtoAsJsonString();
   auto job_status = JobStatus::JOB_STATUS_PROCESSING;
   auto updated_time = current_time;
-  auto visibility_timeout = current_time + TimeUtil::SecondsToDuration(30);
   auto retry_count = 4;
+  auto processing_started_time = current_time + TimeUtil::SecondsToDuration(10);
   auto job_or = JobClientUtils::ConvertDatabaseItemToJob(
       CreateJobAsDatabaseItem(job_body, job_status, current_time, updated_time,
-                              visibility_timeout, retry_count));
+                              retry_count, processing_started_time));
 
   EXPECT_SUCCESS(job_or);
 
-  auto job = *job_or;
-  EXPECT_EQ(job.job_id(), kJobId);
-  HelloWorld hello_world_output;
-  job.job_body().UnpackTo(&hello_world_output);
-  EXPECT_EQ(hello_world_output.name(), kHelloWorldName);
-  EXPECT_EQ(hello_world_output.id(), kHelloWorldId);
-  EXPECT_EQ(hello_world_output.created_time(), current_time);
-  EXPECT_EQ(job.job_status(), job_status);
-  EXPECT_EQ(job.created_time(), current_time);
-  EXPECT_EQ(job.updated_time(), updated_time);
-  EXPECT_EQ(job.visibility_timeout(), visibility_timeout);
-  EXPECT_EQ(job.retry_count(), retry_count);
+  Job expected_job;
+  expected_job.set_job_id(kJobId);
+  expected_job.set_server_job_id(kServerJobId);
+  expected_job.set_job_status(job_status);
+  *expected_job.mutable_job_body() = job_body;
+  *expected_job.mutable_created_time() = current_time;
+  *expected_job.mutable_updated_time() = updated_time;
+  *expected_job.mutable_processing_started_time() = processing_started_time;
+  expected_job.set_retry_count(retry_count);
+
+  EXPECT_THAT(*job_or, EqualsProto(expected_job));
 }
 
 TEST(JobClientUtilsTest,
@@ -248,20 +282,24 @@ TEST(JobClientUtilsTest,
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
           kCreatedTimeColumnName, TimeUtil::ToString(current_time));
-  auto job_body = CreateHelloWorldProtoAsAny(current_time);
+  auto job_body = CreateHelloWorldProtoAsJsonString();
+  string encoded_job_body;
+  Base64Encode(job_body, encoded_job_body);
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
-          kJobBodyColumnName,
-          *JobClientUtils::ConvertAnyToBase64String(job_body));
+          kJobBodyColumnName, encoded_job_body);
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
           kUpdatedTimeColumnName, TimeUtil::ToString(current_time));
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
-          kVisibilityTimeoutColumnName, TimeUtil::ToString(current_time));
+          kProcessingStartedTimeColumnName, TimeUtil::ToString(current_time));
   *item.add_attributes() =
       google::scp::cpio::client_providers::JobClientUtils::MakeIntAttribute(
           kRetryCountColumnName, retry_count);
+  *item.add_attributes() =
+      google::scp::cpio::client_providers::JobClientUtils::MakeStringAttribute(
+          kServerJobIdColumnName, kServerJobId);
 
   EXPECT_SUCCESS(JobClientUtils::ConvertDatabaseItemToJob(item));
 }
@@ -304,68 +342,130 @@ TEST(JobClientUtilsTest,
 
 TEST(JobClientUtilsTest, CreateUpsertJobRequest) {
   auto current_time = TimeUtil::GetCurrentTime();
-  auto job_body_input = CreateHelloWorldProtoAsAny(current_time);
+  auto job_body = CreateHelloWorldProtoAsJsonString();
   auto job_status = JobStatus::JOB_STATUS_PROCESSING;
   auto updated_time = current_time;
-  auto visibility_timeout = current_time + TimeUtil::SecondsToDuration(30);
   auto retry_count = 2;
-  auto job = JobClientUtils::CreateJob(kJobId, job_body_input, job_status,
-                                       current_time, updated_time,
-                                       visibility_timeout, retry_count);
+  auto processing_started_time = current_time + TimeUtil::SecondsToDuration(10);
+  auto job = JobClientUtils::CreateJob(kJobId, kServerJobId, job_body,
+                                       job_status, current_time, updated_time,
+                                       processing_started_time, retry_count);
 
-  auto job_body_input_or =
-      JobClientUtils::ConvertAnyToBase64String(job_body_input);
+  auto request_or = JobClientUtils::CreateUpsertJobRequest(kJobsTableName, job);
+  EXPECT_SUCCESS(request_or);
 
-  auto request = JobClientUtils::CreateUpsertJobRequest(kJobsTableName, job,
-                                                        *job_body_input_or);
-  EXPECT_EQ(request->key().table_name(), kJobsTableName);
-  EXPECT_EQ(request->key().partition_key().name(), kJobsTablePartitionKeyName);
-  EXPECT_EQ(request->key().partition_key().value_string(), kJobId);
-  EXPECT_EQ(request->new_attributes().size(), 6);
-  EXPECT_EQ(request->new_attributes(0).name(), kJobBodyColumnName);
+  UpsertDatabaseItemRequest expected_request;
+  expected_request.mutable_key()->set_table_name(kJobsTableName);
+  *expected_request.mutable_key()->mutable_partition_key() =
+      JobClientUtils::MakeStringAttribute(kJobsTablePartitionKeyName, kJobId);
+  *expected_request.add_new_attributes() =
+      JobClientUtils::MakeStringAttribute(kServerJobIdColumnName, kServerJobId);
+  string encoded_job_body;
+  Base64Encode(job_body, encoded_job_body);
+  *expected_request.add_new_attributes() =
+      JobClientUtils::MakeStringAttribute(kJobBodyColumnName, encoded_job_body);
+  *expected_request.add_new_attributes() =
+      JobClientUtils::MakeIntAttribute(kJobStatusColumnName, job_status);
+  *expected_request.add_new_attributes() = JobClientUtils::MakeStringAttribute(
+      kCreatedTimeColumnName, TimeUtil::ToString(current_time));
+  *expected_request.add_new_attributes() = JobClientUtils::MakeStringAttribute(
+      kUpdatedTimeColumnName, TimeUtil::ToString(updated_time));
+  *expected_request.add_new_attributes() =
+      JobClientUtils::MakeIntAttribute(kRetryCountColumnName, retry_count);
+  *expected_request.add_new_attributes() = JobClientUtils::MakeStringAttribute(
+      kProcessingStartedTimeColumnName,
+      TimeUtil::ToString(processing_started_time));
 
-  EXPECT_EQ(request->new_attributes(0).value_string(), *job_body_input_or);
-  EXPECT_EQ(request->new_attributes(1).name(), kJobStatusColumnName);
-  EXPECT_EQ(request->new_attributes(1).value_int(), job.job_status());
-  EXPECT_EQ(request->new_attributes(2).name(), kCreatedTimeColumnName);
-  EXPECT_EQ(request->new_attributes(2).value_string(),
-            TimeUtil::ToString(job.created_time()));
-  EXPECT_EQ(request->new_attributes(3).name(), kUpdatedTimeColumnName);
-  EXPECT_EQ(request->new_attributes(3).value_string(),
-            TimeUtil::ToString(job.updated_time()));
-  EXPECT_EQ(request->new_attributes(4).name(), kVisibilityTimeoutColumnName);
-  EXPECT_EQ(request->new_attributes(4).value_string(),
-            TimeUtil::ToString(job.visibility_timeout()));
-  EXPECT_EQ(request->new_attributes(5).name(), kRetryCountColumnName);
-  EXPECT_EQ(request->new_attributes(5).value_int(), retry_count);
+  EXPECT_THAT(*request_or, EqualsProto(expected_request));
 }
 
 TEST(JobClientUtilsTest, CreateUpsertJobRequestWithPartialUpdate) {
   Job job;
   job.set_job_id(kJobId);
-  job.set_job_status(JobStatus::JOB_STATUS_PROCESSING);
-  *job.mutable_updated_time() = TimeUtil::GetCurrentTime();
+  auto job_status = JobStatus::JOB_STATUS_PROCESSING;
+  job.set_job_status(job_status);
+  auto updated_time = TimeUtil::GetCurrentTime();
+  *job.mutable_updated_time() = updated_time;
 
-  string job_body_as_string = job.job_body().SerializeAsString();
-  auto request = JobClientUtils::CreateUpsertJobRequest(kJobsTableName, job);
+  auto request_or = JobClientUtils::CreateUpsertJobRequest(kJobsTableName, job);
+  EXPECT_SUCCESS(request_or);
 
-  EXPECT_EQ(request->key().table_name(), kJobsTableName);
-  EXPECT_EQ(request->key().partition_key().name(), kJobsTablePartitionKeyName);
-  EXPECT_EQ(request->key().partition_key().value_string(), job.job_id());
-  EXPECT_EQ(request->new_attributes().size(), 3);
-  EXPECT_EQ(request->new_attributes(0).name(), kJobStatusColumnName);
-  EXPECT_EQ(request->new_attributes(0).value_int(), job.job_status());
-  EXPECT_EQ(request->new_attributes(1).name(), kUpdatedTimeColumnName);
-  EXPECT_EQ(request->new_attributes(1).value_string(),
-            TimeUtil::ToString(job.updated_time()));
+  UpsertDatabaseItemRequest expected_request;
+  expected_request.mutable_key()->set_table_name(kJobsTableName);
+  *expected_request.mutable_key()->mutable_partition_key() =
+      JobClientUtils::MakeStringAttribute(kJobsTablePartitionKeyName, kJobId);
+  *expected_request.add_new_attributes() =
+      JobClientUtils::MakeIntAttribute(kJobStatusColumnName, job_status);
+  *expected_request.add_new_attributes() = JobClientUtils::MakeStringAttribute(
+      kUpdatedTimeColumnName, TimeUtil::ToString(updated_time));
+  *expected_request.add_new_attributes() =
+      JobClientUtils::MakeIntAttribute(kRetryCountColumnName, 0);
+
+  EXPECT_THAT(*request_or, EqualsProto(expected_request));
 }
 
-TEST(JobClientUtilsTest, CreateGetJobRequest) {
-  auto request = JobClientUtils::CreateGetJobRequest(kJobsTableName, kJobId);
+TEST(JobClientUtilsTest, CreatePutJobRequest) {
+  auto current_time = TimeUtil::GetCurrentTime();
+  auto job_body = CreateHelloWorldProtoAsJsonString();
+  auto job_status = JobStatus::JOB_STATUS_PROCESSING;
+  auto updated_time = current_time;
+  auto retry_count = 2;
+  auto processing_started_time = TimeUtil::SecondsToTimestamp(0);
+  auto job = JobClientUtils::CreateJob(kJobId, kServerJobId, job_body,
+                                       job_status, current_time, updated_time,
+                                       processing_started_time, retry_count);
 
-  EXPECT_EQ(request->key().table_name(), kJobsTableName);
-  EXPECT_EQ(request->key().partition_key().name(), kJobsTablePartitionKeyName);
-  EXPECT_EQ(request->key().partition_key().value_string(), kJobId);
+  auto request_or = JobClientUtils::CreatePutJobRequest(kJobsTableName, job);
+  EXPECT_SUCCESS(request_or);
+
+  CreateDatabaseItemRequest expected_request;
+  expected_request.mutable_key()->set_table_name(kJobsTableName);
+  *expected_request.mutable_key()->mutable_partition_key() =
+      JobClientUtils::MakeStringAttribute(kJobsTablePartitionKeyName, kJobId);
+  *expected_request.add_attributes() =
+      JobClientUtils::MakeStringAttribute(kServerJobIdColumnName, kServerJobId);
+  string encoded_job_body;
+  Base64Encode(job_body, encoded_job_body);
+  *expected_request.add_attributes() =
+      JobClientUtils::MakeStringAttribute(kJobBodyColumnName, encoded_job_body);
+  *expected_request.add_attributes() =
+      JobClientUtils::MakeIntAttribute(kJobStatusColumnName, job_status);
+  *expected_request.add_attributes() = JobClientUtils::MakeStringAttribute(
+      kCreatedTimeColumnName, TimeUtil::ToString(current_time));
+  *expected_request.add_attributes() = JobClientUtils::MakeStringAttribute(
+      kUpdatedTimeColumnName, TimeUtil::ToString(updated_time));
+  *expected_request.add_attributes() =
+      JobClientUtils::MakeIntAttribute(kRetryCountColumnName, retry_count);
+  *expected_request.add_attributes() = JobClientUtils::MakeStringAttribute(
+      kProcessingStartedTimeColumnName,
+      TimeUtil::ToString(processing_started_time));
+  EXPECT_THAT(*request_or, EqualsProto(expected_request));
+}
+
+TEST(JobClientUtilsTest, CreateGetNextJobRequest) {
+  auto request = JobClientUtils::CreateGetNextJobRequest(kJobsTableName, kJobId,
+                                                         kServerJobId);
+
+  GetDatabaseItemRequest expected_request;
+  expected_request.mutable_key()->set_table_name(kJobsTableName);
+  *expected_request.mutable_key()->mutable_partition_key() =
+      JobClientUtils::MakeStringAttribute(kJobsTablePartitionKeyName, kJobId);
+  *expected_request.add_required_attributes() =
+      JobClientUtils::MakeStringAttribute(kServerJobIdColumnName, kServerJobId);
+
+  EXPECT_THAT(*request, EqualsProto(expected_request));
+}
+
+TEST(JobClientUtilsTest, CreateGetJobByJobIdRequest) {
+  auto request =
+      JobClientUtils::CreateGetJobByJobIdRequest(kJobsTableName, kJobId);
+
+  GetDatabaseItemRequest expected_request;
+  expected_request.mutable_key()->set_table_name(kJobsTableName);
+  *expected_request.mutable_key()->mutable_partition_key() =
+      JobClientUtils::MakeStringAttribute(kJobsTablePartitionKeyName, kJobId);
+
+  EXPECT_THAT(*request, EqualsProto(expected_request));
 }
 
 INSTANTIATE_TEST_SUITE_P(

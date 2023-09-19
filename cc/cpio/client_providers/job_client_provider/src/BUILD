@@ -12,7 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//cc:scp_internal_pkg"])
+
+cc_library(
+    name = "job_client_provider_select_lib",
+    deps = select(
+        {
+            "//cc/public/cpio/interface:aws_cpio_lib": [
+                "//cc/cpio/client_providers/job_client_provider/src/aws:aws_job_client_provider_lib",
+            ],
+            "//cc/public/cpio/interface:gcp_cpio_lib": [
+                "//cc/cpio/client_providers/job_client_provider/src/gcp:gcp_job_client_provider_lib",
+            ],
+        },
+        no_match_error = "Please build for AWS or GCP",
+    ),
+)
 
 cc_library(
     name = "job_client_provider_lib",
@@ -31,9 +48,11 @@ cc_library(
         "//cc/cpio/client_providers/interface:cpio_client_providers_interface_lib",
         "//cc/cpio/client_providers/interface:type_def",
         "//cc/cpio/client_providers/nosql_database_client_provider/src/common:nosql_database_provider_common_lib",
+        "//cc/cpio/client_providers/queue_client_provider/src:queue_client_provider_select_lib",
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:cpio_errors",
         "//cc/public/cpio/proto/job_service/v1:job_service_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@nlohmann_json//:lib",
     ],
 )

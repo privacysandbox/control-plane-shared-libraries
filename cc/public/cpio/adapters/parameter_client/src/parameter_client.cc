@@ -60,18 +60,17 @@ ExecutionResult ParameterClient::CreateParameterClientProvider() noexcept {
   RETURN_AND_LOG_IF_FAILURE(
       GlobalCpio::GetGlobalCpio()->GetInstanceClientProvider(
           instance_client_provider),
-      kParameterClient, kZeroUuid, __res,
-      "Failed to get InstanceClientProvider.");
+      kParameterClient, kZeroUuid, "Failed to get InstanceClientProvider.");
 
   shared_ptr<AsyncExecutorInterface> cpu_async_executor;
   RETURN_AND_LOG_IF_FAILURE(
       GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(cpu_async_executor),
-      kParameterClient, kZeroUuid, __res, "Failed to get CpuAsyncExecutor.");
+      kParameterClient, kZeroUuid, "Failed to get CpuAsyncExecutor.");
 
   shared_ptr<AsyncExecutorInterface> io_async_executor;
   RETURN_AND_LOG_IF_FAILURE(
       GlobalCpio::GetGlobalCpio()->GetCpuAsyncExecutor(io_async_executor),
-      kParameterClient, kZeroUuid, __res, "Failed to get IoAsyncExecutor.");
+      kParameterClient, kZeroUuid, "Failed to get IoAsyncExecutor.");
 
   parameter_client_provider_ = ParameterClientProviderFactory::Create(
       options_, instance_client_provider, cpu_async_executor,

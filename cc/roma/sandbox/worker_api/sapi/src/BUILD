@@ -14,20 +14,19 @@
 
 load("@com_google_sandboxed_api//sandboxed_api/bazel:proto.bzl", "sapi_proto_library")
 load("@com_google_sandboxed_api//sandboxed_api/bazel:sapi.bzl", "sapi_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(default_visibility = ["//cc/roma/sandbox/worker_api:__subpackages__"])
 
 sapi_proto_library(
     name = "worker_params_proto",
     srcs = ["worker_params.proto"],
-    visibility = ["//visibility:public"],
     alwayslink = 1,
 )
 
 sapi_proto_library(
     name = "worker_init_params_proto",
     srcs = ["worker_init_params.proto"],
-    visibility = ["//visibility:public"],
     alwayslink = 1,
 )
 
@@ -44,7 +43,10 @@ cc_library(
         ":worker_params_cc_proto",
         "//cc:cc_base_include_dir",
         "//cc/roma/config/src:roma_config_lib",
+        "//cc/roma/logging/src:roma_logging_lib",
         "//cc/roma/sandbox/worker_factory/src:roma_worker_factory_lib",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_sandboxed_api//sandboxed_api/sandbox2:buffer",
     ],
 )
 
@@ -52,12 +54,11 @@ sapi_library(
     name = "roma_worker_wrapper_lib-sapi",
     hdrs = ["worker_wrapper.h"],
     functions = [
-        "Init",
         "InitFromSerializedData",
         "Run",
         "RunCodeFromSerializedData",
+        "RunCodeFromBuffer",
         "Stop",
-        "RunCode",
     ],
     generator_version = 1,
     input_files = ["worker_wrapper.cc"],
@@ -87,7 +88,8 @@ cc_library(
         ":worker_params_cc_proto",
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
-        "//cc/roma/sandbox/logging/src:roma_logging_lib",
+        "//cc/roma/logging/src:roma_logging_lib",
         "//cc/roma/sandbox/worker_factory/src:roma_worker_factory_lib",
+        "@com_google_sandboxed_api//sandboxed_api/sandbox2:buffer",
     ],
 )

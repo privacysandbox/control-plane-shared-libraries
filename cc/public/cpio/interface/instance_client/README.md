@@ -15,5 +15,3 @@ Responsible for fetching cloud instance metadata.
 # Example
 
 This example [here](/cc/public/cpio/examples/local_instance_client_test.cc) could be run locally. This example [here](/cc/public/cpio/examples/instance_client_test.cc) needs to be run on cloud.
-
-

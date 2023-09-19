@@ -43,6 +43,10 @@ void GlobalLogger::SetGlobalLogger(unique_ptr<LoggerInterface> logger) {
   logger_instance_ = move(logger);
 }
 
+void GlobalLogger::ShutdownGlobalLogger() {
+  logger_instance_ = nullptr;
+}
+
 bool GlobalLogger::IsLogLevelEnabled(const LogLevel log_level) {
   return enabled_log_levels_.find(log_level) != enabled_log_levels_.end();
 }

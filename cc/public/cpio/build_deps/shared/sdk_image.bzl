@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-load("//cc/process_launcher:helpers.bzl", "executable_struct_to_json_str")
+
 load("@io_bazel_rules_docker//container:container.bzl", "container_image")
-load("@rules_pkg//:pkg.bzl", "pkg_tar")
 load("@io_bazel_rules_docker//docker/package_managers:download_pkgs.bzl", "download_pkgs")
 load("@io_bazel_rules_docker//docker/package_managers:install_pkgs.bzl", "install_pkgs")
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
+load("//cc/process_launcher:helpers.bzl", "executable_struct_to_json_str")
 
 _PROXY_BINARY_FILES = [
     Label("//cc/aws/proxy/src:proxify"),
@@ -120,14 +121,14 @@ def sdk_image(
                 execute_command = ["/" + target.name]
             if platform == "aws" and inside_tee:
                 executable = {
-                    "file_name": "/proxify",
                     "args": execute_command,
+                    "file_name": "/proxify",
                     "restart": restart,
                 }
             else:
                 executable = {
-                    "file_name": execute_command[0],
                     "args": execute_command[1:],
+                    "file_name": execute_command[0],
                     "restart": restart,
                 }
             sdk_cmd.append(executable_struct_to_json_str(executable))

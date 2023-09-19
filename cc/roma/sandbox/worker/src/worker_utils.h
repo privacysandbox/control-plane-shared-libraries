@@ -18,8 +18,9 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
 
 #include "error_codes.h"
 
@@ -29,7 +30,7 @@ namespace google::scp::roma::sandbox::worker {
 class WorkerUtils {
  public:
   static core::ExecutionResultOr<std::string> GetValueFromMetadata(
-      const std::unordered_map<std::string, std::string>& metadata,
+      const absl::flat_hash_map<std::string, std::string>& metadata,
       const std::string& key) noexcept;
 
   static core::ExecutionResultOr<int> ConvertStrToInt(

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//visibility:public"])
-
 load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
 load("@rules_pkg//:pkg.bzl", "pkg_tar")
+
+package(default_visibility = ["//visibility:public"])
 
 buildifier(
     name = "buildifier_check",
@@ -24,6 +24,7 @@ buildifier(
 
 buildifier(
     name = "buildifier_fix",
+    lint_mode = "fix",
     mode = "fix",
 )
 

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//build_defs/cc/aws/enclave:container.bzl", "cc_enclave_image")
 load("//build_defs/aws/enclave:enclave_ami.bzl", "generic_enclave_ami_pkr_script")
+load("//build_defs/cc/aws/enclave:container.bzl", "cc_enclave_image")
 load("//build_defs/shared:packer_build.bzl", "packer_build")
 
 _LICENSES_TARGET = Label("//licenses:licenses_tar")

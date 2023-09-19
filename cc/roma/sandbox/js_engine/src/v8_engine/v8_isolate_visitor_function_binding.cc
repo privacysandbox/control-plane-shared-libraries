@@ -16,18 +16,20 @@
 
 #include "v8_isolate_visitor_function_binding.h"
 
+#include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "cc/roma/interface/function_binding_io.pb.h"
 #include "roma/common/src/containers.h"
 #include "roma/config/src/type_converter.h"
+#include "roma/logging/src/logging.h"
 #include "roma/sandbox/constants/constants.h"
-#include "roma/sandbox/logging/src/logging.h"
 
 #include "error_codes.h"
 
+using absl::flat_hash_map;
 using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
@@ -39,9 +41,9 @@ using google::scp::core::errors::
     SC_ROMA_V8_ISOLATE_VISITOR_FUNCTION_BINDING_INVALID_ISOLATE;
 using google::scp::roma::proto::FunctionBindingIoProto;
 using google::scp::roma::sandbox::constants::kMetadataRomaRequestId;
+using std::make_unique;
 using std::string;
 using std::to_string;
-using std::unordered_map;
 using std::vector;
 using v8::Array;
 using v8::Context;
@@ -56,6 +58,7 @@ using v8::Map;
 using v8::Object;
 using v8::ObjectTemplate;
 using v8::String;
+using v8::Uint8Array;
 using v8::Undefined;
 using v8::Value;
 
@@ -65,8 +68,6 @@ static constexpr char kUnexpectedDataInBindingCallback[] =
     "ROMA: Unexpected data in global callback.";
 static constexpr char kCouldNotConvertJsFunctionInputToNative[] =
     "ROMA: Could not convert JS function input to native C++ type.";
-static constexpr char KCouldNotConvertNativeFunctionReturnToV8Type[] =
-    "ROMA: Could not convert native function return to JS type.";
 static constexpr char kErrorInFunctionBindingInvocation[] =
     "ROMA: Error while executing native function binding.";
 
@@ -87,7 +88,7 @@ static bool V8TypesToProto(const FunctionCallbackInfo<Value>& info,
   // Try to convert to one of the supported types
   string string_native;
   vector<string> vector_of_string_native;
-  unordered_map<string, string> map_of_string_native;
+  flat_hash_map<string, string> map_of_string_native;
 
   if (TypeConverter<string>::FromV8(isolate, function_parameter,
                                     &string_native)) {
@@ -96,12 +97,22 @@ static bool V8TypesToProto(const FunctionCallbackInfo<Value>& info,
                                                    &vector_of_string_native)) {
     proto.mutable_input_list_of_string()->mutable_data()->Add(
         vector_of_string_native.begin(), vector_of_string_native.end());
-  } else if (TypeConverter<unordered_map<string, string>>::FromV8(
+  } else if (TypeConverter<flat_hash_map<string, string>>::FromV8(
                  isolate, function_parameter, &map_of_string_native)) {
     for (auto&& kvp : map_of_string_native) {
       (*proto.mutable_input_map_of_string()->mutable_data())[kvp.first] =
           kvp.second;
     }
+  } else if (function_parameter->IsUint8Array()) {
+    auto array = function_parameter.As<Uint8Array>();
+    auto data_len = array->Length();
+    auto native_data = make_unique<uint8_t[]>(data_len);
+    if (!TypeConverter<uint8_t*>::FromV8(isolate, function_parameter,
+                                         native_data.get(), data_len)) {
+      return false;
+    }
+
+    proto.set_input_bytes(native_data.get(), data_len);
   } else {
     // Unknown type
     return false;
@@ -122,11 +133,11 @@ static Local<Value> ProtoToV8Type(Isolate* isolate,
     }
     return TypeConverter<vector<string>>::ToV8(isolate, output_list);
   } else if (proto.has_output_map_of_string()) {
-    unordered_map<string, string> output_map;
+    flat_hash_map<string, string> output_map;
     for (auto& [key, value] : proto.output_map_of_string().data()) {
       output_map[key] = value;
     }
-    return TypeConverter<unordered_map<string, string>>::ToV8(isolate,
+    return TypeConverter<flat_hash_map<string, string>>::ToV8(isolate,
                                                               output_map);
   } else if (proto.has_output_bytes()) {
     const auto& bytes = proto.output_bytes();
@@ -135,6 +146,8 @@ static Local<Value> ProtoToV8Type(Isolate* isolate,
         bytes.length());
   }
 
+  // This function didn't return anything from C++
+  ROMA_VLOG(1) << "Function binding did not set any return value from C++.";
   return Undefined(isolate);
 }
 
@@ -177,7 +190,7 @@ void V8IsolateVisitorFunctionBinding::GlobalV8FunctionCallback(
     (*function_invocation_proto.mutable_metadata())[kMetadataRomaRequestId] =
         roma_request_id_native;
   } else {
-    _ROMA_LOG_ERROR("Could not read request ID from metadata in hook.");
+    LOG(ERROR) << "Could not read request ID from metadata in hook.";
   }
 
   string native_function_name = binding_info_pair->first;
@@ -198,11 +211,6 @@ void V8IsolateVisitorFunctionBinding::GlobalV8FunctionCallback(
   }
 
   auto returned_value = ProtoToV8Type(isolate, function_invocation_proto);
-  if (returned_value->IsUndefined()) {
-    isolate->ThrowError(KCouldNotConvertNativeFunctionReturnToV8Type);
-    return;
-  }
-
   info.GetReturnValue().Set(returned_value);
 }
 

@@ -23,6 +23,7 @@
 #include <aws/core/Aws.h>
 #include <aws/dynamodb/DynamoDBClient.h>
 #include <aws/dynamodb/model/AttributeDefinition.h>
+#include <aws/dynamodb/model/PutItemRequest.h>
 #include <aws/dynamodb/model/QueryRequest.h>
 #include <aws/dynamodb/model/UpdateItemRequest.h>
 
@@ -73,6 +74,12 @@ class AwsDynamoDBClientProvider : public NoSQLDatabaseClientProviderInterface {
           cmrt::sdk::nosql_database_service::v1::GetDatabaseItemResponse>&
           get_database_item_context) noexcept override;
 
+  core::ExecutionResult CreateDatabaseItem(
+      core::AsyncContext<
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest,
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse>&
+          create_database_item_context) noexcept override;
+
   core::ExecutionResult UpsertDatabaseItem(
       core::AsyncContext<
           cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest,
@@ -103,6 +110,29 @@ class AwsDynamoDBClientProvider : public NoSQLDatabaseClientProviderInterface {
       const Aws::DynamoDB::DynamoDBClient* dynamo_db_client,
       const Aws::DynamoDB::Model::QueryRequest& query_request,
       const Aws::Utils::Outcome<Aws::DynamoDB::Model::QueryResult,
+                                Aws::DynamoDB::DynamoDBError>& outcome,
+      const std::shared_ptr<const Aws::Client::AsyncCallerContext>
+          async_context) noexcept;
+
+  /**
+   * @brief Is called when the response of create item request is ready.
+   *
+   * @param create_database_item_context The context object of the create
+   * database item operation.
+   * @param dynamo_db_client An instance of the dynamo db client.
+   * @param put_item_request The put item request object.
+   * @param outcome The outcome of the operation.
+   * @param async_context The async context of the sender. This is not used
+   * based on SCP architecture.
+   */
+  void OnCreateDatabaseItemCallback(
+      core::AsyncContext<
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest,
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse>&
+          create_database_item_context,
+      const Aws::DynamoDB::DynamoDBClient* dynamo_db_client,
+      const Aws::DynamoDB::Model::PutItemRequest& put_item_request,
+      const Aws::Utils::Outcome<Aws::DynamoDB::Model::PutItemResult,
                                 Aws::DynamoDB::DynamoDBError>& outcome,
       const std::shared_ptr<const Aws::Client::AsyncCallerContext>
           async_context) noexcept;

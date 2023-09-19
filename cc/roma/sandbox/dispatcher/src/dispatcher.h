@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "core/async_executor/src/async_executor.h"
@@ -30,7 +31,7 @@
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "roma/interface/roma.h"
-#include "roma/sandbox/logging/src/logging.h"
+#include "roma/logging/src/logging.h"
 #include "roma/sandbox/worker_api/src/worker_api.h"
 #include "roma/sandbox/worker_pool/src/worker_pool.h"
 
@@ -50,17 +51,9 @@ class Dispatcher : public core::ServiceInterface {
         pending_requests_(0),
         max_pending_requests_(max_pending_requests),
         code_object_cache_(code_version_cache_size) {
-    if (max_pending_requests == 0) {
-      auto message = std::string(__FILE__) + ":" + std::to_string(__LINE__) +
-                     ":max_pending_requests cannot be zero.";
-      throw std::invalid_argument(message);
-    }
-
-    if (code_version_cache_size == 0) {
-      auto message = std::string(__FILE__) + ":" + std::to_string(__LINE__) +
-                     ":code_version_cache_size cannot be zero.";
-      throw std::invalid_argument(message);
-    }
+    CHECK(max_pending_requests > 0) << "max_pending_requests cannot be zero";
+    CHECK(code_version_cache_size > 0)
+        << "code_version_cache_size cannot be zero";
   }
 
   core::ExecutionResult Init() noexcept override;
@@ -186,6 +179,7 @@ class Dispatcher : public core::ServiceInterface {
       code_object_cache_.Set(request->version_num, *request);
     }
 
+    const auto& request_id = request->id;
     // This is a workaround to be able to register a lambda that needs to
     // capture a non-copy-constructible input (request)
     auto shared_request =
@@ -220,6 +214,9 @@ class Dispatcher : public core::ServiceInterface {
               code_object_cache_.Get(request->version_num).js.empty()
                   ? constants::kRequestTypeWasm
                   : constants::kRequestTypeJavascript;
+          if (!code_object_cache_.Get(request->version_num).wasm_bin.empty()) {
+            request_type = constants::kRequestTypeJavascriptWithWasm;
+          }
 
           auto run_code_request_or =
               request_converter::RequestConverter<RequestT>::FromUserProvided(
@@ -237,21 +234,26 @@ class Dispatcher : public core::ServiceInterface {
           auto run_code_response_or =
               (*worker_or)->RunCode(*run_code_request_or);
           if (!run_code_response_or.result().Successful()) {
+            auto err_msg = core::errors::GetErrorMessage(
+                run_code_response_or.result().status_code);
             response_or = std::make_unique<absl::StatusOr<ResponseObject>>(
-                absl::Status(absl::StatusCode::kInternal,
-                             core::errors::GetErrorMessage(
-                                 run_code_response_or.result().status_code)));
+                absl::Status(absl::StatusCode::kInternal, err_msg));
+            LOG(ERROR) << "The worker " << index
+                       << " execute the request failed due to " << err_msg;
 
             if (run_code_response_or.result().Retryable()) {
               // This means that the worker crashed and the request could be
-              // retried, however, we need to reload the worker with the cached
-              // code.
+              // retried, however, we need to reload the worker with the
+              // cached code.
               auto reload_result = ReloadCachedCodeObjects(*worker_or);
               if (!reload_result.Successful()) {
-                _ROMA_LOG_ERROR(
-                    "The worker crashed and was restarted but reloading the "
-                    "worker cache failed.");
+                LOG(ERROR) << "Reloading the worker cache failed with "
+                           << core::errors::GetErrorMessage(
+                                  reload_result.status_code);
               }
+              ROMA_VLOG(1)
+                  << "Successfully reload all cached code objects to the worker"
+                  << index;
             }
 
             callback(::std::move(response_or));
@@ -273,6 +275,8 @@ class Dispatcher : public core::ServiceInterface {
         core::AsyncPriority::Normal);
 
     if (schedule_result.Successful()) {
+      ROMA_VLOG(1) << "Successfully schedule the execution for request "
+                   << request_id << " in worker " << index;
       pending_requests_++;
     }
 

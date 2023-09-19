@@ -20,6 +20,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "core/common/serialization/src/serialization.h"
@@ -32,6 +33,7 @@
 
 using google::cmrt::sdk::job_service::v1::Job;
 using google::cmrt::sdk::job_service::v1::JobStatus;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest;
 using google::cmrt::sdk::nosql_database_service::v1::GetDatabaseItemRequest;
 using google::cmrt::sdk::nosql_database_service::v1::Item;
 using google::cmrt::sdk::nosql_database_service::v1::ItemAttribute;
@@ -49,26 +51,33 @@ using google::scp::core::errors::SC_JOB_CLIENT_PROVIDER_INVALID_JOB_STATUS;
 using google::scp::core::errors::SC_JOB_CLIENT_PROVIDER_SERIALIZATION_FAILED;
 using google::scp::core::utils::Base64Decode;
 using google::scp::core::utils::Base64Encode;
+using std::make_pair;
 using std::make_shared;
 using std::map;
 using std::none_of;
+using std::pair;
 using std::set;
 using std::shared_ptr;
 using std::string;
 using std::vector;
 
 namespace {
-constexpr char kJobsTablePartitionKeyName[] = "job_id";
-constexpr char kJobBodyColumnName[] = "job_body";
-constexpr char kJobStatusColumnName[] = "job_status";
-constexpr char kCreatedTimeColumnName[] = "created_time";
-constexpr char kUpdatedTimeColumnName[] = "updated_time";
-constexpr char kVisibilityTimeoutColumnName[] = "visibility_timeout";
-constexpr char kRetryCountColumnName[] = "retry_count";
+constexpr char kJobsTablePartitionKeyName[] = "JobId";
+constexpr char kServerJobIdColumnName[] = "ServerJobId";
+constexpr char kJobBodyColumnName[] = "JobBody";
+constexpr char kJobStatusColumnName[] = "JobStatus";
+constexpr char kCreatedTimeColumnName[] = "CreatedTime";
+constexpr char kUpdatedTimeColumnName[] = "UpdatedTime";
+constexpr char kRetryCountColumnName[] = "RetryCount";
+constexpr char kProcessingStartedTimeColumnName[] = "ProcessingStartedTime";
 const vector<string> kJobsTableRequiredColumns = {
-    kJobBodyColumnName,           kJobStatusColumnName,
-    kCreatedTimeColumnName,       kUpdatedTimeColumnName,
-    kVisibilityTimeoutColumnName, kRetryCountColumnName};
+    kServerJobIdColumnName,
+    kJobBodyColumnName,
+    kJobStatusColumnName,
+    kCreatedTimeColumnName,
+    kUpdatedTimeColumnName,
+    kRetryCountColumnName,
+    kProcessingStartedTimeColumnName};
 const google::protobuf::Timestamp kDefaultTimestampValue =
     TimeUtil::SecondsToTimestamp(0);
 
@@ -125,19 +134,21 @@ ItemAttribute JobClientUtils::MakeIntAttribute(const string& name,
 }
 
 Job JobClientUtils::CreateJob(
-    const string& job_id, const Any& job_body, const JobStatus& job_status,
+    const string& job_id, const string& server_job_id, const string& job_body,
+    const JobStatus& job_status,
     const google::protobuf::Timestamp& created_time,
     const google::protobuf::Timestamp& updated_time,
-    const google::protobuf::Timestamp& visibility_timeout,
+    const google::protobuf::Timestamp& processing_started_time,
     const int retry_count) noexcept {
   Job job;
   job.set_job_id(job_id);
+  job.set_server_job_id(server_job_id);
   job.set_job_status(job_status);
   *job.mutable_job_body() = job_body;
   *job.mutable_created_time() = created_time;
   *job.mutable_updated_time() = updated_time;
-  *job.mutable_visibility_timeout() = visibility_timeout;
   job.set_retry_count(retry_count);
+  *job.mutable_processing_started_time() = processing_started_time;
   return job;
 }
 
@@ -173,10 +184,11 @@ ExecutionResultOr<Job> JobClientUtils::ConvertDatabaseItemToJob(
   const string& job_id = item.key().partition_key().value_string();
   const auto job_attributes_map = GetItemAttributes(item);
 
-  ASSIGN_OR_RETURN(
-      auto job_body,
-      ConvertBase64StringToAny(
-          job_attributes_map.at(kJobBodyColumnName).value_string()));
+  const string& server_job_id =
+      job_attributes_map.at(kServerJobIdColumnName).value_string();
+  string job_body;
+  RETURN_IF_FAILURE(Base64Decode(
+      job_attributes_map.at(kJobBodyColumnName).value_string(), job_body));
   const JobStatus& job_status = static_cast<JobStatus>(
       job_attributes_map.at(kJobStatusColumnName).value_int());
   google::protobuf::Timestamp created_time;
@@ -187,54 +199,111 @@ ExecutionResultOr<Job> JobClientUtils::ConvertDatabaseItemToJob(
   TimeUtil::FromString(
       job_attributes_map.at(kUpdatedTimeColumnName).value_string(),
       &updated_time);
-  google::protobuf::Timestamp visibility_timeout;
-  TimeUtil::FromString(
-      job_attributes_map.at(kVisibilityTimeoutColumnName).value_string(),
-      &visibility_timeout);
   const int retry_count =
       job_attributes_map.at(kRetryCountColumnName).value_int();
+  google::protobuf::Timestamp processing_started_time;
+  TimeUtil::FromString(
+      job_attributes_map.at(kProcessingStartedTimeColumnName).value_string(),
+      &processing_started_time);
 
-  return CreateJob(job_id, job_body, job_status, created_time, updated_time,
-                   visibility_timeout, retry_count);
+  return CreateJob(job_id, server_job_id, job_body, job_status, created_time,
+                   updated_time, processing_started_time, retry_count);
 }
 
-shared_ptr<UpsertDatabaseItemRequest> JobClientUtils::CreateUpsertJobRequest(
-    const string& job_table_name, const Job& job,
-    const string& job_body_as_string) noexcept {
-  auto request = make_shared<UpsertDatabaseItemRequest>();
+ExecutionResultOr<CreateDatabaseItemRequest>
+JobClientUtils::CreatePutJobRequest(const string& job_table_name,
+                                    const Job& job) noexcept {
+  CreateDatabaseItemRequest request;
 
-  request->mutable_key()->set_table_name(job_table_name);
+  request.mutable_key()->set_table_name(job_table_name);
 
-  *request->mutable_key()->mutable_partition_key() =
+  *request.mutable_key()->mutable_partition_key() =
       MakeStringAttribute(kJobsTablePartitionKeyName, job.job_id());
 
-  if (!job_body_as_string.empty()) {
-    *request->add_new_attributes() =
-        MakeStringAttribute(kJobBodyColumnName, job_body_as_string);
-  }
-  if (job.job_status() != JobStatus::JOB_STATUS_UNKNOWN) {
-    *request->add_new_attributes() =
-        MakeIntAttribute(kJobStatusColumnName, job.job_status());
-  }
-  if (job.created_time() != kDefaultTimestampValue) {
-    *request->add_new_attributes() = MakeStringAttribute(
-        kCreatedTimeColumnName, TimeUtil::ToString(job.created_time()));
-  }
-  if (job.updated_time() != kDefaultTimestampValue) {
-    *request->add_new_attributes() = MakeStringAttribute(
-        kUpdatedTimeColumnName, TimeUtil::ToString(job.updated_time()));
-  }
-  if (job.visibility_timeout() != kDefaultTimestampValue) {
-    *request->add_new_attributes() =
-        MakeStringAttribute(kVisibilityTimeoutColumnName,
-                            TimeUtil::ToString(job.visibility_timeout()));
-  }
-  *request->add_new_attributes() =
+  *request.add_attributes() =
+      MakeStringAttribute(kServerJobIdColumnName, job.server_job_id());
+
+  string encoded_job_body;
+  RETURN_IF_FAILURE(Base64Encode(job.job_body(), encoded_job_body));
+  *request.add_attributes() =
+      MakeStringAttribute(kJobBodyColumnName, encoded_job_body);
+
+  *request.add_attributes() =
+      MakeIntAttribute(kJobStatusColumnName, job.job_status());
+
+  *request.add_attributes() = MakeStringAttribute(
+      kCreatedTimeColumnName, TimeUtil::ToString(job.created_time()));
+
+  *request.add_attributes() = MakeStringAttribute(
+      kUpdatedTimeColumnName, TimeUtil::ToString(job.updated_time()));
+
+  *request.add_attributes() =
       MakeIntAttribute(kRetryCountColumnName, job.retry_count());
+
+  *request.add_attributes() = JobClientUtils::MakeStringAttribute(
+      kProcessingStartedTimeColumnName,
+      TimeUtil::ToString(job.processing_started_time()));
   return request;
 }
 
-shared_ptr<GetDatabaseItemRequest> JobClientUtils::CreateGetJobRequest(
+ExecutionResultOr<UpsertDatabaseItemRequest>
+JobClientUtils::CreateUpsertJobRequest(const string& job_table_name,
+                                       const Job& job) noexcept {
+  UpsertDatabaseItemRequest request;
+
+  request.mutable_key()->set_table_name(job_table_name);
+
+  *request.mutable_key()->mutable_partition_key() =
+      MakeStringAttribute(kJobsTablePartitionKeyName, job.job_id());
+
+  if (!job.server_job_id().empty()) {
+    *request.add_new_attributes() =
+        MakeStringAttribute(kServerJobIdColumnName, job.server_job_id());
+  }
+  if (!job.job_body().empty()) {
+    string encoded_job_body;
+    RETURN_IF_FAILURE(Base64Encode(job.job_body(), encoded_job_body));
+    *request.add_new_attributes() =
+        MakeStringAttribute(kJobBodyColumnName, encoded_job_body);
+  }
+  if (job.job_status() != JobStatus::JOB_STATUS_UNKNOWN) {
+    *request.add_new_attributes() =
+        MakeIntAttribute(kJobStatusColumnName, job.job_status());
+  }
+  if (job.created_time() != kDefaultTimestampValue) {
+    *request.add_new_attributes() = MakeStringAttribute(
+        kCreatedTimeColumnName, TimeUtil::ToString(job.created_time()));
+  }
+  if (job.updated_time() != kDefaultTimestampValue) {
+    *request.add_new_attributes() = MakeStringAttribute(
+        kUpdatedTimeColumnName, TimeUtil::ToString(job.updated_time()));
+  }
+  *request.add_new_attributes() =
+      MakeIntAttribute(kRetryCountColumnName, job.retry_count());
+  if (job.processing_started_time() != kDefaultTimestampValue) {
+    *request.add_new_attributes() =
+        MakeStringAttribute(kProcessingStartedTimeColumnName,
+                            TimeUtil::ToString(job.processing_started_time()));
+  }
+  return request;
+}
+
+shared_ptr<GetDatabaseItemRequest> JobClientUtils::CreateGetNextJobRequest(
+    const string& job_table_name, const string& job_id,
+    const string& server_job_id) noexcept {
+  auto request = CreateGetJobByJobIdRequest(job_table_name, job_id);
+
+  /* the server_job_id from the job message from the queue has to be the same as
+   * the one in the job entry in the database. If not, the request will fail
+   * with SC_NO_SQL_DATABASE_PROVIDER_RECORD_NOT_FOUND.
+   */
+  *request->add_required_attributes() =
+      MakeStringAttribute(kServerJobIdColumnName, server_job_id);
+
+  return request;
+}
+
+shared_ptr<GetDatabaseItemRequest> JobClientUtils::CreateGetJobByJobIdRequest(
     const string& job_table_name, const string& job_id) noexcept {
   auto request = make_shared<GetDatabaseItemRequest>();
 

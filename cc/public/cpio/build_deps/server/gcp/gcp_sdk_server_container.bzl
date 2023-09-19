@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//cc/public/cpio/build_deps/server:cmrt_sdk.bzl", "cmrt_sdk")
 load("@io_bazel_rules_docker//container:container.bzl", "container_push")
+load("//cc/public/cpio/build_deps/server:cmrt_sdk.bzl", "cmrt_sdk")
 
 def gcp_sdk_server_container(
         name,
@@ -22,6 +22,8 @@ def gcp_sdk_server_container(
         image_repository,
         image_tag,
         inside_tee = True,
+        recover_client_binaries = True,
+        recover_sdk_binaries = True,
         job_service_configs = {},
         nosql_database_service_configs = {},
         private_key_service_configs = {},
@@ -41,6 +43,8 @@ def gcp_sdk_server_container(
         platform = "gcp",
         inside_tee = inside_tee,
         client_binaries = client_binaries,
+        recover_client_binaries = recover_client_binaries,
+        recover_sdk_binaries = recover_sdk_binaries,
         job_service_configs = job_service_configs,
         nosql_database_service_configs = nosql_database_service_configs,
         private_key_service_configs = private_key_service_configs,

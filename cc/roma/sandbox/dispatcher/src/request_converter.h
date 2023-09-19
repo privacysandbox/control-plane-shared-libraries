@@ -133,7 +133,11 @@ struct RequestConverter<CodeObject> {
         .metadata[google::scp::roma::sandbox::constants::kRequestType] =
         request_type;
     run_code_request.code = request->js.empty() ? request->wasm : request->js;
-
+    run_code_request.wasm = request->wasm_bin;
+    if (request->tags.contains(google::scp::roma::kWasmCodeArrayName)) {
+      run_code_request.metadata[google::scp::roma::kWasmCodeArrayName] =
+          request->tags[google::scp::roma::kWasmCodeArrayName];
+    }
     return run_code_request;
   }
 };

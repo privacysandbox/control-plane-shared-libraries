@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 exports_files([
@@ -42,5 +44,6 @@ cc_library(
         "//cc/core/logger/src/log_providers:log_providers_lib",
         "//cc/core/logger/src/log_providers/syslog:syslog_lib",
         "//cc/cpio/client_providers/global_cpio/src/cpio_provider:cpio_provider_lib",
+        "@com_google_absl//absl/log:check",
     ],
 )

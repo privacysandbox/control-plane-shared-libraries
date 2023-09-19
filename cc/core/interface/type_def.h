@@ -85,6 +85,14 @@ struct BytesBuffer {
     return std::string(bytes->data(), length);
   }
 
+  void Reset() {
+    bytes = nullptr;
+    length = 0;
+    capacity = 0;
+  }
+
+  inline size_t Size() const { return length; }
+
   /**
    * @brief 'length' is the length of the bytes buffer to consume. Note that,
    * the actual buffer may represent a larger size as specified by 'capacity'.

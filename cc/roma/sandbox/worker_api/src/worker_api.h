@@ -18,10 +18,11 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 
@@ -31,13 +32,14 @@ class WorkerApi : public core::ServiceInterface {
   struct RunCodeRequest {
     absl::string_view code;
     std::vector<absl::string_view> input;
-    std::unordered_map<std::string, std::string> metadata;
+    absl::flat_hash_map<std::string, std::string> metadata;
+    absl::Span<const uint8_t> wasm;
   };
 
   struct RunCodeResponse {
     std::shared_ptr<std::string> response;
     std::vector<std::shared_ptr<std::string>> errors;
-    std::unordered_map<std::string, int64_t> metrics;
+    absl::flat_hash_map<std::string, int64_t> metrics;
   };
 
   /**

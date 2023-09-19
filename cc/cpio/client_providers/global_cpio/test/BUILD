@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
@@ -53,25 +55,6 @@ cc_library(
             "//cc/cpio/client_providers/global_cpio/src/cpio_provider:cpio_provider_lib",
             "//cc/public/cpio/test/global_cpio:test_cpio_options",
         ],
-)
-
-cc_library(
-    name = "test_global_cpio_lib",
-    srcs =
-        [
-            "//cc/cpio/client_providers/global_cpio/src:global_cpio_srcs",
-        ],
-    copts = [
-        "-DTEST_CPIO=1",
-        "-std=c++17",
-    ],
-    deps = [
-        ":test_lib_cpio_provider",
-        "//cc:cc_base_include_dir",
-        "//cc/core/logger/src:logger_lib",
-        "//cc/core/logger/src/log_providers:log_providers_lib",
-        "//cc/core/logger/src/log_providers/syslog:syslog_lib",
-    ],
 )
 
 cc_test(

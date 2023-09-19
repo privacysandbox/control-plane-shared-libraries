@@ -24,23 +24,24 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <libplatform/libplatform.h>
 
+#include "absl/container/flat_hash_map.h"
 #include "include/v8.h"
 #include "roma/common/src/containers.h"
 
+using absl::flat_hash_map;
 using std::make_unique;
 using std::sort;
 using std::string;
 using std::to_string;
 using std::unique_ptr;
-using std::unordered_map;
 using std::vector;
 using ::testing::ElementsAreArray;
 using v8::Array;
+using v8::ArrayBuffer;
 using v8::Context;
 using v8::HandleScope;
 using v8::Integer;
@@ -246,8 +247,8 @@ static void AssertMapOfStringEquality(Isolate* isolate,
   }
 }
 
-static void AssertUnorderedMapOfStringEquality(
-    Isolate* isolate, unordered_map<string, string>& map,
+static void AssertFlatHashMapOfStringEquality(
+    Isolate* isolate, flat_hash_map<string, string>& map,
     Local<v8::Map>& v8_map) {
   EXPECT_EQ(map.size(), v8_map->Size());
 
@@ -340,7 +341,7 @@ TEST_F(TypeConverterTest, v8MapToMapOfStringString) {
   AssertMapOfStringEquality(isolate_, map, v8_map);
 }
 
-TEST_F(TypeConverterTest, v8MapToUnorderedMapOfStringString) {
+TEST_F(TypeConverterTest, v8MapToFlatHashMapOfStringString) {
   Isolate::Scope isolate_scope(isolate_);
   HandleScope handle_scope(isolate_);
   // Array allocation requires a context
@@ -361,11 +362,11 @@ TEST_F(TypeConverterTest, v8MapToUnorderedMapOfStringString) {
             String::NewFromUtf8Literal(isolate_, "val3"))
       .ToLocalChecked();
 
-  unordered_map<string, string> map;
-  EXPECT_TRUE((TypeConverter<unordered_map<string, string>>::FromV8(
+  flat_hash_map<string, string> map;
+  EXPECT_TRUE((TypeConverter<flat_hash_map<string, string>>::FromV8(
       isolate_, v8_map, &map)));
 
-  AssertUnorderedMapOfStringEquality(isolate_, map, v8_map);
+  AssertFlatHashMapOfStringEquality(isolate_, map, v8_map);
 }
 
 TEST_F(TypeConverterTest,
@@ -390,7 +391,7 @@ TEST_F(TypeConverterTest,
 }
 
 TEST_F(TypeConverterTest,
-       v8MapToUnorderedMapOfStringStringShouldFailWithUnsupportedTypeVal) {
+       v8MapToFlatHashMapOfStringStringShouldFailWithUnsupportedTypeVal) {
   Isolate::Scope isolate_scope(isolate_);
   HandleScope handle_scope(isolate_);
   // Array allocation requires a context
@@ -403,8 +404,8 @@ TEST_F(TypeConverterTest,
             Number::New(isolate_, 1))
       .ToLocalChecked();
 
-  unordered_map<string, string> map;
-  EXPECT_FALSE((TypeConverter<unordered_map<string, string>>::FromV8(
+  flat_hash_map<string, string> map;
+  EXPECT_FALSE((TypeConverter<flat_hash_map<string, string>>::FromV8(
       isolate_, v8_map, &map)));
 
   EXPECT_EQ(map.size(), 0);
@@ -446,7 +447,7 @@ TEST_F(TypeConverterTest,
 }
 
 TEST_F(TypeConverterTest,
-       v8MapToUnorderedMapOfStringStringShouldFailWithUnsupportedTypeKey) {
+       v8MapToFlatHashMapOfStringStringShouldFailWithUnsupportedTypeKey) {
   Isolate::Scope isolate_scope(isolate_);
   HandleScope handle_scope(isolate_);
   // Array allocation requires a context
@@ -473,8 +474,8 @@ TEST_F(TypeConverterTest,
             Number::New(isolate_, 1))
       .ToLocalChecked();
 
-  unordered_map<string, string> map;
-  EXPECT_FALSE((TypeConverter<unordered_map<string, string>>::FromV8(
+  flat_hash_map<string, string> map;
+  EXPECT_FALSE((TypeConverter<flat_hash_map<string, string>>::FromV8(
       isolate_, v8_map, &map)));
 
   EXPECT_EQ(map.size(), 0);
@@ -502,7 +503,7 @@ TEST_F(TypeConverterTest,
 }
 
 TEST_F(TypeConverterTest,
-       v8MapToUnorderedMapOfStringStringShouldFailWithUnsupportedMixedTypes) {
+       v8MapToFlatHashMapOfStringStringShouldFailWithUnsupportedMixedTypes) {
   Isolate::Scope isolate_scope(isolate_);
   HandleScope handle_scope(isolate_);
   // Array allocation requires a context
@@ -515,8 +516,8 @@ TEST_F(TypeConverterTest,
             String::NewFromUtf8Literal(isolate_, "val1"))
       .ToLocalChecked();
 
-  unordered_map<string, string> map;
-  EXPECT_FALSE((TypeConverter<unordered_map<string, string>>::FromV8(
+  flat_hash_map<string, string> map;
+  EXPECT_FALSE((TypeConverter<flat_hash_map<string, string>>::FromV8(
       isolate_, v8_map, &map)));
 
   EXPECT_EQ(map.size(), 0);
@@ -583,5 +584,37 @@ TEST_F(TypeConverterTest, NativeUint8PointerToV8) {
   // The above should be enough, but also compare the buffers to be thorough
   EXPECT_EQ(
       0, memcmp(native_val.data(), v8_val->Buffer()->Data(), v8_val->Length()));
+}
+
+TEST_F(TypeConverterTest, V8Uint8ArrayToNativeUint8Pointer) {
+  Isolate::Scope isolate_scope(isolate_);
+  HandleScope handle_scope(isolate_);
+  // Array allocation requires a context
+  Local<Context> global_context = Context::New(isolate_);
+  Context::Scope context_scope(global_context);
+
+  // Create a v8::Uint8Array
+  auto data_size = 3;
+  auto buffer = ArrayBuffer::New(isolate_, data_size);
+  auto v8_val = Uint8Array::New(buffer, 0, data_size);
+  v8_val->Set(global_context, 0, Integer::New(isolate_, 3)).Check();
+  v8_val->Set(global_context, 1, Integer::New(isolate_, 2)).Check();
+  v8_val->Set(global_context, 2, Integer::New(isolate_, 1)).Check();
+
+  auto out_data = make_unique<uint8_t[]>(data_size);
+  EXPECT_TRUE(TypeConverter<uint8_t*>::FromV8(isolate_, v8_val, out_data.get(),
+                                              data_size));
+
+  // Compare the actual values
+  for (int i = 0; i < v8_val->Length(); i++) {
+    const auto val = v8_val->Get(global_context, i).ToLocalChecked();
+    uint32_t native_int;
+    TypeConverter<uint32_t>::FromV8(isolate_, val, &native_int);
+    EXPECT_EQ(out_data.get()[i], native_int);
+  }
+
+  // The above should be enough, but also compare the buffers to be thorough
+  EXPECT_EQ(0,
+            memcmp(out_data.get(), v8_val->Buffer()->Data(), v8_val->Length()));
 }
 }  // namespace google::scp::roma::config::test

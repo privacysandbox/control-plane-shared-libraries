@@ -14,13 +14,12 @@
 
 #include "public/cpio/adapters/parameter_client/src/parameter_client.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
 #include <utility>
-
-#include <gmock/gmock.h>
 
 #include "core/interface/errors.h"
 #include "core/test/utils/conditional_wait.h"

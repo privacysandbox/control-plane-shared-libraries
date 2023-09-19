@@ -46,7 +46,7 @@ TEST(WorkerSandboxApiTest, WorkerWorksThroughSandbox) {
   WorkerSandboxApi sandbox_api(
       WorkerFactory::WorkerEngine::v8, false /*require_preload*/,
       5 /*compilation_context_cache_size*/, -1 /*native_js_function_comms_fd*/,
-      vector<string>() /*native_js_function_names*/, 0, 0, 0, 0);
+      vector<string>() /*native_js_function_names*/, 0, 0, 0, 0, 0, false);
 
   auto result = sandbox_api.Init();
   EXPECT_SUCCESS(result);
@@ -79,7 +79,7 @@ TEST(WorkerSandboxApiTest,
       WorkerFactory::WorkerEngine::v8, false /*require_preload*/,
       5 /*compilation_context_cache_size*/, -1 /*native_js_function_comms_fd*/,
       vector<string>() /*native_js_function_names*/,
-      100 /*max_worker_virtual_memory_mb*/, 0, 0, 0);
+      100 /*max_worker_virtual_memory_mb*/, 0, 0, 0, 0, false);
 
   // Initializing the sandbox fail as we're giving a max of 100MB of virtual
   // space address for v8 and the sandbox.
@@ -94,10 +94,11 @@ TEST(WorkerSandboxApiTest, WorkerCanCallHooksThroughSandbox) {
   int fds[2];
   EXPECT_EQ(socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds), 0);
 
-  WorkerSandboxApi sandbox_api(
-      WorkerFactory::WorkerEngine::v8, false /*require_preload*/,
-      5 /*compilation_context_cache_size*/,
-      fds[1] /*native_js_function_comms_fd*/, {"my_great_func"}, 0, 0, 0, 0);
+  WorkerSandboxApi sandbox_api(WorkerFactory::WorkerEngine::v8,
+                               false /*require_preload*/,
+                               5 /*compilation_context_cache_size*/,
+                               fds[1] /*native_js_function_comms_fd*/,
+                               {"my_great_func"}, 0, 0, 0, 0, 0, false);
 
   auto result = sandbox_api.Init();
   EXPECT_SUCCESS(result);
@@ -146,7 +147,7 @@ class WorkerSandboxApiForTests : public WorkerSandboxApi {
       const std::vector<std::string>& native_js_function_names)
       : WorkerSandboxApi(worker_engine, require_preload, 5,
                          native_js_function_comms_fd, native_js_function_names,
-                         0, 0, 0, 0) {}
+                         0, 0, 0, 0, 0, false) {}
 
   ::sapi::Sandbox* GetUnderlyingSandbox() { return worker_sapi_sandbox_.get(); }
 };

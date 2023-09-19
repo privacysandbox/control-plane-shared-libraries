@@ -16,11 +16,10 @@
 
 #include "core/os/src/linux/system_resource_info_provider_linux.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <string>
-
-#include <gmock/gmock.h>
 
 using std::string;
 using ::testing::AllOf;

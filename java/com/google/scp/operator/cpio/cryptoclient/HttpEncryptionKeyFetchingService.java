@@ -108,7 +108,7 @@ public final class HttpEncryptionKeyFetchingService implements EncryptionKeyFetc
       throws EncryptionKeyFetchingServiceException {
     try {
       EncryptionKey.Builder builder = EncryptionKey.newBuilder();
-      JsonFormat.parser().merge(responseBody, builder);
+      JsonFormat.parser().ignoringUnknownFields().merge(responseBody, builder);
       return builder.build();
     } catch (InvalidProtocolBufferException e) {
       var message = "Failed to parse success response as EncryptedPrivateKey";

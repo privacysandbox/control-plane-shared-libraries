@@ -15,6 +15,8 @@
 # Description:
 #   AWS C I/O and TLS work for application protocols
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0

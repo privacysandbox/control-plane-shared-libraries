@@ -78,8 +78,8 @@ grpc_java_repositories()
 # Download Maven Dependencies: Begin
 ################################################################################
 load("@rules_jvm_external//:defs.bzl", "maven_install")
-load("//build_defs/tink:tink_defs.bzl", "TINK_MAVEN_ARTIFACTS")
 load("//build_defs/shared:java_grpc.bzl", "GAPIC_GENERATOR_JAVA_VERSION")
+load("//build_defs/tink:tink_defs.bzl", "TINK_MAVEN_ARTIFACTS")
 
 JACKSON_VERSION = "2.12.2"
 
@@ -306,12 +306,13 @@ grpc_extra_deps()
 # Download Indirect Dependencies: End
 ################################################################################
 
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+
 ############
 # Go rules #
 ############
 # Need to be after grpc_extra_deps to share go_register_toolchains.
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies")
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 go_rules_dependencies()
 
@@ -331,12 +332,11 @@ load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
 
 container_deps()
 
-load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
-
 ###########################
 # Binary Dev Dependencies #
 ###########################
 load("@com_github_google_rpmpack//:deps.bzl", "rpmpack_dependencies")
+load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
 
 rpmpack_dependencies()
 
@@ -389,14 +389,15 @@ load("//build_defs/cc:roma.bzl", "roma_dependencies")
 
 roma_dependencies()
 
+load(
+    "@com_google_sandboxed_api//sandboxed_api/bazel:llvm_config.bzl",
+    "llvm_disable_optional_support_deps",
+)
+
 # Must be right after roma_dependencies
 load(
     "@com_google_sandboxed_api//sandboxed_api/bazel:sapi_deps.bzl",
     "sapi_deps",
-)
-load(
-    "@com_google_sandboxed_api//sandboxed_api/bazel:llvm_config.bzl",
-    "llvm_disable_optional_support_deps",
 )
 
 llvm_disable_optional_support_deps()
@@ -413,6 +414,23 @@ container_pull(
     repository = CC_BUILD_CONTAINER_REPOSITORY,
     tag = CC_BUILD_CONTAINER_TAG,
 )
+
+##########################
+## Closure dependencies ##
+##########################
+load("//build_defs/shared:bazel_rules_closure.bzl", "bazel_rules_closure")
+
+bazel_rules_closure()
+
+load(
+    "@io_bazel_rules_closure//closure:repositories.bzl",
+    "rules_closure_dependencies",
+    "rules_closure_toolchains",
+)
+
+rules_closure_dependencies()
+
+rules_closure_toolchains()
 
 ################################################################################
 # Download Containers: End

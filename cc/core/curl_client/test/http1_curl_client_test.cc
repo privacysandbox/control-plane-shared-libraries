@@ -15,9 +15,8 @@
  */
 #include "core/curl_client/src/http1_curl_client.h"
 
-#include <gtest/gtest.h>
-
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "core/async_executor/src/async_executor.h"
 #include "core/curl_client/src/error_codes.h"

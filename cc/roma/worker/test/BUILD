@@ -12,23 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//visibility:public"])
+load("@rules_cc//cc:defs.bzl", "cc_test")
 
-cc_test(
-    name = "worker_test",
-    size = "small",
-    srcs = ["worker_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    tags = ["exclusive"],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/public/core/test/interface:execution_result_matchers",
-        "//cc/roma/worker/src:roma_worker_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
+package(default_visibility = ["//visibility:public"])
 
 cc_test(
     name = "execution_utils_test",
@@ -48,38 +34,7 @@ cc_test(
         "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/roma/wasm/src:roma_wasm_lib",
         "//cc/roma/wasm/test:roma_wasm_testing_lib",
-        "//cc/roma/worker/src:roma_worker_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "execution_manager_test",
-    size = "small",
-    srcs = ["execution_manager_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/public/core/test/interface:execution_result_matchers",
-        "//cc/roma/worker/src:roma_worker_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "worker_pool_test",
-    size = "medium",
-    srcs = ["worker_pool_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    tags = ["exclusive"],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/public/core/test/interface:execution_result_matchers",
-        "//cc/roma/worker/src:roma_worker_lib",
+        "//cc/roma/worker/src:roma_execution_utils_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )

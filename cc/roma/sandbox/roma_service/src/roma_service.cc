@@ -21,6 +21,7 @@
 #include <thread>
 #include <vector>
 
+#include "roma/logging/src/logging.h"
 #include "roma/sandbox/worker_api/src/worker_api_sapi.h"
 #include "roma/sandbox/worker_pool/src/worker_pool_api_sapi.h"
 
@@ -79,7 +80,9 @@ ExecutionResult RomaService::Init() noexcept {
       config_.code_version_cache_size);
   result = dispatcher_->Init();
   RETURN_IF_FAILURE(result);
-
+  ROMA_VLOG(1) << "RomaService Init with " << config_.number_of_workers
+               << " workers. The capacity of code cache is "
+               << config_.code_version_cache_size;
   return SuccessExecutionResult();
 }
 
@@ -188,7 +191,11 @@ ExecutionResult RomaService::SetupWorkers(
         .max_worker_virtual_memory_mb = config_.max_worker_virtual_memory_mb,
         .js_engine_resource_constraints = resource_constraints,
         .js_engine_max_wasm_memory_number_of_pages =
-            config_.max_wasm_memory_number_of_pages};
+            config_.max_wasm_memory_number_of_pages,
+        .sandbox_request_response_shared_buffer_size_mb =
+            config_.sandbox_request_response_shared_buffer_size_mb,
+        .enable_sandbox_sharing_request_response_with_buffer_only =
+            config_.enable_sandbox_sharing_request_response_with_buffer_only};
 
     worker_configs.push_back(worker_api_sapi_config);
   }

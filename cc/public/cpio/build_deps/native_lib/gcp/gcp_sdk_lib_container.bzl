@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//cc/public/cpio/build_deps/shared:sdk_container.bzl", "sdk_container")
 load("@io_bazel_rules_docker//container:container.bzl", "container_push")
+load("//cc/public/cpio/build_deps/shared:sdk_container.bzl", "sdk_container")
 
 def gcp_sdk_lib_container(
         name,

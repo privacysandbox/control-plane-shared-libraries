@@ -15,10 +15,11 @@
  */
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <memory>
 #include <vector>
 
-#include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 
 #include "core/interface/async_context.h"

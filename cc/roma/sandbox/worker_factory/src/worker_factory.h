@@ -22,6 +22,8 @@
 
 #include "public/core/interface/execution_result.h"
 #include "roma/config/src/config.h"
+#include "roma/sandbox/js_engine/src/v8_engine/v8_js_engine.h"
+#include "roma/sandbox/native_function_binding/src/native_function_invoker_sapi_ipc.h"
 #include "roma/sandbox/worker/src/worker.h"
 
 #include "error_codes.h"

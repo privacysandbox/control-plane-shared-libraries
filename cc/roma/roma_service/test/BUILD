@@ -12,66 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
 package(default_visibility = ["//visibility:public"])
-
-cc_test(
-    name = "basic_e2e_test",
-    size = "large",
-    srcs = ["basic_e2e.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    data = [
-        "//cc/roma/testing/cpp_wasm_allocate_memory",
-        "//cc/roma/testing/cpp_wasm_list_of_string_in_list_of_string_out_example",
-        "//cc/roma/testing/cpp_wasm_return_bad_pointer",
-        "//cc/roma/testing/cpp_wasm_string_in_string_out_example",
-        "//cc/roma/testing/rust_wasm_list_of_string_in_list_of_string_out_example",
-        "//cc/roma/testing/rust_wasm_string_in_string_out_example",
-    ],
-    tags = ["manual"],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/roma/roma_service/src:roma_service_lib",
-        "//cc/roma/wasm/test:roma_wasm_testing_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "basic_e2e_wasm_memory_constraint_test",
-    size = "large",
-    srcs = ["basic_e2e_wasm_memory_constraint_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    data = [
-        "//cc/roma/testing/cpp_wasm_allocate_memory",
-    ],
-    tags = ["manual"],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/roma/roma_service/src:roma_service_lib",
-        "//cc/roma/wasm/test:roma_wasm_testing_lib",
-        "//cc/roma/worker/src:roma_worker_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "basic_e2e_worker_recovery_test",
-    size = "large",
-    srcs = ["basic_e2e_worker_recovery_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    tags = ["manual"],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/roma/roma_service/src:roma_service_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
 
 cc_test(
     name = "sandboxed_service_test",

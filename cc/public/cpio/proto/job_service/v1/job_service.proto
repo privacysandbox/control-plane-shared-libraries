@@ -21,7 +21,6 @@ option java_outer_classname = "JobServiceProto";
 option java_package = "com.google.cmrt.sdk.job_service.v1";
 
 import "cc/core/common/proto/common.proto";
-import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -44,6 +43,12 @@ service JobService {
   // Updates the visibility timeout and keep the job invisible from others.
   rpc UpdateJobVisibilityTimeout(UpdateJobVisibilityTimeoutRequest)
       returns (UpdateJobVisibilityTimeoutResponse) {}
+  // Removes the orphaned job message from the job queue.
+  // Orphaned job messages are the jobs that are already finished or the job
+  // entries are not existed in the database, but the job messages are still
+  // left in the queue.
+  rpc DeleteOrphanedJobMessage(DeleteOrphanedJobMessageRequest)
+      returns (DeleteOrphanedJobMessageResponse) {}
 }
 
 // The job data.
@@ -51,24 +56,27 @@ message Job {
   // The Id of the job.
   string job_id = 1;
 
-  // The body of the job.
+  // The server generated Id of the job.
+  string server_job_id = 2;
+
+  // The body of the job as JSON string.
   // Please note there is no validation performed against this field.
-  google.protobuf.Any job_body = 2;
+  string job_body = 3;
 
   // Enum value to represent the status of the job.
-  JobStatus job_status = 3;
+  JobStatus job_status = 4;
 
   // The time the job is created.
-  google.protobuf.Timestamp created_time = 4;
+  google.protobuf.Timestamp created_time = 5;
 
   // The time the job is updated.
-  google.protobuf.Timestamp updated_time = 5;
-
-  // The time the job becomes visible for other consumers to process.
-  google.protobuf.Timestamp visibility_timeout = 6;
+  google.protobuf.Timestamp updated_time = 6;
 
   // The number of times the job has been attempted for processing.
-  int32 retry_count = 7;
+  int32 retry_count = 8;
+
+  // The time the job started processing.
+  google.protobuf.Timestamp processing_started_time = 9;
 }
 
 // Job status enum.
@@ -86,9 +94,12 @@ enum JobStatus {
 
 // Request to put a job.
 message PutJobRequest {
-  // The body of the job.
+  // The Id of the job.
+  // This is provided from the customer and has to be unique.
+  string job_id = 1;
+  // The body of the job as JSON string.
   // Please note there is no validation performed against this field.
-  google.protobuf.Any job_body = 1;
+  string job_body = 3;
 }
 
 // Response of putting a job.
@@ -135,7 +146,7 @@ message UpdateJobBodyRequest {
   string job_id = 1;
   // The new value for the job body.
   // Please note there is no validation performed against this field.
-  google.protobuf.Any job_body = 2;
+  string job_body = 2;
   // The updated time from the most recent response.
   // If this field is earlier than the updated time in the job item from the
   // database, this means there is another request already updated the job body.
@@ -194,18 +205,25 @@ message UpdateJobVisibilityTimeoutRequest {
   // The receipt info associated with the job.
   // This field can and only be retrieved from GetNextJobResponse.
   string receipt_info = 3;
-  // The updated time from the most recent response.
-  // If this field is earlier than the updated time in the job item from the
-  // database, this means there is another request already updated the job
-  // visibility timeout.
-  // This request then is staled and will not update the job in the database.
-  google.protobuf.Timestamp most_recent_updated_time = 4;
 }
 
 // Response of updating visibility timeout of a job.
 message UpdateJobVisibilityTimeoutResponse {
   // The execution result.
   scp.core.common.proto.ExecutionResult result = 1;
-  // The time the job is updated.
-  google.protobuf.Timestamp updated_time = 2;
+}
+
+// Request to delete orphaned job message.
+message DeleteOrphanedJobMessageRequest {
+  // The Id of the job.
+  string job_id = 1;
+  // The receipt info associated with the job.
+  // This field can and only be retrieved from GetNextJobResponse.
+  string receipt_info = 2;
+}
+
+// Response of deleting orphaned job message.
+message DeleteOrphanedJobMessageResponse {
+  // The execution result.
+  scp.core.common.proto.ExecutionResult result = 1;
 }

@@ -18,13 +18,11 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "include/v8.h"
 #include "public/core/interface/execution_result.h"
 #include "roma/sandbox/js_engine/src/js_engine.h"
-#include "roma/sandbox/logging/src/logging.h"
 #include "roma/sandbox/worker/src/worker_utils.h"
 
 #include "error_codes.h"

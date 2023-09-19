@@ -16,6 +16,10 @@
 
 package com.google.scp.operator.frontend.service;
 
+import com.google.cmrt.sdk.job_service.v1.GetJobByIdRequest;
+import com.google.cmrt.sdk.job_service.v1.GetJobByIdResponse;
+import com.google.cmrt.sdk.job_service.v1.PutJobRequest;
+import com.google.cmrt.sdk.job_service.v1.PutJobResponse;
 import com.google.scp.operator.protos.frontend.api.v1.CreateJobRequestProto.CreateJobRequest;
 import com.google.scp.operator.protos.frontend.api.v1.CreateJobResponseProto.CreateJobResponse;
 import com.google.scp.operator.protos.frontend.api.v1.GetJobResponseProto.GetJobResponse;
@@ -41,4 +45,22 @@ public interface FrontendService {
    *     input (e.g non-existent job).
    */
   GetJobResponse getJob(String jobRequestId) throws ServiceException;
+
+  /**
+   * Puts a job to the queue and database.
+   *
+   * @param putJobRequest the put job request
+   * @throws ServiceException if any errors occur, either due to system issues or from invalid user
+   *     input (e.g. malformed request fields)
+   */
+  PutJobResponse putJob(PutJobRequest putJobRequest) throws ServiceException;
+
+  /**
+   * Retrieves the status of the job according to the database.
+   *
+   * @param getJobByIdRequest the get job by id request
+   * @throws ServiceException if any errors occur, either due to system issues or from invalid user
+   *     input (e.g non-existent job).
+   */
+  GetJobByIdResponse getJobById(GetJobByIdRequest getJobByIdRequest) throws ServiceException;
 }

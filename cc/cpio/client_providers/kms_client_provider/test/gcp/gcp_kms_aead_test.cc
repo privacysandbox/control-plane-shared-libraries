@@ -14,12 +14,11 @@
 
 #include "cpio/client_providers/kms_client_provider/src/gcp/gcp_kms_aead.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
-
-#include <gmock/gmock.h>
 
 #include "cpio/client_providers/kms_client_provider/mock/gcp/mock_gcp_key_management_service_client.h"
 #include "google/cloud/kms/key_management_client.h"

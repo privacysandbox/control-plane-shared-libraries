@@ -114,6 +114,37 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
       const std::shared_ptr<const Aws::Client::AsyncCallerContext>
           async_context) noexcept;
 
+  struct GetBlobStreamTracker {
+    // What byte indices were just used.
+    int64_t last_begin_byte_index, last_end_byte_index;
+    // How many bytes remain in the object.
+    int64_t bytes_remaining;
+    // How many bytes (maximum) should be placed in each GetBlobStreamResponse.
+    int64_t max_bytes_per_response;
+  };
+
+  /**
+   * @brief Is called when a partial GetObject call is done.
+   *
+   * @param get_blob_stream_context The get blob stream context object.
+   * @param s3_client An instance of the S3 client.
+   * @param get_object_request The get object request.
+   * @param get_object_outcome The get object outcome
+   * of the async operation.
+   * @param async_context The Aws async context. This arg is not used.
+   */
+  void OnGetObjectStreamCallback(
+      core::ConsumerStreamingContext<
+          cmrt::sdk::blob_storage_service::v1::GetBlobStreamRequest,
+          cmrt::sdk::blob_storage_service::v1::GetBlobStreamResponse>&
+          get_blob_stream_context,
+      std::shared_ptr<GetBlobStreamTracker> tracker,
+      const Aws::S3::S3Client* s3_client,
+      const Aws::S3::Model::GetObjectRequest& get_object_request,
+      Aws::S3::Model::GetObjectOutcome get_object_outcome,
+      const std::shared_ptr<const Aws::Client::AsyncCallerContext>
+          async_context) noexcept;
+
   /**
    * @brief Is called when objects are list and returned from the S3 ListObjects
    * callback.
@@ -163,6 +194,10 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
     std::string upload_id;
     // The part number to use for the next part.
     int64_t next_part_number = 1;
+    // S3 requires each upload except the last must be at least 5MiB.
+    // https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html
+    // Any partial data will be stored here.
+    std::string accumulated_contents;
     // The object used to complete the upload.
     Aws::S3::Model::CompletedMultipartUpload completed_multipart_upload;
 
@@ -171,6 +206,19 @@ class AwsS3ClientProvider : public BlobStorageClientProviderInterface {
     std::chrono::nanoseconds expiry_time_ns =
         std::chrono::duration<int64_t>::min();
   };
+
+  // Schedules another poll for the next message in PutBlobStream.
+  void ScheduleAnotherPutBlobStreamPoll(
+      core::ProducerStreamingContext<
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamRequest,
+          cmrt::sdk::blob_storage_service::v1::PutBlobStreamResponse>&
+          put_blob_stream_context,
+      std::shared_ptr<PutBlobStreamTracker> tracker,
+      const Aws::S3::S3Client* s3_client,
+      const Aws::S3::Model::UploadPartRequest& upload_part_request,
+      Aws::S3::Model::UploadPartOutcome upload_part_outcome,
+      const std::shared_ptr<const Aws::Client::AsyncCallerContext>
+          async_context);
 
   /**
    * @brief Is called when the multipart upload is created.

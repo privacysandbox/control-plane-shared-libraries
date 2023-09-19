@@ -14,13 +14,12 @@
 
 #include "cpio/client_providers/auth_token_provider/src/aws/aws_auth_token_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
 #include <utility>
-
-#include <gmock/gmock.h>
 
 #include "core/curl_client/mock/mock_curl_client.h"
 #include "core/test/utils/conditional_wait.h"

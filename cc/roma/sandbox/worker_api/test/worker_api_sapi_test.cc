@@ -48,6 +48,8 @@ static WorkerApiSapiConfig GetDefaultConfig() {
   config.js_engine_resource_constraints.initial_heap_size_in_mb = 0;
   config.js_engine_resource_constraints.maximum_heap_size_in_mb = 0;
   config.js_engine_max_wasm_memory_number_of_pages = 0;
+  config.sandbox_request_response_shared_buffer_size_mb = 1;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = false;
   return config;
 }
 

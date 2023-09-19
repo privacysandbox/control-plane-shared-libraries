@@ -124,7 +124,7 @@ ExecutionResult MetricClientProvider::Stop() noexcept {
 }
 
 ExecutionResult MetricClientProvider::PutMetrics(
-    AsyncContext<PutMetricsRequest, PutMetricsResponse>&
+    AsyncContext<PutMetricsRequest, PutMetricsResponse>
         record_metric_context) noexcept {
   if (!is_running_) {
     auto execution_result =

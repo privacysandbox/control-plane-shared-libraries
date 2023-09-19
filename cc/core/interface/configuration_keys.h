@@ -31,8 +31,16 @@ static constexpr char kPBSJournalServiceFlushIntervalInMilliseconds[] =
     "google_scp_journal_service_flush_interval_in_milliseconds";
 static constexpr char kTransactionTimeoutInSecondsConfigName[] =
     "google_scp_pbs_transaction_timeout_in_seconds";
+static constexpr char kTransactionResolutionWithRemoteEnabled[] =
+    "google_scp_pbs_transaction_resolution_with_remote_enabled";
 static constexpr char kAggregatedMetricIntervalMs[] =
     "google_scp_aggregated_metric_interval_ms";
 static constexpr char kHTTPServerRequestRoutingEnabled[] =
     "google_scp_http_server_request_routing_enabled";
+static constexpr char kPBSJournalInputStreamEnableBatchReadJournals[] =
+    "google_scp_pbs_journal_input_stream_enable_batch_read_journals";
+static constexpr char kPBSJournalInputStreamNumberOfJournalsPerBatch[] =
+    "google_scp_pbs_journal_input_stream_number_of_journals_per_batch";
+static constexpr char kPBSJournalInputStreamNumberOfJournalLogsToReturn[] =
+    "google_scp_pbs_journal_input_stream_number_of_journal_logs_to_return";
 }  // namespace google::scp::core

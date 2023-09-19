@@ -40,5 +40,10 @@ class GlobalCpio {
    * @param cpio sets the global Cpio object.
    */
   static void SetGlobalCpio(std::unique_ptr<CpioProviderInterface>& cpio);
+
+  /**
+   * @brief Shuts down the Global Cpio object, setting to nullptr.
+   */
+  static void ShutdownGlobalCpio();
 };
 }  // namespace google::scp::cpio::client_providers

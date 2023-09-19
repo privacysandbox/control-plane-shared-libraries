@@ -14,12 +14,11 @@
 
 #include "cpio/client_providers/kms_client_provider/src/gcp/gcp_kms_client_provider.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
-
-#include <gmock/gmock.h>
 
 #include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"

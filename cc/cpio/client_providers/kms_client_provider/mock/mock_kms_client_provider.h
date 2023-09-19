@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <memory>
 #include <vector>
-
-#include <gmock/gmock.h>
 
 #include "core/interface/async_context.h"
 #include "cpio/client_providers/interface/kms_client_provider_interface.h"

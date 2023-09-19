@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
@@ -24,79 +26,6 @@ cc_test(
     deps = [
         "@com_google_googletest//:gtest_main",
         "@v8//:v8_icu",
-    ],
-)
-
-cc_test(
-    name = "shared_memory_pool_test",
-    size = "small",
-    srcs = ["shared_memory_pool_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/roma/common/src:roma_common_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "process_test",
-    size = "small",
-    srcs = ["process_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/public/core/test/interface:execution_result_matchers",
-        "//cc/roma/common/src:roma_common_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "shm_allocator_test",
-    size = "small",
-    srcs = ["shm_allocator_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/roma/common/src:roma_common_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "work_queue_test",
-    size = "small",
-    srcs = ["work_queue_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/public/core/test/interface:execution_result_matchers",
-        "//cc/roma/common/src:roma_common_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "shm_semaphore_test",
-    size = "small",
-    srcs = ["shm_semaphore_test.cc"],
-    copts = [
-        "-std=c++17",
-    ],
-    deps = [
-        "//cc/core/test/utils:utils_lib",
-        "//cc/public/core/test/interface:execution_result_matchers",
-        "//cc/roma/common/src:roma_common_lib",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

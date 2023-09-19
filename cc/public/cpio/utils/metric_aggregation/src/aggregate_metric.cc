@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/str_join.h"
 #include "core/common/time_provider/src/time_provider.h"
 #include "core/interface/async_context.h"
 #include "core/interface/async_executor_interface.h"
@@ -44,12 +45,13 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::TimeDuration;
 using google::scp::core::Timestamp;
 using google::scp::core::common::TimeProvider;
+using google::scp::core::common::Uuid;
 using google::scp::core::errors::SC_CUSTOMIZED_METRIC_EVENT_CODE_NOT_EXIST;
 using google::scp::core::errors::SC_CUSTOMIZED_METRIC_PUSH_CANNOT_SCHEDULE;
+using google::scp::cpio::MetricClientInterface;
 using google::scp::cpio::MetricLabels;
 using google::scp::cpio::MetricName;
 using google::scp::cpio::MetricValue;
-using google::scp::cpio::client_providers::MetricClientProviderInterface;
 using std::make_shared;
 using std::move;
 using std::mutex;
@@ -58,20 +60,28 @@ using std::string;
 using std::to_string;
 using std::vector;
 using std::chrono::milliseconds;
+using std::this_thread::sleep_for;
+
+static constexpr char kAggregateMetric[] = "AggregateMetric";
+
+static constexpr milliseconds kStopWaitSleepDuration = milliseconds(500);
 
 namespace google::scp::cpio {
 AggregateMetric::AggregateMetric(
     const shared_ptr<AsyncExecutorInterface>& async_executor,
-    const shared_ptr<MetricClientProviderInterface>& metric_client,
-    const shared_ptr<MetricDefinition>& metric_info, TimeDuration time_duration,
+    const shared_ptr<MetricClientInterface>& metric_client,
+    const shared_ptr<MetricDefinition>& metric_info,
+    TimeDuration push_interval_duration_in_ms,
     const shared_ptr<vector<string>>& event_code_list,
     const string& event_code_label_key)
     : async_executor_(async_executor),
       metric_client_(metric_client),
       metric_info_(metric_info),
-      time_duration_(time_duration),
+      push_interval_duration_in_ms_(push_interval_duration_in_ms),
       counter_(0),
-      is_running_(false) {
+      is_running_(false),
+      can_accept_incoming_increments_(false),
+      object_activity_id_(Uuid::GenerateUuid()) {
   if (event_code_list) {
     for (const auto& event_code : *event_code_list) {
       MetricLabels labels;
@@ -89,22 +99,68 @@ ExecutionResult AggregateMetric::Init() noexcept {
 }
 
 ExecutionResult AggregateMetric::Run() noexcept {
+  if (is_running_) {
+    return FailureExecutionResult(
+        core::errors::SC_CUSTOMIZED_METRIC_ALREADY_RUNNING);
+  }
   is_running_ = true;
+  can_accept_incoming_increments_ = true;
   return ScheduleMetricPush();
 }
 
 ExecutionResult AggregateMetric::Stop() noexcept {
-  sync_mutex_.lock();
-  is_running_ = false;
-  sync_mutex_.unlock();
+  if (!is_running_) {
+    return FailureExecutionResult(
+        core::errors::SC_CUSTOMIZED_METRIC_NOT_RUNNING);
+  }
 
-  current_cancellation_callback_();
+  can_accept_incoming_increments_ = false;
+
+  // Wait until all of the event counters are flushed.
+  while (counter_.load() > 0) {
+    SCP_DEBUG(kAggregateMetric, object_activity_id_,
+              "Waiting for the counter to be flushed. Current value '%llu'",
+              counter_.load());
+    sleep_for(kStopWaitSleepDuration);
+  }
+  for (auto& [_, event_counter] : event_counters_) {
+    while (event_counter.load() > 0) {
+      SCP_DEBUG(kAggregateMetric, object_activity_id_,
+                "Waiting for the counter to be flushed. Current value '%llu'",
+                event_counter.load());
+      sleep_for(kStopWaitSleepDuration);
+    }
+  }
+
+  // Take the schedule mutex to disallow new tasks to be scheduled while
+  // stopping
+  task_schedule_mutex_.lock();
+  is_running_ = false;
+  task_schedule_mutex_.unlock();
+
+  // At this point no more tasks can be scheduled, so it is safe to access this
+  // 'current_cancellation_callback_' member, i.e. in other words, there is no
+  // concurrent write on this while we are accessing it.
+
+  if (current_cancellation_callback_) {
+    current_cancellation_callback_();
+  }
   return SuccessExecutionResult();
 }
 
 ExecutionResult AggregateMetric::Increment(const string& event_code) noexcept {
+  return IncrementBy(1, event_code);
+}
+
+core::ExecutionResult AggregateMetric::IncrementBy(
+    uint64_t value, const std::string& event_code) noexcept {
+  if (!can_accept_incoming_increments_) {
+    return FailureExecutionResult(
+        core::errors::SC_CUSTOMIZED_METRIC_CANNOT_INCREMENT_WHEN_NOT_RUNNING);
+  }
+
   if (event_code.empty()) {
-    counter_++;
+    counter_ += value;
     return SuccessExecutionResult();
   }
 
@@ -112,31 +168,44 @@ ExecutionResult AggregateMetric::Increment(const string& event_code) noexcept {
   if (event == event_counters_.end()) {
     return FailureExecutionResult(SC_CUSTOMIZED_METRIC_EVENT_CODE_NOT_EXIST);
   }
-  event->second++;
+  event->second += value;
   return SuccessExecutionResult();
 }
 
 void AggregateMetric::MetricPushHandler(
     int64_t value, const shared_ptr<MetricTag>& metric_tag) noexcept {
   auto metric_value = make_shared<MetricValue>(to_string(value));
-
   auto record_metric_request = make_shared<PutMetricsRequest>();
   MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info_,
                                     metric_value, metric_tag);
 
-  auto activity_id = core::common::Uuid::GenerateUuid();
   AsyncContext<PutMetricsRequest, PutMetricsResponse> record_metric_context(
       move(record_metric_request),
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& outcome) {
-        if (!outcome.result.Successful()) {
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {
+        if (!context.result.Successful()) {
+          std::vector<string> metric_names;
+          for (auto& metric : context.request->metrics()) {
+            metric_names.push_back(metric.name());
+          }
           // TODO: Create an alert or reschedule
+          SCP_CRITICAL(kAggregateMetric, object_activity_id_, context.result,
+                       "PutMetrics returned a failure for '%llu' metrics. The "
+                       "metrics are: '%s'",
+                       context.request->metrics().size(),
+                       absl::StrJoin(metric_names, ", ").c_str());
         }
       },
-      activity_id, activity_id);
+      object_activity_id_, object_activity_id_);
 
-  auto execution_result = metric_client_->PutMetrics(record_metric_context);
+  auto metrics_count = record_metric_context.request->metrics().size();
+  auto execution_result =
+      metric_client_->PutMetrics(move(record_metric_context));
   if (!execution_result.Successful()) {
     // TODO: Create an alert or reschedule
+    SCP_CRITICAL(
+        kAggregateMetric, object_activity_id_, execution_result,
+        "Cannot schedule PutMetrics on AsyncExecutor for '%llu' metrics",
+        metrics_count)
   }
   return;
 }
@@ -158,24 +227,33 @@ void AggregateMetric::RunMetricPush() noexcept {
 }
 
 ExecutionResult AggregateMetric::ScheduleMetricPush() noexcept {
-  Timestamp next_push_time = (TimeProvider::GetSteadyTimestampInNanoseconds() +
-                              milliseconds(time_duration_))
-                                 .count();
+  std::unique_lock lock(task_schedule_mutex_);
 
   if (!is_running_) {
-    return FailureExecutionResult(SC_CUSTOMIZED_METRIC_PUSH_CANNOT_SCHEDULE);
+    return FailureExecutionResult(
+        core::errors::SC_CUSTOMIZED_METRIC_NOT_RUNNING);
   }
 
+  Timestamp next_push_time = (TimeProvider::GetSteadyTimestampInNanoseconds() +
+                              milliseconds(push_interval_duration_in_ms_))
+                                 .count();
   auto execution_result = async_executor_->ScheduleFor(
       [this]() {
-        ScheduleMetricPush();
         RunMetricPush();
+        if (auto execution_result = ScheduleMetricPush();
+            !execution_result.Successful()) {
+          // TODO: Create an alert or reschedule
+          SCP_EMERGENCY(kAggregateMetric, object_activity_id_, execution_result,
+                        "Cannot schedule PutMetrics on AsyncExecutor. There "
+                        "will be a metrics loss after this since no more "
+                        "pushes will be done.");
+        }
       },
       next_push_time, current_cancellation_callback_);
-
   if (!execution_result.Successful()) {
     return FailureExecutionResult(SC_CUSTOMIZED_METRIC_PUSH_CANNOT_SCHEDULE);
   }
+
   return SuccessExecutionResult();
 }
 }  // namespace google::scp::cpio

@@ -22,9 +22,9 @@
 #include <atomic>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/statusor.h"
 #include "core/async_executor/src/async_executor.h"
 #include "core/test/utils/auto_init_run_stop.h"
@@ -36,12 +36,14 @@
 #include "roma/sandbox/worker_pool/src/worker_pool.h"
 #include "roma/sandbox/worker_pool/src/worker_pool_api_sapi.h"
 
+using absl::flat_hash_set;
 using absl::StatusOr;
 using google::scp::core::AsyncExecutor;
 using google::scp::core::ExecutionResultOr;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::test::AutoInitRunStop;
 using google::scp::core::test::WaitUntil;
+using google::scp::roma::sandbox::worker::WorkerFactory;
 using google::scp::roma::sandbox::worker_api::WorkerApi;
 using google::scp::roma::sandbox::worker_api::WorkerApiSapi;
 using google::scp::roma::sandbox::worker_api::WorkerApiSapiConfig;
@@ -54,22 +56,30 @@ using std::shared_ptr;
 using std::string;
 using std::to_string;
 using std::unique_ptr;
-using std::unordered_map;
-using std::unordered_set;
 using std::vector;
 
-namespace google::scp::roma::sandbox::dispatcher::test {
-TEST(DispatcherTest, CanRunCode) {
-  auto async_executor = make_shared<AsyncExecutor>(1, 10);
-
-  vector<WorkerApiSapiConfig> configs;
+namespace {
+WorkerApiSapiConfig CreateWorkerApiSapiConfig() {
   WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
+  config.worker_js_engine = WorkerFactory::WorkerEngine::v8;
   config.js_engine_require_code_preload = true;
   config.compilation_context_cache_size = 5;
   config.native_js_function_comms_fd = -1;
   config.native_js_function_names = vector<string>();
-  configs.push_back(config);
+  config.max_worker_virtual_memory_mb = 0;
+  config.sandbox_request_response_shared_buffer_size_mb = 0;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = false;
+  return config;
+}
+}  // namespace
+
+namespace google::scp::roma::sandbox::dispatcher::test {
+
+TEST(DispatcherTest, CanRunCode) {
+  auto async_executor = make_shared<AsyncExecutor>(1, 10);
+
+  vector<WorkerApiSapiConfig> configs;
+  configs.push_back(CreateWorkerApiSapiConfig());
 
   shared_ptr<WorkerPool> worker_pool =
       make_shared<WorkerPoolApiSapi>(configs, 1);
@@ -122,13 +132,7 @@ TEST(DispatcherTest, CanHandleCodeFailures) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
 
   vector<WorkerApiSapiConfig> configs;
-  WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-  config.js_engine_require_code_preload = true;
-  config.compilation_context_cache_size = 5;
-  config.native_js_function_comms_fd = -1;
-  config.native_js_function_names = vector<string>();
-  configs.push_back(config);
+  configs.push_back(CreateWorkerApiSapiConfig());
 
   shared_ptr<WorkerPool> worker_pool =
       make_shared<WorkerPoolApiSapi>(configs, 1);
@@ -162,13 +166,7 @@ TEST(DispatcherTest, CanHandleExecuteWithoutLoadFailure) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
 
   vector<WorkerApiSapiConfig> configs;
-  WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-  config.js_engine_require_code_preload = true;
-  config.compilation_context_cache_size = 5;
-  config.native_js_function_comms_fd = -1;
-  config.native_js_function_names = vector<string>();
-  configs.push_back(config);
+  configs.push_back(CreateWorkerApiSapiConfig());
 
   shared_ptr<WorkerPool> worker_pool =
       make_shared<WorkerPoolApiSapi>(configs, 1);
@@ -204,13 +202,7 @@ TEST(DispatcherTest, BroadcastShouldUpdateAllWorkers) {
 
   vector<WorkerApiSapiConfig> configs;
   for (int i = 0; i < number_of_workers; i++) {
-    WorkerApiSapiConfig config;
-    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-    config.js_engine_require_code_preload = true;
-    config.compilation_context_cache_size = 5;
-    config.native_js_function_comms_fd = -1;
-    config.native_js_function_names = vector<string>();
-    configs.push_back(config);
+    configs.push_back(CreateWorkerApiSapiConfig());
   }
 
   shared_ptr<WorkerPool> worker_pool =
@@ -273,13 +265,7 @@ TEST(DispatcherTest, BroadcastShouldExitGracefullyIfThereAreErrorsWithTheCode) {
 
   vector<WorkerApiSapiConfig> configs;
   for (int i = 0; i < number_of_workers; i++) {
-    WorkerApiSapiConfig config;
-    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-    config.js_engine_require_code_preload = true;
-    config.compilation_context_cache_size = 5;
-    config.native_js_function_comms_fd = -1;
-    config.native_js_function_names = vector<string>();
-    configs.push_back(config);
+    configs.push_back(CreateWorkerApiSapiConfig());
   }
 
   shared_ptr<WorkerPool> worker_pool =
@@ -316,13 +302,7 @@ TEST(DispatcherTest, DispatchBatchShouldExecuteAllRequests) {
 
   vector<WorkerApiSapiConfig> configs;
   for (int i = 0; i < number_of_workers; i++) {
-    WorkerApiSapiConfig config;
-    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-    config.js_engine_require_code_preload = true;
-    config.compilation_context_cache_size = 5;
-    config.native_js_function_comms_fd = -1;
-    config.native_js_function_names = vector<string>();
-    configs.push_back(config);
+    configs.push_back(CreateWorkerApiSapiConfig());
   }
 
   shared_ptr<WorkerPool> worker_pool =
@@ -356,7 +336,7 @@ TEST(DispatcherTest, DispatchBatchShouldExecuteAllRequests) {
   int requests_sent = number_of_workers * 3;
 
   vector<InvocationRequestStrInput> batch;
-  unordered_set<string> request_ids;
+  flat_hash_set<string> request_ids;
 
   for (int i = 0; i < requests_sent; i++) {
     auto execute_request = InvocationRequestStrInput();
@@ -401,14 +381,7 @@ TEST(DispatcherTest, DispatchBatchShouldFailIfQueuesAreFull) {
   auto async_executor = make_shared<AsyncExecutor>(
       number_of_workers /*thread_count*/, 1 /*queue_cap*/);
 
-  WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-  config.js_engine_require_code_preload = true;
-  config.compilation_context_cache_size = 5;
-  config.native_js_function_comms_fd = -1;
-  config.native_js_function_names = vector<string>();
-
-  vector<WorkerApiSapiConfig> configs = {config};
+  vector<WorkerApiSapiConfig> configs = {CreateWorkerApiSapiConfig()};
   shared_ptr<WorkerPool> worker_pool =
       make_shared<WorkerPoolApiSapi>(configs, number_of_workers);
   AutoInitRunStop for_async_executor(*async_executor);
@@ -486,13 +459,7 @@ TEST(DispatcherTest, ShouldBeAbleToExecutePreviouslyLoadedCodeAfterCrash) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
 
   vector<WorkerApiSapiConfig> configs;
-  WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-  config.js_engine_require_code_preload = true;
-  config.compilation_context_cache_size = 5;
-  config.native_js_function_comms_fd = -1;
-  config.native_js_function_names = vector<string>();
-  configs.push_back(config);
+  configs.push_back(CreateWorkerApiSapiConfig());
 
   // Only one worker in the pool
   shared_ptr<WorkerPool> worker_pool =
@@ -595,13 +562,7 @@ TEST(DispatcherTest, ShouldRecoverFromWorkerCrashWithMultipleCodeVersions) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
 
   vector<WorkerApiSapiConfig> configs;
-  WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-  config.js_engine_require_code_preload = true;
-  config.compilation_context_cache_size = 5;
-  config.native_js_function_comms_fd = -1;
-  config.native_js_function_names = vector<string>();
-  configs.push_back(config);
+  configs.push_back(CreateWorkerApiSapiConfig());
 
   // Only one worker in the pool
   shared_ptr<WorkerPool> worker_pool =
@@ -722,13 +683,7 @@ TEST(DispatcherTest, ShouldBeAbleToLoadMoreVersionsAfterWorkerCrash) {
   auto async_executor = make_shared<AsyncExecutor>(1, 10);
 
   vector<WorkerApiSapiConfig> configs;
-  WorkerApiSapiConfig config;
-  config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-  config.js_engine_require_code_preload = true;
-  config.compilation_context_cache_size = 5;
-  config.native_js_function_comms_fd = -1;
-  config.native_js_function_names = vector<string>();
-  configs.push_back(config);
+  configs.push_back(CreateWorkerApiSapiConfig());
 
   // Only one worker in the pool
   shared_ptr<WorkerPool> worker_pool =
@@ -870,5 +825,31 @@ TEST(DispatcherTest, ShouldBeAbleToLoadMoreVersionsAfterWorkerCrash) {
 
     EXPECT_SUCCESS(result);
   }
+}
+
+TEST(DispatcherTest, ShouldFailIfCodeVersionCacheSizeIsZero) {
+  auto async_executor = make_shared<AsyncExecutor>(1, 10);
+  constexpr size_t size = 0;
+  shared_ptr<WorkerPool> worker_pool =
+      make_shared<WorkerPoolApiSapi>(vector<WorkerApiSapiConfig>(), size);
+  constexpr size_t max_pending_requests = 10;
+  constexpr size_t code_version_cache_size = 0;
+
+  EXPECT_DEATH(Dispatcher(async_executor, worker_pool, max_pending_requests,
+                          code_version_cache_size),
+               "code_version_cache_size cannot be zero");
+}
+
+TEST(DispatcherTest, ShouldFailIfMaxPendingRequestsIsZero) {
+  auto async_executor = make_shared<AsyncExecutor>(1, 10);
+  constexpr size_t size = 0;
+  shared_ptr<WorkerPool> worker_pool =
+      make_shared<WorkerPoolApiSapi>(vector<WorkerApiSapiConfig>(), size);
+  constexpr size_t max_pending_requests = 0;
+  constexpr size_t code_version_cache_size = 5;
+
+  EXPECT_DEATH(Dispatcher(async_executor, worker_pool, max_pending_requests,
+                          code_version_cache_size),
+               "max_pending_requests cannot be zero");
 }
 }  // namespace google::scp::roma::sandbox::dispatcher::test

@@ -41,4 +41,15 @@ class TestTimeoutException : public std::exception {
  */
 void WaitUntil(std::function<bool()> condition,
                DurationMs timeout = UNIT_TEST_TIME_OUT_MS);
+
+/**
+ * @brief Waits util the given condition is met. This is a no exception version
+ * of WaitUntil.
+ *
+ * @param condition when the condition is met, stop waiting.
+ * @param timeout the maximum time before stop waiting.
+ */
+ExecutionResult WaitUntilOrReturn(
+    std::function<bool()> condition,
+    DurationMs timeout = UNIT_TEST_TIME_OUT_MS) noexcept;
 }  // namespace google::scp::core::test

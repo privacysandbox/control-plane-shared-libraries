@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
@@ -39,6 +41,7 @@ cc_test(
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
         "//cc/roma/config/src:roma_config_lib",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
         "@v8//:v8_icu",
     ],

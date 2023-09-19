@@ -16,9 +16,8 @@
 
 #include "cpio/client_providers/instance_client_provider/src/gcp/gcp_instance_client_utils.h"
 
-#include <gtest/gtest.h>
-
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "core/test/utils/conditional_wait.h"
 #include "cpio/client_providers/instance_client_provider/mock/mock_instance_client_provider.h"

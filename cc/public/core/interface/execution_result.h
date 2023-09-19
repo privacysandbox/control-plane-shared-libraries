@@ -48,29 +48,33 @@ namespace google::scp::core {
   }
 
 // Same as above but logs an error before returning upon failure.
-// The other arguments would be the same as those used in SCP_ERROR(...).
-// "__res" can be used to access the ExecutionResult that would be returned.
+// The other arguments would be the same as those used in SCP_ERROR(...) except
+// the ExecutionResult is abstracted away.
 //
 // Example:
 // RETURN_AND_LOG_IF_FAILURE(foo(), kComponentName, parent_activity_id,
-//     activity_id, __res, "some message %s", str.c_str()));
+//     activity_id, "some message %s", str.c_str()));
 // // If we reach this point, foo() was Successful and SCP_ERROR_CONTEXT was not
 // // called.
-#define RETURN_AND_LOG_IF_FAILURE(execution_result, ...) \
-  __RETURN_IF_FAILURE_LOG(execution_result, SCP_ERROR, __VA_ARGS__)
+#define RETURN_AND_LOG_IF_FAILURE(execution_result, component_name,    \
+                                  activity_id, message, ...)           \
+  __RETURN_IF_FAILURE_LOG(execution_result, SCP_ERROR, component_name, \
+                          activity_id, message, ##__VA_ARGS__)
 // Same as above but logs an error using the supplied context upon failure.
 // The other arguments would be the same as those used in
 // SCP_ERROR_CONTEXT(...). RETURN_AND_LOG_IF_FAILURE_CONTEXT(foo(),
-// kComponentName, context,
-//     __res, "some message %s", str.c_str()));
-#define RETURN_AND_LOG_IF_FAILURE_CONTEXT(execution_result, ...) \
-  __RETURN_IF_FAILURE_LOG(execution_result, SCP_ERROR_CONTEXT, __VA_ARGS__)
+// kComponentName, context, "some message %s", str.c_str()));
+#define RETURN_AND_LOG_IF_FAILURE_CONTEXT(execution_result, component_name,    \
+                                          async_context, message, ...)         \
+  __RETURN_IF_FAILURE_LOG(execution_result, SCP_ERROR_CONTEXT, component_name, \
+                          async_context, message, ##__VA_ARGS__)
 
-#define __RETURN_IF_FAILURE_LOG(execution_result, error_level, ...)  \
-  if (::google::scp::core::ExecutionResult __res = execution_result; \
-      !__res.Successful()) {                                         \
-    error_level(__VA_ARGS__);                                        \
-    return __res;                                                    \
+#define __RETURN_IF_FAILURE_LOG(execution_result, error_level, component_name, \
+                                activity_id, message, ...)                     \
+  if (::google::scp::core::ExecutionResult __res = execution_result;           \
+      !__res.Successful()) {                                                   \
+    error_level(component_name, activity_id, __res, message, ##__VA_ARGS__);   \
+    return __res;                                                              \
   }
 
 // Macro similar to RETURN_IF_FAILURE but for ExecutionResultOr.
@@ -111,33 +115,36 @@ namespace google::scp::core {
                             execution_result_or, )
 
 // Same as above but logs the error before returning it.
-// The other arguments would be the same as those used in SCP_ERROR(...).
-// "__res" can be used to access the ExecutionResult that would be returned.
+// The other arguments would be the same as those used in SCP_ERROR(...) except
+// the ExecutionResult is abstracted away.
 //
 // Example:
 // ExecutionResultOr<Foo> result_or = foo();
 // ASSIGN_OR_LOG_AND_RETURN(auto val, result_or, kComponentName,
-//     parent_activity_id, activity_id, __res, "some message %s", str.c_str());
+//     parent_activity_id, activity_id, "some message %s", str.c_str());
 // // If we reach this point, foo() was Successful and val is of type Foo.
-#define ASSIGN_OR_LOG_AND_RETURN(lhs, execution_result_or, ...) \
-  __ASSIGN_OR_RETURN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__),   \
-                            execution_result_or, SCP_ERROR(__VA_ARGS__))
+#define ASSIGN_OR_LOG_AND_RETURN(lhs, execution_result_or, component_name, \
+                                 activity_id, message, ...)                \
+  __ASSIGN_OR_RETURN_HELPER(                                               \
+      lhs, __UNIQUE_VAR_NAME(__LINE__), execution_result_or,               \
+      SCP_ERROR(component_name, activity_id, __res, message, ##__VA_ARGS__))
 
 // Same as above but logs the error using the supplied context before returning
 // it.
 // The other arguments would be the same as those used in
-// SCP_ERROR_CONTEXT(...).
-// "__res" can be used to access the ExecutionResult that would be returned.
+// SCP_ERROR_CONTEXT(...) except the ExecutionResult is abstracted away.
 //
 // Example:
 // ExecutionResultOr<Foo> result_or = foo();
 // ASSIGN_OR_LOG_AND_RETURN_CONTEXT(auto val, result_or, kComponentName,
-//     context, __res, "some message %s", str.c_str());
+//     context, "some message %s", str.c_str());
 // // If we reach this point, foo() was Successful and val is of type Foo.
-#define ASSIGN_OR_LOG_AND_RETURN_CONTEXT(lhs, execution_result_or, ...) \
-  __ASSIGN_OR_RETURN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__),           \
-                            execution_result_or,                        \
-                            SCP_ERROR_CONTEXT(__VA_ARGS__))
+#define ASSIGN_OR_LOG_AND_RETURN_CONTEXT(                                    \
+    lhs, execution_result_or, component_name, async_context, message, ...)   \
+  __ASSIGN_OR_RETURN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__),                \
+                            execution_result_or,                             \
+                            SCP_ERROR_CONTEXT(component_name, async_context, \
+                                              __res, message, ##__VA_ARGS__))
 
 #define __ASSIGN_OR_RETURN_W_LOG(lhs, execution_result_or, failure_statement) \
   __ASSIGN_OR_RETURN_HELPER(lhs, __UNIQUE_VAR_NAME(__LINE__),                 \

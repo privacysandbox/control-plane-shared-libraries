@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
     name = "dispatcher_test",
-    size = "small",
+    size = "large",
     srcs = ["dispatcher_test.cc"],
     copts = [
         "-std=c++17",
@@ -29,6 +31,7 @@ cc_test(
         "//cc/roma/sandbox/dispatcher/src:roma_dispatcher_lib",
         "//cc/roma/sandbox/worker_api/src:roma_worker_api_sapi_lib",
         "//cc/roma/sandbox/worker_pool/src:roma_worker_pool_lib",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_googletest//:gtest_main",
     ],
 )

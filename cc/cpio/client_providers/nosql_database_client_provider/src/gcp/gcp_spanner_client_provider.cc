@@ -39,6 +39,7 @@ using google::cloud::StatusOr;
 using google::cloud::spanner::Client;
 using google::cloud::spanner::Database;
 using google::cloud::spanner::MakeConnection;
+using google::cloud::spanner::MakeInsertMutation;
 using google::cloud::spanner::MakeInsertOrUpdateMutation;
 using google::cloud::spanner::Mutation;
 using google::cloud::spanner::Mutations;
@@ -48,6 +49,8 @@ using google::cloud::spanner::Transaction;
 using google::cloud::spanner::Value;
 using google::cloud::spanner_admin::DatabaseAdminClient;
 using google::cloud::spanner_admin::MakeDatabaseAdminConnection;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse;
 using google::cmrt::sdk::nosql_database_service::v1::CreateTableRequest;
 using google::cmrt::sdk::nosql_database_service::v1::CreateTableResponse;
 using google::cmrt::sdk::nosql_database_service::v1::DeleteTableRequest;
@@ -69,6 +72,9 @@ using google::scp::core::FinishContext;
 using google::scp::core::RetryExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::common::kZeroUuid;
+using google::scp::core::errors::SC_GCP_FAILED_PRECONDITION;
+using google::scp::core::errors::
+    SC_NO_SQL_DATABASE_PROVIDER_CONDITIONAL_CHECKED_FAILED;
 using google::scp::core::errors::SC_NO_SQL_DATABASE_PROVIDER_EMPTY_TABLE_NAME;
 using google::scp::core::errors::
     SC_NO_SQL_DATABASE_PROVIDER_INVALID_PARAMETER_TYPE;
@@ -287,6 +293,10 @@ ExecutionResult GcpSpannerClientProvider::Init() noexcept {
     return result;
   }
 
+  return SuccessExecutionResult();
+}
+
+ExecutionResult GcpSpannerClientProvider::Run() noexcept {
   auto project_id_or =
       GcpInstanceClientUtils::GetCurrentProjectId(instance_client_);
   if (!project_id_or.Successful()) {
@@ -313,15 +323,11 @@ ExecutionResult GcpSpannerClientProvider::Init() noexcept {
   return SuccessExecutionResult();
 }
 
-ExecutionResult GcpSpannerClientProvider::Run() noexcept {
-  return SuccessExecutionResult();
-}
-
 ExecutionResult GcpSpannerClientProvider::Stop() noexcept {
   return SuccessExecutionResult();
 }
 
-void GcpSpannerClientProvider::CreateTableAsync(
+void GcpSpannerClientProvider::CreateTableInternal(
     AsyncContext<CreateTableRequest, CreateTableResponse>&
         create_table_context) noexcept {
   DatabaseAdminClient spanner_database_client(*spanner_database_client_shared_);
@@ -348,7 +354,7 @@ ExecutionResult GcpSpannerClientProvider::CreateTable(
   RETURN_IF_FAILURE(ValidateCreateTableRequest(create_table_context));
 
   if (auto schedule_result = io_async_executor_->Schedule(
-          bind(&GcpSpannerClientProvider::CreateTableAsync, this,
+          bind(&GcpSpannerClientProvider::CreateTableInternal, this,
                create_table_context),
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
@@ -363,7 +369,7 @@ ExecutionResult GcpSpannerClientProvider::CreateTable(
   return SuccessExecutionResult();
 }
 
-void GcpSpannerClientProvider::DeleteTableAsync(
+void GcpSpannerClientProvider::DeleteTableInternal(
     AsyncContext<DeleteTableRequest, DeleteTableResponse>&
         delete_table_context) noexcept {
   DatabaseAdminClient spanner_database_client(*spanner_database_client_shared_);
@@ -398,7 +404,7 @@ ExecutionResult GcpSpannerClientProvider::DeleteTable(
   }
 
   if (auto schedule_result = io_async_executor_->Schedule(
-          bind(&GcpSpannerClientProvider::DeleteTableAsync, this,
+          bind(&GcpSpannerClientProvider::DeleteTableInternal, this,
                delete_table_context),
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
@@ -413,7 +419,7 @@ ExecutionResult GcpSpannerClientProvider::DeleteTable(
   return SuccessExecutionResult();
 }
 
-void GcpSpannerClientProvider::GetDatabaseItemAsync(
+void GcpSpannerClientProvider::GetDatabaseItemInternal(
     AsyncContext<GetDatabaseItemRequest, GetDatabaseItemResponse>
         get_database_item_context,
     string query, SqlStatement::ParamType params) noexcept {
@@ -507,7 +513,7 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
   }
   // Build a query like:
   // SELECT IFNULL(Value, JSON '{}')
-  // FROM BudgetKeys
+  // FROM `BudgetKeys`
   // WHERE BudgetKeyId = @partition_key
   //   AND Timeframe = @sort_key
   //   AND JSON_VALUE(Value, '$.token_count') = @attribute_0
@@ -515,8 +521,9 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
 
   // Set the table name
   const auto& table_name = request.key().table_name();
-  string query = absl::StrFormat("SELECT IFNULL(%s, JSON '{}') FROM %s WHERE ",
-                                 kValueColumnName, table_name);
+  string query =
+      absl::StrFormat("SELECT IFNULL(%s, JSON '{}') FROM `%s` WHERE ",
+                      kValueColumnName, table_name);
 
   // Set the partition key
   auto& provided_partition_key = request.key().partition_key();
@@ -569,7 +576,7 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
   }
 
   if (auto schedule_result = io_async_executor_->Schedule(
-          bind(&GcpSpannerClientProvider::GetDatabaseItemAsync, this,
+          bind(&GcpSpannerClientProvider::GetDatabaseItemInternal, this,
                get_database_item_context, move(query), move(params)),
           AsyncPriority::Normal);
       !schedule_result.Successful()) {
@@ -583,14 +590,120 @@ ExecutionResult GcpSpannerClientProvider::GetDatabaseItem(
   return SuccessExecutionResult();
 }
 
+void GcpSpannerClientProvider::CreateDatabaseItemInternal(
+    AsyncContext<CreateDatabaseItemRequest, CreateDatabaseItemResponse>&
+        create_database_item_context,
+    CreateItemOptions create_item_options) noexcept {
+  Client spanner_client(*spanner_client_shared_);
+  Mutations mutations = [&create_database_item_context,
+                         &create_item_options]() {
+    if (create_database_item_context.request->key().has_sort_key()) {
+      // Include the sort_key column value.
+      return Mutations{MakeInsertMutation(
+          create_item_options.table_name, create_item_options.column_names,
+          create_item_options.partition_key_val,
+          create_item_options.sort_key_val,
+          Value(SpannerJson(create_item_options.attributes.dump())))};
+    } else {
+      return Mutations{MakeInsertMutation(
+          create_item_options.table_name, create_item_options.column_names,
+          create_item_options.partition_key_val,
+          Value(SpannerJson(create_item_options.attributes.dump())))};
+    }
+  }();
+
+  auto commit_result_or = spanner_client.Commit(mutations);
+
+  if (!commit_result_or.ok()) {
+    auto result = GcpUtils::GcpErrorConverter(commit_result_or.status());
+    SCP_ERROR_CONTEXT(
+        kGcpSpanner, create_database_item_context, result,
+        "Spanner create commit failed. Error code: %d, message: %s",
+        commit_result_or.status().code(),
+        commit_result_or.status().message().c_str());
+    FinishContext(result, create_database_item_context, cpu_async_executor_);
+    return;
+  }
+  FinishContext(SuccessExecutionResult(), create_database_item_context,
+                cpu_async_executor_);
+}
+
+ExecutionResult GcpSpannerClientProvider::CreateDatabaseItem(
+    AsyncContext<CreateDatabaseItemRequest, CreateDatabaseItemResponse>&
+        create_database_item_context) noexcept {
+  const auto& request = *create_database_item_context.request;
+  if (auto execution_result = ValidatePartitionAndSortKey(
+          client_options_->table_name_to_keys.get(), request.key());
+      !execution_result.Successful()) {
+    auto sort_key_str = request.key().has_sort_key()
+                            ? request.key().sort_key().name().c_str()
+                            : "<empty>";
+    SCP_ERROR_CONTEXT(
+        kGcpSpanner, create_database_item_context, execution_result,
+        "Failed validating Partition key (%s) and Sort key (%s) for table %s",
+        request.key().partition_key().name().c_str(), sort_key_str,
+        request.key().table_name().c_str());
+    create_database_item_context.result = execution_result;
+    create_database_item_context.Finish();
+    return execution_result;
+  }
+
+  CreateItemOptions create_item_options;
+  create_item_options.table_name = request.key().table_name();
+  // Set the partition key
+  ASSIGN_OR_RETURN(create_item_options.partition_key_val,
+                   GcpSpannerUtils::ConvertItemAttributeToSpannerValue(
+                       request.key().partition_key()));
+
+  create_item_options.column_names.push_back(
+      request.key().partition_key().name());
+
+  // sort_key is optional
+  if (request.key().has_sort_key() &&
+      !request.key().sort_key().name().empty()) {
+    ASSIGN_OR_RETURN(create_item_options.sort_key_val,
+                     GcpSpannerUtils::ConvertItemAttributeToSpannerValue(
+                         request.key().sort_key()));
+    create_item_options.column_names.push_back(request.key().sort_key().name());
+  }
+
+  for (const auto& attr : request.attributes()) {
+    auto json_attr_or = GcpSpannerUtils::ConvertItemAttributeToJsonType(attr);
+    if (!json_attr_or.Successful()) {
+      SCP_ERROR_CONTEXT(kGcpSpanner, create_database_item_context,
+                        json_attr_or.result(),
+                        "Error converting ItemAttribute to JSON for table %s",
+                        request.key().table_name().c_str());
+      create_database_item_context.result = json_attr_or.result();
+      create_database_item_context.Finish();
+      return json_attr_or.result();
+    }
+    create_item_options.attributes[attr.name()] = move(*json_attr_or);
+  }
+
+  create_item_options.column_names.push_back(kValueColumnName);
+
+  if (auto schedule_result = io_async_executor_->Schedule(
+          bind(&GcpSpannerClientProvider::CreateDatabaseItemInternal, this,
+               create_database_item_context, move(create_item_options)),
+          AsyncPriority::Normal);
+      !schedule_result.Successful()) {
+    create_database_item_context.result = schedule_result;
+    create_database_item_context.Finish();
+    return schedule_result;
+  }
+
+  return SuccessExecutionResult();
+}
+
 ExecutionResultOr<GcpSpannerClientProvider::UpsertSelectOptions>
 GcpSpannerClientProvider::UpsertSelectOptions::BuildUpsertSelectOptions(
     const UpsertDatabaseItemRequest& request) {
   UpsertSelectOptions upsert_select_options;
   const auto& table_name = request.key().table_name();
 
-  string select_query =
-      absl::StrFormat("SELECT %s FROM %s WHERE ", kValueColumnName, table_name);
+  string select_query = absl::StrFormat("SELECT %s FROM `%s` WHERE ",
+                                        kValueColumnName, table_name);
   SqlStatement::ParamType params;
 
   // Set the partition key
@@ -735,7 +848,7 @@ Mutations GcpSpannerClientProvider::UpsertFunctor(
   }
 }
 
-void GcpSpannerClientProvider::UpsertDatabaseItemAsync(
+void GcpSpannerClientProvider::UpsertDatabaseItemInternal(
     AsyncContext<UpsertDatabaseItemRequest, UpsertDatabaseItemResponse>
         upsert_database_item_context,
     UpsertSelectOptions upsert_select_options, bool enforce_row_existence,
@@ -792,7 +905,7 @@ ExecutionResult GcpSpannerClientProvider::UpsertDatabaseItem(
   }
   // 1.
   //   SELECT Value
-  //   FROM BudgetKeys
+  //   FROM `BudgetKeys`
   //   WHERE BudgetKeyId = @partition_key AND
   //   Timeframe = @sort_key # <---- Optional
   //   # If attributes present:
@@ -833,7 +946,7 @@ ExecutionResult GcpSpannerClientProvider::UpsertDatabaseItem(
   }
 
   if (auto schedule_result = io_async_executor_->Schedule(
-          bind(&GcpSpannerClientProvider::UpsertDatabaseItemAsync, this,
+          bind(&GcpSpannerClientProvider::UpsertDatabaseItemInternal, this,
                upsert_database_item_context, move(*select_options_or),
                enforce_row_existence, move(new_attributes)),
           AsyncPriority::Normal);
@@ -853,6 +966,16 @@ SpannerFactory::CreateClients(const string& project, const string& instance,
       make_shared<Client>(
           MakeConnection(Database(project, instance, database))),
       make_shared<DatabaseAdminClient>(MakeDatabaseAdminConnection()));
+}
+
+shared_ptr<NoSQLDatabaseClientProviderInterface>
+NoSQLDatabaseClientProviderFactory::Create(
+    const shared_ptr<NoSQLDatabaseClientOptions>& options,
+    const shared_ptr<InstanceClientProviderInterface>& instance_client,
+    const shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
+    const shared_ptr<core::AsyncExecutorInterface>& io_async_executor) {
+  return make_shared<GcpSpannerClientProvider>(
+      options, instance_client, cpu_async_executor, io_async_executor);
 }
 
 }  // namespace google::scp::cpio::client_providers

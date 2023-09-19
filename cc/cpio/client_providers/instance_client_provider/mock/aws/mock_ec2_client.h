@@ -16,12 +16,13 @@
 
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <memory>
 
 #include <aws/ec2/EC2Client.h>
 #include <aws/ec2/model/DescribeInstancesRequest.h>
 #include <aws/ec2/model/DescribeTagsRequest.h>
-#include <gmock/gmock.h>
 
 namespace google::scp::cpio::client_providers::mock {
 class MockEC2Client : public Aws::EC2::EC2Client {

@@ -112,7 +112,7 @@ public final class HttpPrivateKeyFetchingService implements PrivateKeyFetchingSe
       throws PrivateKeyFetchingServiceException {
     try {
       GetEncryptedPrivateKeyResponse.Builder builder = GetEncryptedPrivateKeyResponse.newBuilder();
-      JsonFormat.parser().merge(responseBody, builder);
+      JsonFormat.parser().ignoringUnknownFields().merge(responseBody, builder);
       return builder.build();
     } catch (InvalidProtocolBufferException e) {
       var message = "Failed to parse success response as EncryptedPrivateKey";

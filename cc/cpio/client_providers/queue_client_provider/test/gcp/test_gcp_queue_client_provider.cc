@@ -50,7 +50,7 @@ shared_ptr<Channel> TestGcpPubSubStubFactory::GetPubSubChannel(
 
 shared_ptr<QueueClientProviderInterface> QueueClientProviderFactory::Create(
     const shared_ptr<QueueClientOptions>& options,
-    shared_ptr<InstanceClientProviderInterface> instance_client_provider,
+    const shared_ptr<InstanceClientProviderInterface> instance_client_provider,
     const shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
     const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
   return make_shared<TestGcpQueueClientProvider>(

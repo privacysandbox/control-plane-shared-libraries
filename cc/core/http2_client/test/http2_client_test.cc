@@ -14,6 +14,7 @@
 
 #include "cc/core/http2_client/src/http2_client.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <stdint.h>
@@ -27,7 +28,6 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <gmock/gmock.h>
 #include <nghttp2/asio_http2_server.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>

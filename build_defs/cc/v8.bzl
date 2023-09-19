@@ -13,8 +13,8 @@
 # limitations under the License.
 
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
-load("@rules_python//python:pip.bzl", "pip_install")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+load("@rules_python//python:pip.bzl", "pip_install")
 
 def import_v8(scp_repo_name = ""):
     maybe(

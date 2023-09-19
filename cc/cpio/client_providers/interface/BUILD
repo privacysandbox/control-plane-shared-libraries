@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_library(
@@ -28,7 +30,9 @@ cc_library(
         "//cc/public/core/interface:execution_result",
         "//cc/public/cpio/interface:type_def",
         "//cc/public/cpio/interface/blob_storage_client:type_def",
+        "//cc/public/cpio/interface/job_client:type_def",
         "//cc/public/cpio/interface/kms_client:type_def",
+        "//cc/public/cpio/interface/metric_client:metric_client_interface",
         "//cc/public/cpio/interface/metric_client:type_def",
         "//cc/public/cpio/interface/parameter_client:type_def",
         "//cc/public/cpio/interface/private_key_client:type_def",

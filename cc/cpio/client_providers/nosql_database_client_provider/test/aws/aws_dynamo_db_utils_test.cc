@@ -38,6 +38,8 @@ using google::scp::core::ExecutionResult;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::RetryExecutionResult;
 using google::scp::core::errors::
+    SC_NO_SQL_DATABASE_PROVIDER_CONDITIONAL_CHECKED_FAILED;
+using google::scp::core::errors::
     SC_NO_SQL_DATABASE_PROVIDER_INVALID_PARAMETER_TYPE;
 using google::scp::core::errors::SC_NO_SQL_DATABASE_PROVIDER_RETRIABLE_ERROR;
 using google::scp::core::errors::SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR;
@@ -241,6 +243,9 @@ INSTANTIATE_TEST_SUITE_P(
         make_pair(
             DynamoDBErrors::TRANSACTION_IN_PROGRESS,
             RetryExecutionResult(SC_NO_SQL_DATABASE_PROVIDER_RETRIABLE_ERROR)),
+        make_pair(DynamoDBErrors::CONDITIONAL_CHECK_FAILED,
+                  FailureExecutionResult(
+                      SC_NO_SQL_DATABASE_PROVIDER_CONDITIONAL_CHECKED_FAILED)),
         // Unretriable error codes,
         make_pair(DynamoDBErrors::INCOMPLETE_SIGNATURE,
                   FailureExecutionResult(
@@ -314,9 +319,7 @@ INSTANTIATE_TEST_SUITE_P(
         make_pair(DynamoDBErrors::BACKUP_NOT_FOUND,
                   FailureExecutionResult(
                       SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR)),
-        make_pair(DynamoDBErrors::CONDITIONAL_CHECK_FAILED,
-                  FailureExecutionResult(
-                      SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR)),
+
         make_pair(DynamoDBErrors::CONTINUOUS_BACKUPS_UNAVAILABLE,
                   FailureExecutionResult(
                       SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR)),

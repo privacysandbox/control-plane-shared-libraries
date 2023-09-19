@@ -16,9 +16,10 @@
 
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <memory>
 
-#include <gmock/gmock.h>
 #include <google/pubsub/v1/pubsub.grpc.pb.h>
 
 namespace google::scp::cpio::client_providers::mock {

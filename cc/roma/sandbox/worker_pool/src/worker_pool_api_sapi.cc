@@ -18,6 +18,8 @@
 
 #include <vector>
 
+#include "absl/log/check.h"
+
 #include "error_codes.h"
 
 using google::scp::core::ExecutionResult;
@@ -28,14 +30,12 @@ using google::scp::core::errors::SC_ROMA_WORKER_POOL_WORKER_INDEX_OUT_OF_BOUNDS;
 using std::vector;
 
 static constexpr char kConfigAndPoolSizeDoNotMatch[] =
-    "ROMA: The worker config vector and the pool size do not match.";
+    "ROMA: The worker config vector and the pool size do not match";
 
 namespace google::scp::roma::sandbox::worker_pool {
 WorkerPoolApiSapi::WorkerPoolApiSapi(
     const std::vector<worker_api::WorkerApiSapiConfig>& config, size_t size) {
-  if (config.size() != size) {
-    throw std::runtime_error(kConfigAndPoolSizeDoNotMatch);
-  }
+  CHECK(config.size() == size) << kConfigAndPoolSizeDoNotMatch;
 
   size_ = size;
   for (auto i = 0; i < size_; i++) {

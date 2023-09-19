@@ -14,9 +14,8 @@
 
 #include "public/core/test/interface/struct_matchers.h"
 
-#include <gtest/gtest.h>
-
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using std::string;
 using std::vector;

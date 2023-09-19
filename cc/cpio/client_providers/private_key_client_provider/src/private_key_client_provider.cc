@@ -48,7 +48,7 @@ using google::scp::core::SuccessExecutionResult;
 using google::scp::core::Uri;
 using google::scp::core::common::kZeroUuid;
 using google::scp::core::errors::
-    SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA;
+    SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLITS;
 using google::scp::core::utils::Base64Encode;
 using std::atomic;
 using std::bind;
@@ -208,18 +208,30 @@ void PrivateKeyClientProvider::OnFetchPrivateKeyCallback(
     // Fails the operation if the key data splits size from private key fetch
     // response does not match endpoints number.
     if (encryption_key->key_data.size() != endpoint_count_) {
-      auto got_failure = false;
-      if (list_keys_status->got_failure.compare_exchange_strong(got_failure,
-                                                                true)) {
-        list_private_keys_context.result = FailureExecutionResult(
-            SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLIT_KEY_DATA);
-        list_private_keys_context.Finish();
-        SCP_ERROR_CONTEXT(
-            kPrivateKeyClientProvider, list_private_keys_context,
-            list_private_keys_context.result,
-            "Unmatched endpoints number and private key split data size.");
+      if (list_keys_status->listing_method == ListingMethod::kByKeyId) {
+        auto got_failure = false;
+        if (list_keys_status->got_failure.compare_exchange_strong(got_failure,
+                                                                  true)) {
+          list_private_keys_context.result = FailureExecutionResult(
+              SC_PRIVATE_KEY_CLIENT_PROVIDER_UNMATCHED_ENDPOINTS_SPLITS);
+          list_private_keys_context.Finish();
+          SCP_ERROR_CONTEXT(kPrivateKeyClientProvider,
+                            list_private_keys_context,
+                            list_private_keys_context.result,
+                            "Unmatched endpoints number and private key split "
+                            "data size for key ID %s.",
+                            encryption_key->key_id->c_str());
+        }
+        return;
+      } else {
+        // For ListByAge, the key_data size might not match the endpoint count
+        // if the key is corrupted.
+        SCP_WARNING_CONTEXT(kPrivateKeyClientProvider,
+                            list_private_keys_context,
+                            "Unmatched endpoints number and private key split "
+                            "data size for key ID %s.",
+                            encryption_key->key_id->c_str());
       }
-      return;
     }
 
     DecryptRequest kms_decrypt_request;

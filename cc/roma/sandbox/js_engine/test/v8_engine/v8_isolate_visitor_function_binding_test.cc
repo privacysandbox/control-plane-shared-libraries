@@ -16,13 +16,12 @@
 
 #include "roma/sandbox/js_engine/src/v8_engine/v8_isolate_visitor_function_binding.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
 #include <vector>
-
-#include <gmock/gmock.h>
 
 #include "cc/roma/interface/function_binding_io.pb.h"
 #include "cc/roma/sandbox/js_engine/src/v8_engine/v8_isolate_visitor.h"

@@ -16,9 +16,8 @@
 
 #include "cpio/client_providers/instance_client_provider/src/gcp/gcp_instance_client_provider.h"
 
-#include <gtest/gtest.h>
-
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "absl/strings/str_cat.h"
 #include "core/curl_client/mock/mock_curl_client.h"
@@ -78,14 +77,17 @@ using testing::Return;
 using testing::UnorderedElementsAre;
 
 namespace {
+constexpr char kURIForProjectId[] =
+    "http://metadata.google.internal/computeMetadata/v1/project/project-id";
 constexpr char kURIForInstanceId[] =
     "http://metadata.google.internal/computeMetadata/v1/instance/id";
 constexpr char kURIForInstanceZone[] =
     "http://metadata.google.internal/computeMetadata/v1/instance/zone";
 constexpr char kMetadataFlavorHeaderKey[] = "Metadata-Flavor";
 constexpr char kMetadataFlavorHeaderValue[] = "Google";
+constexpr char kProjectIdResult[] = "123456";
 constexpr char kZoneResult[] = "projects/123456/zones/us-central1-c";
-constexpr char kIdResult[] = "1234567";
+constexpr char kInstanceIdResult[] = "1234567";
 constexpr char kInstanceResourceName[] =
     R"(//compute.googleapis.com/projects/123456/zones/us-central1-c/instances/1234567)";
 constexpr char kResourceId[] =
@@ -144,11 +146,12 @@ class GcpInstanceClientProviderTest : public testing::Test {
 };
 
 TEST_F(GcpInstanceClientProviderTest, GetCurrentInstanceResourceNameSync) {
+  string project_id_result = kProjectIdResult;
   string zone_result = kZoneResult;
-  string id_result = kIdResult;
+  string id_result = kInstanceIdResult;
 
   EXPECT_CALL(*http1_client_, PerformRequest)
-      .Times(2)
+      .Times(3)
       .WillRepeatedly([=](AsyncContext<HttpRequest, HttpResponse>& context) {
         const auto& request = *context.request;
 
@@ -159,6 +162,9 @@ TEST_F(GcpInstanceClientProviderTest, GetCurrentInstanceResourceNameSync) {
                 Pair(kMetadataFlavorHeaderKey, kMetadataFlavorHeaderValue))));
 
         context.response = make_shared<HttpResponse>();
+        if (*request.path == kURIForProjectId) {
+          context.response->body = BytesBuffer(project_id_result);
+        }
         if (*request.path == kURIForInstanceZone) {
           context.response->body = BytesBuffer(zone_result);
         }
@@ -182,11 +188,8 @@ TEST_F(GcpInstanceClientProviderTest, GetCurrentInstanceResourceNameSync) {
 
 TEST_F(GcpInstanceClientProviderTest,
        GetCurrentInstanceResourceNameSyncFailedWithHttpPerformRequest) {
-  string zone_result = kZoneResult;
-  string id_result = kIdResult;
-
   EXPECT_CALL(*http1_client_, PerformRequest)
-      .Times(2)
+      .Times(3)
       .WillRepeatedly([=](AsyncContext<HttpRequest, HttpResponse>& context) {
         const auto& request = *context.request;
         EXPECT_EQ(request.method, HttpMethod::GET);
@@ -208,11 +211,12 @@ TEST_F(GcpInstanceClientProviderTest,
 }
 
 TEST_F(GcpInstanceClientProviderTest, GetCurrentInstanceResourceName) {
+  string project_id_result = kProjectIdResult;
   string zone_result = kZoneResult;
-  string id_result = kIdResult;
+  string id_result = kInstanceIdResult;
 
   EXPECT_CALL(*http1_client_, PerformRequest)
-      .Times(2)
+      .Times(3)
       .WillRepeatedly([=](AsyncContext<HttpRequest, HttpResponse>& context) {
         const auto& request = *context.request;
 
@@ -223,6 +227,9 @@ TEST_F(GcpInstanceClientProviderTest, GetCurrentInstanceResourceName) {
                 Pair(kMetadataFlavorHeaderKey, kMetadataFlavorHeaderValue))));
 
         context.response = make_shared<HttpResponse>();
+        if (*request.path == kURIForProjectId) {
+          context.response->body = BytesBuffer(project_id_result);
+        }
         if (*request.path == kURIForInstanceZone) {
           context.response->body = BytesBuffer(zone_result);
         }
@@ -255,10 +262,10 @@ TEST_F(GcpInstanceClientProviderTest, GetCurrentInstanceResourceName) {
 
 TEST_F(GcpInstanceClientProviderTest,
        FailedToGetCurrentInstanceResourceNameOnlyGotOneResult) {
-  string id_result = kIdResult;
+  string id_result = kInstanceIdResult;
 
   EXPECT_CALL(*http1_client_, PerformRequest)
-      .Times(2)
+      .Times(3)
       .WillRepeatedly([=](AsyncContext<HttpRequest, HttpResponse>& context) {
         const auto& request = *context.request;
 
@@ -269,6 +276,9 @@ TEST_F(GcpInstanceClientProviderTest,
                 Pair(kMetadataFlavorHeaderKey, kMetadataFlavorHeaderValue))));
 
         context.response = make_shared<HttpResponse>();
+        if (*request.path == kURIForProjectId) {
+          context.result = FailureExecutionResult(SC_UNKNOWN);
+        }
         if (*request.path == kURIForInstanceZone) {
           context.result = FailureExecutionResult(SC_UNKNOWN);
         }

@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 
+#include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio {
@@ -39,6 +40,18 @@ class AggregateMetricInterface : public core::ServiceInterface {
    * @return core::ExecutionResult
    */
   virtual core::ExecutionResult Increment(
+      const std::string& event_code = std::string()) noexcept = 0;
+
+  /**
+   * @brief Increment the specific metric counter by a value based on the type.
+
+   * @param value The value by which to Increment the counter
+   * @param event_code The event_code used to identify the metric counter. If no
+   * event_code provided, the function will act on the default counter.
+   * @return core::ExecutionResult
+   */
+  virtual core::ExecutionResult IncrementBy(
+      uint64_t value,
       const std::string& event_code = std::string()) noexcept = 0;
 };
 }  // namespace google::scp::cpio

@@ -22,7 +22,6 @@
 #include <utility>
 
 #include "core/interface/errors.h"
-#include "cpio/client_providers/metric_client_provider/mock/mock_metric_client_provider.h"
 #include "public/core/interface/execution_result.h"
 #include "public/core/test/interface/execution_result_matchers.h"
 #include "public/cpio/adapters/metric_client/mock/mock_metric_client_with_overrides.h"

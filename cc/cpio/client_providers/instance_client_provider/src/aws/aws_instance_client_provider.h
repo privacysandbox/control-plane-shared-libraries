@@ -177,7 +177,7 @@ class AwsInstanceClientProvider : public InstanceClientProviderInterface {
   std::shared_ptr<core::HttpClientInterface> http1_client_;
   /// Instances of the async executor for local compute and blocking IO
   /// operations respectively.
-  const std::shared_ptr<core::AsyncExecutorInterface>cpu_async_executor_,
+  const std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,
       io_async_executor_;
 
   /// An instance of the factory for Aws::EC2::EC2Client.

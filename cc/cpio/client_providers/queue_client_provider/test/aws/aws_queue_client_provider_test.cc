@@ -74,8 +74,6 @@ using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::errors::SC_AWS_INVALID_CREDENTIALS;
 using google::scp::core::errors::SC_AWS_INVALID_REQUEST;
 using google::scp::core::errors::
-    SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT;
-using google::scp::core::errors::
     SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_RECEIPT_INFO;
 using google::scp::core::errors::
     SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_VISIBILITY_TIMEOUT;
@@ -117,7 +115,6 @@ constexpr char kReceiptInfo[] = "receipt info";
 constexpr char kInvalidReceiptInfo[] = "";
 const uint8_t kDefaultMaxNumberOfMessagesReceived = 1;
 const uint8_t kDefaultMaxWaitTimeSeconds = 0;
-const uint16_t kDefaultVisibilityTimeoutSeconds = 600;
 const uint16_t kVisibilityTimeoutSeconds = 10;
 const uint16_t kInvalidVisibilityTimeoutSeconds = 50000;
 }  // namespace
@@ -146,8 +143,6 @@ class AwsQueueClientProviderTest : public ::testing::Test {
   AwsQueueClientProviderTest() {
     queue_client_options_ = make_shared<QueueClientOptions>();
     queue_client_options_->queue_name = kQueueName;
-    queue_client_options_->default_visibility_timeout_in_seconds =
-        kDefaultVisibilityTimeoutSeconds;
 
     mock_instance_client_ = make_shared<MockInstanceClientProvider>();
     mock_instance_client_->instance_resource_name = kResourceNameMock;
@@ -229,22 +224,6 @@ TEST_F(AwsQueueClientProviderTest, RunWithEmptyQueueName) {
   EXPECT_THAT(client->Run(),
               ResultIs(FailureExecutionResult(
                   SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED)));
-}
-
-TEST_F(AwsQueueClientProviderTest, RunWithInvalidDefaultVisibilityTimeout) {
-  queue_client_options_->queue_name = kQueueName;
-  queue_client_options_->default_visibility_timeout_in_seconds =
-      kInvalidVisibilityTimeoutSeconds;
-  auto client = make_unique<AwsQueueClientProvider>(
-      queue_client_options_, mock_instance_client_,
-      make_shared<MockAsyncExecutor>(), make_shared<MockAsyncExecutor>(),
-      mock_sqs_client_factory_);
-
-  EXPECT_SUCCESS(client->Init());
-  EXPECT_THAT(
-      client->Run(),
-      ResultIs(FailureExecutionResult(
-          SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT)));
 }
 
 TEST_F(AwsQueueClientProviderTest, RunWithCreateClientConfigurationFailed) {

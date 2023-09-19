@@ -29,4 +29,15 @@ DEFINE_ERROR_CODE(SC_CUSTOMIZED_METRIC_EVENT_CODE_NOT_EXIST,
                   SC_CUSTOMIZED_METRIC, 0x0002, "Event code cannot be found",
                   HttpStatusCode::NOT_FOUND)
 
+DEFINE_ERROR_CODE(SC_CUSTOMIZED_METRIC_NOT_RUNNING, SC_CUSTOMIZED_METRIC,
+                  0x0003, "Metric not running", HttpStatusCode::CONFLICT)
+
+DEFINE_ERROR_CODE(SC_CUSTOMIZED_METRIC_ALREADY_RUNNING, SC_CUSTOMIZED_METRIC,
+                  0x0004, "Metric already running", HttpStatusCode::CONFLICT)
+
+DEFINE_ERROR_CODE(SC_CUSTOMIZED_METRIC_CANNOT_INCREMENT_WHEN_NOT_RUNNING,
+                  SC_CUSTOMIZED_METRIC, 0x0005,
+                  "Metric cannot be incremented when it is not running",
+                  HttpStatusCode::CONFLICT)
+
 }  // namespace google::scp::core::errors

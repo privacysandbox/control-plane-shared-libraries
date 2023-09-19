@@ -16,4 +16,3 @@ In AWS, this is S3. In GCP, this is Google Cloud Storage.
 # Example
 
 See the example [here](/cc/public/cpio/examples/blob_storage_client_test.cc).
-

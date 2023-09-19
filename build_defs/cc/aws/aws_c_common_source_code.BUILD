@@ -15,6 +15,8 @@
 # Description:
 #   AWS C Common
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0

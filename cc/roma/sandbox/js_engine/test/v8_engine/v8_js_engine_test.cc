@@ -22,22 +22,27 @@
 #include <string>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "core/test/utils/auto_init_run_stop.h"
 #include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/wasm/test/testing_utils.h"
 
+using absl::flat_hash_map;
+using absl::Span;
 using absl::string_view;
 using google::scp::core::FailureExecutionResult;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_COULD_NOT_PARSE_SCRIPT_INPUT;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_ERROR_INVOKING_HANDLER;
 using google::scp::core::errors::SC_ROMA_V8_ENGINE_EXECUTION_TIMEOUT;
 using google::scp::core::errors::SC_ROMA_V8_WORKER_CODE_COMPILE_FAILURE;
+using google::scp::core::errors::SC_ROMA_V8_WORKER_SCRIPT_RUN_FAILURE;
+using google::scp::core::errors::SC_ROMA_V8_WORKER_WASM_COMPILE_FAILURE;
 using google::scp::core::test::AutoInitRunStop;
 using google::scp::core::test::ResultIs;
 using google::scp::roma::kDefaultExecutionTimeoutMs;
 using google::scp::roma::kTimeoutMsTag;
+using google::scp::roma::kWasmCodeArrayName;
 using std::string;
-using std::unordered_map;
 using std::vector;
 
 using google::scp::roma::sandbox::js_engine::v8_js_engine::V8JsEngine;
@@ -64,7 +69,7 @@ TEST_F(V8JsEngineTest, CanRunJsCode) {
       engine.CompileAndRunJs(js_code, "hello_js", input, {} /*metadata*/);
 
   EXPECT_SUCCESS(response_or.result());
-  auto response_string = response_or->response;
+  auto response_string = *response_or->execution_response.response;
   EXPECT_EQ(response_string, "\"Hello World! vec input 1 vec input 2\"");
 }
 
@@ -96,7 +101,7 @@ TEST_F(V8JsEngineTest, CanRunAsyncJsCodeReturningPromiseExplicitly) {
       engine.CompileAndRunJs(js_code, "Handler", {} /*input*/, {} /*metadata*/);
 
   EXPECT_SUCCESS(response_or.result());
-  auto response_string = response_or->response;
+  auto response_string = *response_or->execution_response.response;
   EXPECT_EQ(response_string, "\"some cool string\"");
 }
 
@@ -129,7 +134,7 @@ TEST_F(V8JsEngineTest, CanRunAsyncJsCodeReturningPromiseImplicitly) {
       engine.CompileAndRunJs(js_code, "Handler", {} /*input*/, {} /*metadata*/);
 
   EXPECT_SUCCESS(response_or.result());
-  auto response_string = response_or->response;
+  auto response_string = *response_or->execution_response.response;
   EXPECT_EQ(response_string, "\"some cool string\"");
 }
 
@@ -190,7 +195,7 @@ TEST_F(V8JsEngineTest, CanRunCodeRequestWithJsonInput) {
       engine.CompileAndRunJs(js_code, "Handler", input, {} /*metadata*/);
 
   EXPECT_SUCCESS(response_or.result());
-  auto response_string = response_or->response;
+  auto response_string = *response_or->execution_response.response;
   EXPECT_EQ(response_string, "3");
 }
 
@@ -224,7 +229,7 @@ TEST_F(V8JsEngineTest, ShouldSucceedWithEmptyResponseIfHandlerNameIsEmpty) {
       engine.CompileAndRunJs(js_code, "", input, {} /*metadata*/);
 
   EXPECT_SUCCESS(response_or.result());
-  auto response_string = response_or->response;
+  auto response_string = *response_or->execution_response.response;
   EXPECT_EQ(response_string, "");
 }
 
@@ -277,7 +282,7 @@ TEST_F(V8JsEngineTest, CanRunWasmCode) {
       engine.CompileAndRunWasm(wasm_code, "Handler", input, {} /*metadata*/);
 
   EXPECT_SUCCESS(response_or.result());
-  auto response_string = response_or->response;
+  auto response_string = *response_or->execution_response.response;
   EXPECT_EQ(response_string, "\"Some input string Hello World from WASM\"");
 }
 
@@ -298,7 +303,7 @@ TEST_F(V8JsEngineTest, WasmShouldSucceedWithEmptyResponseIfHandlerNameIsEmpty) {
       engine.CompileAndRunWasm(wasm_code, "", input, {} /*metadata*/);
 
   EXPECT_SUCCESS(response_or.result());
-  auto response_string = response_or->response;
+  auto response_string = *response_or->execution_response.response;
   EXPECT_EQ(response_string, "");
 }
 
@@ -352,7 +357,7 @@ TEST_F(V8JsEngineTest, CanTimeoutExecutionWithDefaultTimeoutValue) {
       }
   )""";
   vector<string_view> input;
-  unordered_map<string, string> metadata;
+  flat_hash_map<string, string> metadata;
 
   auto response_or =
       engine.CompileAndRunJs(js_code, "hello_js", input, metadata);
@@ -383,7 +388,7 @@ TEST_F(V8JsEngineTest, CanTimeoutExecutionWithCustomTimeoutTag) {
   vector<string_view> input;
 
   {
-    unordered_map<string, string> metadata;
+    flat_hash_map<string, string> metadata;
     // Set the timeout flag to 100 milliseconds. When it runs for more than 100
     // milliseconds, it times out.
     metadata[kTimeoutMsTag] = "100";
@@ -432,7 +437,7 @@ TEST_F(V8JsEngineTest, JsMixedGlobalWasmCompileRunExecute) {
     vector<string_view> input = {"1", "2"};
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
-    auto response_string = response_or->response;
+    auto response_string = *response_or->execution_response.response;
     EXPECT_EQ(response_string, "3");
   }
 
@@ -440,7 +445,7 @@ TEST_F(V8JsEngineTest, JsMixedGlobalWasmCompileRunExecute) {
     vector<string_view> input = {"1", "6"};
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
-    auto response_string = response_or->response;
+    auto response_string = *response_or->execution_response.response;
     EXPECT_EQ(response_string, "7");
   }
 }
@@ -473,7 +478,7 @@ TEST_F(V8JsEngineTest, JsMixedLocalWasmCompileRunExecute) {
     vector<string_view> input = {"1", "2"};
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
-    auto response_string = response_or->response;
+    auto response_string = *response_or->execution_response.response;
     EXPECT_EQ(response_string, "3");
   }
 
@@ -481,9 +486,135 @@ TEST_F(V8JsEngineTest, JsMixedLocalWasmCompileRunExecute) {
     vector<string_view> input = {"1", "6"};
     auto response_or = engine.CompileAndRunJs(js_code, "hello_js", input, {});
     EXPECT_SUCCESS(response_or.result());
-    auto response_string = response_or->response;
+    auto response_string = *response_or->execution_response.response;
     EXPECT_EQ(response_string, "7");
   }
 }
 
+TEST_F(V8JsEngineTest, JsWithWasmCompileRunExecute) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  // JS code mixed with local WebAssembly variables.
+  auto js_code = R"""(
+          let module = new WebAssembly.Module(addModule);
+          let instance = new WebAssembly.Instance(module);
+          function hello_js(a, b) {
+            return instance.exports.add(a, b);
+          }
+        )""";
+  vector<uint8_t> wasm_bin{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01,
+                           0x07, 0x01, 0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f, 0x03,
+                           0x02, 0x01, 0x00, 0x07, 0x07, 0x01, 0x03, 0x61, 0x64,
+                           0x64, 0x00, 0x00, 0x0a, 0x09, 0x01, 0x07, 0x00, 0x20,
+                           0x00, 0x20, 0x01, 0x6a, 0x0b};
+  auto wasm = Span<const uint8_t>(wasm_bin);
+  {
+    auto response_or = engine.CompileAndRunJsWithWasm(
+        js_code, wasm, "", {}, {{kWasmCodeArrayName, "addModule"}});
+    EXPECT_SUCCESS(response_or.result());
+  }
+  {
+    vector<string_view> input = {"1", "2"};
+    auto response_or = engine.CompileAndRunJsWithWasm(
+        js_code, wasm, "hello_js", input, {{kWasmCodeArrayName, "addModule"}});
+    EXPECT_SUCCESS(response_or.result());
+    auto response_string = *response_or->execution_response.response;
+    EXPECT_EQ(response_string, "3");
+  }
+  {
+    vector<string_view> input = {"1", "6"};
+    auto response_or = engine.CompileAndRunJsWithWasm(
+        js_code, wasm, "hello_js", input, {{kWasmCodeArrayName, "addModule"}});
+    EXPECT_SUCCESS(response_or.result());
+    auto response_string = *response_or->execution_response.response;
+    EXPECT_EQ(response_string, "7");
+  }
+}
+
+TEST_F(V8JsEngineTest, JsWithWasmCompileRunExecuteFailWithInvalidWasm) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  // JS code mixed with local WebAssembly variables.
+  auto js_code = R"""(
+          let module = new WebAssembly.Module(addModule);
+          let instance = new WebAssembly.Instance(module);
+          function hello_js(a, b) {
+            return instance.exports.add(a, b);
+          }
+        )""";
+  vector<uint8_t> wasm_bin{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+                           0x01, 0x02, 0x01, 0x00, 0x07, 0x07, 0x01, 0x03,
+                           0x61, 0x64, 0x64, 0x00, 0x00, 0x0a, 0x09, 0x01,
+                           0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b};
+  auto wasm = Span<const uint8_t>(wasm_bin);
+  {
+    auto response_or = engine.CompileAndRunJsWithWasm(
+        js_code, wasm, "", {}, {{kWasmCodeArrayName, "addModule"}});
+    EXPECT_THAT(response_or.result(),
+                ResultIs(FailureExecutionResult(
+                    SC_ROMA_V8_WORKER_WASM_COMPILE_FAILURE)));
+  }
+
+  {
+    vector<string_view> input = {"1", "2"};
+    auto response_or = engine.CompileAndRunJsWithWasm(
+        js_code, wasm, "hello_js", input, {{kWasmCodeArrayName, "addModule"}});
+    EXPECT_THAT(response_or.result(),
+                ResultIs(FailureExecutionResult(
+                    SC_ROMA_V8_WORKER_WASM_COMPILE_FAILURE)));
+  }
+}
+
+TEST_F(V8JsEngineTest, JsWithWasmCompileRunExecuteWithWasiImports) {
+  V8JsEngine engine;
+  AutoInitRunStop to_handle_engine(engine);
+
+  // JS code with wasm imports.
+  auto js_code = R"""(
+          const wasmImports = {
+            wasi_snapshot_preview1: {
+              proc_exit() {
+                return;
+              },
+            },
+          };
+          let module = new WebAssembly.Module(testModule);
+          let instance = new WebAssembly.Instance(module, wasmImports);
+          function test_wasi(a) {
+            return instance.exports.Handler(a);
+          }
+        )""";
+  auto wasm_bin = WasmTestingUtils::LoadWasmFile(
+      "./cc/roma/testing/cpp_wasi_dependency_example/wasi_dependency.wasm");
+  vector<uint8_t> wasm_code(wasm_bin.begin(), wasm_bin.end());
+  auto wasm = Span<const uint8_t>(wasm_code);
+  {
+    auto response_or = engine.CompileAndRunJsWithWasm(
+        js_code, wasm, "", {}, {{kWasmCodeArrayName, "testModule"}});
+    EXPECT_SUCCESS(response_or.result());
+  }
+
+  {
+    vector<string_view> input = {"1"};
+    auto response_or =
+        engine.CompileAndRunJsWithWasm(js_code, wasm, "test_wasi", input,
+                                       {{kWasmCodeArrayName, "testModule"}});
+    EXPECT_SUCCESS(response_or.result());
+    auto response_string = *response_or->execution_response.response;
+    std::cout << "\n output: " << response_string << "\n";
+
+    EXPECT_EQ(response_string, "0");
+  }
+  {
+    vector<string_view> input = {"6"};
+    auto response_or =
+        engine.CompileAndRunJsWithWasm(js_code, wasm, "test_wasi", input,
+                                       {{kWasmCodeArrayName, "testModule"}});
+    EXPECT_SUCCESS(response_or.result());
+    auto response_string = *response_or->execution_response.response;
+    EXPECT_EQ(response_string, "1");
+  }
+}
 }  // namespace google::scp::roma::sandbox::js_engine::test

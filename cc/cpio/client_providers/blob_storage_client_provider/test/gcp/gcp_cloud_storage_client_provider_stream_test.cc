@@ -248,7 +248,7 @@ StatusOr<unique_ptr<ObjectReadSource>> BuildReadResponseFromString(
         std::memcpy(buf, buffer.bytes->data(), length);
         ReadSourceResult result{length, HttpResponse{200, {}, {}}};
 
-        CalculateMd5Hash(buffer, result.hashes.md5);
+        result.hashes.md5 = *CalculateMd5Hash(buffer);
         Base64Encode(result.hashes.md5, result.hashes.md5);
 
         result.size = length;

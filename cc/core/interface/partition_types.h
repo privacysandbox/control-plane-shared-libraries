@@ -30,4 +30,7 @@ typedef std::string PartitionAddressUri;
 
 static constexpr char kLocalPartitionAddressUri[] = "";
 
+// Global Partition ID: 00000000-0000-0000-0000-000000000000
+static constexpr PartitionId kGlobalPartitionId = {0, 0};
+
 }  // namespace google::scp::core

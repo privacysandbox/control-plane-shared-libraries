@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <memory>
-
 #include <gmock/gmock.h>
+
+#include <memory>
 
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/private_key_client/private_key_client_interface.h"

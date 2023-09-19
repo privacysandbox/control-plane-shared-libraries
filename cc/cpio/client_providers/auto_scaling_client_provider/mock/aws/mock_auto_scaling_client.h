@@ -16,12 +16,13 @@
 
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <memory>
 
 #include <aws/autoscaling/AutoScalingClient.h>
 #include <aws/autoscaling/model/CompleteLifecycleActionRequest.h>
 #include <aws/autoscaling/model/DescribeAutoScalingInstancesRequest.h>
-#include <gmock/gmock.h>
 
 namespace google::scp::cpio::client_providers::mock {
 

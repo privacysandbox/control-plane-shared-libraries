@@ -20,28 +20,38 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "public/core/test/interface/execution_result_matchers.h"
 #include "roma/sandbox/worker_api/src/worker_api_sapi.h"
 
+using google::scp::roma::sandbox::worker::WorkerFactory;
 using google::scp::roma::sandbox::worker_api::WorkerApiSapi;
 using google::scp::roma::sandbox::worker_api::WorkerApiSapiConfig;
 using std::string;
 using std::vector;
+
+namespace {
+WorkerApiSapiConfig CreateWorkerApiSapiConfig() {
+  WorkerApiSapiConfig config;
+  config.worker_js_engine = WorkerFactory::WorkerEngine::v8;
+  config.js_engine_require_code_preload = true;
+  config.compilation_context_cache_size = 5;
+  config.native_js_function_comms_fd = -1;
+  config.native_js_function_names = vector<string>();
+  config.max_worker_virtual_memory_mb = 0;
+  config.sandbox_request_response_shared_buffer_size_mb = 0;
+  config.enable_sandbox_sharing_request_response_with_buffer_only = false;
+  return config;
+}
+}  // namespace
 
 namespace google::scp::roma::sandbox::worker_pool::test {
 TEST(WorkerPoolTest, CanInitRunAndStop) {
   int num_workers = 4;
   vector<WorkerApiSapiConfig> configs;
   for (int i = 0; i < num_workers; i++) {
-    WorkerApiSapiConfig config;
-    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-    config.js_engine_require_code_preload = false;
-    config.native_js_function_comms_fd = -1;
-    config.native_js_function_names = vector<string>();
-    configs.push_back(config);
+    configs.push_back(CreateWorkerApiSapiConfig());
   }
 
   auto pool = WorkerPoolApiSapi(configs, num_workers);
@@ -60,12 +70,7 @@ TEST(WorkerPoolTest, CanGetPoolCount) {
   int num_workers = 2;
   vector<WorkerApiSapiConfig> configs;
   for (int i = 0; i < num_workers; i++) {
-    WorkerApiSapiConfig config;
-    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-    config.js_engine_require_code_preload = false;
-    config.native_js_function_comms_fd = -1;
-    config.native_js_function_names = vector<string>();
-    configs.push_back(config);
+    configs.push_back(CreateWorkerApiSapiConfig());
   }
 
   auto pool = WorkerPoolApiSapi(configs, num_workers);
@@ -86,12 +91,7 @@ TEST(WorkerPoolTest, CanGetWorker) {
   int num_workers = 2;
   vector<WorkerApiSapiConfig> configs;
   for (int i = 0; i < num_workers; i++) {
-    WorkerApiSapiConfig config;
-    config.worker_js_engine = worker::WorkerFactory::WorkerEngine::v8;
-    config.js_engine_require_code_preload = false;
-    config.native_js_function_comms_fd = -1;
-    config.native_js_function_names = vector<string>();
-    configs.push_back(config);
+    configs.push_back(CreateWorkerApiSapiConfig());
   }
 
   auto pool = WorkerPoolApiSapi(configs, num_workers);
@@ -113,9 +113,11 @@ TEST(WorkerPoolTest, CanGetWorker) {
   EXPECT_SUCCESS(result);
 }
 
-TEST(WorkerPoolTest, ConstructorThrowsIfInvalidSizes) {
+TEST(WorkerPoolTest, ConstructorFailsIfSizeIsInvalid) {
+  constexpr size_t size = 2;
+
   // Pool of size 2, but no configs
-  EXPECT_THROW(WorkerPoolApiSapi(vector<WorkerApiSapiConfig>(), 2),
-               std::runtime_error);
+  EXPECT_DEATH(WorkerPoolApiSapi(vector<WorkerApiSapiConfig>(), size),
+               "ROMA: The worker config vector and the pool size do not match");
 }
 }  // namespace google::scp::roma::sandbox::worker_pool::test

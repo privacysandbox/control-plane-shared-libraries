@@ -17,7 +17,7 @@
 package com.google.scp.operator.cpio.jobclient;
 
 import static com.google.scp.operator.shared.model.BackendModelUtil.toJobKeyString;
-import static com.google.scp.shared.clients.configclient.model.WorkerParameter.NOTIFICATIONS_PUBSUB_TOPIC_ID;
+import static com.google.scp.shared.clients.configclient.model.WorkerParameter.NOTIFICATIONS_TOPIC_ID;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -296,7 +296,7 @@ public final class JobClientImpl implements JobClient {
       // Publish a notification of job completion.
       try {
         Optional<String> topicId =
-            parameterClient.getParameter(NOTIFICATIONS_PUBSUB_TOPIC_ID.name());
+            parameterClient.getParameter(NOTIFICATIONS_TOPIC_ID.name());
         if (topicId.isPresent() && notificationClient.isPresent()) {
           String messageBody =
               String.format("{\"jobId\": \"%s\"}", toJobKeyString(jobResult.jobKey()));
@@ -456,6 +456,11 @@ public final class JobClientImpl implements JobClient {
             .setJobProcessingTimeout(
                 ProtoUtil.toJavaDuration(jobQueueItem.getJobProcessingTimeout()));
 
+    if (jobMetadata.hasRequestProcessingStartedAt()) {
+      resBuilder.setProcessingStartTime(
+          Optional.of(ProtoUtil.toJavaInstant(jobMetadata.getRequestProcessingStartedAt())));
+    }
+
     if (jobMetadata.hasRequestInfo()) {
       resBuilder.setRequestInfo(jobMetadata.getRequestInfo());
     } else if (jobMetadata.hasCreateJobRequest()) {
@@ -524,7 +529,7 @@ public final class JobClientImpl implements JobClient {
 
     logger.info(
         String.format(
-            "received job %s with status %s. The job started at %s, current time is %s, and job"
+            "Received job %s with status %s. The job started at %s, current time is %s, and job"
                 + " processing timeout is %d seconds.",
             job.get().jobKey(),
             job.get().jobStatus(),

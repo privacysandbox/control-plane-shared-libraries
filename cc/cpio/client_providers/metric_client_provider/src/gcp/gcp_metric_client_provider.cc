@@ -193,8 +193,7 @@ void GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback(
   return;
 }
 
-std::shared_ptr<MetricClientProviderInterface>
-MetricClientProviderFactory::Create(
+std::shared_ptr<MetricClientInterface> MetricClientProviderFactory::Create(
     const shared_ptr<MetricClientOptions>& options,
     const shared_ptr<InstanceClientProviderInterface>& instance_client_provider,
     const shared_ptr<AsyncExecutorInterface>& async_executor,

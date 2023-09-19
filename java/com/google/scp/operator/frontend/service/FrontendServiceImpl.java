@@ -16,6 +16,10 @@
 
 package com.google.scp.operator.frontend.service;
 
+import com.google.cmrt.sdk.job_service.v1.GetJobByIdRequest;
+import com.google.cmrt.sdk.job_service.v1.GetJobByIdResponse;
+import com.google.cmrt.sdk.job_service.v1.PutJobRequest;
+import com.google.cmrt.sdk.job_service.v1.PutJobResponse;
 import com.google.common.base.Converter;
 import com.google.inject.Inject;
 import com.google.scp.operator.frontend.tasks.CreateJobTask;
@@ -57,5 +61,16 @@ public final class FrontendServiceImpl implements FrontendService {
   /** Gets the job with the provided ID. */
   public GetJobResponse getJob(String jobRequestId) throws ServiceException {
     return this.getJobResponseConverter.convert(getJobTask.getJob(jobRequestId));
+  }
+
+  /** Puts the job from the request, then returns the response. */
+  public PutJobResponse putJob(PutJobRequest putJobRequest) throws ServiceException {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Gets the job with the job ID. */
+  public GetJobByIdResponse getJobById(GetJobByIdRequest getJobByIdRequest)
+      throws ServiceException {
+    throw new UnsupportedOperationException();
   }
 }

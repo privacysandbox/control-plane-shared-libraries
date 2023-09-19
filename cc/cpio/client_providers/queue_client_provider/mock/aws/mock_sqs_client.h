@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <memory>
 
 #include <aws/sqs/SQSClient.h>
@@ -25,7 +27,6 @@
 #include <aws/sqs/model/GetQueueUrlRequest.h>
 #include <aws/sqs/model/ReceiveMessageRequest.h>
 #include <aws/sqs/model/SendMessageRequest.h>
-#include <gmock/gmock.h>
 
 namespace google::scp::cpio::client_providers::mock {
 

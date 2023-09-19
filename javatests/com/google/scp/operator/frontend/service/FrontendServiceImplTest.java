@@ -22,9 +22,14 @@ import static com.google.scp.operator.frontend.tasks.ErrorMessages.DB_ERROR_MESS
 import static com.google.scp.operator.frontend.tasks.ErrorMessages.DUPLICATE_JOB_MESSAGE;
 import static com.google.scp.operator.frontend.tasks.ErrorMessages.JOB_NOT_FOUND_MESSAGE;
 import static com.google.scp.shared.api.exception.testing.ServiceExceptionAssertions.assertThatServiceExceptionMatches;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
 import com.google.acai.Acai;
+import com.google.cmrt.sdk.job_service.v1.GetJobByIdRequest;
+import com.google.cmrt.sdk.job_service.v1.GetJobByIdResponse;
+import com.google.cmrt.sdk.job_service.v1.PutJobRequest;
+import com.google.cmrt.sdk.job_service.v1.PutJobResponse;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.protobuf.Timestamp;
@@ -65,6 +70,8 @@ public final class FrontendServiceImplTest {
   @Inject Clock clock;
 
   CreateJobRequest createJobRequest;
+  PutJobRequest putJobRequest;
+  GetJobByIdRequest getJobByIdRequest;
   String attributionReportTo;
   JobMetadata jobMetadata;
   JobMetadata receivedJobMetadata;
@@ -79,6 +86,8 @@ public final class FrontendServiceImplTest {
     clockTime = clock.instant();
     clockTimestamp = ProtoUtil.toProtoTimestamp(clockTime);
     createJobRequest = ServiceJobGenerator.createFakeCreateJobRequest(REQUEST_ID);
+    putJobRequest = ServiceJobGenerator.createFakePutJobRequest();
+    getJobByIdRequest = ServiceJobGenerator.createFakeGetJobByIdRequest();
     attributionReportTo =
         createJobRequest.getJobParametersMap().get(JOB_PARAM_ATTRIBUTION_REPORT_TO);
     jobMetadata = JobGenerator.createFakeJobMetadata(REQUEST_ID);
@@ -252,6 +261,20 @@ public final class FrontendServiceImplTest {
     ServiceException expectedServiceException =
         new ServiceException(Code.INTERNAL, ErrorReasons.SERVER_ERROR.toString(), DB_ERROR_MESSAGE);
     assertThatServiceExceptionMatches(serviceException, expectedServiceException);
+  }
+
+  @Test
+  public void testPutJob() throws Exception {
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> frontendService.putJob(putJobRequest));
+  }
+
+  @Test
+  public void testGetJobById() throws Exception {
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> frontendService.getJobById(getJobByIdRequest));
   }
 
   static class TestEnv extends AbstractModule {

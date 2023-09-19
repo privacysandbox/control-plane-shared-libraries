@@ -16,6 +16,7 @@
 
 #include "process_launcher/daemonizer/src/daemonizer.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <sys/prctl.h>
@@ -23,7 +24,6 @@
 
 #include <string>
 
-#include <gmock/gmock.h>
 #include <nlohmann/json.hpp>
 
 #include "core/common/uuid/src/uuid.h"

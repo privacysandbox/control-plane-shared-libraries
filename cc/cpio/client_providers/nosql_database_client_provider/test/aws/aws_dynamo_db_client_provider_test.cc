@@ -51,12 +51,17 @@ using Aws::DynamoDB::QueryResponseReceivedHandler;
 using Aws::DynamoDB::UpdateItemResponseReceivedHandler;
 using Aws::DynamoDB::Model::AttributeValue;
 using Aws::DynamoDB::Model::GetItemRequest;
+using Aws::DynamoDB::Model::PutItemOutcome;
+using Aws::DynamoDB::Model::PutItemRequest;
+using Aws::DynamoDB::Model::PutItemResult;
 using Aws::DynamoDB::Model::QueryOutcome;
 using Aws::DynamoDB::Model::QueryRequest;
 using Aws::DynamoDB::Model::QueryResult;
 using Aws::DynamoDB::Model::UpdateItemOutcome;
 using Aws::DynamoDB::Model::UpdateItemRequest;
 using Aws::DynamoDB::Model::UpdateItemResult;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse;
 using google::cmrt::sdk::nosql_database_service::v1::GetDatabaseItemRequest;
 using google::cmrt::sdk::nosql_database_service::v1::GetDatabaseItemResponse;
 using google::cmrt::sdk::nosql_database_service::v1::ItemAttribute;
@@ -138,6 +143,12 @@ class MockDynamoDBClient : public Aws::DynamoDB::DynamoDBClient {
                const std::shared_ptr<const Aws::Client::AsyncCallerContext>&),
               (const, override));
 
+  MOCK_METHOD(void, PutItemAsync,
+              (const Aws::DynamoDB::Model::PutItemRequest&,
+               const Aws::DynamoDB::PutItemResponseReceivedHandler&,
+               const std::shared_ptr<const Aws::Client::AsyncCallerContext>&),
+              (const, override));
+
   MOCK_METHOD(void, UpdateItemAsync,
               (const Aws::DynamoDB::Model::UpdateItemRequest&,
                const Aws::DynamoDB::UpdateItemResponseReceivedHandler&,
@@ -166,6 +177,13 @@ class AwsDynamoDBClientProviderTest : public testing::Test {
       finish_called_ = true;
     };
 
+    create_database_item_context_.request =
+        make_shared<CreateDatabaseItemRequest>();
+
+    create_database_item_context_.callback = [this](auto) {
+      finish_called_ = true;
+    };
+
     upsert_database_item_context_.request =
         make_shared<UpsertDatabaseItemRequest>();
 
@@ -184,6 +202,9 @@ class AwsDynamoDBClientProviderTest : public testing::Test {
 
   AsyncContext<GetDatabaseItemRequest, GetDatabaseItemResponse>
       get_database_item_context_;
+
+  AsyncContext<CreateDatabaseItemRequest, CreateDatabaseItemResponse>
+      create_database_item_context_;
 
   AsyncContext<UpsertDatabaseItemRequest, UpsertDatabaseItemResponse>
       upsert_database_item_context_;
@@ -459,6 +480,140 @@ TEST_F(AwsDynamoDBClientProviderTest, GetDatabaseItemZeroResults) {
 
   EXPECT_THAT(client_provider_.GetDatabaseItem(get_database_item_context_),
               IsSuccessful());
+
+  WaitUntil([this]() { return finish_called_.load(); });
+}
+
+TEST_F(AwsDynamoDBClientProviderTest, CreateItemWithPartitionKey) {
+  auto& key = *create_database_item_context_.request->mutable_key();
+  key.set_table_name(kTableName);
+  key.mutable_partition_key()->set_name("Col1");
+  key.mutable_partition_key()->set_value_int(3);
+  auto& attributes =
+      *create_database_item_context_.request->mutable_attributes();
+  attributes.Add(MakeStringAttribute("Attr1", "1234"));
+  attributes.Add(MakeIntAttribute("Attr2", 2));
+  attributes.Add(MakeDoubleAttribute("Attr3", 4.5));
+
+  EXPECT_CALL(*dynamo_db_, PutItemAsync)
+      .WillOnce([this](const auto& put_item_request, const auto& callback,
+                       const auto&) {
+        EXPECT_EQ(put_item_request.GetTableName(),
+                  create_database_item_context_.request->key().table_name());
+        EXPECT_THAT(put_item_request.GetItem(),
+                    UnorderedElementsAre(Pair("Col1", HasNumber("3")),
+                                         Pair("Attr1", HasString("1234")),
+                                         Pair("Attr2", HasNumber("2")),
+                                         Pair("Attr3", HasNumber("4.500000"))));
+        EXPECT_EQ(put_item_request.GetConditionExpression(),
+                  "attribute_not_exists(Col1)");
+
+        PutItemResult put_item_result;
+        PutItemOutcome outcome(put_item_result);
+
+        callback(nullptr /*dynamo_client*/, put_item_request, outcome,
+                 nullptr /*caller_context*/);
+      });
+
+  create_database_item_context_.callback =
+      [this](AsyncContext<CreateDatabaseItemRequest,
+                          CreateDatabaseItemResponse>& context) {
+        EXPECT_SUCCESS(context.result);
+        finish_called_ = true;
+      };
+
+  EXPECT_THAT(
+      client_provider_.CreateDatabaseItem(create_database_item_context_),
+      IsSuccessful());
+
+  WaitUntil([this]() { return finish_called_.load(); });
+}
+
+TEST_F(AwsDynamoDBClientProviderTest, CreateItemWithPartitionAndSortKey) {
+  auto& key = *create_database_item_context_.request->mutable_key();
+  key.set_table_name(kTableName);
+  key.mutable_partition_key()->set_name("Col1");
+  key.mutable_partition_key()->set_value_int(3);
+  key.mutable_sort_key()->set_name("Col2");
+  key.mutable_sort_key()->set_value_int(2);
+  auto& attributes =
+      *create_database_item_context_.request->mutable_attributes();
+  attributes.Add(MakeStringAttribute("Attr1", "1234"));
+  attributes.Add(MakeIntAttribute("Attr2", 2));
+  attributes.Add(MakeDoubleAttribute("Attr3", 4.5));
+
+  EXPECT_CALL(*dynamo_db_, PutItemAsync)
+      .WillOnce([this](const auto& put_item_request, const auto& callback,
+                       const auto&) {
+        EXPECT_EQ(put_item_request.GetTableName(),
+                  create_database_item_context_.request->key().table_name());
+        EXPECT_THAT(put_item_request.GetItem(),
+                    UnorderedElementsAre(Pair("Col1", HasNumber("3")),
+                                         Pair("Col2", HasNumber("2")),
+                                         Pair("Attr1", HasString("1234")),
+                                         Pair("Attr2", HasNumber("2")),
+                                         Pair("Attr3", HasNumber("4.500000"))));
+        EXPECT_EQ(put_item_request.GetConditionExpression(),
+                  "attribute_not_exists(Col1) and attribute_not_exists(Col2)");
+
+        PutItemResult put_item_result;
+        PutItemOutcome outcome(put_item_result);
+
+        callback(nullptr /*dynamo_client*/, put_item_request, outcome,
+                 nullptr /*caller_context*/);
+      });
+
+  create_database_item_context_.callback =
+      [this](AsyncContext<CreateDatabaseItemRequest,
+                          CreateDatabaseItemResponse>& context) {
+        EXPECT_SUCCESS(context.result);
+        finish_called_ = true;
+      };
+
+  EXPECT_THAT(
+      client_provider_.CreateDatabaseItem(create_database_item_context_),
+      IsSuccessful());
+
+  WaitUntil([this]() { return finish_called_.load(); });
+}
+
+TEST_F(AwsDynamoDBClientProviderTest, CreateDatabaseItemCallbackFailure) {
+  auto& key = *create_database_item_context_.request->mutable_key();
+  key.set_table_name(kTableName);
+  key.mutable_partition_key()->set_name("Col1");
+  key.mutable_partition_key()->set_value_int(3);
+  key.mutable_sort_key()->set_name("Col2");
+  key.mutable_sort_key()->set_value_int(2);
+  auto& attributes =
+      *create_database_item_context_.request->mutable_attributes();
+  attributes.Add(MakeStringAttribute("Attr1", "1234"));
+  attributes.Add(MakeIntAttribute("Attr2", 2));
+  attributes.Add(MakeDoubleAttribute("Attr3", 4.5));
+
+  EXPECT_CALL(*dynamo_db_, PutItemAsync)
+      .WillOnce([this](const auto& put_item_request, const auto& callback,
+                       const auto&) {
+        AWSError<DynamoDBErrors> dynamo_db_error(DynamoDBErrors::BACKUP_IN_USE,
+                                                 false);
+
+        PutItemOutcome outcome(dynamo_db_error);
+
+        callback(nullptr /*dynamo_client*/, put_item_request, outcome,
+                 nullptr /*caller_context*/);
+      });
+
+  create_database_item_context_.callback =
+      [this](AsyncContext<CreateDatabaseItemRequest,
+                          CreateDatabaseItemResponse>& context) {
+        EXPECT_THAT(context.result,
+                    ResultIs(FailureExecutionResult(
+                        SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR)));
+        finish_called_ = true;
+      };
+
+  EXPECT_THAT(
+      client_provider_.CreateDatabaseItem(create_database_item_context_),
+      IsSuccessful());
 
   WaitUntil([this]() { return finish_called_.load(); });
 }

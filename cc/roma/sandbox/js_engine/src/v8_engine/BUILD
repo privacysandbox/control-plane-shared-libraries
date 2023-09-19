@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -33,13 +35,14 @@ cc_library(
         "//cc/public/core/interface:execution_result",
         "//cc/roma/config/src:roma_config_lib",
         "//cc/roma/interface:roma_interface_lib",
+        "//cc/roma/logging/src:roma_logging_lib",
         "//cc/roma/sandbox/js_engine/src:roma_js_engine_lib",
-        "//cc/roma/sandbox/logging/src:roma_logging_lib",
         "//cc/roma/sandbox/native_function_binding/src:roma_native_function_binding_lib",
         "//cc/roma/sandbox/worker/src:roma_worker_utils_lib",
         "//cc/roma/wasm/src:roma_wasm_lib",
         "//cc/roma/worker/src:execution_watchdog_lib",
         "//cc/roma/worker/src:roma_execution_utils_lib",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@v8//:v8_icu",
     ],
 )

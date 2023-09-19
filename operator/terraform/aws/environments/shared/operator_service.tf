@@ -120,6 +120,9 @@ module "operator_service" {
   user_provided_vpc_subnet_ids         = var.user_provided_vpc_subnet_ids
   vpc_cidr                             = var.vpc_cidr
   vpc_availability_zones               = var.vpc_availability_zones
+
+  # Notifications
+  enable_job_completion_notifications = var.enable_job_completion_notifications
 }
 
 # Used by Terraform to treat any existing resources belonging to formerly known
@@ -139,4 +142,9 @@ output "create_job_endpoint" {
 
 output "get_job_endpoint" {
   value = module.operator_service.get_job_endpoint
+}
+
+output "notifications_sns_topic_arn" {
+  value       = module.operator_service.notifications_sns_topic_arn
+  description = "The ARN of the SNS notifications topic."
 }

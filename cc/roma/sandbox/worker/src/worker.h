@@ -19,10 +19,12 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "core/common/lru_cache/src/lru_cache.h"
 #include "core/interface/service_interface.h"
 #include "public/core/interface/execution_result.h"
@@ -41,11 +43,8 @@ class Worker : public core::ServiceInterface {
       : js_engine_(js_engine),
         require_preload_(require_preload),
         compilation_contexts_(compilation_context_cache_size) {
-    if (compilation_context_cache_size == 0) {
-      auto message = std::string(__FILE__) + ":" + std::to_string(__LINE__) +
-                     ":compilation_context_cache_size cannot be zero.";
-      throw std::invalid_argument(message);
-    }
+    CHECK(compilation_context_cache_size > 0)
+        << "compilation_context_cache_size cannot be zero";
   }
 
   core::ExecutionResult Init() noexcept override;
@@ -60,11 +59,13 @@ class Worker : public core::ServiceInterface {
    * @param code The code to compile and run
    * @param input The input to pass to the code
    * @param metadata The metadata associated with the code request
+   * @param wasm The wasm code module needed to run the code
    * @return core::ExecutionResultOr<std::string>
    */
-  virtual core::ExecutionResultOr<std::string> RunCode(
+  virtual core::ExecutionResultOr<js_engine::ExecutionResponse> RunCode(
       const std::string& code, const std::vector<absl::string_view>& input,
-      const std::unordered_map<std::string, std::string>& metadata);
+      const absl::flat_hash_map<std::string, std::string>& metadata,
+      const absl::Span<const uint8_t>& wasm);
 
  private:
   std::shared_ptr<js_engine::JsEngine> js_engine_;

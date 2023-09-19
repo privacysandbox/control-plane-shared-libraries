@@ -21,6 +21,7 @@ message WorkerParamsProto {
   bytes code = 1;
   repeated string input = 2;
   map<string, string> metadata = 3;
+  optional bytes wasm = 4;
 
   // Output
   optional string response = 5;

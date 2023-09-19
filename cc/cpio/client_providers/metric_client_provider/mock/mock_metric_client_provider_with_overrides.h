@@ -25,9 +25,9 @@
 #include "public/core/interface/execution_result.h"
 
 namespace google::scp::cpio::client_providers::mock {
-class MockMetricClientProviderWithOverrides : public MetricClientProvider {
+class MockMetricClientWithOverrides : public MetricClientProvider {
  public:
-  explicit MockMetricClientProviderWithOverrides(
+  explicit MockMetricClientWithOverrides(
       const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
       const std::shared_ptr<MetricBatchingOptions>& metric_batching_options)
       : MetricClientProvider(async_executor,
@@ -60,7 +60,7 @@ class MockMetricClientProviderWithOverrides : public MetricClientProvider {
 
   core::ExecutionResult PutMetrics(
       core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
-                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
+                         cmrt::sdk::metric_service::v1::PutMetricsResponse>
           context) noexcept override {
     if (record_metric_mock) {
       return record_metric_mock(context);

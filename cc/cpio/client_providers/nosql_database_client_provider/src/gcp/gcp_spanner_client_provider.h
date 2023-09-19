@@ -43,21 +43,21 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
   /**
    * @brief Construct a new Gcp Spanner Client Provider object
    *
-   * @param instance_client Client used for getting the Project ID to work with.
    * @param client_options Options for the Client.
+   * @param instance_client Client used for getting the Project ID to work with.
    * @param cpu_async_executor Executor to run the async operations on.
    * @param io_async_executor Executor to run the IO async operations on.
    * @param spanner_factory Factory which provides the Spanner Client.
    */
   GcpSpannerClientProvider(
-      std::shared_ptr<InstanceClientProviderInterface> instance_client,
       std::shared_ptr<NoSQLDatabaseClientOptions> client_options,
+      std::shared_ptr<InstanceClientProviderInterface> instance_client,
       const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
       const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor,
       std::shared_ptr<SpannerFactory> spanner_factory =
           std::make_shared<SpannerFactory>())
-      : instance_client_(instance_client),
-        client_options_(client_options),
+      : client_options_(client_options),
+        instance_client_(instance_client),
         cpu_async_executor_(cpu_async_executor),
         io_async_executor_(io_async_executor),
         spanner_factory_(spanner_factory) {}
@@ -86,6 +86,12 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
           cmrt::sdk::nosql_database_service::v1::GetDatabaseItemResponse>&
           get_database_item_context) noexcept override;
 
+  core::ExecutionResult CreateDatabaseItem(
+      core::AsyncContext<
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest,
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse>&
+          create_database_item_context) noexcept override;
+
   core::ExecutionResult UpsertDatabaseItem(
       core::AsyncContext<
           cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest,
@@ -99,7 +105,7 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
    * @param create_table_context The context object of the create table
    * operation.
    */
-  void CreateTableAsync(
+  void CreateTableInternal(
       core::AsyncContext<
           cmrt::sdk::nosql_database_service::v1::CreateTableRequest,
           cmrt::sdk::nosql_database_service::v1::CreateTableResponse>&
@@ -110,7 +116,7 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
    * @param delete_table_context The context object of the delete table
    * operation.
    */
-  void DeleteTableAsync(
+  void DeleteTableInternal(
       core::AsyncContext<
           cmrt::sdk::nosql_database_service::v1::DeleteTableRequest,
           cmrt::sdk::nosql_database_service::v1::DeleteTableResponse>&
@@ -124,13 +130,39 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
    * @param query The query to execute to get the DB item.
    * @param params The parameters to be substituted into query.
    */
-  void GetDatabaseItemAsync(
+  void GetDatabaseItemInternal(
       core::AsyncContext<
           cmrt::sdk::nosql_database_service::v1::GetDatabaseItemRequest,
           cmrt::sdk::nosql_database_service::v1::GetDatabaseItemResponse>
           get_database_item_context,
       std::string query,
       google::cloud::spanner::SqlStatement::ParamType params) noexcept;
+
+  struct CreateItemOptions {
+    // The name of the table.
+    std::string table_name;
+    // The names of all the columns we set in our InsertOrUpdateMutation.
+    std::vector<std::string> column_names;
+    // The spanner Value (string) for the partition_key and sort_key
+    // respectively.
+    google::cloud::spanner::Value partition_key_val, sort_key_val;
+    // A JSON holding the attributes we extracted from
+    // CreateDatabaseItemRequest.
+    nlohmann::json attributes;
+  };
+
+  /**
+   * @brief Is called by async executor in order to create the DB item.
+   *
+   * @param create_database_item_context The context object of the create
+   * database item operation.
+   */
+  void CreateDatabaseItemInternal(
+      core::AsyncContext<
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest,
+          cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse>&
+          create_database_item_context,
+      CreateItemOptions create_item_options) noexcept;
 
   struct UpsertSelectOptions {
     // Method to create an UpsertSelectOptions given an upsert request.
@@ -197,7 +229,7 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
    * @param new_attributes A JSON holding the new_attributes we extracted
    * from UpsertDatabaseItemRequest.
    */
-  void UpsertDatabaseItemAsync(
+  void UpsertDatabaseItemInternal(
       core::AsyncContext<
           cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemRequest,
           cmrt::sdk::nosql_database_service::v1::UpsertDatabaseItemResponse>
@@ -205,11 +237,11 @@ class GcpSpannerClientProvider : public NoSQLDatabaseClientProviderInterface {
       UpsertSelectOptions upsert_select_options, bool enforce_row_existence,
       nlohmann::json new_attributes) noexcept;
 
-  /// Instance client.
-  std::shared_ptr<InstanceClientProviderInterface> instance_client_;
-
   /// Options for the client.
   std::shared_ptr<NoSQLDatabaseClientOptions> client_options_;
+
+  /// Instance client.
+  std::shared_ptr<InstanceClientProviderInterface> instance_client_;
 
   /// An instance of the async executor.
   const std::shared_ptr<core::AsyncExecutorInterface> cpu_async_executor_,

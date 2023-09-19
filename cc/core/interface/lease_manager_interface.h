@@ -475,8 +475,9 @@ class LeaseRefresherInterface : public ServiceInterface {
    * NOTE: Please refer to LeaseRefreshMode header comment for rules on mode
    * transitions that an implementation of this interface should honor.
    *
+   * @return ExecutionResult
    */
-  virtual void SetLeaseRefreshMode(
+  virtual ExecutionResult SetLeaseRefreshMode(
       LeaseRefreshMode lease_refresh_mode) noexcept = 0;
 
   /**

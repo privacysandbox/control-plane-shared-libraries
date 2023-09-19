@@ -14,11 +14,10 @@
 
 #include "public/core/interface/execution_result.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <utility>
-
-#include <gmock/gmock.h>
 
 #include "core/common/global_logger/src/global_logger.h"
 #include "core/common/proto/common.pb.h"
@@ -190,7 +189,7 @@ TEST_F(MacroLogTest, RETURN_IF_FAILURELogTest) {
   auto helper1 = [](ExecutionResult result) -> ExecutionResult {
     string some_str = "s";
     AsyncContext<int, int> ctx;
-    RETURN_AND_LOG_IF_FAILURE_CONTEXT(result, "component", ctx, __res, "msg %s",
+    RETURN_AND_LOG_IF_FAILURE_CONTEXT(result, "component", ctx, "msg %s",
                                       some_str.c_str());
     return SuccessExecutionResult();
   };
@@ -204,8 +203,8 @@ TEST_F(MacroLogTest, RETURN_IF_FAILURELogTest) {
 
   auto helper2 = [](ExecutionResult result) -> ExecutionResult {
     string some_str = "s";
-    RETURN_AND_LOG_IF_FAILURE(result, "component", common::kZeroUuid, __res,
-                              "msg %s", some_str.c_str());
+    RETURN_AND_LOG_IF_FAILURE(result, "component", common::kZeroUuid, "msg %s",
+                              some_str.c_str());
     return SuccessExecutionResult();
   };
   // Doesn't log without context.
@@ -245,8 +244,8 @@ TEST_F(MacroLogTest, ASSIGN_OR_RETURNLogTest) {
   auto helper1 = [](ExecutionResultOr<int> result_or,
                     int& val) -> ExecutionResult {
     AsyncContext<int, int> ctx;
-    ASSIGN_OR_LOG_AND_RETURN_CONTEXT(val, result_or, "component", ctx, __res,
-                                     "msg %d", val);
+    ASSIGN_OR_LOG_AND_RETURN_CONTEXT(val, result_or, "component", ctx, "msg %d",
+                                     val);
     val++;
     return SuccessExecutionResult();
   };
@@ -267,7 +266,7 @@ TEST_F(MacroLogTest, ASSIGN_OR_RETURNLogTest) {
   auto helper2 = [](ExecutionResultOr<int> result_or,
                     int& val) -> ExecutionResult {
     ASSIGN_OR_LOG_AND_RETURN(val, result_or, "component", common::kZeroUuid,
-                             __res, "msg %d", val);
+                             "msg %d", val);
     val++;
     return SuccessExecutionResult();
   };
@@ -388,6 +387,11 @@ TEST(ExecutionResultTest, MatcherTest) {
   ExecutionResult result1(ExecutionStatus::Failure, 1);
   EXPECT_THAT(result1, ResultIs(ExecutionResult(ExecutionStatus::Failure, 1)));
   EXPECT_THAT(result1, Not(IsSuccessful()));
+
+  auto result1_proto = result1.ToProto();
+  EXPECT_THAT(result1_proto,
+              ResultIs(ExecutionResult(ExecutionStatus::Failure, 1)));
+  EXPECT_THAT(result1_proto, Not(IsSuccessful()));
 
   ExecutionResultOr<int> result_or(result1);
   EXPECT_THAT(result1, ResultIs(ExecutionResult(ExecutionStatus::Failure, 1)));

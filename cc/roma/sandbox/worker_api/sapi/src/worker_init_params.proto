@@ -37,4 +37,12 @@ message WorkerInitParamsProto {
   int32 js_engine_maximum_heap_size_mb = 7;
 
   int32 js_engine_max_wasm_memory_number_of_pages = 8;
+
+  // A file descriptor which is used to create the sandbox2::Buffer
+  // inside the sandboxee. This buffer is used to receive requests and send
+  // responses.
+  int32 request_and_response_data_buffer_fd = 9;
+
+  // The capacity size of the Buffer in bytes.
+  uint64 request_and_response_data_buffer_size_bytes = 10;
 }

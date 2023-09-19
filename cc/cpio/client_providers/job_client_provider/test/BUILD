@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_proto_library", "cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 proto_library(
@@ -44,10 +47,12 @@ cc_test(
         "//cc/core/async_executor/mock:core_async_executor_mock",
         "//cc/core/interface:interface_lib",
         "//cc/core/test/utils:utils_lib",
+        "//cc/cpio/client_providers/job_client_provider/mock:job_client_provider_mock",
         "//cc/cpio/client_providers/job_client_provider/src:job_client_provider_lib",
         "//cc/cpio/client_providers/nosql_database_client_provider/mock:mock_nosql_database_client_provider_lib",
         "//cc/cpio/client_providers/nosql_database_client_provider/src/common:nosql_database_provider_common_lib",
         "//cc/cpio/client_providers/queue_client_provider/mock:mock_queue_client_provider_lib",
+        "//cc/cpio/common/src/gcp:gcp_utils_lib",
         "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/public/cpio/proto/job_service/v1:job_service_cc_proto",
         "@com_google_googletest//:gtest_main",

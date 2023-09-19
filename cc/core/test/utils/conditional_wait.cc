@@ -23,7 +23,10 @@
 #include "core/common/time_provider/src/time_provider.h"
 #include "public/core/interface/execution_result.h"
 
+#include "error_codes.h"
+
 using google::scp::core::common::TimeProvider;
+using google::scp::core::test::errors::SC_TEST_UTILS_TEST_WAIT_TIMEOUT;
 using std::function;
 using std::this_thread::yield;
 
@@ -35,7 +38,7 @@ void WaitUntil(function<bool()> condition, DurationMs timeout) {
     auto duration = now_time - start_time;
     if (duration > timeout) {
       std::cerr << absl::StrCat(
-          "Duration elapsed (ms): ",
+          "WaitUntil throwing TestTimeoutException: Waited for (ms): ",
           std::chrono::duration_cast<std::chrono::milliseconds>(
               std::chrono::nanoseconds(duration))
               .count());
@@ -44,4 +47,15 @@ void WaitUntil(function<bool()> condition, DurationMs timeout) {
     yield();
   }
 }
+
+ExecutionResult WaitUntilOrReturn(function<bool()> condition,
+                                  DurationMs timeout) noexcept {
+  try {
+    WaitUntil(condition, timeout);
+  } catch (const TestTimeoutException&) {
+    return FailureExecutionResult(SC_TEST_UTILS_TEST_WAIT_TIMEOUT);
+  }
+  return SuccessExecutionResult();
+}
+
 }  // namespace google::scp::core::test

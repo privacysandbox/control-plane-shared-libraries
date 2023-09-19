@@ -56,14 +56,15 @@ ExecutionResultOr<WorkerApi::RunCodeResponse> WorkerApiSapi::RunCode(
   ::worker_api::WorkerParamsProto params_proto;
   params_proto.set_code(string(request.code));
   params_proto.mutable_input()->Add(request.input.begin(), request.input.end());
+  params_proto.set_wasm(string(request.wasm.begin(), request.wasm.end()));
   for (auto&& kv : request.metadata) {
     (*params_proto.mutable_metadata())[kv.first] = kv.second;
   }
 
   Stopwatch stopwatch;
   stopwatch.Start();
-  auto result = sandbox_api_->RunCode(params_proto);
-  auto run_code_elapsed_ns = stopwatch.Stop();
+  const auto result = sandbox_api_->RunCode(params_proto);
+  const auto run_code_elapsed_ns = stopwatch.Stop();
   if (!result.Successful()) {
     return result;
   }
@@ -74,9 +75,7 @@ ExecutionResultOr<WorkerApi::RunCodeResponse> WorkerApiSapi::RunCode(
   for (auto& kv : params_proto.metrics()) {
     code_response.metrics[kv.first] = kv.second;
   }
-
   code_response.response = make_shared<string>(move(params_proto.response()));
-
   return code_response;
 }
 

@@ -15,14 +15,14 @@
  */
 #pragma once
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <string>
 #include <type_traits>
 
-#include <gmock/gmock-matchers.h>
-
 #include "absl/strings/str_format.h"
+#include "core/common/proto/common.pb.h"
 #include "public/core/interface/errors.h"
 #include "public/core/interface/execution_result.h"
 
@@ -79,6 +79,9 @@ MATCHER_P(ResultIs, expected_result, "") {
         internal::ToString(result.status), result.status_code,
         GetErrorMessage(result.status_code));
   };
+  constexpr bool is_proto = std::is_base_of_v<
+      google::scp::core::common::proto::ExecutionResult,
+      std::remove_cv_t<std::remove_reference_t<decltype(arg)>>>;
   if constexpr (std::is_base_of_v<
                     google::scp::core::ExecutionResult,
                     std::remove_cv_t<std::remove_reference_t<decltype(arg)>>>) {
@@ -89,6 +92,19 @@ MATCHER_P(ResultIs, expected_result, "") {
           "Actual result has:\n\t%s",
           execution_result_to_str(expected_result),
           execution_result_to_str(arg));
+      return false;
+    }
+  } else if constexpr (is_proto) {
+    // If arg is an ExecutionResult proto, convert and compare.
+    google::scp::core::ExecutionResult non_proto_execution_result(arg);
+    if (non_proto_execution_result != expected_result) {
+      *result_listener << absl::StrFormat(
+          "\nExpected result to have:\n\t%s"
+          "Actual result has:\n\t%s"
+          "Actual result as a proto:\n%s",
+          execution_result_to_str(expected_result),
+          execution_result_to_str(non_proto_execution_result),
+          arg.DebugString());
       return false;
     }
   } else {

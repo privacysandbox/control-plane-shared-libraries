@@ -14,12 +14,11 @@
 
 #include "public/cpio/adapters/instance_client/src/instance_client.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
-
-#include <gmock/gmock.h>
 
 #include "core/test/utils/conditional_wait.h"
 #include "public/core/test/interface/execution_result_matchers.h"

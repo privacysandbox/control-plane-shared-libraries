@@ -56,10 +56,11 @@ DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_RUN_CODE_THROUGH_WRAPPER_API,
                   "Could not run code through the wrapper API.",
                   HttpStatusCode::BAD_REQUEST)
 
-DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOX,
-                  SC_ROMA_WORKER_API, 0x0008,
-                  "Could not transfer function comms fd to sandbox.",
-                  HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(
+    SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_FUNCTION_FD_TO_SANDBOXEE,
+    SC_ROMA_WORKER_API, 0x0008,
+    "Could not transfer function comms fd to sandboxee.",
+    HttpStatusCode::BAD_REQUEST)
 
 DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_UNINITIALIZED_SANDBOX, SC_ROMA_WORKER_API,
                   0x0009,
@@ -93,4 +94,29 @@ DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_SERIALIZE_RUN_CODE_RESPONSE_DATA,
                   SC_ROMA_WORKER_API, 0x000F,
                   "Failed to serialize run_code response data.",
                   HttpStatusCode::BAD_REQUEST)
+
+DEFINE_ERROR_CODE(
+    SC_ROMA_WORKER_API_VALID_SANDBOX_BUFFER_REQUIRED, SC_ROMA_WORKER_API,
+    0x0010,
+    "Failed to create a valid sandbox2 buffer for sandbox communication.",
+    HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(
+    SC_ROMA_WORKER_API_REQUEST_DATA_SIZE_LARGER_THAN_BUFFER_CAPACITY,
+    SC_ROMA_WORKER_API, 0x0011,
+    "The size of request serialized data is larger than the Buffer capacity.",
+    HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(
+    SC_ROMA_WORKER_API_RESPONSE_DATA_SIZE_LARGER_THAN_BUFFER_CAPACITY,
+    SC_ROMA_WORKER_API, 0x0012,
+    "The size of response serialized data is larger than the Buffer capacity.",
+    HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_FAILED_CREATE_BUFFER_INSIDE_SANDBOXEE,
+                  SC_ROMA_WORKER_API, 0x0013,
+                  "Failed to create the Buffer from fd inside the sandboxee.",
+                  HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(SC_ROMA_WORKER_API_COULD_NOT_TRANSFER_BUFFER_FD_TO_SANDBOXEE,
+                  SC_ROMA_WORKER_API, 0x0014,
+                  "Could not transfer sandbox2::Buffer fd to sandboxee.",
+                  HttpStatusCode::BAD_REQUEST)
+
 }  // namespace google::scp::core::errors

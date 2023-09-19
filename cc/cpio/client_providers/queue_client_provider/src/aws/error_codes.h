@@ -30,32 +30,26 @@ DEFINE_ERROR_CODE(SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED,
                   SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0002,
                   "AWS Queue client failed to init due to invalid queue name",
                   HttpStatusCode::INTERNAL_SERVER_ERROR)
-DEFINE_ERROR_CODE(
-    SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT,
-    SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0003,
-    "AWS Queue client failed to init due to invalid visibility timeout in "
-    "configuration",
-    HttpStatusCode::BAD_REQUEST)
 DEFINE_ERROR_CODE(SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_MESSAGE,
-                  SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0004,
+                  SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0003,
                   "Cannot execute SQS operation due to invalid message context",
                   HttpStatusCode::BAD_REQUEST)
 DEFINE_ERROR_CODE(
     SC_AWS_QUEUE_CLIENT_PROVIDER_MESSAGES_NUMBER_EXCEEDED,
-    SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0005,
+    SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0004,
     "The number of messages receiving from SQS exceed maximum number",
     HttpStatusCode::INTERNAL_SERVER_ERROR)
 DEFINE_ERROR_CODE(SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_RECEIPT_INFO,
-                  SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0006,
+                  SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0005,
                   "Cannot execute SQS operation due to invalid receipt info",
                   HttpStatusCode::BAD_REQUEST)
 DEFINE_ERROR_CODE(
     SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_VISIBILITY_TIMEOUT,
-    SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0007,
+    SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0006,
     "Cannot execute SQS operation due to invalid visibility timeout",
     HttpStatusCode::BAD_REQUEST)
 DEFINE_ERROR_CODE(SC_AWS_QUEUE_CLIENT_PROVIDER_MESSAGE_NOT_IN_FLIGHT,
-                  SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0008,
+                  SC_AWS_QUEUE_CLIENT_PROVIDER, 0x0007,
                   "Cannot execute SQS operation due to the message assoicated "
                   "with the receipt info is not in flight",
                   HttpStatusCode::BAD_REQUEST)
@@ -64,9 +58,6 @@ MAP_TO_PUBLIC_ERROR_CODE(
     SC_CPIO_INTERNAL_ERROR)
 MAP_TO_PUBLIC_ERROR_CODE(SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED,
                          SC_CPIO_INVALID_REQUEST)
-MAP_TO_PUBLIC_ERROR_CODE(
-    SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT,
-    SC_CPIO_INTERNAL_ERROR)
 MAP_TO_PUBLIC_ERROR_CODE(SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_MESSAGE,
                          SC_CPIO_INVALID_REQUEST)
 MAP_TO_PUBLIC_ERROR_CODE(SC_AWS_QUEUE_CLIENT_PROVIDER_MESSAGES_NUMBER_EXCEEDED,

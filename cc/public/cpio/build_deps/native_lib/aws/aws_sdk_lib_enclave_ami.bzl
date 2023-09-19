@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//cc/public/cpio/build_deps/shared:sdk_container.bzl", "sdk_container")
 load("//build_defs/aws/enclave:enclave_ami.bzl", "generic_enclave_ami_pkr_script")
 load("//build_defs/shared:packer_build.bzl", "packer_build")
+load("//cc/public/cpio/build_deps/shared:sdk_container.bzl", "sdk_container")
 
 _LICENSES_TARGET = Label("//licenses:licenses_tar")
 

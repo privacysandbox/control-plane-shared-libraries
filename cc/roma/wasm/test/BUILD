@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
@@ -66,4 +68,5 @@ cc_library(
     copts = [
         "-std=c++17",
     ],
+    deps = ["@com_google_absl//absl/log:check"],
 )

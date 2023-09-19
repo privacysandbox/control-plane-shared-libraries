@@ -23,8 +23,6 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::
     SC_ROMA_FUNCTION_TABLE_COULD_NOT_FIND_FUNCTION_NAME;
-using google::scp::core::errors::
-    SC_ROMA_FUNCTION_TABLE_FAILED_WHILE_CALLING_USER_PROVIDED_FUNC;
 using google::scp::core::errors::SC_ROMA_FUNCTION_TABLE_NAME_ALREADY_REGISTERED;
 using std::lock_guard;
 using std::string;
@@ -58,12 +56,7 @@ ExecutionResult NativeFunctionTable::Call(
     func = native_functions_[function_name];
   }
 
-  try {
-    func(function_binding_proto);
-  } catch (...) {
-    return FailureExecutionResult(
-        SC_ROMA_FUNCTION_TABLE_FAILED_WHILE_CALLING_USER_PROVIDED_FUNC);
-  }
+  func(function_binding_proto);
 
   return SuccessExecutionResult();
 }

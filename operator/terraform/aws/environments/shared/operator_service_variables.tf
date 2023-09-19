@@ -493,3 +493,13 @@ variable "vpc_availability_zones" {
     "e",
   ]
 }
+
+################################################################################
+# Notifications Variables.
+################################################################################
+
+variable "enable_job_completion_notifications" {
+  description = "Determines if the SNS topic should be created for job completion notifications."
+  type        = bool
+  default     = false
+}

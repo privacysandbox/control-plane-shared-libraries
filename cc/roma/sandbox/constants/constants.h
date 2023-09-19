@@ -20,6 +20,7 @@ namespace google::scp::roma::sandbox::constants {
 static constexpr char kRequestType[] = "RequestType";
 static constexpr char kRequestTypeJavascript[] = "JS";
 static constexpr char kRequestTypeWasm[] = "WASM";
+static constexpr char kRequestTypeJavascriptWithWasm[] = "JSAndWASM";
 
 static constexpr char kHandlerName[] = "HandlerName";
 
@@ -47,10 +48,21 @@ static constexpr size_t kMaxNumberOfWasm32BitMemPages = 65536;
 // sandbox, meaning this includes serialization overhead. In nanoseconds.
 static constexpr char kExecutionMetricSandboxedJsEngineCallNs[] =
     "roma.metric.sandboxed_code_run_ns";
-// Label for time taken to run code inside of the sandbox, meaning we skip the
-// overhead for serializing data. In nanoseconds.
+// Label for time taken to run code inside of the JS engine sandbox, meaning we
+// skip the overhead for serializing data. In nanoseconds.
 static constexpr char kExecutionMetricJsEngineCallNs[] =
     "roma.metric.code_run_ns";
 
+// Label for time taken to parse the input in JS engine. In nanoseconds.
+static constexpr char kInputParsingMetricJsEngineNs[] =
+    "roma.metric.json_input_parsing_ns";
+
+// Label for time taken to call handler function in JS engine. In nanoseconds.
+static constexpr char kHandlerCallMetricJsEngineNs[] =
+    "roma.metric.js_engine_handler_call_ns";
+
 static constexpr char kDefaultRomaRequestId[] = "roma.defaults.request.id";
+
+// Invalid file descriptor value.
+static constexpr int kBadFd = -1;
 }  // namespace google::scp::roma::sandbox::constants

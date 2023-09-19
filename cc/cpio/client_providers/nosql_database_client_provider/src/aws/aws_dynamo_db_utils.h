@@ -192,7 +192,10 @@ class AwsDynamoDBUtils {
       case Aws::DynamoDB::DynamoDBErrors::TRANSACTION_IN_PROGRESS:
         return core::RetryExecutionResult(
             core::errors::SC_NO_SQL_DATABASE_PROVIDER_RETRIABLE_ERROR);
-
+      case Aws::DynamoDB::DynamoDBErrors::CONDITIONAL_CHECK_FAILED:
+        return core::FailureExecutionResult(
+            core::errors::
+                SC_NO_SQL_DATABASE_PROVIDER_CONDITIONAL_CHECKED_FAILED);
       default:
         return core::FailureExecutionResult(
             core::errors::SC_NO_SQL_DATABASE_PROVIDER_UNRETRIABLE_ERROR);

@@ -50,6 +50,7 @@ using google::cloud::StatusOr;
 using google::cloud::spanner::Client;
 using google::cloud::spanner::CommitResult;
 using google::cloud::spanner::Json;
+using google::cloud::spanner::MakeInsertMutation;
 using google::cloud::spanner::MakeInsertOrUpdateMutation;
 using google::cloud::spanner::Mutation;
 using google::cloud::spanner::Row;
@@ -61,6 +62,8 @@ using google::cloud::spanner_admin_mocks::MockDatabaseAdminConnection;
 using google::cloud::spanner_mocks::MakeRow;
 using google::cloud::spanner_mocks::MockConnection;
 using google::cloud::spanner_mocks::MockResultSetSource;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemRequest;
+using google::cmrt::sdk::nosql_database_service::v1::CreateDatabaseItemResponse;
 using google::cmrt::sdk::nosql_database_service::v1::CreateTableRequest;
 using google::cmrt::sdk::nosql_database_service::v1::CreateTableResponse;
 using google::cmrt::sdk::nosql_database_service::v1::DeleteTableRequest;
@@ -78,6 +81,8 @@ using google::scp::core::RetryExecutionResult;
 using google::scp::core::async_executor::mock::MockAsyncExecutor;
 using google::scp::core::errors::SC_GCP_INTERNAL_SERVICE_ERROR;
 using google::scp::core::errors::SC_GCP_UNKNOWN;
+using google::scp::core::errors::
+    SC_NO_SQL_DATABASE_PROVIDER_CONDITIONAL_CHECKED_FAILED;
 using google::scp::core::errors::SC_NO_SQL_DATABASE_PROVIDER_EMPTY_TABLE_NAME;
 using google::scp::core::errors::
     SC_NO_SQL_DATABASE_PROVIDER_INVALID_PARTITION_KEY_NAME;
@@ -181,11 +186,10 @@ class GcpSpannerTests : public testing::Test {
             make_shared<NiceMock<MockDatabaseAdminConnection>>()),
         spanner_factory_(make_shared<NiceMock<MockSpannerFactory>>()),
         gcp_spanner_(
-            instance_client_,
             make_shared<NoSQLDatabaseClientOptions>(NoSQLDatabaseClientOptions{
                 "instance", "database", GetTableNameToKeysMap()}),
-            make_shared<MockAsyncExecutor>(), make_shared<MockAsyncExecutor>(),
-            spanner_factory_) {
+            instance_client_, make_shared<MockAsyncExecutor>(),
+            make_shared<MockAsyncExecutor>(), spanner_factory_) {
     instance_client_->instance_resource_name = kInstanceResourceName;
     CreateTableRequest create_table_request;
     create_table_request.mutable_key()->set_table_name(kBudgetKeyTableName);
@@ -210,6 +214,16 @@ class GcpSpannerTests : public testing::Test {
         make_shared<GetDatabaseItemRequest>(move(get_request));
 
     get_database_item_context_.callback = [this](auto) {
+      finish_called_ = true;
+    };
+
+    CreateDatabaseItemRequest create_request;
+    create_request.mutable_key()->set_table_name(kBudgetKeyTableName);
+
+    create_database_item_context_.request =
+        make_shared<CreateDatabaseItemRequest>(move(create_request));
+
+    create_database_item_context_.callback = [this](auto) {
       finish_called_ = true;
     };
 
@@ -246,12 +260,29 @@ class GcpSpannerTests : public testing::Test {
   AsyncContext<GetDatabaseItemRequest, GetDatabaseItemResponse>
       get_database_item_context_;
 
+  AsyncContext<CreateDatabaseItemRequest, CreateDatabaseItemResponse>
+      create_database_item_context_;
+
   AsyncContext<UpsertDatabaseItemRequest, UpsertDatabaseItemResponse>
       upsert_database_item_context_;
   // We check that this gets flipped after every call to ensure the context's
   // Finish() is called.
   std::atomic_bool finish_called_{false};
 };
+
+TEST_F(GcpSpannerTests, InitWithGetProjectIdFailure) {
+  auto instance_client = make_shared<NiceMock<MockInstanceClientProvider>>();
+  instance_client->get_instance_resource_name_mock =
+      FailureExecutionResult(123);
+  GcpSpannerClientProvider gcp_spanner(
+      make_shared<NoSQLDatabaseClientOptions>(NoSQLDatabaseClientOptions{
+          "instance", "database", GetTableNameToKeysMap()}),
+      instance_client, make_shared<MockAsyncExecutor>(),
+      make_shared<MockAsyncExecutor>(), spanner_factory_);
+
+  EXPECT_SUCCESS(gcp_spanner.Init());
+  EXPECT_THAT(gcp_spanner.Run(), ResultIs(FailureExecutionResult(123)));
+}
 
 TEST_F(GcpSpannerTests, CreateTableNoSortKeySuccess) {
   create_table_context_.request->mutable_key()->set_table_name(
@@ -500,7 +531,7 @@ TEST_F(GcpSpannerTests, GetItemWithPartitionKeyOnly) {
       ->CopyFrom(MakeStringAttribute(kPartitionLockPartitionKeyName, "3"));
 
   auto expected_query =
-      "SELECT IFNULL(Value, JSON '{}') FROM PartitionLock WHERE LockId = "
+      "SELECT IFNULL(Value, JSON '{}') FROM `PartitionLock` WHERE LockId = "
       "@partition_key";
   SqlStatement::ParamType expected_params;
   expected_params.emplace("partition_key", "3");
@@ -550,7 +581,7 @@ TEST_F(GcpSpannerTests, GetItemWithPartitionAndSortKey) {
       ->CopyFrom(MakeStringAttribute(kBudgetKeySortKeyName, "2"));
 
   auto expected_query =
-      "SELECT IFNULL(Value, JSON '{}') FROM BudgetKeys WHERE BudgetKeyId = "
+      "SELECT IFNULL(Value, JSON '{}') FROM `BudgetKeys` WHERE BudgetKeyId = "
       "@partition_key AND Timeframe = @sort_key";
   SqlStatement::ParamType expected_params;
   expected_params.emplace("partition_key", "3");
@@ -604,7 +635,7 @@ TEST_F(GcpSpannerTests, GetItemWithPartitionAndSortKeyWithAttributes) {
       MakeStringAttribute("token_count", "1"));
 
   auto expected_query =
-      "SELECT IFNULL(Value, JSON '{}') FROM BudgetKeys WHERE BudgetKeyId = "
+      "SELECT IFNULL(Value, JSON '{}') FROM `BudgetKeys` WHERE BudgetKeyId = "
       "@partition_key AND Timeframe = @sort_key AND JSON_VALUE(Value, "
       "'$.token_count') = @attribute_0";
   SqlStatement::ParamType expected_params;
@@ -654,7 +685,7 @@ TEST_F(GcpSpannerTests, GetItemNoRowFound) {
       ->CopyFrom(MakeStringAttribute(kPartitionLockPartitionKeyName, "3"));
 
   auto expected_query =
-      "SELECT IFNULL(Value, JSON '{}') FROM PartitionLock WHERE LockId = "
+      "SELECT IFNULL(Value, JSON '{}') FROM `PartitionLock` WHERE LockId = "
       "@partition_key";
   SqlStatement::ParamType expected_params;
   expected_params.emplace("partition_key", "3");
@@ -687,7 +718,7 @@ TEST_F(GcpSpannerTests, GetItemJsonParseFail) {
       ->CopyFrom(MakeStringAttribute(kPartitionLockPartitionKeyName, "3"));
 
   auto expected_query =
-      "SELECT IFNULL(Value, JSON '{}') FROM PartitionLock WHERE LockId = "
+      "SELECT IFNULL(Value, JSON '{}') FROM `PartitionLock` WHERE LockId = "
       "@partition_key";
   SqlStatement::ParamType expected_params;
   expected_params.emplace("partition_key", "3");
@@ -742,6 +773,116 @@ TEST_F(GcpSpannerTests, GetItemFailsIfBadSortKey) {
   EXPECT_TRUE(finish_called_);
 }
 
+TEST_F(GcpSpannerTests, CreateItemWithPartitionKeyOnly) {
+  create_database_item_context_.request->mutable_key()->set_table_name(
+      kPartitionLockTableName);
+  create_database_item_context_.request->mutable_key()
+      ->mutable_partition_key()
+      ->CopyFrom(MakeStringAttribute(kPartitionLockPartitionKeyName, "3"));
+
+  create_database_item_context_.request->add_attributes()->CopyFrom(
+      MakeStringAttribute("token_count", "1"));
+
+  Mutation m = MakeInsertMutation(
+      kPartitionLockTableName, {kPartitionLockPartitionKeyName, "Value"},
+      Value("3"), Value(Json("{\"token_count\":\"1\"}")));
+  EXPECT_CALL(*connection_, Commit(FieldsAre(_, UnorderedElementsAre(m), _)))
+      .WillOnce(Return(CommitResult{}));
+
+  create_database_item_context_.callback = [this](auto& context) {
+    EXPECT_SUCCESS(context.result);
+
+    finish_called_ = true;
+  };
+
+  EXPECT_THAT(gcp_spanner_.CreateDatabaseItem(create_database_item_context_),
+              IsSuccessful());
+
+  WaitUntil([this]() { return finish_called_.load(); });
+}
+
+TEST_F(GcpSpannerTests, CreateItemWithSortKey) {
+  create_database_item_context_.request->mutable_key()
+      ->mutable_partition_key()
+      ->CopyFrom(MakeStringAttribute(kBudgetKeyPartitionKeyName, "3"));
+  create_database_item_context_.request->mutable_key()
+      ->mutable_sort_key()
+      ->CopyFrom(MakeStringAttribute(kBudgetKeySortKeyName, "2"));
+
+  create_database_item_context_.request->add_attributes()->CopyFrom(
+      MakeStringAttribute("token_count", "1"));
+
+  Mutation m = MakeInsertMutation(
+      kBudgetKeyTableName,
+      {kBudgetKeyPartitionKeyName, kBudgetKeySortKeyName, "Value"}, Value("3"),
+      Value("2"), Value(Json("{\"token_count\":\"1\"}")));
+  EXPECT_CALL(*connection_, Commit(FieldsAre(_, UnorderedElementsAre(m), _)))
+      .WillOnce(Return(CommitResult{}));
+
+  create_database_item_context_.callback = [this](auto& context) {
+    EXPECT_SUCCESS(context.result);
+
+    finish_called_ = true;
+  };
+
+  EXPECT_THAT(gcp_spanner_.CreateDatabaseItem(create_database_item_context_),
+              IsSuccessful());
+
+  WaitUntil([this]() { return finish_called_.load(); });
+}
+
+TEST_F(GcpSpannerTests, CreateItemFailsIfCommitFails) {
+  create_database_item_context_.request->mutable_key()->set_table_name(
+      kPartitionLockTableName);
+  create_database_item_context_.request->mutable_key()
+      ->mutable_partition_key()
+      ->CopyFrom(MakeStringAttribute(kPartitionLockPartitionKeyName, "3"));
+
+  create_database_item_context_.request->add_attributes()->CopyFrom(
+      MakeStringAttribute("token_count", "1"));
+
+  EXPECT_CALL(*connection_, Commit)
+      .WillOnce(Return(Status(google::cloud::StatusCode::kInternal, "Error")));
+
+  create_database_item_context_.callback = [this](auto& context) {
+    EXPECT_THAT(
+        context.result,
+        ResultIs(FailureExecutionResult(SC_GCP_INTERNAL_SERVICE_ERROR)));
+
+    finish_called_ = true;
+  };
+
+  EXPECT_THAT(gcp_spanner_.CreateDatabaseItem(create_database_item_context_),
+              IsSuccessful());
+
+  WaitUntil([this]() { return finish_called_.load(); });
+}
+
+TEST_F(GcpSpannerTests, CreateItemFailsIfBadPartitionKey) {
+  create_database_item_context_.request->mutable_key()
+      ->mutable_partition_key()
+      ->CopyFrom(MakeStringAttribute("some_other_key", "3"));
+
+  EXPECT_THAT(gcp_spanner_.CreateDatabaseItem(create_database_item_context_),
+              ResultIs(FailureExecutionResult(
+                  SC_NO_SQL_DATABASE_PROVIDER_INVALID_PARTITION_KEY_NAME)));
+
+  EXPECT_TRUE(finish_called_);
+}
+
+TEST_F(GcpSpannerTests, CreateItemFailsIfBadSortKey) {
+  create_database_item_context_.request->mutable_key()
+      ->mutable_partition_key()
+      ->CopyFrom(MakeStringAttribute(kBudgetKeyPartitionKeyName, "3"));
+  // Sort key is bad because it's absent.
+
+  EXPECT_THAT(gcp_spanner_.CreateDatabaseItem(create_database_item_context_),
+              ResultIs(FailureExecutionResult(
+                  SC_NO_SQL_DATABASE_PROVIDER_INVALID_SORT_KEY_NAME)));
+
+  EXPECT_TRUE(finish_called_);
+}
+
 TEST_F(GcpSpannerTests, UpsertItemNoAttributesWithPartitionKeyOnly) {
   upsert_database_item_context_.request->mutable_key()->set_table_name(
       kPartitionLockTableName);
@@ -755,7 +896,7 @@ TEST_F(GcpSpannerTests, UpsertItemNoAttributesWithPartitionKeyOnly) {
   SqlStatement::ParamType params;
   params.emplace("partition_key", "3");
   SqlStatement expected_sql(
-      "SELECT Value FROM PartitionLock WHERE LockId = @partition_key",
+      "SELECT Value FROM `PartitionLock` WHERE LockId = @partition_key",
       move(params));
   auto returned_results = make_unique<MockResultSetSource>();
   EXPECT_CALL(*returned_results, NextRow).WillRepeatedly(Return(Row()));
@@ -795,7 +936,7 @@ TEST_F(GcpSpannerTests, UpsertItemNoAttributesWithSortKey) {
   params.emplace("partition_key", "3");
   params.emplace("sort_key", "2");
   SqlStatement expected_sql(
-      "SELECT Value FROM BudgetKeys WHERE BudgetKeyId = @partition_key AND "
+      "SELECT Value FROM `BudgetKeys` WHERE BudgetKeyId = @partition_key AND "
       "Timeframe = @sort_key",
       move(params));
   auto returned_results = make_unique<MockResultSetSource>();
@@ -835,7 +976,7 @@ TEST_F(GcpSpannerTests, UpsertItemNoAttributesWithExistingValue) {
   SqlStatement::ParamType params;
   params.emplace("partition_key", "3");
   SqlStatement expected_sql(
-      "SELECT Value FROM PartitionLock WHERE LockId = @partition_key",
+      "SELECT Value FROM `PartitionLock` WHERE LockId = @partition_key",
       move(params));
   auto returned_results = make_unique<MockResultSetSource>();
   // We return a JSON with "other_val" and "token_count" existing,
@@ -958,7 +1099,7 @@ TEST_F(GcpSpannerTests, UpsertItemWithAttributesWithPartitionKeyOnly) {
   params.emplace("partition_key", "3");
   params.emplace("attribute_0", "100");
   SqlStatement expected_sql(
-      "SELECT Value FROM PartitionLock WHERE LockId = @partition_key AND "
+      "SELECT Value FROM `PartitionLock` WHERE LockId = @partition_key AND "
       "JSON_VALUE(Value, '$.token_count') = @attribute_0",
       move(params));
   auto returned_results = make_unique<MockResultSetSource>();
@@ -1010,7 +1151,7 @@ TEST_F(GcpSpannerTests, UpsertItemWithAttributesWithSortKey) {
   params.emplace("sort_key", "2");
   params.emplace("attribute_0", "100");
   SqlStatement expected_sql(
-      "SELECT Value FROM BudgetKeys WHERE BudgetKeyId = @partition_key AND "
+      "SELECT Value FROM `BudgetKeys` WHERE BudgetKeyId = @partition_key AND "
       "Timeframe = @sort_key AND JSON_VALUE(Value, '$.token_count') = "
       "@attribute_0",
       move(params));
@@ -1064,7 +1205,7 @@ TEST_F(GcpSpannerTests, UpsertItemWithAttributesFailsIfNoRowsFound) {
   params.emplace("sort_key", "2");
   params.emplace("attribute_0", "100");
   SqlStatement expected_sql(
-      "SELECT Value FROM BudgetKeys WHERE BudgetKeyId = @partition_key AND "
+      "SELECT Value FROM `BudgetKeys` WHERE BudgetKeyId = @partition_key AND "
       "Timeframe = @sort_key AND JSON_VALUE(Value, '$.token_count') = "
       "@attribute_0",
       move(params));
@@ -1110,7 +1251,7 @@ TEST_F(GcpSpannerTests, UpsertItemWithAttributesFailsIfCommitFails) {
   params.emplace("sort_key", "2");
   params.emplace("attribute_0", "100");
   SqlStatement expected_sql(
-      "SELECT Value FROM BudgetKeys WHERE BudgetKeyId = @partition_key AND "
+      "SELECT Value FROM `BudgetKeys` WHERE BudgetKeyId = @partition_key AND "
       "Timeframe = @sort_key AND JSON_VALUE(Value, '$.token_count') = "
       "@attribute_0",
       move(params));

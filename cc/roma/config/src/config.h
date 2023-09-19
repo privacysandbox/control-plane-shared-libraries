@@ -28,6 +28,8 @@
 namespace google::scp::roma {
 static constexpr size_t kKB = 1024u;
 static constexpr size_t kMB = kKB * 1024;
+static constexpr const char* kRomaVlogLevel = "ROMA_VLOG_LEVEL";
+static constexpr size_t kDefaultBufferSizeInMb = 1;
 
 struct JsEngineResourceConstraints {
   /**
@@ -64,19 +66,6 @@ class Config {
   /// @brief The size of worker queue, which caches the requests. Worker could
   /// process the item in the queue one by one. The default queue size is 100.
   size_t worker_queue_max_items = 0;
-
-  /**
-   * @brief Shared memory size in MB per IPC. Shared memory is used to store
-   * requests and responses shared between ROMA and worker processes. If
-   * ipc_memory_size_in_mb is not configured, a default value of 128MB will be
-   * set.
-   *
-   * NOTE: Small shared memory configurations can cause ROMA OOM error. The size
-   * of the shared memory needs to be larger than worker_item_payload *
-   * worker_queue_size. The content of worker_item_payload includes request and
-   * response.
-   */
-  size_t ipc_memory_size_in_mb = 0;
 
   /**
    * @brief The maximum number of pages that the WASM memory can use. Each page
@@ -122,6 +111,27 @@ class Config {
    *
    */
   size_t code_version_cache_size = 5;
+
+  /**
+   * @brief The sandbox data shared buffer provides a shared memory for sharing
+   * request and response data between the roma host binary and sandboxee. The
+   * default size of the buffer is 1MB, but you can increase the size if needed
+   * to hold the largest request or response data that you expect to share.
+   *
+   */
+  size_t sandbox_request_response_shared_buffer_size_mb = 0;
+
+  /**
+   * @brief The flag that allows the sandbox to communicate only with the
+   * buffer. Roma performs better when the sandbox communicates with the buffer
+   * only. However, since the buffer is a pre-allocated memory space when the
+   * Roma is initialized, the client needs to know the upper bound of the
+   * data payload that is shared between the sandbox and the buffer. If the size
+   * of the data payload is greater than the size of the buffer, Roma will
+   * return an oversize error.
+   *
+   */
+  bool enable_sandbox_sharing_request_response_with_buffer_only = false;
 
   /**
    * @brief Register a function binding object

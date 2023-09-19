@@ -16,13 +16,13 @@
 
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <gmock/gmock.h>
 
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 

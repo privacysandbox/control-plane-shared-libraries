@@ -98,7 +98,6 @@ static constexpr char kExpectedSubscriptionName[] =
     "projects/123456789/subscriptions/queue_name";
 static constexpr uint8_t kMaxNumberOfMessagesReceived = 1;
 static constexpr uint16_t kAckDeadlineSeconds = 60;
-static constexpr uint16_t kMaximumAckDeadlineSeconds = 600;
 static constexpr uint16_t kInvalidAckDeadlineSeconds = 1200;
 
 namespace google::scp::cpio::client_providers::gcp_queue_client::test {
@@ -118,8 +117,6 @@ class GcpQueueClientProviderTest : public ::testing::Test {
   GcpQueueClientProviderTest() {
     queue_client_options_ = make_shared<QueueClientOptions>();
     queue_client_options_->queue_name = kQueueName;
-    queue_client_options_->default_visibility_timeout_in_seconds =
-        kMaximumAckDeadlineSeconds;
     mock_instance_client_provider_ = make_shared<MockInstanceClientProvider>();
     mock_instance_client_provider_->instance_resource_name =
         kInstanceResourceName;
@@ -204,21 +201,6 @@ TEST_F(GcpQueueClientProviderTest, InitWithEmptyQueueName) {
                   SC_GCP_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED)));
 }
 
-TEST_F(GcpQueueClientProviderTest, InitWithInvalidVisibilityTimeout) {
-  queue_client_options_->queue_name = kQueueName;
-  queue_client_options_->default_visibility_timeout_in_seconds =
-      kInvalidAckDeadlineSeconds;
-  auto client = make_unique<GcpQueueClientProvider>(
-      queue_client_options_, mock_instance_client_provider_,
-      make_shared<MockAsyncExecutor>(), make_shared<MockAsyncExecutor>(),
-      mock_pubsub_stub_factory_);
-
-  EXPECT_THAT(
-      client->Init(),
-      ResultIs(FailureExecutionResult(
-          SC_GCP_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT)));
-}
-
 TEST_F(GcpQueueClientProviderTest, InitWithGetProjectIdFailure) {
   mock_instance_client_provider_->get_instance_resource_name_mock =
       FailureExecutionResult(123);
@@ -227,14 +209,16 @@ TEST_F(GcpQueueClientProviderTest, InitWithGetProjectIdFailure) {
       make_shared<MockAsyncExecutor>(), make_shared<MockAsyncExecutor>(),
       mock_pubsub_stub_factory_);
 
-  EXPECT_THAT(client->Init(), ResultIs(FailureExecutionResult(123)));
+  EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_THAT(client->Run(), ResultIs(FailureExecutionResult(123)));
 }
 
 TEST_F(GcpQueueClientProviderTest, InitWithPublisherCreationFailure) {
   EXPECT_CALL(*mock_pubsub_stub_factory_, CreatePublisherStub)
       .WillOnce(Return(nullptr));
 
-  EXPECT_THAT(queue_client_provider_->Init(),
+  EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_THAT(queue_client_provider_->Run(),
               ResultIs(FailureExecutionResult(
                   SC_GCP_QUEUE_CLIENT_PROVIDER_PUBLISHER_REQUIRED)));
 }
@@ -243,7 +227,8 @@ TEST_F(GcpQueueClientProviderTest, InitWithSubscriberCreationFailure) {
   EXPECT_CALL(*mock_pubsub_stub_factory_, CreateSubscriberStub)
       .WillOnce(Return(nullptr));
 
-  EXPECT_THAT(queue_client_provider_->Init(),
+  EXPECT_SUCCESS(queue_client_provider_->Init());
+  EXPECT_THAT(queue_client_provider_->Run(),
               ResultIs(FailureExecutionResult(
                   SC_GCP_QUEUE_CLIENT_PROVIDER_SUBSCRIBER_REQUIRED)));
 }

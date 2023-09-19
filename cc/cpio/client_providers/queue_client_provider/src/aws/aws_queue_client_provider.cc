@@ -67,8 +67,6 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::async_executor::aws::AwsAsyncExecutor;
 using google::scp::core::common::kZeroUuid;
-using google::scp::core::errors::
-    SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT;
 using google::scp::core::errors::SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_MESSAGE;
 using google::scp::core::errors::
     SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_RECEIPT_INFO;
@@ -118,15 +116,6 @@ ExecutionResult AwsQueueClientProvider::Run() noexcept {
         SC_AWS_QUEUE_CLIENT_PROVIDER_QUEUE_NAME_REQUIRED);
     SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
               "Invalid queue name.");
-    return execution_result;
-  }
-
-  if (queue_client_options_->default_visibility_timeout_in_seconds >
-      kMaxVisibilityTimeoutSeconds) {
-    execution_result = FailureExecutionResult(
-        SC_AWS_QUEUE_CLIENT_PROVIDER_INVALID_CONFIG_VISIBILITY_TIMEOUT);
-    SCP_ERROR(kAwsQueueClientProvider, kZeroUuid, execution_result,
-              "Invalid visibility timeout.");
     return execution_result;
   }
 
@@ -451,7 +440,7 @@ shared_ptr<SQSClient> AwsSqsClientFactory::CreateSqsClient(
 
 shared_ptr<QueueClientProviderInterface> QueueClientProviderFactory::Create(
     const shared_ptr<QueueClientOptions>& options,
-    shared_ptr<InstanceClientProviderInterface> instance_client,
+    const shared_ptr<InstanceClientProviderInterface> instance_client,
     const shared_ptr<AsyncExecutorInterface>& cpu_async_executor,
     const shared_ptr<AsyncExecutorInterface>& io_async_executor) noexcept {
   return make_shared<AwsQueueClientProvider>(
