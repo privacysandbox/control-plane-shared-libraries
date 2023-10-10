@@ -34,7 +34,11 @@ import com.google.scp.operator.frontend.service.converter.GetJobResponseConverte
 import com.google.scp.operator.frontend.service.converter.JobStatusConverter;
 import com.google.scp.operator.frontend.service.converter.ResultInfoConverter;
 import com.google.scp.operator.frontend.tasks.CreateJobTask;
+import com.google.scp.operator.frontend.tasks.GetJobByIdTask;
+import com.google.scp.operator.frontend.tasks.PutJobTask;
 import com.google.scp.operator.frontend.tasks.testing.FakeCreateJobTask;
+import com.google.scp.operator.frontend.tasks.testing.FakeGetJobByIdTask;
+import com.google.scp.operator.frontend.tasks.testing.FakePutJobTask;
 import com.google.scp.operator.frontend.tasks.validation.RequestInfoValidator;
 import com.google.scp.operator.frontend.testing.FakeRequestInfoValidator;
 import com.google.scp.operator.protos.frontend.api.v1.CreateJobRequestProto.CreateJobRequest;
@@ -123,13 +127,15 @@ public class FakeFrontendModule extends BaseFrontendModule {
   protected void configureModule() {
     bind(ObjectMapper.class).to(TimeObjectMapper.class);
     bind(JobQueue.class).to(FakeJobQueue.class);
-    bindCreateJobTaskModule();
+    bindTaskModule();
     Multibinder<RequestInfoValidator> requestInfoValidatorMultibinder =
         Multibinder.newSetBinder(binder(), RequestInfoValidator.class);
     requestInfoValidatorMultibinder.addBinding().toInstance(fakeRequestInfoValidator);
   }
 
-  public void bindCreateJobTaskModule() {
+  public void bindTaskModule() {
     bind(CreateJobTask.class).to(FakeCreateJobTask.class);
+    bind(PutJobTask.class).to(FakePutJobTask.class);
+    bind(GetJobByIdTask.class).to(FakeGetJobByIdTask.class);
   }
 }

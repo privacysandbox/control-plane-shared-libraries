@@ -17,10 +17,10 @@ load("@rules_cc//cc:defs.bzl", "cc_test")
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
-    name = "gcp_cloud_storage_client_provider_test",
+    name = "gcp_blob_storage_client_provider_test",
     size = "small",
     srcs = [
-        "gcp_cloud_storage_client_provider_test.cc",
+        "gcp_blob_storage_client_provider_test.cc",
     ],
     copts = [
         "-std=c++17",
@@ -29,7 +29,7 @@ cc_test(
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/mock:core_async_executor_mock",
         "//cc/core/test/utils:utils_lib",
-        "//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_provider_lib",
+        "//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_client_provider_lib",
         "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
         "//cc/public/core/test/interface:execution_result_matchers",
         "//third_party/cloud_cpp/google/cloud/storage/testing:mock_client",
@@ -39,10 +39,10 @@ cc_test(
 )
 
 cc_test(
-    name = "gcp_cloud_storage_client_provider_stream_test",
+    name = "gcp_blob_storage_client_provider_stream_test",
     size = "small",
     srcs = [
-        "gcp_cloud_storage_client_provider_stream_test.cc",
+        "gcp_blob_storage_client_provider_stream_test.cc",
     ],
     copts = [
         "-std=c++17",
@@ -51,11 +51,27 @@ cc_test(
         "//cc:cc_base_include_dir",
         "//cc/core/async_executor/mock:core_async_executor_mock",
         "//cc/core/test/utils:utils_lib",
-        "//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_provider_lib",
+        "//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_client_provider_lib",
         "//cc/cpio/client_providers/instance_client_provider/mock:instance_client_provider_mock",
         "//cc/public/core/test/interface:execution_result_matchers",
         "//third_party/cloud_cpp/google/cloud/storage/testing:mock_client",
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "test_gcp_blob_storage_client_provider_lib",
+    srcs = [
+        "test_gcp_blob_storage_client_provider.cc",
+        "test_gcp_blob_storage_client_provider.h",
+        "//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_client_provider_srcs",
+    ],
+    copts = [
+        "-DTEST_CPIO=1",
+    ],
+    deps = [
+        "//cc/cpio/client_providers/blob_storage_client_provider/src/gcp:gcp_blob_storage_client_provider_lib",
+        "//cc/public/cpio/test/blob_storage_client:test_gcp_blob_storage_client_options",
     ],
 )

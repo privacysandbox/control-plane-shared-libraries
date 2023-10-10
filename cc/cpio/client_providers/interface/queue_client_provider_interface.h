@@ -77,6 +77,11 @@ class QueueClientProviderInterface : public core::ServiceInterface {
 struct QueueClientOptions {
   virtual ~QueueClientOptions() = default;
 
+  QueueClientOptions() = default;
+
+  QueueClientOptions(const QueueClientOptions& options)
+      : queue_name(options.queue_name) {}
+
   /**
    * @brief Required. The identifier of the queue. The queue is per client per
    * service. In AWS SQS, it's the queue name. In GCP Pub/Sub, there is only one

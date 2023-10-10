@@ -275,8 +275,9 @@ module "frontend_dashboard" {
 module "worker_dashboard" {
   source = "../../modules/workerdashboard"
 
-  environment = var.environment
-  region      = var.region
+  environment                   = var.environment
+  region                        = var.region
+  custom_metrics_alarms_enabled = true
 }
 
 module "vpc" {

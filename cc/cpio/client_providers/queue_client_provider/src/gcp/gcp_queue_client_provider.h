@@ -32,6 +32,8 @@
 #include "error_codes.h"
 
 namespace google::scp::cpio::client_providers {
+static constexpr char kPubSubEndpointUri[] = "pubsub.googleapis.com";
+
 class GcpPubSubStubFactory;
 
 /*! @copydoc QueueClientProviderInterface

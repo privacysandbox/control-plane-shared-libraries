@@ -119,6 +119,26 @@ struct PartitionAndSortKey
 
 // Options to give to a NoSQLDatabaseClientProvider.
 struct NoSQLDatabaseClientOptions {
+  virtual ~NoSQLDatabaseClientOptions() = default;
+
+  NoSQLDatabaseClientOptions() = default;
+
+  NoSQLDatabaseClientOptions(
+      std::string input_instance_name, std::string input_database_name,
+      std::unique_ptr<std::unordered_map<std::string, PartitionAndSortKey>>
+          input_table_name_to_keys)
+      : instance_name(std::move(input_instance_name)),
+        database_name(std::move(input_database_name)),
+        table_name_to_keys(std::move(input_table_name_to_keys)) {}
+
+  NoSQLDatabaseClientOptions(const NoSQLDatabaseClientOptions& options)
+      : instance_name(options.instance_name),
+        database_name(options.database_name),
+        table_name_to_keys(
+            std::make_unique<
+                std::unordered_map<std::string, PartitionAndSortKey>>(
+                *options.table_name_to_keys)) {}
+
   // The Spanner Instance to use for GCP. Unused for AWS.
   std::string instance_name;
   // The Spanner Database to use for GCP. Unused for AWS.
@@ -127,7 +147,8 @@ struct NoSQLDatabaseClientOptions {
   // and (optional) sort keys for that table. This is used to validate calls to
   // Get* and Upsert*. Nullptr to not validate these fields.
   std::unique_ptr<std::unordered_map<std::string, PartitionAndSortKey>>
-      table_name_to_keys;
+      table_name_to_keys = std::make_unique<
+          std::unordered_map<std::string, PartitionAndSortKey>>();
 };
 
 class NoSQLDatabaseClientProviderFactory {

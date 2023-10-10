@@ -238,49 +238,49 @@ class ConfigurationFetcherInterface {
 
   /**** JobClient configurations end */
 
-  /**** NosqlDatabaseClient configurations start */
+  /**** NoSQLDatabaseClient configurations start */
   /**
-   * @brief Get the GcpNosqlDatabaseClientSpannerInstanceName.
+   * @brief Get the GcpNoSQLDatabaseClientSpannerInstanceName.
    *
    * @param request get configuration request.
    * @return core::ExecutionResultOr<std::string> the name and result.
    */
   virtual core::ExecutionResultOr<std::string>
-  GetGcpNosqlDatabaseClientSpannerInstanceName(
+  GetGcpNoSQLDatabaseClientSpannerInstanceName(
       GetConfigurationRequest request) noexcept = 0;
 
   /**
-   * @brief Get the GcpNosqlDatabaseClientSpannerInstanceName.
+   * @brief Get the GcpNoSQLDatabaseClientSpannerInstanceName.
    *
    * @param context the async context for the operation.
    * @return core::ExecutionResult scheduling result returned synchronously.
    */
   virtual core::ExecutionResult
-  GetGcpNosqlDatabaseClientSpannerInstanceNameAsync(
+  GetGcpNoSQLDatabaseClientSpannerInstanceNameAsync(
       core::AsyncContext<GetConfigurationRequest, std::string>
           context) noexcept = 0;
   /**
-   * @brief Get the GcpNosqlDatabaseClientSpannerDatabaseName.
+   * @brief Get the GcpNoSQLDatabaseClientSpannerDatabaseName.
    *
    * @param request get configuration request.
    * @return core::ExecutionResultOr<std::string> the name and result.
    */
   virtual core::ExecutionResultOr<std::string>
-  GetGcpNosqlDatabaseClientSpannerDatabaseName(
+  GetGcpNoSQLDatabaseClientSpannerDatabaseName(
       GetConfigurationRequest request) noexcept = 0;
 
   /**
-   * @brief Get the GcpNosqlDatabaseClientSpannerDatabaseName.
+   * @brief Get the GcpNoSQLDatabaseClientSpannerDatabaseName.
    *
    * @param context the async context for the operation.
    * @return core::ExecutionResult scheduling result returned synchronously.
    */
   virtual core::ExecutionResult
-  GetGcpNosqlDatabaseClientSpannerDatabaseNameAsync(
+  GetGcpNoSQLDatabaseClientSpannerDatabaseNameAsync(
       core::AsyncContext<GetConfigurationRequest, std::string>
           context) noexcept = 0;
 
-  /**** NosqlDatabaseClient configurations end */
+  /**** NoSQLDatabaseClient configurations end */
 
   /**** QueueClient configurations start */
   /**

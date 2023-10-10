@@ -23,3 +23,8 @@ variable "region" {
   description = "AWS region to deploy components"
   type        = string
 }
+
+variable "custom_metrics_alarms_enabled" {
+  type        = string
+  description = "Enable alarms based on custom metrics"
+}

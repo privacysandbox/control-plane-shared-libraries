@@ -122,3 +122,22 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+# Run this manually with 'cc_build "-c opt --copt=-gmlt //cc/core/async_executor/test:async_executor_benchmark_test"'
+cc_test(
+    name = "async_executor_benchmark_test",
+    size = "large",
+    srcs = ["async_executor_benchmark_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    linkopts = [
+        "-latomic",
+    ],
+    tags = ["manual"],
+    deps = [
+        "//cc/core/async_executor/src:core_async_executor_lib",
+        "//cc/public/core/test/interface:execution_result_matchers",
+        "@google_benchmark//:benchmark",
+    ],
+)

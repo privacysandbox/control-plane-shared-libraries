@@ -24,8 +24,18 @@
 namespace google::scp::cpio::client_providers {
 /// QueueClientOptions for testing on GCP.
 struct TestGcpQueueClientOptions : public QueueClientOptions {
+  virtual ~TestGcpQueueClientOptions() = default;
+
+  TestGcpQueueClientOptions() = default;
+
+  explicit TestGcpQueueClientOptions(const QueueClientOptions& options)
+      : QueueClientOptions(options) {}
+
+  // TODO: get rid of shared_ptr.
   std::shared_ptr<std::string> pubsub_client_endpoint_override =
       std::make_shared<std::string>();
+
+  std::string access_token;
 };
 
 /*! @copydoc GcpPubSubStubFactory

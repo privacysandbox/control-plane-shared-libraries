@@ -20,6 +20,7 @@ java_library(
     name = "common",
     srcs = glob(["*.java"]),
     deps = [
+        "//cc/public/cpio/proto/job_service/v1:job_service_java_proto",
         "//java/external:guice",
         "//operator/protos/shared/backend/metadatadb:java_proto",
     ],

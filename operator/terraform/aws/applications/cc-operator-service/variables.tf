@@ -151,10 +151,16 @@ variable "vpc_availability_zones" {
 # Shared Alarm Variables
 ################################################################################
 
-variable "worker_alarms_enabled" {
+variable "alarms_enabled" {
   type        = string
   description = "Enable alarms for worker (includes alarms for autoscaling/jobqueue/worker)"
   default     = true
+}
+
+variable "custom_metrics_alarms_enabled" {
+  type        = string
+  description = "Enable alarms based on custom metrics"
+  default     = false
 }
 
 variable "alarm_notification_email" {

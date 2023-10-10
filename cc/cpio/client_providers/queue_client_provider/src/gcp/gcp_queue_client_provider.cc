@@ -94,7 +94,6 @@ using std::unique_ptr;
 using std::placeholders::_1;
 
 static constexpr char kGcpQueueClientProvider[] = "GcpQueueClientProvider";
-static constexpr char kPubSubEndpointUri[] = "pubsub.googleapis.com";
 static constexpr char kGcpTopicFormatString[] = "projects/%s/topics/%s";
 static constexpr char kGcpSubscriptionFormatString[] =
     "projects/%s/subscriptions/%s";

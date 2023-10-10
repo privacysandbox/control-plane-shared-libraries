@@ -61,7 +61,6 @@ cc_test(
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/utils/metric_aggregation/interface:metric_aggregation_interface",
         "//cc/public/cpio/utils/metric_aggregation/interface:type_def",
-        "//cc/public/cpio/utils/metric_aggregation/mock:metric_aggregation_mock",
         "//cc/public/cpio/utils/metric_aggregation/src:metric_aggregation",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
@@ -83,6 +82,28 @@ cc_test(
         "//cc/core/test/utils:utils_lib",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/utils/metric_aggregation/mock:metric_aggregation_mock",
+        "//cc/public/cpio/utils/metric_aggregation/src:metric_aggregation",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "metric_instance_factory_test",
+    size = "small",
+    srcs = ["metric_instance_factory_test.cc"],
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//cc:cc_base_include_dir",
+        "//cc/core/async_executor/mock:core_async_executor_mock",
+        "//cc/core/async_executor/src:core_async_executor_lib",
+        "//cc/core/config_provider/mock:core_config_provider_mock",
+        "//cc/core/interface:interface_lib",
+        "//cc/core/test/utils:utils_lib",
+        "//cc/public/cpio/mock/metric_client:metric_client_mock",
+        "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/utils/metric_aggregation/src:metric_aggregation",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",

@@ -17,7 +17,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "gcp_blob_storage_provider_lib",
+    name = "gcp_blob_storage_client_provider_lib",
     srcs = [":gcp_blob_storage_client_provider_srcs"],
     copts = [
         "-std=c++17",
@@ -36,16 +36,16 @@ cc_library(
 )
 
 exports_files([
-    "gcp_cloud_storage_client_provider.h",
-    "gcp_cloud_storage_client_provider.cc",
-    "gcp_cloud_storage_utils.h",
+    "gcp_blob_storage_client_provider.h",
+    "gcp_blob_storage_client_provider.cc",
+    "gcp_blob_storage_client_utils.h",
 ])
 
 filegroup(
     name = "gcp_blob_storage_client_provider_srcs",
     srcs = [
-        ":gcp_cloud_storage_client_provider.cc",
-        ":gcp_cloud_storage_client_provider.h",
-        ":gcp_cloud_storage_utils.h",
+        ":gcp_blob_storage_client_provider.cc",
+        ":gcp_blob_storage_client_provider.h",
+        ":gcp_blob_storage_client_utils.h",
     ],
 )

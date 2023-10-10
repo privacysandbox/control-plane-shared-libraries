@@ -17,11 +17,11 @@ load("@rules_cc//cc:defs.bzl", "cc_test")
 package(default_visibility = ["//cc:scp_internal_pkg"])
 
 cc_test(
-    name = "aws_dynamo_db_test",
+    name = "aws_nosql_database_client_provider_test",
     size = "small",
     srcs = [
-        "aws_dynamo_db_client_provider_test.cc",
-        "aws_dynamo_db_utils_test.cc",
+        "aws_nosql_database_client_provider_test.cc",
+        "aws_nosql_database_client_utils_test.cc",
     ],
     copts = [
         "-std=c++17",

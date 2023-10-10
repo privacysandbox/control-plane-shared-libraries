@@ -22,7 +22,6 @@ import static com.google.scp.operator.frontend.tasks.ErrorMessages.DB_ERROR_MESS
 import static com.google.scp.operator.frontend.tasks.ErrorMessages.DUPLICATE_JOB_MESSAGE;
 import static com.google.scp.operator.frontend.tasks.ErrorMessages.JOB_NOT_FOUND_MESSAGE;
 import static com.google.scp.shared.api.exception.testing.ServiceExceptionAssertions.assertThatServiceExceptionMatches;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
 import com.google.acai.Acai;
@@ -61,6 +60,9 @@ import org.junit.runners.JUnit4;
 public final class FrontendServiceImplTest {
 
   final String REQUEST_ID = "foo";
+  final String JOB_ID = "5678";
+  final String SERVER_JOB_ID = "2456";
+  final String JOB_BODY = "test body";
 
   @Rule public Acai acai = new Acai(TestEnv.class);
   // Under test
@@ -71,7 +73,6 @@ public final class FrontendServiceImplTest {
 
   CreateJobRequest createJobRequest;
   PutJobRequest putJobRequest;
-  GetJobByIdRequest getJobByIdRequest;
   String attributionReportTo;
   JobMetadata jobMetadata;
   JobMetadata receivedJobMetadata;
@@ -86,8 +87,10 @@ public final class FrontendServiceImplTest {
     clockTime = clock.instant();
     clockTimestamp = ProtoUtil.toProtoTimestamp(clockTime);
     createJobRequest = ServiceJobGenerator.createFakeCreateJobRequest(REQUEST_ID);
-    putJobRequest = ServiceJobGenerator.createFakePutJobRequest();
-    getJobByIdRequest = ServiceJobGenerator.createFakeGetJobByIdRequest();
+    putJobRequest =
+        ServiceJobGenerator.createFakePutJobRequest(JOB_ID).toBuilder()
+            .setJobBody(JOB_BODY)
+            .build();
     attributionReportTo =
         createJobRequest.getJobParametersMap().get(JOB_PARAM_ATTRIBUTION_REPORT_TO);
     jobMetadata = JobGenerator.createFakeJobMetadata(REQUEST_ID);
@@ -265,16 +268,16 @@ public final class FrontendServiceImplTest {
 
   @Test
   public void testPutJob() throws Exception {
-    assertThrows(
-        UnsupportedOperationException.class,
-        () -> frontendService.putJob(putJobRequest));
+    PutJobResponse putJobResponse = frontendService.putJob(putJobRequest);
+    assertThat(putJobResponse.getJob().getJobId()).isEqualTo(JOB_ID);
+    assertThat(putJobResponse.getJob().getJobBody()).isEqualTo(JOB_BODY);
   }
 
   @Test
   public void testGetJobById() throws Exception {
-    assertThrows(
-        UnsupportedOperationException.class,
-        () -> frontendService.getJobById(getJobByIdRequest));
+    GetJobByIdRequest request = GetJobByIdRequest.newBuilder().setJobId(JOB_ID).build();
+    GetJobByIdResponse getJobByIdResponse = frontendService.getJobById(request);
+    assertThat(getJobByIdResponse.getJob().getJobId()).isEqualTo(JOB_ID);
   }
 
   static class TestEnv extends AbstractModule {

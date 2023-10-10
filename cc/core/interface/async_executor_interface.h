@@ -48,6 +48,16 @@ enum class AsyncPriority {
   Urgent = 2,
 };
 
+/// @brief Callbacks originating from the providers should have a higher
+/// priority than the regular tasks because they are time-sensitive.
+static constexpr AsyncPriority kDefaultAsyncPriorityForCallbackExecution =
+    AsyncPriority::High;
+
+/// @brief Blocking tasks are scheduled with a normal priority are can be
+/// starved by a higher/urgent priority tasks.
+static constexpr AsyncPriority kDefaultAsyncPriorityForBlockingIOTaskExecution =
+    AsyncPriority::Normal;
+
 /// The setting with which affinity should be enforced.
 enum class AsyncExecutorAffinitySetting {
   /**

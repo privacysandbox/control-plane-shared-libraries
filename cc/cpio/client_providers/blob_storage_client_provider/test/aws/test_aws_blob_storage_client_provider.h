@@ -22,14 +22,14 @@
 #include <aws/core/Aws.h>
 #include <aws/core/client/ClientConfiguration.h>
 
-#include "cpio/client_providers/blob_storage_client_provider/src/aws/aws_s3_client_provider.h"
+#include "cpio/client_providers/blob_storage_client_provider/src/aws/aws_blob_storage_client_provider.h"
 #include "cpio/client_providers/interface/instance_client_provider_interface.h"
 #include "public/cpio/test/blob_storage_client/test_aws_blob_storage_client_options.h"
 
 namespace google::scp::cpio::client_providers {
-/*! @copydoc AwsS3ClientProvider
+/*! @copydoc AwsBlobStorageClientProvider
  */
-class TestAwsBlobStorageClientProvider : public AwsS3ClientProvider {
+class TestAwsBlobStorageClientProvider : public AwsBlobStorageClientProvider {
  public:
   TestAwsBlobStorageClientProvider(
       const std::shared_ptr<TestAwsBlobStorageClientOptions>& options,
@@ -37,8 +37,8 @@ class TestAwsBlobStorageClientProvider : public AwsS3ClientProvider {
           instance_client_provider,
       const std::shared_ptr<core::AsyncExecutorInterface>& cpu_async_executor,
       const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor)
-      : AwsS3ClientProvider(options, instance_client_provider,
-                            cpu_async_executor, io_async_executor),
+      : AwsBlobStorageClientProvider(options, instance_client_provider,
+                                     cpu_async_executor, io_async_executor),
         test_options_(options) {}
 
  protected:

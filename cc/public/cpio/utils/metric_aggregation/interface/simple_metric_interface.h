@@ -29,24 +29,22 @@ namespace google::scp::cpio {
 class SimpleMetricInterface : public core::ServiceInterface {
  public:
   virtual ~SimpleMetricInterface() = default;
-  /**
-   * @brief Schedules a metric push.
-   *
-   * @param metric_value the metric value used to construct a
-   * RecordMetricRequest proto message with input metric_value and current
-   * timestamp.
-   */
 
   /**
    * @brief Schedules a simple metric push.
    *
-   * @param metric_value The metric value to be pushed.
-   * @param metric_tag The metric tag for specific simple metric definition. The
-   * metric tag will override pervious metric definition.
+   * @param metric_value The value of the metric that will be sent to
+   * a monitoring system.
+   * @param metric_info This parameter is optional. If you provide a metric_info
+   * object, the metric will be created based on the provided metric_info and
+   * value. Otherwise, the metric will be created using the predefined
+   * metric_info from when the SimpleMetric object was created and pushed to the
+   * monitoring system.
    */
   virtual void Push(
-      const std::shared_ptr<MetricValue>& metric_value,
-      const std::shared_ptr<MetricTag>& metric_tag = nullptr) noexcept = 0;
+      const MetricValue& metric_value,
+      std::optional<std::reference_wrapper<const MetricDefinition>>
+          metric_info = std::nullopt) noexcept = 0;
 };
 
 }  // namespace google::scp::cpio

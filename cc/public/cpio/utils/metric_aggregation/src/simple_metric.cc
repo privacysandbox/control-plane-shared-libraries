@@ -32,20 +32,20 @@
 
 #include "metric_utils.h"
 
+using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
+using google::cmrt::sdk::metric_service::v1::PutMetricsResponse;
 using google::scp::core::AsyncContext;
 using google::scp::core::AsyncPriority;
 using google::scp::core::ExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::Timestamp;
 using google::scp::core::common::TimeProvider;
-using std::string;
-// using google::scp::cpio::MetricValue;
-using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
-using google::cmrt::sdk::metric_service::v1::PutMetricsResponse;
 using google::scp::cpio::MetricClientInterface;
+using google::scp::cpio::MetricValue;
 using std::make_shared;
 using std::move;
 using std::shared_ptr;
+using std::string;
 
 static constexpr char kSimpleMetric[] = "SimpleMetric";
 
@@ -76,7 +76,6 @@ void SimpleMetric::RunMetricPush(
           for (auto& metric : context.request->metrics()) {
             metric_names.push_back(metric.name());
           }
-          // TODO: Create an alert or reschedule
           SCP_CRITICAL(kSimpleMetric, object_activity_id_, context.result,
                        "PutMetrics returned a failure for '%llu' metrics. The ",
                        "metrics are: '%s'", context.request->metrics().size(),
@@ -88,18 +87,29 @@ void SimpleMetric::RunMetricPush(
   auto execution_result =
       metric_client_->PutMetrics(move(record_metric_context));
   if (!execution_result.Successful()) {
-    // TODO: Create an alert or reschedule
     SCP_CRITICAL(kSimpleMetric, object_activity_id_, execution_result,
                  "PutMetrics returned a failure for '%llu' metrics",
                  metrics_count);
   }
 }
 
-void SimpleMetric::Push(const shared_ptr<MetricValue>& metric_value,
-                        const shared_ptr<MetricTag>& metric_tag) noexcept {
+void SimpleMetric::Push(
+    const MetricValue& metric_value,
+    std::optional<std::reference_wrapper<const MetricDefinition>>
+        metric_info) noexcept {
   auto record_metric_request = make_shared<PutMetricsRequest>();
-  MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info_,
-                                    metric_value, metric_tag);
+  // if metric_info was provided for Push(), the metric will be created using
+  // the provided metric_info. Otherwise, the metric will be created using the
+  // predefined metric_info_ that was set when the SimpleMetric object was
+  // created.
+  if (metric_info) {
+    MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info->get(),
+                                      metric_value);
+  } else {
+    MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info_,
+                                      metric_value);
+  }
+
   auto execution_result = async_executor_->ScheduleFor(
       [this, record_metric_request]() { RunMetricPush(record_metric_request); },
       TimeProvider::GetSteadyTimestampInNanosecondsAsClockTicks(),

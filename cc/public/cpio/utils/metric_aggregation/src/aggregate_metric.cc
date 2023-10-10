@@ -55,6 +55,7 @@ using google::scp::cpio::MetricValue;
 using std::make_shared;
 using std::move;
 using std::mutex;
+using std::pair;
 using std::shared_ptr;
 using std::string;
 using std::to_string;
@@ -67,30 +68,44 @@ static constexpr char kAggregateMetric[] = "AggregateMetric";
 static constexpr milliseconds kStopWaitSleepDuration = milliseconds(500);
 
 namespace google::scp::cpio {
-AggregateMetric::AggregateMetric(
-    const shared_ptr<AsyncExecutorInterface>& async_executor,
-    const shared_ptr<MetricClientInterface>& metric_client,
-    const shared_ptr<MetricDefinition>& metric_info,
-    TimeDuration push_interval_duration_in_ms,
-    const shared_ptr<vector<string>>& event_code_list,
-    const string& event_code_label_key)
+AggregateMetric::AggregateMetric(core::AsyncExecutorInterface* async_executor,
+                                 MetricClientInterface* metric_client,
+                                 MetricDefinition metric_info,
+                                 TimeDuration push_interval_duration_in_ms)
     : async_executor_(async_executor),
       metric_client_(metric_client),
-      metric_info_(metric_info),
+      metric_info_(move(metric_info)),
+      push_interval_duration_in_ms_(push_interval_duration_in_ms),
+      counter_(0),
+      is_running_(false),
+      can_accept_incoming_increments_(false),
+      object_activity_id_(Uuid::GenerateUuid()) {}
+
+AggregateMetric::AggregateMetric(core::AsyncExecutorInterface* async_executor,
+                                 MetricClientInterface* metric_client,
+                                 MetricDefinition metric_info,
+                                 TimeDuration push_interval_duration_in_ms,
+                                 const vector<string>& event_code_labels_list,
+                                 const std::string& event_code_label_key)
+    : async_executor_(async_executor),
+      metric_client_(metric_client),
+      metric_info_(move(metric_info)),
       push_interval_duration_in_ms_(push_interval_duration_in_ms),
       counter_(0),
       is_running_(false),
       can_accept_incoming_increments_(false),
       object_activity_id_(Uuid::GenerateUuid()) {
-  if (event_code_list) {
-    for (const auto& event_code : *event_code_list) {
-      MetricLabels labels;
-      labels[event_code_label_key] = event_code;
-      auto tag = make_shared<MetricTag>(nullptr, nullptr,
-                                        make_shared<MetricLabels>(labels));
-      event_counters_[event_code] = 0;
-      event_tags_[event_code] = tag;
-    }
+  for (const auto& event_code : event_code_labels_list) {
+    MetricLabels labels;
+    labels[event_code_label_key] = event_code;
+
+    // a copy of metric_info_
+    auto event_metric = MetricDefinition(metric_info_);
+    event_metric.AddMetricLabels(move(labels));
+
+    event_counters_[event_code] = 0;
+    event_metric_infos_.insert(
+        pair<string, MetricDefinition>(event_code, move(event_metric)));
   }
 }
 
@@ -173,11 +188,11 @@ core::ExecutionResult AggregateMetric::IncrementBy(
 }
 
 void AggregateMetric::MetricPushHandler(
-    int64_t value, const shared_ptr<MetricTag>& metric_tag) noexcept {
-  auto metric_value = make_shared<MetricValue>(to_string(value));
+    int64_t value, const MetricDefinition& metric_info) noexcept {
+  auto metric_value = MetricValue(to_string(value));
   auto record_metric_request = make_shared<PutMetricsRequest>();
-  MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info_,
-                                    metric_value, metric_tag);
+  MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info,
+                                    metric_value);
 
   AsyncContext<PutMetricsRequest, PutMetricsResponse> record_metric_context(
       move(record_metric_request),
@@ -213,14 +228,14 @@ void AggregateMetric::MetricPushHandler(
 void AggregateMetric::RunMetricPush() noexcept {
   auto value = counter_.exchange(0);
   if (value > 0) {
-    MetricPushHandler(value);
+    MetricPushHandler(value, metric_info_);
   }
 
   for (auto event = event_counters_.begin(); event != event_counters_.end();
        ++event) {
     auto value = event->second.exchange(0);
     if (value > 0) {
-      MetricPushHandler(value, event_tags_[event->first]);
+      MetricPushHandler(value, event_metric_infos_.at(event->first));
     }
   }
   return;

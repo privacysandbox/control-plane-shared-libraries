@@ -39,53 +39,30 @@
 namespace google::scp::cpio {
 class MetricUtils {
  public:
+  /**
+   * @brief Get the PutMetricsRequest protobuf object.
+   *
+   * @param[out] record_metric_request
+   * @param metric_info The metric definition including name, unit, and labels.
+   * @param metric_value The value of the metric.
+   */
   static void GetPutMetricsRequest(
       std::shared_ptr<cmrt::sdk::metric_service::v1::PutMetricsRequest>&
           record_metric_request,
-      const std::shared_ptr<MetricDefinition>& metric_info,
-      const std::shared_ptr<MetricValue>& metric_value,
-      const std::shared_ptr<MetricTag>& metric_tag = nullptr) noexcept;
+      const MetricDefinition& metric_info,
+      const MetricValue& metric_value) noexcept;
 
   /**
-   * @brief Registers a simple metric with MetricClient.
+   * @brief Create a Metric Labels With Component Signature object
    *
-   * @param async_executor
-   * @param metric_client
-   * @param metric_name_str Name of the metric
-   * @param metric_label_component Component Name where the metric is emitted
-   * @param metric_label_method Method Name where the metric is emitted
-   * @param metric_unit_type unit type
-   * @return std::shared_ptr<SimpleMetricInterface>
+   * @param component_name the component name value for metric label
+   * `ComponentName`.
+   * @param method_name the method name value for metric label `MethodName`.
+   * @return MetricLabels a map of metric labels.
    */
-  static std::shared_ptr<SimpleMetricInterface> RegisterSimpleMetric(
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
-      const std::shared_ptr<MetricClientInterface>& metric_client,
-      const std::string& metric_name_str,
-      const std::string& metric_label_component_str,
-      const std::string& metric_label_method_str,
-      MetricUnit metric_unit_type) noexcept;
-
-  /**
-   * @brief Registers a aggretate metric with MetricClient.
-   *
-   * @param async_executor
-   * @param metric_client
-   * @param metric_name_str Name of the metric
-   * @param metric_label_component Component Name where the metric is emitted
-   * @param metric_label_method Method Name where the metric is emitted
-   * @param metric_unit_type unit type
-   * @param metric_event_labels Dimension labels of the metric
-   * @param aggregated_metric_interval_ms Aggregation interval
-   * @return std::shared_ptr<AggregateMetricInterface>
-   */
-  static std::shared_ptr<AggregateMetricInterface> RegisterAggregateMetric(
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
-      const std::shared_ptr<MetricClientInterface>& metric_client,
-      const std::string& metric_name_str,
-      const std::string& metric_label_component,
-      const std::string& metric_label_method, MetricUnit metric_unit_type,
-      std::vector<std::string> metric_event_labels,
-      size_t aggregated_metric_interval_ms) noexcept;
+  static MetricLabels CreateMetricLabelsWithComponentSignature(
+      std::string component_name,
+      std::string method_name = std::string()) noexcept;
 };
 
 }  // namespace google::scp::cpio

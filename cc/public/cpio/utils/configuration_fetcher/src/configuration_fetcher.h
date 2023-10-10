@@ -111,18 +111,18 @@ class ConfigurationFetcher : public ConfigurationFetcherInterface {
       override;
 
   core::ExecutionResultOr<std::string>
-  GetGcpNosqlDatabaseClientSpannerInstanceName(
+  GetGcpNoSQLDatabaseClientSpannerInstanceName(
       GetConfigurationRequest request) noexcept override;
 
-  core::ExecutionResult GetGcpNosqlDatabaseClientSpannerInstanceNameAsync(
+  core::ExecutionResult GetGcpNoSQLDatabaseClientSpannerInstanceNameAsync(
       core::AsyncContext<GetConfigurationRequest, std::string> context) noexcept
       override;
 
   core::ExecutionResultOr<std::string>
-  GetGcpNosqlDatabaseClientSpannerDatabaseName(
+  GetGcpNoSQLDatabaseClientSpannerDatabaseName(
       GetConfigurationRequest request) noexcept override;
 
-  core::ExecutionResult GetGcpNosqlDatabaseClientSpannerDatabaseNameAsync(
+  core::ExecutionResult GetGcpNoSQLDatabaseClientSpannerDatabaseNameAsync(
       core::AsyncContext<GetConfigurationRequest, std::string> context) noexcept
       override;
   core::ExecutionResultOr<std::string> GetQueueClientQueueName(

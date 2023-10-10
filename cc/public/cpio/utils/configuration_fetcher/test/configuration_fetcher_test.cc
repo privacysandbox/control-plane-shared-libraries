@@ -477,7 +477,7 @@ TEST_F(ConfigurationFetcherTest, GetJobClientJobTableNameFailed) {
 }
 
 TEST_F(ConfigurationFetcherTest,
-       GetGcpNosqlDatabaseClientSpannerInstanceNameAsyncSucceeded) {
+       GetGcpNoSQLDatabaseClientSpannerInstanceNameAsyncSucceeded) {
   ExpectGetCurrentInstanceResourceName(SuccessExecutionResult());
   ExpectGetInstanceDetails(SuccessExecutionResult(), env_name_tag_);
   ExpectGetParameter(SuccessExecutionResult(),
@@ -492,24 +492,24 @@ TEST_F(ConfigurationFetcherTest,
         finished = true;
       });
   EXPECT_SUCCESS(
-      fetcher_->GetGcpNosqlDatabaseClientSpannerInstanceNameAsync(get_context));
+      fetcher_->GetGcpNoSQLDatabaseClientSpannerInstanceNameAsync(get_context));
   WaitUntil([&]() { return finished.load(); });
 }
 
 TEST_F(ConfigurationFetcherTest,
-       GetGcpNosqlDatabaseClientSpannerInstanceNameSucceeded) {
+       GetGcpNoSQLDatabaseClientSpannerInstanceNameSucceeded) {
   ExpectGetCurrentInstanceResourceName(SuccessExecutionResult());
   ExpectGetInstanceDetails(SuccessExecutionResult(), env_name_tag_);
   ExpectGetParameter(SuccessExecutionResult(),
                      kGcpNoSQLDatabaseClientSpannerInstanceName,
                      kTestGcpSpannerInstance);
-  EXPECT_THAT(fetcher_->GetGcpNosqlDatabaseClientSpannerInstanceName(
+  EXPECT_THAT(fetcher_->GetGcpNoSQLDatabaseClientSpannerInstanceName(
                   GetConfigurationRequest()),
               IsSuccessfulAndHolds(kTestGcpSpannerInstance));
 }
 
 TEST_F(ConfigurationFetcherTest,
-       GetGcpNosqlDatabaseClientSpannerDatabaseNameAsyncSucceeded) {
+       GetGcpNoSQLDatabaseClientSpannerDatabaseNameAsyncSucceeded) {
   ExpectGetCurrentInstanceResourceName(SuccessExecutionResult());
   ExpectGetInstanceDetails(SuccessExecutionResult(), env_name_tag_);
   ExpectGetParameter(SuccessExecutionResult(),
@@ -524,18 +524,18 @@ TEST_F(ConfigurationFetcherTest,
         finished = true;
       });
   EXPECT_SUCCESS(
-      fetcher_->GetGcpNosqlDatabaseClientSpannerDatabaseNameAsync(get_context));
+      fetcher_->GetGcpNoSQLDatabaseClientSpannerDatabaseNameAsync(get_context));
   WaitUntil([&]() { return finished.load(); });
 }
 
 TEST_F(ConfigurationFetcherTest,
-       GetGcpNosqlDatabaseClientSpannerDatabaseNameSucceeded) {
+       GetGcpNoSQLDatabaseClientSpannerDatabaseNameSucceeded) {
   ExpectGetCurrentInstanceResourceName(SuccessExecutionResult());
   ExpectGetInstanceDetails(SuccessExecutionResult(), env_name_tag_);
   ExpectGetParameter(SuccessExecutionResult(),
                      kGcpNoSQLDatabaseClientSpannerDatabaseName,
                      kTestGcpSpannerDatabase);
-  EXPECT_THAT(fetcher_->GetGcpNosqlDatabaseClientSpannerDatabaseName(
+  EXPECT_THAT(fetcher_->GetGcpNoSQLDatabaseClientSpannerDatabaseName(
                   GetConfigurationRequest()),
               IsSuccessfulAndHolds(kTestGcpSpannerDatabase));
 }

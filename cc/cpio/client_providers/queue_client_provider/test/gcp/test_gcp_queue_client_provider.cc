@@ -20,6 +20,7 @@
 #include <string>
 
 #include <grpcpp/grpcpp.h>
+#include <grpcpp/security/credentials.h>
 
 #include "cpio/client_providers/interface/queue_client_provider_interface.h"
 
@@ -40,10 +41,31 @@ shared_ptr<Channel> TestGcpPubSubStubFactory::GetPubSubChannel(
   if (!channel_) {
     ChannelArguments args;
     args.SetInt(GRPC_ARG_ENABLE_RETRIES, 1);  // enable
-    channel_ = CreateCustomChannel(
-        *dynamic_pointer_cast<TestGcpQueueClientOptions>(options)
-             ->pubsub_client_endpoint_override,
-        grpc::InsecureChannelCredentials(), args);
+    auto test_options =
+        dynamic_pointer_cast<TestGcpQueueClientOptions>(options);
+    auto override_endpoint =
+        test_options->pubsub_client_endpoint_override &&
+        !test_options->pubsub_client_endpoint_override->empty();
+    auto endpoint = override_endpoint
+                        ? *test_options->pubsub_client_endpoint_override
+                        : kPubSubEndpointUri;
+    if (test_options->access_token.empty()) {
+      channel_ = CreateCustomChannel(endpoint,
+                                     override_endpoint
+                                         ? grpc::InsecureChannelCredentials()
+                                         : grpc::GoogleDefaultCredentials(),
+                                     args);
+    } else {
+      auto call_credentials =
+          grpc::AccessTokenCredentials(test_options->access_token);
+      grpc::SslCredentialsOptions ssl_options;
+      auto ssl_credentials = grpc::SslCredentials(ssl_options);
+
+      channel_ = CreateCustomChannel(
+          endpoint,
+          grpc::CompositeChannelCredentials(ssl_credentials, call_credentials),
+          args);
+    }
   }
   return channel_;
 }

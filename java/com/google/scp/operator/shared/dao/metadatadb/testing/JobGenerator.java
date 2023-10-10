@@ -16,12 +16,15 @@
 
 package com.google.scp.operator.shared.dao.metadatadb.testing;
 
+import static com.google.cmrt.sdk.job_service.v1.JobStatus.JOB_STATUS_CREATED;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.scp.shared.proto.ProtoUtil.toJavaInstant;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.amazonaws.services.lambda.runtime.events.DynamodbEvent.DynamodbStreamRecord;
 import com.amazonaws.services.lambda.runtime.events.models.dynamodb.AttributeValue;
 import com.amazonaws.services.lambda.runtime.events.models.dynamodb.StreamRecord;
+import com.google.cmrt.sdk.job_service.v1.Job;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.scp.operator.protos.shared.backend.ErrorCountProto.ErrorCount;
@@ -32,6 +35,7 @@ import com.google.scp.operator.protos.shared.backend.metadatadb.JobMetadataProto
 import com.google.scp.shared.proto.ProtoUtil;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 /** Provides fake Job related objects for testing. */
 public final class JobGenerator {
@@ -94,6 +98,9 @@ public final class JobGenerator {
                       .name())
               .setReturnMessage("Aggregation job successfully processed")
               .build();
+
+  private static final Instant CREATED_TIME = Instant.parse("2023-10-01T08:25:24.00Z");
+  private static final Instant UPDATED_TIME = Instant.parse("2023-10-01T08:29:56.00Z");
 
   /**
    * Generate a stream record with a new image that matches the one returned by
@@ -294,6 +301,24 @@ public final class JobGenerator {
   /** Creates a list of {@code ErrorCount} instances with fake values. */
   public static ImmutableList<ErrorCount> createFakeErrorCounts() {
     return ERROR_COUNTS;
+  }
+
+  /** Creates an instance of the {@code Job} class with fake values. */
+  public static Job createFakeJob(String jobId) {
+    HelloWorld helloworld = HelloWorld.newBuilder().setName("myname").setId(694324).build();
+    String jobBody = new String(helloworld.toByteArray(), UTF_8);
+    Job job =
+        Job.newBuilder()
+            .setJobId(jobId)
+            .setServerJobId(UUID.randomUUID().toString())
+            .setJobBody(jobBody)
+            .setJobStatus(JOB_STATUS_CREATED)
+            .setCreatedTime(ProtoUtil.toProtoTimestamp(CREATED_TIME))
+            .setUpdatedTime(ProtoUtil.toProtoTimestamp(UPDATED_TIME))
+            .setRetryCount(0)
+            .build();
+
+    return job;
   }
 
   private static AttributeValue createFakeErrorSummaryAttributeValue() {

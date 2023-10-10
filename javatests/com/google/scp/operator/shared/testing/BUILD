@@ -30,8 +30,10 @@ java_test(
     name = "JobGeneratorTest",
     srcs = ["JobGeneratorTest.java"],
     deps = [
+        "//cc/public/cpio/proto/job_service/v1:job_service_java_proto",
         "//java/com/google/scp/operator/frontend/service/model",
         "//java/com/google/scp/operator/shared/dao/metadatadb/aws/model/converter",
+        "//java/com/google/scp/operator/shared/dao/metadatadb/testing:hello_world_java_proto",
         "//java/com/google/scp/operator/shared/dao/metadatadb/testing:job_generator",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/proto",

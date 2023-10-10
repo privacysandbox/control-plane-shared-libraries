@@ -58,6 +58,7 @@ cc_test(
         "//cc/cpio/client_providers/private_key_client_provider/src:private_key_client_provider_lib",
         "//cc/public/core/test/interface:execution_result_matchers",
         "//cc/public/cpio/proto/public_key_service/v1:public_key_service_cc_proto",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],

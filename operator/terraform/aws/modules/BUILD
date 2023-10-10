@@ -35,3 +35,21 @@ pkg_filegroup(
     ],
     prefix = "modules",
 )
+
+pkg_filegroup(
+    name = "cc_modules_pkg",
+    srcs = [
+        "//operator/terraform/aws/modules/alarmsnstopic",
+        "//operator/terraform/aws/modules/bazel",
+        "//operator/terraform/aws/modules/cc_autoscaling",
+        "//operator/terraform/aws/modules/database",
+        "//operator/terraform/aws/modules/frontend",
+        "//operator/terraform/aws/modules/frontenddashboard",
+        "//operator/terraform/aws/modules/parameters",
+        "//operator/terraform/aws/modules/queue",
+        "//operator/terraform/aws/modules/vpc",
+        "//operator/terraform/aws/modules/worker",
+        "//operator/terraform/aws/modules/workerdashboard",
+    ],
+    prefix = "modules",
+)

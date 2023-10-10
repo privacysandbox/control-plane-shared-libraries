@@ -28,6 +28,10 @@ import com.google.inject.Inject;
 import com.google.scp.operator.frontend.injection.modules.testing.FakeFrontendModule;
 import com.google.scp.operator.frontend.tasks.CreateJobTask;
 import com.google.scp.operator.frontend.tasks.ErrorReasons;
+import com.google.scp.operator.frontend.tasks.GetJobByIdTask;
+import com.google.scp.operator.frontend.tasks.PutJobTask;
+import com.google.scp.operator.frontend.tasks.testing.FakeGetJobByIdTask;
+import com.google.scp.operator.frontend.tasks.testing.FakePutJobTask;
 import com.google.scp.operator.frontend.testing.FakeRequestInfoValidator;
 import com.google.scp.operator.protos.shared.backend.RequestInfoProto.RequestInfo;
 import com.google.scp.operator.protos.shared.backend.metadatadb.JobMetadataProto.JobMetadata;
@@ -140,8 +144,10 @@ public class AwsCreateJobTaskTest {
   static class TestEnv extends FakeFrontendModule {
 
     @Override
-    public void bindCreateJobTaskModule() {
+    public void bindTaskModule() {
       bind(CreateJobTask.class).to(AwsCreateJobTask.class);
+      bind(PutJobTask.class).to(FakePutJobTask.class);
+      bind(GetJobByIdTask.class).to(FakeGetJobByIdTask.class);
     }
   }
 }

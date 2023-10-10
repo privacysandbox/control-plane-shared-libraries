@@ -151,7 +151,8 @@ class AutoExpiryConcurrentMap : public ServiceInterface {
             on_before_element_deletion_callback),
         async_executor_(async_executor),
         pending_garbage_collection_callbacks_(0),
-        is_running_(false) {}
+        is_running_(false),
+        activity_id_(Uuid::GenerateUuid()) {}
 
   ExecutionResult Init() noexcept override { return SuccessExecutionResult(); }
 
@@ -161,7 +162,7 @@ class AutoExpiryConcurrentMap : public ServiceInterface {
   }
 
   ExecutionResult Stop() noexcept override {
-    SCP_INFO(kAutoExpiryConcurrentMap, kZeroUuid, "Stopping...");
+    SCP_DEBUG(kAutoExpiryConcurrentMap, activity_id_, "Stopping...");
     sync_mutex.lock();
     is_running_ = false;
     sync_mutex.unlock();
@@ -180,7 +181,7 @@ class AutoExpiryConcurrentMap : public ServiceInterface {
         auto result = FailureExecutionResult(
             core::errors::SC_AUTO_EXPIRY_CONCURRENT_MAP_STOP_INCOMPLETE);
         SCP_ERROR(
-            kAutoExpiryConcurrentMap, kZeroUuid, result,
+            kAutoExpiryConcurrentMap, activity_id_, result,
             "Exiting prematurely. Waited for '%llu' (ms). There are still "
             "'%llu' pending callbacks.",
             std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -422,6 +423,10 @@ class AutoExpiryConcurrentMap : public ServiceInterface {
 
     pending_garbage_collection_callbacks_ = elements_to_remove.size();
 
+    SCP_DEBUG(kAutoExpiryConcurrentMap, activity_id_,
+              "Pending callbacks to arrive in this round: '%llu'",
+              pending_garbage_collection_callbacks_.load());
+
     for (auto element_to_remove : elements_to_remove) {
       auto key = std::get<0>(element_to_remove);
       auto value = std::get<1>(element_to_remove);
@@ -491,5 +496,7 @@ class AutoExpiryConcurrentMap : public ServiceInterface {
   std::mutex sync_mutex;
   /// Indicates whther the component stopped
   bool is_running_;
+  /// ID of the object
+  Uuid activity_id_;
 };
 }  // namespace google::scp::core::common

@@ -17,9 +17,9 @@
 #pragma once
 
 #include <atomic>
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "core/interface/async_context.h"
@@ -33,23 +33,21 @@
 
 #include "error_codes.h"
 
-// 60 seconds
-static constexpr size_t kDefaultAggregateMetricPushIntervalDurationInMs =
-    60 * 1000;
-
 namespace google::scp::cpio {
 /*! @copydoc AggregateMetricInterface
  */
 class AggregateMetric : public AggregateMetricInterface {
  public:
+  explicit AggregateMetric(core::AsyncExecutorInterface* async_executor,
+                           MetricClientInterface* metric_client,
+                           MetricDefinition metric_info,
+                           core::TimeDuration push_interval_duration_in_ms);
+
   explicit AggregateMetric(
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
-      const std::shared_ptr<MetricClientInterface>& metric_client,
-      const std::shared_ptr<MetricDefinition>& metric_info,
-      core::TimeDuration push_interval_duration_in_ms =
-          kDefaultAggregateMetricPushIntervalDurationInMs,
-      const std::shared_ptr<std::vector<std::string>>& event_code_list =
-          nullptr,
+      core::AsyncExecutorInterface* async_executor,
+      MetricClientInterface* metric_client, MetricDefinition metric_info,
+      core::TimeDuration push_interval_duration_in_ms,
+      const std::vector<std::string>& event_code_labels_list,
       const std::string& event_code_label_key = kEventCodeLabelKey);
 
   core::ExecutionResult Init() noexcept override;
@@ -70,12 +68,11 @@ class AggregateMetric : public AggregateMetricInterface {
    * @brief Runs the actual metric push logic for one counter data.
    *
    * @param counter the counter number to be the metric value.
-   * @param metric_tag Optional metric_tag contains the metric name, unit or tag
-   * to update the info from metric_info_.
+   * @param metric_info Metric info specifies the metric's name, unit,
+   * namespace, and labels.
    */
-  virtual void MetricPushHandler(
-      int64_t counter,
-      const std::shared_ptr<MetricTag>& metric_tag = nullptr) noexcept;
+  virtual void MetricPushHandler(int64_t counter,
+                                 const MetricDefinition& metric_info) noexcept;
 
   /**
    * @brief Goes over all counters and push metric when the counter has valid
@@ -92,28 +89,27 @@ class AggregateMetric : public AggregateMetricInterface {
    */
   virtual core::ExecutionResult ScheduleMetricPush() noexcept;
 
-  /// The map contains the event codes paired with its counter. The
+  /// The unordered_map contains the event codes paired with its counter. The
   /// event_counter is associated with the event_code.
-  std::map<std::string, std::atomic<size_t>> event_counters_;
+  std::unordered_map<std::string, std::atomic<size_t>> event_counters_;
 
-  /// The map contains the event codes paired with its metric tag. The metric
-  /// tag has one metric label of event_code.
-  std::map<std::string, std::shared_ptr<MetricTag>> event_tags_;
+  /// The unordered_map contains the event codes paired with its metric
+  /// definition.
+  std::unordered_map<std::string, const MetricDefinition> event_metric_infos_;
 
   /// An instance to the async executor.
-  std::shared_ptr<core::AsyncExecutorInterface> async_executor_;
+  core::AsyncExecutorInterface* async_executor_;
   /// Metric client instance.
-  std::shared_ptr<MetricClientInterface> metric_client_;
+  MetricClientInterface* metric_client_;
   /// Metric general information.
-  std::shared_ptr<MetricDefinition> metric_info_;
+  const MetricDefinition metric_info_;
 
   /// The time duration of the aggregated metric push interval in milliseconds.
-  /// The default value is 60000.
   core::TimeDuration push_interval_duration_in_ms_;
 
   /// The default counter in AggregateMetric. This counter doesn't have
   /// event_code or metric_tag, and it defined by metric_info_ only. When
-  /// construct AggregateMetric without event_code_list, this is the only
+  /// construct AggregateMetric without event_code_labels_list, this is the only
   /// default counter in AggregateMetric.
   std::atomic<size_t> counter_;
 

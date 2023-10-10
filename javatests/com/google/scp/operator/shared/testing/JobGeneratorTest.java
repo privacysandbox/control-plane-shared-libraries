@@ -16,11 +16,14 @@
 
 package com.google.scp.operator.shared.testing;
 
+import static com.google.cmrt.sdk.job_service.v1.JobStatus.JOB_STATUS_CREATED;
 import static com.google.common.truth.Truth.assertThat;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.amazonaws.services.lambda.runtime.events.DynamodbEvent.DynamodbStreamRecord;
 import com.amazonaws.services.lambda.runtime.events.transformers.v2.dynamodb.DynamodbRecordTransformer;
 import com.google.acai.Acai;
+import com.google.cmrt.sdk.job_service.v1.Job;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.AbstractModule;
@@ -37,6 +40,7 @@ import com.google.scp.operator.protos.shared.backend.RequestInfoProto.RequestInf
 import com.google.scp.operator.protos.shared.backend.ReturnCodeProto.ReturnCode;
 import com.google.scp.operator.protos.shared.backend.metadatadb.JobMetadataProto.JobMetadata;
 import com.google.scp.operator.shared.dao.metadatadb.aws.model.converter.AttributeValueMapToJobMetadataConverter;
+import com.google.scp.operator.shared.dao.metadatadb.testing.HelloWorld;
 import com.google.scp.operator.shared.dao.metadatadb.testing.JobGenerator;
 import com.google.scp.shared.proto.ProtoUtil;
 import java.text.ParseException;
@@ -393,6 +397,29 @@ public class JobGeneratorTest {
                 .setPostbackUrl(fakeJobMetadata.getRequestInfo().getPostbackUrl())
                 .putAllJobParameters(fakeJobMetadata.getRequestInfo().getJobParameters())
                 .build());
+  }
+
+  @Test
+  public void testPutJobEqualsToJob() throws Exception {
+    String jobId = "123";
+
+    HelloWorld helloworld = HelloWorld.newBuilder().setName("myname").setId(694324).build();
+    String jobBody = new String(helloworld.toByteArray(), UTF_8);
+
+    Job actualJob = JobGenerator.createFakeJob(jobId);
+
+    Job expectedJob =
+        Job.newBuilder()
+            .setJobId(jobId)
+            .setServerJobId(actualJob.getServerJobId())
+            .setJobBody(jobBody)
+            .setJobStatus(JOB_STATUS_CREATED)
+            .setCreatedTime(ProtoUtil.toProtoTimestamp(Instant.parse("2023-10-01T08:25:24.00Z")))
+            .setUpdatedTime(ProtoUtil.toProtoTimestamp(Instant.parse("2023-10-01T08:29:56.00Z")))
+            .setRetryCount(0)
+            .build();
+
+    assertThat(actualJob).isEqualTo(expectedJob);
   }
 
   public static class TestEnv extends AbstractModule {}

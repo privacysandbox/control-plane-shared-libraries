@@ -52,9 +52,9 @@ class MockGcpMetricClientProviderOverrides : public GcpMetricClientProvider {
   }
 
   void OnAsyncCreateTimeSeriesCallback(
-      std::vector<
-          core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
-                             cmrt::sdk::metric_service::v1::PutMetricsResponse>>
+      std::shared_ptr<std::vector<core::AsyncContext<
+          cmrt::sdk::metric_service::v1::PutMetricsRequest,
+          cmrt::sdk::metric_service::v1::PutMetricsResponse>>>
           metric_requests_vector,
       google::cloud::future<google::cloud::Status> outcome) noexcept override {
     return GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback(

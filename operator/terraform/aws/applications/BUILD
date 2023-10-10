@@ -23,3 +23,11 @@ pkg_filegroup(
     ],
     prefix = "applications",
 )
+
+pkg_filegroup(
+    name = "cc_applications_pkg",
+    srcs = [
+        "//operator/terraform/aws/applications/cc-operator-service",
+    ],
+    prefix = "applications",
+)

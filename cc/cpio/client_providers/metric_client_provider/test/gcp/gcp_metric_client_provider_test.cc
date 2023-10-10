@@ -21,6 +21,7 @@
 
 #include <google/protobuf/util/time_util.h>
 
+#include "absl/strings/str_cat.h"
 #include "core/async_executor/mock/mock_async_executor.h"
 #include "core/interface/async_context.h"
 #include "core/test/utils/conditional_wait.h"
@@ -37,6 +38,7 @@
 #include "public/cpio/interface/metric_client/type_def.h"
 #include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
+using absl::StrCat;
 using google::cloud::make_ready_future;
 using google::cloud::Status;
 using google::cloud::StatusCode;
@@ -66,6 +68,7 @@ using std::move;
 using std::shared_ptr;
 using std::stod;
 using std::string;
+using std::to_string;
 using std::unique_ptr;
 using std::vector;
 using std::chrono::duration_cast;
@@ -75,21 +78,40 @@ using testing::ByMove;
 using testing::NiceMock;
 using testing::Return;
 
-static constexpr char kName[] = "test_name";
-static constexpr char kValue[] = "12346.89";
-static constexpr char kNamespace[] = "gcp_namespace";
-static constexpr char kDifferentNamespace[] = "different_namespace";
-static constexpr char kProjectIdValue[] = "123456789";
-static constexpr char kInstanceIdValue[] = "987654321";
-static constexpr char kInstanceZoneValue[] = "us-central1-c";
+namespace {
+constexpr char kName[] = "test_name";
+constexpr char kValue[] = "12346.89";
+constexpr char kNamespace[] = "gcp_namespace";
+constexpr char kDifferentNamespace[] = "different_namespace";
+constexpr char kProjectIdValue[] = "123456789";
+constexpr char kInstanceIdValue[] = "987654321";
+constexpr char kInstanceZoneValue[] = "us-central1-c";
 
 constexpr char kInstanceResourceName[] =
     R"(//compute.googleapis.com/projects/123456789/zones/us-central1-c/instances/987654321)";
 
-static constexpr char kResourceType[] = "gce_instance";
-static constexpr char kProjectIdKey[] = "project_id";
-static constexpr char kInstanceIdKey[] = "instance_id";
-static constexpr char kInstanceZoneKey[] = "zone";
+constexpr char kResourceType[] = "gce_instance";
+constexpr char kProjectIdKey[] = "project_id";
+constexpr char kInstanceIdKey[] = "instance_id";
+constexpr char kInstanceZoneKey[] = "zone";
+
+void SetPutMetricsRequest(
+    PutMetricsRequest& record_metric_request, const string& value = kValue,
+    const int64_t& timestamp_in_ms =
+        duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+            .count(),
+    int number_of_metrics = 1) {
+  for (auto i = 0; i < number_of_metrics; i++) {
+    auto metric = record_metric_request.add_metrics();
+    auto name = i > 0 ? StrCat(kName, to_string(i)) : kName;
+    metric->set_name(name);
+    metric->set_value(value);
+    *metric->mutable_timestamp() =
+        TimeUtil::MillisecondsToTimestamp(timestamp_in_ms);
+  }
+}
+
+}  // namespace
 
 namespace google::scp::cpio::client_providers::gcp_metric_client::test {
 class GcpMetricClientProviderTest : public ::testing::Test {
@@ -133,18 +155,6 @@ class GcpMetricClientProviderTest : public ::testing::Test {
   shared_ptr<MockMetricServiceConnection> connection_;
   unique_ptr<MockGcpMetricClientProviderOverrides> metric_client_provider_;
 };
-
-static void SetPutMetricsRequest(
-    PutMetricsRequest& record_metric_request, const string& value = kValue,
-    const int64_t& timestamp_in_ms =
-        duration_cast<milliseconds>(system_clock::now().time_since_epoch())
-            .count()) {
-  auto metric = record_metric_request.add_metrics();
-  metric->set_name(kName);
-  metric->set_value(value);
-  *metric->mutable_timestamp() =
-      TimeUtil::MillisecondsToTimestamp(timestamp_in_ms);
-}
 
 MATCHER_P2(RequestEquals, metric_name, metric_namespace, "") {
   bool equal = true;
@@ -204,7 +214,8 @@ TEST_F(GcpMetricClientProviderTest,
   EXPECT_EQ(received_metrics, 5);
 }
 
-TEST_F(GcpMetricClientProviderTest, MetricsBatchPush) {
+TEST_F(GcpMetricClientProviderTest,
+       MetricsBatchPushShouldGroupContextsMetrics) {
   metric_client_provider_ = CreateClient(true);
   EXPECT_SUCCESS(metric_client_provider_->Init());
   EXPECT_SUCCESS(metric_client_provider_->Run());
@@ -222,17 +233,53 @@ TEST_F(GcpMetricClientProviderTest, MetricsBatchPush) {
   atomic<int> received_metrics = 0;
   EXPECT_CALL(*connection_,
               AsyncCreateTimeSeries(RequestEquals(metric_name, kNamespace)))
-      .WillRepeatedly([&](CreateTimeSeriesRequest const& request) {
+      .WillOnce([&](CreateTimeSeriesRequest const& request) {
         received_metrics.fetch_add(request.time_series().size());
         return make_ready_future(Status(StatusCode::kOk, ""));
       });
 
-  for (auto i = 0; i < 5; i++) {
+  for (auto i = 0; i < 200; i++) {
     requests_vector->emplace_back(context);
   }
   auto result = metric_client_provider_->MetricsBatchPush(requests_vector);
   EXPECT_SUCCESS(result);
-  EXPECT_EQ(received_metrics, 5);
+  EXPECT_EQ(received_metrics, 200);
+}
+
+TEST_F(GcpMetricClientProviderTest, ShouldNotGroupContextsIfMetricsOversize) {
+  metric_client_provider_ = CreateClient(true);
+  EXPECT_SUCCESS(metric_client_provider_->Init());
+  EXPECT_SUCCESS(metric_client_provider_->Run());
+
+  PutMetricsRequest record_metric_request;
+  auto timestamp_in_ms =
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+          .count();
+  SetPutMetricsRequest(record_metric_request, kValue, timestamp_in_ms,
+                       150 /*number of metrics in the request*/);
+  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
+      make_shared<PutMetricsRequest>(record_metric_request),
+      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
+  auto requests_vector = make_shared<
+      vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>();
+
+  auto metric_name =
+      GcpMetricClientUtils::ConstructProjectName(kProjectIdValue);
+  atomic<int> received_metrics = 0;
+  EXPECT_CALL(*connection_,
+              AsyncCreateTimeSeries(RequestEquals(metric_name, kNamespace)))
+      .Times(5)
+      .WillRepeatedly([&](CreateTimeSeriesRequest const& request) {
+        received_metrics.fetch_add(request.time_series().size());
+        return make_ready_future(Status(StatusCode::kOk, ""));
+      });
+  int number_of_context(5);
+  for (auto i = 0; i < number_of_context; i++) {
+    requests_vector->emplace_back(context);
+  }
+  auto result = metric_client_provider_->MetricsBatchPush(requests_vector);
+  EXPECT_SUCCESS(result);
+  EXPECT_EQ(received_metrics, 150 * number_of_context);
 }
 
 TEST_F(GcpMetricClientProviderTest, FailedMetricsBatchPush) {
@@ -291,8 +338,10 @@ TEST_F(GcpMetricClientProviderTest, AsyncCreateTimeSeriesCallback) {
 
   auto outcome = make_ready_future(Status(StatusCode::kOk, ""));
 
-  metric_client_provider_->OnAsyncCreateTimeSeriesCallback(requests_vector,
-                                                           move(outcome));
+  metric_client_provider_->OnAsyncCreateTimeSeriesCallback(
+      make_shared<vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>(
+          requests_vector),
+      move(outcome));
   EXPECT_EQ(received_responses, 5);
 }
 

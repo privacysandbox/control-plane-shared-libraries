@@ -25,6 +25,15 @@ filegroup(
     ],
 )
 
+exports_files(["test_gcp_blob_storage_client.h"])
+
+filegroup(
+    name = "test_gcp_blob_storage_client_srcs",
+    srcs = [
+        ":test_gcp_blob_storage_client.h",
+    ],
+)
+
 cc_test(
     name = "blob_storage_client_test",
     size = "small",

@@ -50,7 +50,8 @@ module "operator_service" {
   job_db_write_capacity = var.job_db_write_capacity
 
   # Worker Alarms
-  worker_alarms_enabled            = var.worker_alarms_enabled
+  alarms_enabled                   = var.alarms_enabled
+  custom_metrics_alarms_enabled    = var.custom_metrics_alarms_enabled
   job_client_error_threshold       = var.job_client_error_threshold
   job_validation_failure_threshold = var.job_validation_failure_threshold
   worker_job_error_threshold       = var.worker_job_error_threshold
@@ -76,4 +77,12 @@ module "operator_service" {
   user_provided_vpc_subnet_ids         = var.user_provided_vpc_subnet_ids
   vpc_cidr                             = var.vpc_cidr
   vpc_availability_zones               = var.vpc_availability_zones
+
+  # Parameters
+  shared_parameter_names         = var.shared_parameter_names
+  shared_parameter_values        = var.shared_parameter_values
+  job_client_parameter_names     = var.job_client_parameter_names
+  job_client_parameter_values    = var.job_client_parameter_values
+  crypto_client_parameter_names  = var.crypto_client_parameter_names
+  crypto_client_parameter_values = var.crypto_client_parameter_values
 }

@@ -20,6 +20,7 @@ java_library(
     name = "aws",
     srcs = glob(["*.java"]),
     deps = [
+        "//cc/public/cpio/proto/job_service/v1:job_service_java_proto",
         "//java/com/google/scp/operator/frontend/service/model",
         "//java/com/google/scp/operator/frontend/tasks",
         "//java/com/google/scp/operator/frontend/tasks/validation",

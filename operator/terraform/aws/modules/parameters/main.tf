@@ -39,6 +39,7 @@ resource "aws_ssm_parameter" "worker_parameter" {
 # Deprecated and replaced by "worker_parameter", used only for
 # backwards compatibility
 resource "aws_ssm_parameter" "worker_parameter_legacy" {
+  count = var.legacy_parameter_name == "" ? 0 : 1
   name  = format("/aggregate-service/%s/%s", var.environment, var.legacy_parameter_name != "" ? var.legacy_parameter_name : var.parameter_name)
   type  = "String"
   value = var.parameter_value

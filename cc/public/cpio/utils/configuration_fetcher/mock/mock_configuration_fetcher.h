@@ -103,20 +103,20 @@ class MockConfigurationFetcher : public ConfigurationFetcherInterface {
               (noexcept, override));
 
   MOCK_METHOD(core::ExecutionResultOr<std::string>,
-              GetGcpNosqlDatabaseClientSpannerInstanceName,
+              GetGcpNoSQLDatabaseClientSpannerInstanceName,
               ((GetConfigurationRequest)), (noexcept, override));
 
   MOCK_METHOD(core::ExecutionResult,
-              GetGcpNosqlDatabaseClientSpannerInstanceNameAsync,
+              GetGcpNoSQLDatabaseClientSpannerInstanceNameAsync,
               ((core::AsyncContext<GetConfigurationRequest, std::string>)),
               (noexcept, override));
 
   MOCK_METHOD(core::ExecutionResultOr<std::string>,
-              GetGcpNosqlDatabaseClientSpannerDatabaseName,
+              GetGcpNoSQLDatabaseClientSpannerDatabaseName,
               ((GetConfigurationRequest)), (noexcept, override));
 
   MOCK_METHOD(core::ExecutionResult,
-              GetGcpNosqlDatabaseClientSpannerDatabaseNameAsync,
+              GetGcpNoSQLDatabaseClientSpannerDatabaseNameAsync,
               ((core::AsyncContext<GetConfigurationRequest, std::string>)),
               (noexcept, override));
 

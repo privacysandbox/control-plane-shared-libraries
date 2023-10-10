@@ -49,3 +49,15 @@ pkg_tar(
     extension = "tgz",
     strip_prefix = "/",
 )
+
+pkg_tar(
+    name = "cc_operator_tar",
+    srcs = [
+        "//licenses",
+        "//operator/terraform/aws/applications:cc_applications_pkg",
+        "//operator/terraform/aws/environments_cc_operator_service:cc_operator_tar_environments",
+        "//operator/terraform/aws/modules:cc_modules_pkg",
+    ],
+    extension = "tgz",
+    strip_prefix = "/",
+)

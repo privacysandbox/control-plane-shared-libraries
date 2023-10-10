@@ -23,6 +23,7 @@
 #include "cpio/client_providers/interface/job_client_provider_interface.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/job_client/job_client_interface.h"
+#include "public/cpio/interface/job_client/type_def.h"
 #include "public/cpio/interface/type_def.h"
 #include "public/cpio/proto/job_service/v1/job_service.pb.h"
 

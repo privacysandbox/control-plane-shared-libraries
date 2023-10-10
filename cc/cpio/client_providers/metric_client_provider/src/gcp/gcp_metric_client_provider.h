@@ -78,20 +78,21 @@ class GcpMetricClientProvider : public MetricClientProvider {
   /**
    * @brief Is called after GCP AsyncCreateTimeSeries is completed.
    *
-   * @param record_metric_context the record custom metric operation
+   * @param metric_requests_vector the record custom metric operation
    * context.
    * @param outcome the operation outcome of GCP AsyncCreateTimeSeries.
    */
   virtual void OnAsyncCreateTimeSeriesCallback(
-      std::vector<
-          core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
-                             cmrt::sdk::metric_service::v1::PutMetricsResponse>>
+      std::shared_ptr<std::vector<core::AsyncContext<
+          cmrt::sdk::metric_service::v1::PutMetricsRequest,
+          cmrt::sdk::metric_service::v1::PutMetricsResponse>>>
           metric_requests_vector,
       google::cloud::future<google::cloud::Status> outcome) noexcept;
 
  private:
   GcpInstanceResourceNameDetails instance_resource_;
-
+  // GCP project name in format `projects/[PROJECT_ID]`
+  std::string project_name_;
   /// An Instance of the Gcp metric service client.
   std::shared_ptr<const google::cloud::monitoring::MetricServiceClient>
       metric_service_client_;

@@ -12,24 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_pkg//:mappings.bzl", "pkg_filegroup", "pkg_files", "pkg_mklink")
+load("@rules_pkg//:mappings.bzl", "pkg_files", "pkg_mklink")
 
 package(default_visibility = ["//visibility:public"])
-
-# Files to go both in the "shared" folder and the "demo" folder.
-# Not symlinked for simplicity in interacting with various operator
-# environments.
-SHARED_FILES = [
-    "//operator/terraform/aws:ami_params_auto_tfvars",
-    "operator_service.tf",
-    "variables.tf",
-]
-
-pkg_files(
-    name = "shared_files",
-    srcs = SHARED_FILES,
-    prefix = "shared",
-)
 
 pkg_files(
     name = "demo_files",
@@ -56,26 +41,13 @@ pkg_mklink(
 )
 
 pkg_mklink(
-    name = "operator_service_shared_vars_link",
-    src = "../../applications/cc-operator-service/variables.tf",
-    dest = "../shared/variables.tf",
+    name = "operator_service_parameter_vars_link",
+    src = "../shared/parameter_variables.tf",
+    dest = "demo/parameter_variables.tf",
 )
 
 pkg_mklink(
     name = "ami_params_link",
     src = "../shared/ami_params.auto.tfvars",
     dest = "demo/ami_params.auto.tfvars",
-)
-
-pkg_filegroup(
-    name = "demo_environment_pkg",
-    srcs = [
-        ":ami_params_link",
-        ":demo_files",
-        ":operator_service_link",
-        ":operator_service_shared_vars_link",
-        ":operator_service_vars_link",
-        ":shared_files",
-    ],
-    prefix = "environments_cc_operator_service",
 )

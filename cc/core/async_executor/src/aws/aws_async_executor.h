@@ -25,29 +25,34 @@
 
 namespace google::scp::core::async_executor::aws {
 /**
- * @brief Custom async executor the AWS library. The current executor
- * implemented in the AWS SDK uses a singled queue with locks which does not
- * provide high throughput as needed. This is a wrapper around the async
- * executor to redirect all the requests to the SCP AsyncExecutor.
+ * @brief Custom IO (Input/Output) task async executor the AWS library. The
+ * current executor implemented in the AWS SDK uses a singled queue with locks
+ * which does not provide high throughput as needed. This is a wrapper around
+ * the async executor to redirect all the requests to the SCP AsyncExecutor for
+ * IO operations.
  */
 class AwsAsyncExecutor : public Aws::Utils::Threading::Executor {
  public:
   AwsAsyncExecutor(
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor)
-      : async_executor_(async_executor) {}
+      const std::shared_ptr<core::AsyncExecutorInterface>& io_async_executor,
+      AsyncPriority io_async_execution_priority =
+          kDefaultAsyncPriorityForBlockingIOTaskExecution)
+      : io_async_executor_(io_async_executor),
+        io_async_execution_priority_(io_async_execution_priority) {}
 
  protected:
   bool SubmitToThread(std::function<void()>&& task) override {
-    if (async_executor_->Schedule([task]() { task(); },
-                                  core::AsyncPriority::Normal) ==
-        SuccessExecutionResult()) {
+    if (io_async_executor_
+            ->Schedule([task]() { task(); }, io_async_execution_priority_)
+            .Successful()) {
       return true;
     }
-
     return false;
   }
 
  private:
-  const std::shared_ptr<core::AsyncExecutorInterface> async_executor_;
+  const std::shared_ptr<core::AsyncExecutorInterface> io_async_executor_;
+
+  const AsyncPriority io_async_execution_priority_;
 };
 }  // namespace google::scp::core::async_executor::aws

@@ -29,98 +29,54 @@
 using google::cmrt::sdk::metric_service::v1::Metric;
 using google::cmrt::sdk::metric_service::v1::PutMetricsRequest;
 using google::cmrt::sdk::metric_service::v1::PutMetricsResponse;
+using google::scp::cpio::MetricUnit;
 using std::make_shared;
 using std::string;
 
+namespace {
+constexpr char kMetricName[] = "FrontEndRequestCount";
+constexpr char kMetricValue[] = "1234";
+constexpr char kNamespace[] = "PBS";
+constexpr char kComponentValue[] = "component_name";
+constexpr char kMethodValue[] = "method_name";
+
+}  // namespace
+
 namespace google::scp::cpio {
-TEST(MetricUtilsTest, OverrideMetricName) {
-  auto metric_name = make_shared<MetricName>("FrontEndRequestCount");
-  auto metric_unit = make_shared<MetricUnit>(MetricUnit::kCount);
-  auto metric_info = make_shared<MetricDefinition>(metric_name, metric_unit);
-  metric_info->name_space = make_shared<MetricNamespace>("PBS");
-  auto metric_value = make_shared<MetricValue>("1234");
 
-  auto metric_tag = make_shared<MetricTag>();
-  auto update_name = make_shared<MetricName>("ABCDEFG");
-  metric_tag->update_name = update_name;
-  MetricLabels time_additional_labels;
-  time_additional_labels["Type"] = "AverageExecutionTime";
-  metric_tag->additional_labels =
-      make_shared<MetricLabels>(time_additional_labels);
+TEST(MetricUtilsTest, GetPutMetricsRequest) {
+  auto metric_info = MetricDefinition(
+      kMetricName, MetricUnit::kUnknown, kNamespace,
+      MetricLabels(
+          {{"Key1", "Value1"}, {"Key2", "Value2"}, {"Key3", "Value3"}}));
 
   auto record_metric_request = make_shared<PutMetricsRequest>();
   MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info,
-                                    metric_value, metric_tag);
+                                    kMetricValue);
 
-  EXPECT_EQ(record_metric_request->metrics()[0].name(), *update_name);
+  EXPECT_EQ(record_metric_request->metric_namespace(), kNamespace);
+  EXPECT_EQ(record_metric_request->metrics()[0].name(), kMetricName);
   EXPECT_EQ(record_metric_request->metrics()[0].unit(),
-            cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_COUNT);
-  EXPECT_EQ(record_metric_request->metrics()[0].value(), *metric_value);
-}
-
-TEST(MetricUtilsTest, OverrideMetricUnit) {
-  auto metric_name = make_shared<MetricName>("FrontEndRequestCount");
-  auto metric_unit = make_shared<MetricUnit>(MetricUnit::kCount);
-  auto metric_info = make_shared<MetricDefinition>(metric_name, metric_unit);
-  metric_info->name_space = make_shared<MetricNamespace>("PBS");
-  auto metric_value = make_shared<MetricValue>("1234");
-
-  auto metric_tag = make_shared<MetricTag>();
-  auto update_unit = make_shared<MetricUnit>(MetricUnit::kMilliseconds);
-  metric_tag->update_unit = update_unit;
-  MetricLabels time_additional_labels;
-  time_additional_labels["Type"] = "AverageExecutionTime";
-  metric_tag->additional_labels =
-      make_shared<MetricLabels>(time_additional_labels);
-
-  auto record_metric_request = make_shared<PutMetricsRequest>();
-  MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info,
-                                    metric_value, metric_tag);
-
-  EXPECT_EQ(record_metric_request->metrics()[0].name(), *metric_name);
-  EXPECT_EQ(
-      record_metric_request->metrics()[0].unit(),
-      cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_MILLISECONDS);
-  EXPECT_EQ(record_metric_request->metrics()[0].value(), *metric_value);
-}
-
-TEST(MetricUtilsTest, CombineMetricLabelsTagLabels) {
-  auto metric_name = make_shared<MetricName>("FrontEndRequestCount");
-  auto metric_unit = make_shared<MetricUnit>(MetricUnit::kCount);
-  auto metric_info = make_shared<MetricDefinition>(metric_name, metric_unit);
-  metric_info->name_space = make_shared<MetricNamespace>("PBS");
-
-  MetricLabels metric_labels;
-  metric_labels["Phase"] = "TestTest";
-  metric_info->labels = make_shared<MetricLabels>(metric_labels);
-
-  auto metric_value = make_shared<MetricValue>("1234");
-
-  auto metric_tag = make_shared<MetricTag>();
-  auto update_unit = make_shared<MetricUnit>(MetricUnit::kMilliseconds);
-  metric_tag->update_unit = update_unit;
-  MetricLabels time_additional_labels;
-  time_additional_labels["Type"] = "AverageExecutionTime";
-  metric_tag->additional_labels =
-      make_shared<MetricLabels>(time_additional_labels);
-
-  auto record_metric_request = make_shared<PutMetricsRequest>();
-  MetricUtils::GetPutMetricsRequest(record_metric_request, metric_info,
-                                    metric_value, metric_tag);
-
-  EXPECT_EQ(record_metric_request->metrics()[0].name(), *metric_name);
-  EXPECT_EQ(
-      record_metric_request->metrics()[0].unit(),
-      cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_MILLISECONDS);
-  EXPECT_EQ(record_metric_request->metrics()[0].value(), *metric_value);
+            cmrt::sdk::metric_service::v1::MetricUnit::METRIC_UNIT_UNKNOWN);
+  EXPECT_EQ(record_metric_request->metrics()[0].value(), kMetricValue);
+  EXPECT_EQ(record_metric_request->metrics()[0].labels().size(), 3);
   EXPECT_TRUE(record_metric_request->metrics()[0]
                   .labels()
-                  .find(string("Type"))
-                  ->second == string("AverageExecutionTime"));
-  EXPECT_TRUE(record_metric_request->metrics()[0]
-                  .labels()
-                  .find(string("Phase"))
-                  ->second == string("TestTest"));
+                  .find(string("Key1"))
+                  ->second == string("Value1"));
+}
+
+TEST(MetricUtilsTest, CreateMetricLabelsWithComponentSignature) {
+  auto metric_labels1 = MetricUtils::CreateMetricLabelsWithComponentSignature(
+      kComponentValue, kMethodValue);
+  EXPECT_EQ(metric_labels1.size(), 2);
+  EXPECT_EQ(metric_labels1.find("ComponentName")->second, kComponentValue);
+  EXPECT_EQ(metric_labels1.find("MethodName")->second, kMethodValue);
+
+  auto metric_labels2 =
+      MetricUtils::CreateMetricLabelsWithComponentSignature(kComponentValue);
+  EXPECT_EQ(metric_labels2.size(), 1);
+  EXPECT_EQ(metric_labels2.find("ComponentName")->second, kComponentValue);
 }
 
 }  // namespace google::scp::cpio

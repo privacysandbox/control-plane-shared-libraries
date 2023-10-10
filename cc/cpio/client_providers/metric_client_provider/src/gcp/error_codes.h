@@ -36,12 +36,37 @@ DEFINE_ERROR_CODE(SC_GCP_METRIC_CLIENT_INVALID_METRIC_VALUE,
                   SC_GCP_METRIC_CLIENT, 0x0003,
                   "Failed to parse Gcp custom metric value to double",
                   HttpStatusCode::BAD_REQUEST)
-
+DEFINE_ERROR_CODE(
+    SC_GCP_METRIC_CLIENT_INVALID_METRIC_LABEL_KEY, SC_GCP_METRIC_CLIENT, 0x0004,
+    "GCP custom metric label keys must be less than 100 characters long",
+    HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(
+    SC_GCP_METRIC_CLIENT_INVALID_METRIC_LABEL_VALUE, SC_GCP_METRIC_CLIENT,
+    0x0005,
+    "GCP custom metric label values must be less than 1024 characters long",
+    HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(SC_GCP_METRIC_CLIENT_TOO_MANY_METRICS_IN_ONE_REQUEST,
+                  SC_GCP_METRIC_CLIENT, 0x0006,
+                  "A single GCP custom metric create request at most could "
+                  "have 200 metrics (time series), and PutMetricsRequest "
+                  "contains too many metrics",
+                  HttpStatusCode::BAD_REQUEST)
+DEFINE_ERROR_CODE(SC_GCP_METRIC_CLIENT_DUPLICATE_METRIC_IN_ONE_REQUEST,
+                  SC_GCP_METRIC_CLIENT, 0x0007,
+                  "Only one data point per metric per request",
+                  HttpStatusCode::BAD_REQUEST)
 MAP_TO_PUBLIC_ERROR_CODE(SC_GCP_METRIC_CLIENT_FAILED_WITH_INVALID_TIMESTAMP,
                          SC_CPIO_INVALID_REQUEST)
 MAP_TO_PUBLIC_ERROR_CODE(SC_GCP_METRIC_CLIENT_FAILED_OVERSIZE_METRIC_LABELS,
                          SC_CPIO_INVALID_REQUEST)
 MAP_TO_PUBLIC_ERROR_CODE(SC_GCP_METRIC_CLIENT_INVALID_METRIC_VALUE,
                          SC_CPIO_INVALID_REQUEST)
-
+MAP_TO_PUBLIC_ERROR_CODE(SC_GCP_METRIC_CLIENT_INVALID_METRIC_LABEL_KEY,
+                         SC_CPIO_INVALID_REQUEST)
+MAP_TO_PUBLIC_ERROR_CODE(SC_GCP_METRIC_CLIENT_INVALID_METRIC_LABEL_VALUE,
+                         SC_CPIO_INVALID_REQUEST)
+MAP_TO_PUBLIC_ERROR_CODE(SC_GCP_METRIC_CLIENT_TOO_MANY_METRICS_IN_ONE_REQUEST,
+                         SC_CPIO_INVALID_REQUEST)
+MAP_TO_PUBLIC_ERROR_CODE(SC_GCP_METRIC_CLIENT_DUPLICATE_METRIC_IN_ONE_REQUEST,
+                         SC_CPIO_INVALID_REQUEST)
 }  // namespace google::scp::core::errors

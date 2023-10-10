@@ -34,17 +34,15 @@ class GcpMetricClientUtils {
   /**
    * @brief Parses PutMetricsRequest to Gcp time series.
    *
-   * @param record_metric_context the async context for MetricRecordRequest.
+   * @param put_metric_request the request of PutMetricsRequest.
    * @param name_space Aws namespace.
-   * @param time_series_list the reference of time series vector
    * @return core::ExecutionResult
    */
-  static core::ExecutionResult ParseRequestToTimeSeries(
-      core::AsyncContext<cmrt::sdk::metric_service::v1::PutMetricsRequest,
-                         cmrt::sdk::metric_service::v1::PutMetricsResponse>&
-          record_metric_context,
-      const std::string& name_space,
-      std::vector<monitoring::v3::TimeSeries>& time_series_list) noexcept;
+  static core::ExecutionResultOr<std::vector<monitoring::v3::TimeSeries>>
+  ParseRequestToTimeSeries(
+      const std::shared_ptr<cmrt::sdk::metric_service::v1::PutMetricsRequest>&
+          put_metric_request,
+      const std::string& name_space) noexcept;
 
   /**
    * @brief Adds gce instance MonitoredResource to TimeSeries list.

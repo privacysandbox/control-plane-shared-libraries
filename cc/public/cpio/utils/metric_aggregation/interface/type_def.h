@@ -20,10 +20,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "core/interface/type_def.h"
 #include "public/core/interface/execution_result.h"
 #include "public/cpio/interface/metric_client/type_def.h"
+#include "public/cpio/proto/metric_service/v1/metric_service.pb.h"
 
 namespace google::scp::cpio {
 using MetricNamespace = std::string;
@@ -32,6 +34,7 @@ using MetricValue = std::string;
 using MetricLabels = std::map<std::string, std::string>;
 /// Supported metric units.
 enum class MetricUnit {
+  kUnknown = 0,
   kSeconds = 1,
   kMicroseconds = 2,
   kMilliseconds = 3,
@@ -60,56 +63,39 @@ enum class MetricUnit {
   kCountPerSecond = 26,
 };
 
-static constexpr MetricUnit kCountUnit = MetricUnit::kCount;
-static constexpr MetricUnit kCountSecond = MetricUnit::kCountPerSecond;
-static constexpr MetricUnit kMillisecondsUnit = MetricUnit::kMilliseconds;
-
-static constexpr char kMethodName[] = "MethodName";
-static constexpr char kComponentName[] = "ComponentName";
-
-/// Builds a metric name with component name and event name.
-struct MetricLabelsBase {
-  MetricLabelsBase(const std::string& component_name = std::string(),
-                   const std::string& method_name = std::string())
-      : component_name(component_name), method_name(method_name) {}
-
-  /**
-   * @brief Get the Basic Labels object
-   *
-   * @return MetricLabels the basic metric labels object.
-   */
-  MetricLabels GetMetricLabelsBase() {
-    MetricLabels metric_labels;
-    if (!method_name.empty()) {
-      metric_labels[kMethodName] = method_name;
-    }
-    if (!component_name.empty()) {
-      metric_labels[kComponentName] = component_name;
-    }
-    return metric_labels;
-  }
-
-  /// The component name of the metric instance.
-  std::string component_name;
-  /// The method name of the metric instance.
-  std::string method_name;
-};
+/// A default metric namespace for MetricDefinition creation.
+static constexpr char kDefaultMetricNamespace[] = "DefaultMetricNamespace";
 
 /// Represents the metric definition.
 struct MetricDefinition {
-  explicit MetricDefinition(const std::shared_ptr<MetricName>& metric_name,
-                            const std::shared_ptr<MetricUnit>& metric_unit)
-      : name(metric_name), unit(metric_unit) {}
+  explicit MetricDefinition(MetricName metric_name, MetricUnit metric_unit,
+                            MetricNamespace input_namespace)
+      : name(std::move(metric_name)),
+        unit(metric_unit),
+        metric_namespace(std::move(input_namespace)) {}
+
+  explicit MetricDefinition(MetricName metric_name, MetricUnit metric_unit,
+                            MetricNamespace input_namespace,
+                            MetricLabels metric_labels)
+      : name(std::move(metric_name)),
+        unit(metric_unit),
+        metric_namespace(std::move(input_namespace)),
+        labels(std::move(metric_labels)) {}
+
+  void AddMetricLabels(MetricLabels metric_labels) {
+    labels.insert(std::make_move_iterator(metric_labels.begin()),
+                  std::make_move_iterator(metric_labels.end()));
+  }
 
   /// Metric name.
-  std::shared_ptr<MetricName> name;
+  MetricName name;
   /// Metric unit.
-  std::shared_ptr<MetricUnit> unit;
+  MetricUnit unit;
   /// A set of key-value pairs. The key represents label name and the value
   /// represents label value.
-  std::shared_ptr<MetricLabels> labels;
+  MetricLabels labels;
   /// The namespace parameter required for pushing metric data to AWS.
-  std::shared_ptr<MetricNamespace> name_space;
+  MetricNamespace metric_namespace;
 };
 
 /**
@@ -147,26 +133,4 @@ struct TimeEvent {
   core::TimeDuration diff_time;
 };
 
-/**
- * @brief The metric tag for the specific definition of a metric. The metric tag
- * is used to override the metric name and unit defined before, and also add
- * more labels to the metric.
- *
- */
-struct MetricTag {
-  explicit MetricTag(
-      const std::shared_ptr<MetricName>& update_name = nullptr,
-      const std::shared_ptr<MetricUnit>& update_unit = nullptr,
-      const std::shared_ptr<MetricLabels>& additional_labels = nullptr)
-      : update_name(update_name),
-        update_unit(update_unit),
-        additional_labels(additional_labels) {}
-
-  /// Updates metric name for one metric.
-  std::shared_ptr<MetricName> update_name;
-  /// Updates metric unit for one metric.
-  std::shared_ptr<MetricUnit> update_unit;
-  /// The additional labels for metric identification.
-  std::shared_ptr<MetricLabels> additional_labels;
-};
 }  // namespace google::scp::cpio

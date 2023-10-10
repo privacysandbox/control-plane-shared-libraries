@@ -27,6 +27,18 @@ namespace google::scp::cpio {
 struct InstanceServiceFactoryOptions {
   virtual ~InstanceServiceFactoryOptions() = default;
 
+  InstanceServiceFactoryOptions() {}
+
+  InstanceServiceFactoryOptions(const InstanceServiceFactoryOptions& options)
+      : cpu_async_executor_thread_count_config_label(
+            options.cpu_async_executor_queue_cap_config_label),
+        cpu_async_executor_queue_cap_config_label(
+            options.cpu_async_executor_queue_cap_config_label),
+        io_async_executor_thread_count_config_label(
+            options.io_async_executor_thread_count_config_label),
+        io_async_executor_queue_cap_config_label(
+            options.io_async_executor_queue_cap_config_label) {}
+
   std::string cpu_async_executor_thread_count_config_label;
   std::string cpu_async_executor_queue_cap_config_label;
   std::string io_async_executor_thread_count_config_label;

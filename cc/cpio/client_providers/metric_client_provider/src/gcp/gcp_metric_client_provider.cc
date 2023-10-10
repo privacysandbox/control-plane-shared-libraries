@@ -54,15 +54,27 @@ using google::scp::cpio::client_providers::GcpMetricClientUtils;
 using google::scp::cpio::common::GcpUtils;
 using std::bind;
 using std::make_shared;
+using std::pair;
 using std::shared_ptr;
 using std::string;
 using std::vector;
 using std::placeholders::_1;
 
-static constexpr char kGcpMetricClientProvider[] = "GcpMetricClientProvider";
+namespace {
+constexpr char kGcpMetricClientProvider[] = "GcpMetricClientProvider";
 
 // The limit of GCP metric client time series list size is 200.
-static constexpr size_t kGcpTimeSeriesSizeLimit = 200;
+constexpr size_t kGcpTimeSeriesSizeLimit = 200;
+
+// A pair of a CreateTimeSeriesRequest and a shared pointer to a vector of
+// AsyncContext objects.The CreateTimeSeriesRequest object contains the
+// time_series (metrics) that are to be created, and the AsyncContext objects
+// represent the contexts in which the metrics were collected.
+typedef pair<
+    CreateTimeSeriesRequest,
+    shared_ptr<vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>>
+    TimeSeriesRequestContextsPair;
+}  // namespace
 
 namespace google::scp::cpio::client_providers {
 
@@ -92,6 +104,9 @@ ExecutionResult GcpMetricClientProvider::Run() noexcept {
               instance_resource_name.c_str());
   }
 
+  project_name_ =
+      GcpMetricClientUtils::ConstructProjectName(instance_resource_.project_id);
+
   CreateMetricServiceClient();
 
   return SuccessExecutionResult();
@@ -109,18 +124,6 @@ ExecutionResult GcpMetricClientProvider::MetricsBatchPush(
         vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>&
         context_vector) noexcept {
   MetricServiceClient metric_client(*metric_service_client_);
-  CreateTimeSeriesRequest time_series_request;
-
-  // Sets the name for time series request.
-  time_series_request.set_name(GcpMetricClientUtils::ConstructProjectName(
-      instance_resource_.project_id));
-
-  // Chops the input context_vector to small piece of vector, and
-  // requests_vector is used in callback function to set the response for
-  // requests.
-  auto requests_vector =
-      make_shared<vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>(
-          kGcpTimeSeriesSizeLimit);
 
   // When batch recording is not enabled, expect the namespace to be set on the
   // request. context_vector won't be empty.
@@ -128,51 +131,74 @@ ExecutionResult GcpMetricClientProvider::MetricsBatchPush(
                         ? metric_batching_options_->metric_namespace
                         : context_vector->back().request->metric_namespace();
 
-  while (!context_vector->empty()) {
-    auto context = context_vector->back();
-    context_vector->pop_back();
-    vector<TimeSeries> time_series_list;
-    auto result = GcpMetricClientUtils::ParseRequestToTimeSeries(
-        context, name_space, time_series_list);
+  // Chops the metrics from context_vector to small piece of
+  // requests_context_vector, and requests_context_vector is used in callback
+  // function to set the response for requests.
+  vector<TimeSeriesRequestContextsPair> ts_request_context_list;
+
+  // Create a CreateTimeSeriesRequest with namespace assigned.
+  CreateTimeSeriesRequest time_series_request;
+  time_series_request.set_name(project_name_);
+
+  ts_request_context_list.push_back(std::make_pair(
+      time_series_request,
+      make_shared<
+          vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>()));
+
+  for (auto& context : *context_vector) {
+    auto time_series_list_or = GcpMetricClientUtils::ParseRequestToTimeSeries(
+        context.request, name_space);
     // Sets the result for the requests that failed in parsing to time series.
-    if (!result.Successful()) {
-      context.result = result;
+    if (!time_series_list_or.Successful()) {
+      context.result = time_series_list_or.result();
       context.Finish();
       continue;
     }
 
+    auto& time_series_list = time_series_list_or.value();
     // Add gce_instance resource info to TimeSeries data.
     GcpMetricClientUtils::AddResourceToTimeSeries(
         instance_resource_.project_id, instance_resource_.instance_id,
         instance_resource_.zone_id, time_series_list);
 
-    requests_vector->push_back(context);
-    time_series_request.mutable_time_series()->Add(time_series_list.begin(),
-                                                   time_series_list.end());
+    // If the combined number of time series in the request and pending context
+    // exceeds the GCP request time series limit of 200, push a new time series
+    // request with an empty context vector.
+    if (ts_request_context_list.back().first.time_series().size() +
+            time_series_list.size() >
+        kGcpTimeSeriesSizeLimit) {
+      // Create a CreateTimeSeriesRequest with namespace assigned.
+      CreateTimeSeriesRequest empty_time_series;
+      empty_time_series.set_name(project_name_);
 
-    // Calls Gcp CreateTimeSeries when time series size equals to 200 or context
-    // vector is empty.
-    if (time_series_request.time_series().size() == kGcpTimeSeriesSizeLimit ||
-        context_vector->empty()) {
-      metric_client.AsyncCreateTimeSeries(time_series_request)
-          .then(std::bind(
-              &GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback, this,
-              *requests_vector, _1));
-      active_push_count_++;
-
-      // Clear requests_vector and protobuf repeated field.
-      time_series_request.mutable_time_series()->Clear();
-      requests_vector->clear();
+      ts_request_context_list.push_back(std::make_pair(
+          empty_time_series,
+          make_shared<
+              vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>()));
     }
+
+    // Add the time series to the last time_series_request and add the context
+    // to the corresponding context vector.
+    auto& [last_time_series, last_context_chunk] =
+        ts_request_context_list.back();
+    last_time_series.mutable_time_series()->Add(time_series_list.begin(),
+                                                time_series_list.end());
+    last_context_chunk->push_back(context);
+  }
+
+  for (const auto& [time_series, context_chunk] : ts_request_context_list) {
+    metric_client.AsyncCreateTimeSeries(time_series)
+        .then(
+            std::bind(&GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback,
+                      this, context_chunk, _1));
+    active_push_count_++;
   }
 
   return SuccessExecutionResult();
 }
 
-// Copy the metric_requests_vector in case it is cleared outside, and it is not
-// expensive to copy the AsyncContext.
 void GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback(
-    vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>
+    shared_ptr<vector<AsyncContext<PutMetricsRequest, PutMetricsResponse>>>
         metric_requests_vector,
     future<Status> outcome) noexcept {
   active_push_count_--;
@@ -180,12 +206,12 @@ void GcpMetricClientProvider::OnAsyncCreateTimeSeriesCallback(
   auto result = GcpUtils::GcpErrorConverter(outcome_status);
 
   if (!result.Successful()) {
-    SCP_ERROR_CONTEXT(kGcpMetricClientProvider, metric_requests_vector.back(),
+    SCP_ERROR_CONTEXT(kGcpMetricClientProvider, metric_requests_vector->back(),
                       result, "The error is %s",
                       outcome_status.message().c_str());
   }
 
-  for (auto& record_metric_context : metric_requests_vector) {
+  for (auto& record_metric_context : *metric_requests_vector) {
     record_metric_context.response = make_shared<PutMetricsResponse>();
     record_metric_context.result = result;
     record_metric_context.Finish();

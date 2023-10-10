@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "core/interface/async_context.h"
@@ -30,12 +31,11 @@ namespace google::scp::cpio {
 class MockAggregateMetricOverrides : public AggregateMetric {
  public:
   explicit MockAggregateMetricOverrides(
-      const std::shared_ptr<core::AsyncExecutorInterface>& async_executor,
-      const std::shared_ptr<MetricClientInterface>& metric_client,
-      const std::shared_ptr<MetricDefinition>& metric_info,
+      core::AsyncExecutorInterface* async_executor,
+      MetricClientInterface* metric_client, MetricDefinition metric_info,
       const core::TimeDuration aggregation_time_duration_ms,
-      const std::shared_ptr<std::vector<std::string>>& event_list = nullptr)
-      : AggregateMetric(async_executor, metric_client, metric_info,
+      const std::vector<std::string>& event_list = {})
+      : AggregateMetric(async_executor, metric_client, std::move(metric_info),
                         aggregation_time_duration_ms, event_list) {
     // For mocking purposes, we should be able to accept incoming metric even if
     // the mock is not Run().
@@ -44,8 +44,7 @@ class MockAggregateMetricOverrides : public AggregateMetric {
 
   std::function<void()> run_metric_push_mock;
 
-  std::function<void(int64_t counter,
-                     const std::shared_ptr<MetricTag>& metric_tag)>
+  std::function<void(int64_t counter, const MetricDefinition& metric_info)>
       metric_push_handler_mock;
 
   std::function<core::ExecutionResult()> schedule_metric_push_mock;
@@ -57,28 +56,28 @@ class MockAggregateMetricOverrides : public AggregateMetric {
       return AggregateMetric::counter_.load();
     }
 
-    auto event = AggregateMetric::event_counters_.find(event_code);
-    if (event != AggregateMetric::event_counters_.end()) {
+    auto event = event_counters_.find(event_code);
+    if (event != event_counters_.end()) {
       return event->second.load();
     }
     return 0;
   }
 
-  std::shared_ptr<MetricTag> GetMetricTag(const std::string& event_code) {
-    auto event = AggregateMetric::event_tags_.find(event_code);
-    if (event != AggregateMetric::event_tags_.end()) {
+  core::ExecutionResultOr<MetricDefinition> GetMetricInfo(
+      const std::string& event_code) {
+    const auto& event = event_metric_infos_.find(event_code);
+    if (event != event_metric_infos_.end()) {
       return event->second;
     }
-    return nullptr;
+    return core::FailureExecutionResult(SC_UNKNOWN);
   }
 
-  void MetricPushHandler(
-      int64_t counter,
-      const std::shared_ptr<MetricTag>& metric_tag = nullptr) noexcept {
+  void MetricPushHandler(int64_t counter,
+                         const MetricDefinition& metric_info) noexcept {
     if (metric_push_handler_mock) {
-      return metric_push_handler_mock(counter, metric_tag);
+      return metric_push_handler_mock(counter, metric_info);
     }
-    return AggregateMetric::MetricPushHandler(counter, metric_tag);
+    return AggregateMetric::MetricPushHandler(counter, metric_info);
   }
 
   void RunMetricPush() noexcept {

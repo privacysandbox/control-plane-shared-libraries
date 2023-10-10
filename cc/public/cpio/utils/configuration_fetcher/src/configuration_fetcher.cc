@@ -296,24 +296,24 @@ ConfigurationFetcher::GetGcpJobClientSpannerDatabaseNameAsync(
 }
 
 ExecutionResultOr<string>
-ConfigurationFetcher::GetGcpNosqlDatabaseClientSpannerInstanceName(
+ConfigurationFetcher::GetGcpNoSQLDatabaseClientSpannerInstanceName(
     GetConfigurationRequest request) noexcept {
   string parameter;
   auto execution_result =
       SyncUtils::AsyncToSync<GetConfigurationRequest, string>(
           bind(&ConfigurationFetcher::
-                   GetGcpNosqlDatabaseClientSpannerInstanceNameAsync,
+                   GetGcpNoSQLDatabaseClientSpannerInstanceNameAsync,
                this, _1),
           request, parameter);
   RETURN_AND_LOG_IF_FAILURE(
       execution_result, kConfigurationFetcher, kZeroUuid,
-      "Failed to GetGcpNosqlDatabaseClientSpannerInstanceName %s.",
+      "Failed to GetGcpNoSQLDatabaseClientSpannerInstanceName %s.",
       kGcpNoSQLDatabaseClientSpannerInstanceName);
   return parameter;
 }
 
 core::ExecutionResult
-ConfigurationFetcher::GetGcpNosqlDatabaseClientSpannerInstanceNameAsync(
+ConfigurationFetcher::GetGcpNoSQLDatabaseClientSpannerInstanceNameAsync(
     AsyncContext<GetConfigurationRequest, string> context) noexcept {
   auto context_with_parameter_name = ContextConvertCallback(
       kGcpNoSQLDatabaseClientSpannerInstanceName, context);
@@ -321,24 +321,24 @@ ConfigurationFetcher::GetGcpNosqlDatabaseClientSpannerInstanceNameAsync(
 }
 
 ExecutionResultOr<string>
-ConfigurationFetcher::GetGcpNosqlDatabaseClientSpannerDatabaseName(
+ConfigurationFetcher::GetGcpNoSQLDatabaseClientSpannerDatabaseName(
     GetConfigurationRequest request) noexcept {
   string parameter;
   auto execution_result =
       SyncUtils::AsyncToSync<GetConfigurationRequest, string>(
           bind(&ConfigurationFetcher::
-                   GetGcpNosqlDatabaseClientSpannerDatabaseNameAsync,
+                   GetGcpNoSQLDatabaseClientSpannerDatabaseNameAsync,
                this, _1),
           request, parameter);
   RETURN_AND_LOG_IF_FAILURE(
       execution_result, kConfigurationFetcher, kZeroUuid,
-      "Failed to GetGcpNosqlDatabaseClientSpannerDatabaseName %s.",
+      "Failed to GetGcpNoSQLDatabaseClientSpannerDatabaseName %s.",
       kGcpNoSQLDatabaseClientSpannerDatabaseName);
   return parameter;
 }
 
 core::ExecutionResult
-ConfigurationFetcher::GetGcpNosqlDatabaseClientSpannerDatabaseNameAsync(
+ConfigurationFetcher::GetGcpNoSQLDatabaseClientSpannerDatabaseNameAsync(
     AsyncContext<GetConfigurationRequest, string> context) noexcept {
   auto context_with_parameter_name = ContextConvertCallback(
       kGcpNoSQLDatabaseClientSpannerDatabaseName, context);

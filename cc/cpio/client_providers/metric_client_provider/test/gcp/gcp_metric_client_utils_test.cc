@@ -45,10 +45,17 @@ using google::scp::core::FailureExecutionResult;
 using google::scp::core::SuccessExecutionResult;
 using google::scp::core::errors::GetErrorMessage;
 using google::scp::core::errors::
+    SC_GCP_METRIC_CLIENT_DUPLICATE_METRIC_IN_ONE_REQUEST;
+using google::scp::core::errors::
     SC_GCP_METRIC_CLIENT_FAILED_OVERSIZE_METRIC_LABELS;
 using google::scp::core::errors::
     SC_GCP_METRIC_CLIENT_FAILED_WITH_INVALID_TIMESTAMP;
+using google::scp::core::errors::SC_GCP_METRIC_CLIENT_INVALID_METRIC_LABEL_KEY;
+using google::scp::core::errors::
+    SC_GCP_METRIC_CLIENT_INVALID_METRIC_LABEL_VALUE;
 using google::scp::core::errors::SC_GCP_METRIC_CLIENT_INVALID_METRIC_VALUE;
+using google::scp::core::errors::
+    SC_GCP_METRIC_CLIENT_TOO_MANY_METRICS_IN_ONE_REQUEST;
 using google::scp::core::test::ResultIs;
 using google::scp::cpio::client_providers::GcpMetricClientUtils;
 using std::make_shared;
@@ -101,20 +108,16 @@ class GcpMetricClientUtilsTest : public ::testing::Test {
 TEST_F(GcpMetricClientUtilsTest, ParseRequestToTimeSeries) {
   PutMetricsRequest record_metric_request;
   SetPutMetricsRequest(record_metric_request);
-  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
-      make_shared<PutMetricsRequest>(record_metric_request),
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
-
   vector<TimeSeries> time_series_list;
 
-  auto result = GcpMetricClientUtils::ParseRequestToTimeSeries(
-      context, kNamespace, time_series_list);
+  auto time_series_list_or = GcpMetricClientUtils::ParseRequestToTimeSeries(
+      make_shared<PutMetricsRequest>(record_metric_request), kNamespace);
   auto expected_type =
       string(kMetricTypePrefix) + "/" + string(kNamespace) + "/test_name";
-  auto expected_timestamp = context.request->metrics()[0].timestamp();
+  auto expected_timestamp = record_metric_request.metrics()[0].timestamp();
 
-  auto time_series = time_series_list[0];
-  EXPECT_SUCCESS(result);
+  EXPECT_SUCCESS(time_series_list_or.result());
+  auto time_series = time_series_list_or.value()[0];
   EXPECT_EQ(time_series.metric().type(), expected_type);
   EXPECT_EQ(time_series.unit(), "");
   EXPECT_EQ(time_series.metric().labels().size(), 3);
@@ -125,70 +128,103 @@ TEST_F(GcpMetricClientUtilsTest, ParseRequestToTimeSeries) {
 TEST_F(GcpMetricClientUtilsTest, FailedWithBadMetricValue) {
   PutMetricsRequest record_metric_request;
   SetPutMetricsRequest(record_metric_request, kBadValue);
-  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
-      make_shared<PutMetricsRequest>(record_metric_request),
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
+  vector<TimeSeries> time_series_list;
+
+  auto time_series_list_or = GcpMetricClientUtils::ParseRequestToTimeSeries(
+      make_shared<PutMetricsRequest>(record_metric_request), kNamespace);
+  auto expected_type =
+      string(kMetricTypePrefix) + "/" + string(kNamespace) + "/test_name";
+  auto expected_timestamp = record_metric_request.metrics()[0].timestamp();
+
+  EXPECT_THAT(time_series_list_or.result(),
+              ResultIs(FailureExecutionResult(
+                  SC_GCP_METRIC_CLIENT_INVALID_METRIC_VALUE)));
+}
+
+TEST_F(GcpMetricClientUtilsTest, InvalidMetricLabelKey) {
+  PutMetricsRequest record_metric_request;
+  SetPutMetricsRequest(record_metric_request);
+
+  auto bad_label_key = string("A", 101);
+  auto label_value = string("B");
+  record_metric_request.mutable_metrics(0)->mutable_labels()->insert(
+      MapPair(bad_label_key, label_value));
 
   vector<TimeSeries> time_series_list;
 
-  auto result = GcpMetricClientUtils::ParseRequestToTimeSeries(
-      context, kNamespace, time_series_list);
-  auto expected_type =
-      string(kMetricTypePrefix) + "/" + string(kNamespace) + "/test_name";
-  auto expected_timestamp = context.request->metrics()[0].timestamp();
+  auto time_series_list_or = GcpMetricClientUtils::ParseRequestToTimeSeries(
+      make_shared<PutMetricsRequest>(record_metric_request), kNamespace);
+  EXPECT_THAT(time_series_list_or.result(),
+              ResultIs(FailureExecutionResult(
+                  SC_GCP_METRIC_CLIENT_INVALID_METRIC_LABEL_KEY)));
+}
 
-  auto time_series = time_series_list[0];
-  EXPECT_THAT(result, ResultIs(FailureExecutionResult(
-                          SC_GCP_METRIC_CLIENT_INVALID_METRIC_VALUE)));
+TEST_F(GcpMetricClientUtilsTest, InvalidMetricLabelValue) {
+  PutMetricsRequest record_metric_request;
+  SetPutMetricsRequest(record_metric_request);
+
+  auto label_key = string("A", 20);
+  auto bad_label_value = string("B", 1025);
+  record_metric_request.mutable_metrics(0)->mutable_labels()->insert(
+      MapPair(label_key, bad_label_value));
+
+  auto time_series_list = GcpMetricClientUtils::ParseRequestToTimeSeries(
+      make_shared<PutMetricsRequest>(record_metric_request), kNamespace);
+  EXPECT_THAT(time_series_list.result(),
+              ResultIs(FailureExecutionResult(
+                  SC_GCP_METRIC_CLIENT_INVALID_METRIC_LABEL_VALUE)));
+}
+
+TEST_F(GcpMetricClientUtilsTest, DuplicateMetricsInPutMetricsRequest) {
+  PutMetricsRequest record_metric_request;
+  SetPutMetricsRequest(record_metric_request);
+  record_metric_request.add_metrics()->CopyFrom(
+      record_metric_request.metrics(0));
+
+  auto time_series_list_or = GcpMetricClientUtils::ParseRequestToTimeSeries(
+      make_shared<PutMetricsRequest>(record_metric_request), kNamespace);
+  EXPECT_THAT(time_series_list_or.result(),
+              ResultIs(FailureExecutionResult(
+                  SC_GCP_METRIC_CLIENT_DUPLICATE_METRIC_IN_ONE_REQUEST)));
 }
 
 TEST_F(GcpMetricClientUtilsTest, BadTimeStamp) {
   PutMetricsRequest record_metric_request;
   SetPutMetricsRequest(record_metric_request, kValue, -123);
-  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
-      make_shared<PutMetricsRequest>(record_metric_request),
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
-  vector<TimeSeries> time_series_list;
-
-  auto result = GcpMetricClientUtils::ParseRequestToTimeSeries(
-      context, kNamespace, time_series_list);
-  EXPECT_THAT(result, ResultIs(FailureExecutionResult(
-                          SC_GCP_METRIC_CLIENT_FAILED_WITH_INVALID_TIMESTAMP)));
+  auto time_series_list_or = GcpMetricClientUtils::ParseRequestToTimeSeries(
+      make_shared<PutMetricsRequest>(record_metric_request), kNamespace);
+  EXPECT_THAT(time_series_list_or.result(),
+              ResultIs(FailureExecutionResult(
+                  SC_GCP_METRIC_CLIENT_FAILED_WITH_INVALID_TIMESTAMP)));
 }
 
 TEST_F(GcpMetricClientUtilsTest, InvalidTimeStamp) {
   PutMetricsRequest record_metric_request;
   SetPutMetricsRequest(record_metric_request, kValue, 12345);
-  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
-      make_shared<PutMetricsRequest>(record_metric_request),
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
-  vector<TimeSeries> time_series_list;
-
-  auto result = GcpMetricClientUtils::ParseRequestToTimeSeries(
-      context, kNamespace, time_series_list);
-  EXPECT_THAT(result, ResultIs(FailureExecutionResult(
-                          SC_GCP_METRIC_CLIENT_FAILED_WITH_INVALID_TIMESTAMP)));
+  auto time_series_list_or = GcpMetricClientUtils::ParseRequestToTimeSeries(
+      make_shared<PutMetricsRequest>(record_metric_request), kNamespace);
+  EXPECT_THAT(time_series_list_or.result(),
+              ResultIs(FailureExecutionResult(
+                  SC_GCP_METRIC_CLIENT_FAILED_WITH_INVALID_TIMESTAMP)));
 }
 
 TEST_F(GcpMetricClientUtilsTest, OverSizeLabels) {
   PutMetricsRequest record_metric_request;
   SetPutMetricsRequest(record_metric_request);
-  AsyncContext<PutMetricsRequest, PutMetricsResponse> context(
-      make_shared<PutMetricsRequest>(record_metric_request),
-      [&](AsyncContext<PutMetricsRequest, PutMetricsResponse>& context) {});
 
   // Adds oversize labels.
-  auto labels = context.request->add_metrics()->mutable_labels();
+  auto labels = record_metric_request.add_metrics()->mutable_labels();
   for (int i = 0; i < 33; ++i) {
     labels->insert(MapPair(string("key") + to_string(i), string("value")));
   }
   vector<TimeSeries> time_series_list;
-  auto result = GcpMetricClientUtils::ParseRequestToTimeSeries(
-      context, kNamespace, time_series_list);
-  EXPECT_THAT(result, ResultIs(FailureExecutionResult(
-                          SC_GCP_METRIC_CLIENT_FAILED_OVERSIZE_METRIC_LABELS)));
+  auto time_series_list_or = GcpMetricClientUtils::ParseRequestToTimeSeries(
+      make_shared<PutMetricsRequest>(record_metric_request), kNamespace);
+  EXPECT_THAT(time_series_list_or.result(),
+              ResultIs(FailureExecutionResult(
+                  SC_GCP_METRIC_CLIENT_FAILED_OVERSIZE_METRIC_LABELS)));
 }
 
 TEST(GcpMetricClientUtilsTestII, AddResourceToTimeSeries) {

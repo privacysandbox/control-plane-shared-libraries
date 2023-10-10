@@ -20,10 +20,12 @@ java_library(
     name = "testing",
     srcs = glob(["*.java"]),
     deps = [
+        "//cc/public/cpio/proto/job_service/v1:job_service_java_proto",
         "//java/com/google/scp/operator/frontend/tasks",
         "//java/com/google/scp/operator/frontend/tasks/validation",
         "//java/com/google/scp/operator/shared/dao/jobqueue/common",
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
+        "//java/com/google/scp/operator/shared/dao/metadatadb/testing:job_generator",
         "//java/com/google/scp/operator/shared/model",
         "//java/com/google/scp/shared/api/exception",
         "//java/com/google/scp/shared/api/model",

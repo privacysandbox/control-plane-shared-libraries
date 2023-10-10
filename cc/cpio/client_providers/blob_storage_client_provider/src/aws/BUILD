@@ -38,16 +38,16 @@ cc_library(
 )
 
 exports_files([
-    "aws_s3_client_provider.h",
-    "aws_s3_client_provider.cc",
-    "aws_s3_utils.h",
+    "aws_blob_storage_client_provider.h",
+    "aws_blob_storage_client_provider.cc",
+    "aws_blob_storage_client_utils.h",
 ])
 
 filegroup(
     name = "aws_blob_storage_client_provider_srcs",
     srcs = [
-        ":aws_s3_client_provider.cc",
-        ":aws_s3_client_provider.h",
-        ":aws_s3_utils.h",
+        ":aws_blob_storage_client_provider.cc",
+        ":aws_blob_storage_client_provider.h",
+        ":aws_blob_storage_client_utils.h",
     ],
 )

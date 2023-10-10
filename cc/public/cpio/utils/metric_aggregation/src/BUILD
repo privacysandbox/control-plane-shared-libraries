@@ -30,7 +30,6 @@ cc_library(
     deps = [
         "//cc:cc_base_include_dir",
         "//cc/core/interface:interface_lib",
-        "//cc/core/message_router/src:message_router_lib",
         "//cc/cpio/client_providers/metric_client_provider/src:metric_client_provider_lib",
         "//cc/public/cpio/proto/metric_service/v1:metric_service_cc_proto",
         "//cc/public/cpio/utils/metric_aggregation/interface:metric_aggregation_interface",

@@ -16,10 +16,11 @@
 
 package com.google.scp.operator.frontend.service;
 
+import static com.google.cmrt.sdk.job_service.v1.JobStatus.JOB_STATUS_CREATED;
 import static com.google.scp.operator.frontend.service.model.Constants.JOB_PARAM_ATTRIBUTION_REPORT_TO;
 import static com.google.scp.operator.frontend.service.model.Constants.JOB_PARAM_DEBUG_PRIVACY_BUDGET_LIMIT;
 
-import com.google.cmrt.sdk.job_service.v1.GetJobByIdRequest;
+import com.google.cmrt.sdk.job_service.v1.Job;
 import com.google.cmrt.sdk.job_service.v1.PutJobRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -43,6 +44,7 @@ public final class ServiceJobGenerator {
   private static final String ATTRIBUTION_REPORT_TO = "foo.com";
   private static final String DEBUG_PRIVACY_BUDGET_LIMIT = "5";
   private static final String ACCOUNT_IDENTITY = "service-account@testing.com";
+  private static final String JOB_BODY = "jobBody";
   private static final Timestamp REQUEST_RECEIVED_AT =
       Timestamps.parseUnchecked("2019-10-01T08:25:24.00Z");
   private static final Timestamp REQUEST_UPDATED_AT =
@@ -139,11 +141,19 @@ public final class ServiceJobGenerator {
     return getJobResponse;
   }
 
-  public static PutJobRequest createFakePutJobRequest() {
-    return PutJobRequest.newBuilder().build();
+  public static PutJobRequest createFakePutJobRequest(String jobId) {
+    return PutJobRequest.newBuilder().setJobId(jobId).setJobBody(JOB_BODY).build();
   }
 
-  public static GetJobByIdRequest createFakeGetJobByIdRequest() {
-    return GetJobByIdRequest.newBuilder().build();
+  public static Job createFakeJob(String jobId, String serverJobId) {
+    return Job.newBuilder()
+        .setJobId(jobId)
+        .setServerJobId(serverJobId)
+        .setJobBody(JOB_BODY)
+        .setJobStatus(JOB_STATUS_CREATED)
+        .setCreatedTime(REQUEST_RECEIVED_AT)
+        .setUpdatedTime(REQUEST_UPDATED_AT)
+        .setRetryCount(0)
+        .build();
   }
 }

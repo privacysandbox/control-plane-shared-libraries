@@ -21,7 +21,7 @@
 region      = "us-east-1"
 environment = "cc-postsubmit"
 
-ami_name   = "cmrt-worker-aws-postsubmit" # from //java/com/google/scp/operator/cmrtworker/deploy/aws/BUILD
+ami_name   = "cc-postsubmit-aws-cmrt-worker" # from //java/com/google/scp/operator/cmrtworker/deploy/aws/BUILD
 ami_owners = ["self"]
 
 # Total resources available affected by instance_type -- actual resources used
@@ -36,6 +36,6 @@ coordinator_b_assume_role_parameter = "arn:aws:iam::221820322062:role/mp-seconda
 
 initial_capacity_ec2_instances = 1
 min_capacity_ec2_instances     = "1"
-max_capacity_ec2_instances     = "1"
+max_capacity_ec2_instances     = "2"
 
 alarm_notification_email = "fakeemail@google.com"

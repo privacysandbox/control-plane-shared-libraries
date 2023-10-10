@@ -30,7 +30,11 @@ import com.google.scp.operator.frontend.service.converter.GetJobResponseConverte
 import com.google.scp.operator.frontend.service.converter.JobStatusConverter;
 import com.google.scp.operator.frontend.service.converter.ResultInfoConverter;
 import com.google.scp.operator.frontend.tasks.CreateJobTask;
+import com.google.scp.operator.frontend.tasks.GetJobByIdTask;
+import com.google.scp.operator.frontend.tasks.PutJobTask;
 import com.google.scp.operator.frontend.tasks.aws.AwsCreateJobTask;
+import com.google.scp.operator.frontend.tasks.aws.AwsGetJobByIdTask;
+import com.google.scp.operator.frontend.tasks.aws.AwsPutJobTask;
 import com.google.scp.operator.protos.frontend.api.v1.CreateJobRequestProto.CreateJobRequest;
 import com.google.scp.operator.protos.frontend.api.v1.ErrorCountProto;
 import com.google.scp.operator.protos.frontend.api.v1.ErrorSummaryProto;
@@ -102,5 +106,7 @@ public final class FrontendModule extends BaseFrontendModule {
   protected void configureModule() {
     bind(ObjectMapper.class).to(TimeObjectMapper.class);
     bind(CreateJobTask.class).to(AwsCreateJobTask.class);
+    bind(PutJobTask.class).to(AwsPutJobTask.class);
+    bind(GetJobByIdTask.class).to(AwsGetJobByIdTask.class);
   }
 }

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SCP_CPIO_INTERFACE_JOB_CLIENT_TYPE_DEF_H_
-#define SCP_CPIO_INTERFACE_JOB_CLIENT_TYPE_DEF_H_
+#ifndef SCP_CPIO_INTERFACE_JOB_CLIENT_INTERFACE_H_
+#define SCP_CPIO_INTERFACE_JOB_CLIENT_INTERFACE_H_
 
 #include <memory>
 #include <string>
@@ -131,4 +131,4 @@ class JobClientFactory {
 };
 }  // namespace google::scp::cpio
 
-#endif  // SCP_CPIO_INTERFACE_JOB_CLIENT_TYPE_DEF_H_
+#endif  // SCP_CPIO_INTERFACE_JOB_CLIENT_INTERFACE_H_

@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#ifndef SCP_CPIO_INTERFACE_JOB_CLIENT_TYPE_DEF_H_
+#define SCP_CPIO_INTERFACE_JOB_CLIENT_TYPE_DEF_H_
+
 #include <optional>
 #include <string>
 
@@ -21,6 +24,14 @@ namespace google::scp::cpio {
 /// Configurations for JobClient.
 struct JobClientOptions {
   virtual ~JobClientOptions() = default;
+
+  JobClientOptions() = default;
+
+  JobClientOptions(const JobClientOptions& options)
+      : job_queue_name(options.job_queue_name),
+        job_table_name(options.job_table_name),
+        gcp_spanner_instance_name(options.gcp_spanner_instance_name),
+        gcp_spanner_database_name(options.gcp_spanner_database_name) {}
 
   // The name of the queue to store job message.
   std::string job_queue_name;
@@ -35,3 +46,5 @@ struct JobClientOptions {
   std::string gcp_spanner_database_name;
 };
 }  // namespace google::scp::cpio
+
+#endif  // SCP_CPIO_INTERFACE_JOB_CLIENT_TYPE_DEF_H_

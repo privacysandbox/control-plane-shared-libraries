@@ -38,3 +38,18 @@ cc_library(
         "@nlohmann_json//:lib",
     ],
 )
+
+exports_files([
+    "gcp_nosql_database_client_provider.h",
+    "gcp_nosql_database_client_provider.cc",
+    "gcp_nosql_database_client_utils.h",
+])
+
+filegroup(
+    name = "gcp_nosql_database_client_provider_srcs",
+    srcs = [
+        ":gcp_nosql_database_client_provider.cc",
+        ":gcp_nosql_database_client_provider.h",
+        ":gcp_nosql_database_client_utils.h",
+    ],
+)

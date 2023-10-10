@@ -20,6 +20,7 @@ java_library(
     name = "tasks",
     srcs = glob(["*.java"]),
     deps = [
+        "//cc/public/cpio/proto/job_service/v1:job_service_java_proto",
         "//java/com/google/scp/operator/frontend/tasks/validation",
         "//java/com/google/scp/operator/shared/dao/metadatadb/common",
         "//java/com/google/scp/operator/shared/model",

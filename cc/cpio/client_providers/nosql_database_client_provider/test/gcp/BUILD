@@ -20,8 +20,8 @@ cc_test(
     name = "gcp_spanner_test",
     size = "large",
     srcs = [
-        "gcp_spanner_client_provider_test.cc",
-        "gcp_spanner_utils_test.cc",
+        "gcp_nosql_database_client_provider_test.cc",
+        "gcp_nosql_database_client_utils_test.cc",
     ],
     copts = [
         "-std=c++17",
@@ -37,5 +37,21 @@ cc_test(
         "@com_github_googleapis_google_cloud_cpp//:spanner_mocks",
         "@com_google_googletest//:gtest_main",
         "@nlohmann_json//:lib",
+    ],
+)
+
+cc_library(
+    name = "test_gcp_nosql_database_client_provider_lib",
+    srcs = [
+        "test_gcp_nosql_database_client_provider.cc",
+        "test_gcp_nosql_database_client_provider.h",
+        "//cc/cpio/client_providers/nosql_database_client_provider/src/gcp:gcp_nosql_database_client_provider_srcs",
+    ],
+    copts = [
+        "-DTEST_CPIO=1",
+    ],
+    deps = [
+        "//cc/cpio/client_providers/nosql_database_client_provider/src/gcp:gcp_nosql_database_provider_lib",
+        "//cc/public/cpio/test/blob_storage_client:test_gcp_blob_storage_client_options",
     ],
 )

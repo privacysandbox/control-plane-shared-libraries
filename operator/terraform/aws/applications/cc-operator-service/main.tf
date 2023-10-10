@@ -21,7 +21,7 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 module "operator_alarm_sns_topic" {
-  count  = var.worker_alarms_enabled ? 1 : 0
+  count  = local.any_alarms_enabled ? 1 : 0
   source = "../../modules/alarmsnstopic"
 
   environment              = var.environment
@@ -30,13 +30,14 @@ module "operator_alarm_sns_topic" {
 }
 
 locals {
-  sns_topic_arn = var.worker_alarms_enabled ? module.operator_alarm_sns_topic[0].operator_alarm_sns_topic_arn : ""
+  any_alarms_enabled = var.alarms_enabled || var.custom_metrics_alarms_enabled
+  sns_topic_arn      = local.any_alarms_enabled ? module.operator_alarm_sns_topic[0].operator_alarm_sns_topic_arn : ""
 }
 
 module "job_db" {
   source           = "../../modules/database"
   environment      = var.environment
-  table_name       = "${var.environment}-JobTable"
+  table_name       = "${var.environment}-${var.job_client_parameter_values.job_table_name}"
   primary_key      = "JobId"
   primary_key_type = "S"
   service_tag      = "cc-operator-service"
@@ -46,7 +47,7 @@ module "job_db" {
   write_capacity = var.job_db_write_capacity
 
   #Alarms
-  alarms_enabled                             = var.worker_alarms_enabled
+  alarms_enabled                             = var.alarms_enabled
   sns_topic_arn                              = local.sns_topic_arn
   read_alarm_name                            = "job_db_table_read_capacity_ratio_alarm"
   write_alarm_name                           = "job_db_table_write_capacity_ratio_alarm"
@@ -59,12 +60,12 @@ module "job_queue" {
   source      = "../../modules/queue"
   environment = var.environment
   region      = var.region
-  queue_name  = "${var.environment}-JobQueue"
+  queue_name  = "${var.environment}-${var.job_client_parameter_values.job_queue_name}"
   service_tag = "cc-operator-service"
   role_tag    = "jobqueue"
 
   #Alarms
-  alarms_enabled                  = var.worker_alarms_enabled
+  alarms_enabled                  = var.alarms_enabled
   sns_topic_arn                   = local.sns_topic_arn
   alarm_name                      = "job_queue_old_message_alarm"
   queue_old_message_threshold_sec = var.job_queue_old_message_threshold_sec
@@ -103,7 +104,8 @@ module "worker_service" {
   s3_vpc_endpoint_id        = module.vpc[0].s3_vpc_endpoint_id
 
   #Alarms
-  worker_alarms_enabled            = var.worker_alarms_enabled
+  # Worker only has alarms setup for custom metrics.
+  worker_alarms_enabled            = var.custom_metrics_alarms_enabled
   operator_sns_topic_arn           = local.sns_topic_arn
   job_client_error_threshold       = var.job_client_error_threshold
   job_validation_failure_threshold = var.job_validation_failure_threshold
@@ -133,7 +135,7 @@ module "worker_autoscaling" {
   lambda_package_storage_bucket_prefix = "${var.environment}-bucket-"
 
   #Alarms
-  alarms_enabled                    = var.worker_alarms_enabled
+  alarms_enabled                    = var.alarms_enabled
   sns_topic_arn                     = local.sns_topic_arn
   asg_max_instances_alarm_ratio     = var.asg_max_instances_alarm_ratio
   autoscaling_alarm_eval_period_sec = var.autoscaling_alarm_eval_period_sec
@@ -153,4 +155,12 @@ module "vpc" {
   dynamodb_arns                   = [module.job_db.db_arn]
 
   s3_allowed_principal_arns = [module.worker_service.worker_enclave_role_arn]
+}
+
+module "worker_dashboard" {
+  source = "../../modules/workerdashboard"
+
+  environment                   = var.environment
+  region                        = var.region
+  custom_metrics_alarms_enabled = var.custom_metrics_alarms_enabled
 }

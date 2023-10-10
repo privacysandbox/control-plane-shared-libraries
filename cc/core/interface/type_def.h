@@ -35,9 +35,6 @@ typedef std::string Token;
 static constexpr JournalId kInvalidJournalId = 0;
 static constexpr CheckpointId kInvalidCheckpointId = 0;
 
-/// The default aggregate interval in milliseconds for AggregatedMetric.
-static constexpr TimeDuration kDefaultAggregatedMetricIntervalMs = 1000;
-
 /// Structure that acts as a wrapper around a vector of bytes.
 /// This structure allows callers to keep track of the current used buffer via
 /// 'length' and the total allocated capacity via 'capacity'.
